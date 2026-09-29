@@ -1,0 +1,1366 @@
+[
+  {
+    "id": "CreateSession",
+    "method": "POST",
+    "path": "/sessions",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "agent",
+        "in": "body",
+        "type": "string | object",
+        "required": true
+      },
+      {
+        "name": "environment_id",
+        "in": "body",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "tags",
+        "in": "body",
+        "type": "array",
+        "required": false
+      },
+      {
+        "name": "resources",
+        "in": "body",
+        "type": "array",
+        "required": false
+      },
+      {
+        "name": "title",
+        "in": "body",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "vault_ids",
+        "in": "body",
+        "type": "array",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "DeleteSession",
+    "method": "DELETE",
+    "path": "/sessions/:session_id",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "session_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "UpdateSession",
+    "method": "POST",
+    "path": "/sessions/:session_id",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "session_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "tags",
+        "in": "body",
+        "type": "array",
+        "required": false
+      },
+      {
+        "name": "title",
+        "in": "body",
+        "type": "string",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "GetSession",
+    "method": "GET",
+    "path": "/sessions/:session_id",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "session_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "ListSessions",
+    "method": "GET",
+    "path": "/sessions",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "agent_id",
+        "in": "query",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "agent_version",
+        "in": "query",
+        "type": "integer",
+        "required": false
+      },
+      {
+        "name": "created_at_gt",
+        "in": "query",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "created_at_gte",
+        "in": "query",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "created_at_lt",
+        "in": "query",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "created_at_lte",
+        "in": "query",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "limit",
+        "in": "query",
+        "type": "integer",
+        "required": false
+      },
+      {
+        "name": "memory_store_id",
+        "in": "query",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "order",
+        "in": "query",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "page",
+        "in": "query",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "status",
+        "in": "query",
+        "type": "array",
+        "required": false
+      },
+      {
+        "name": "tags",
+        "in": "query",
+        "type": "array",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "CreateSessionResource",
+    "method": "POST",
+    "path": "/sessions/:session_id/resources",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "session_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "file_id",
+        "in": "body",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "type",
+        "in": "body",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "beta",
+        "in": "query",
+        "type": "boolean",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "ListSessionResources",
+    "method": "GET",
+    "path": "/sessions/:session_id/resources",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "session_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "CreateVault",
+    "method": "POST",
+    "path": "/vaults",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "display_name",
+        "in": "body",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "metadata",
+        "in": "body",
+        "type": "object",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "ListVaults",
+    "method": "GET",
+    "path": "/vaults",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "limit",
+        "in": "query",
+        "type": "integer",
+        "required": false
+      },
+      {
+        "name": "page",
+        "in": "query",
+        "type": "string",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "GetVault",
+    "method": "GET",
+    "path": "/vaults/:vault_id",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "vault_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "UpdateVault",
+    "method": "POST",
+    "path": "/vaults/:vault_id",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "vault_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "display_name",
+        "in": "body",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "metadata",
+        "in": "body",
+        "type": "object",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "DeleteVault",
+    "method": "DELETE",
+    "path": "/vaults/:vault_id",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "vault_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "CreateVaultOAuthFlow",
+    "method": "POST",
+    "path": "/CreateVaultOAuthFlow",
+    "transport": "top",
+    "fields": [
+      {
+        "name": "VaultId",
+        "in": "body",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "DisplayName",
+        "in": "body",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "McpServerUrl",
+        "in": "body",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "RedirectUrl",
+        "in": "body",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "Source",
+        "in": "body",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "ProjectName",
+        "in": "body",
+        "type": "string",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "ListOAuthProviders",
+    "method": "POST",
+    "path": "/ListOAuthProviders",
+    "transport": "top",
+    "fields": [
+      {
+        "name": "Limit",
+        "in": "body",
+        "type": "integer",
+        "required": false
+      },
+      {
+        "name": "PageToken",
+        "in": "body",
+        "type": "string",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "CreateCredential",
+    "method": "POST",
+    "path": "/vaults/:vault_id/credentials",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "vault_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "auth",
+        "in": "body",
+        "type": "object",
+        "required": true
+      },
+      {
+        "name": "display_name",
+        "in": "body",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "metadata",
+        "in": "body",
+        "type": "object",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "ListCredentials",
+    "method": "GET",
+    "path": "/vaults/:vault_id/credentials",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "vault_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "limit",
+        "in": "query",
+        "type": "integer",
+        "required": false
+      },
+      {
+        "name": "page",
+        "in": "query",
+        "type": "string",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "GetCredential",
+    "method": "GET",
+    "path": "/vaults/:vault_id/credentials/:credential_id",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "vault_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "credential_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "UpdateCredential",
+    "method": "POST",
+    "path": "/vaults/:vault_id/credentials/:credential_id",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "vault_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "credential_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "auth",
+        "in": "body",
+        "type": "object",
+        "required": false
+      },
+      {
+        "name": "display_name",
+        "in": "body",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "metadata",
+        "in": "body",
+        "type": "object",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "DeleteCredential",
+    "method": "DELETE",
+    "path": "/vaults/:vault_id/credentials/:credential_id",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "vault_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "credential_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "ValidateCredential",
+    "method": "POST",
+    "path": "/vaults/:vault_id/credentials/:credential_id/mcp_oauth_validate",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "vault_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "credential_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "ListSessionsWithEnvID",
+    "method": "POST",
+    "path": "/ListSessionsWithEnvID",
+    "transport": "top",
+    "fields": [
+      {
+        "name": "EnvironmentId",
+        "in": "body",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "Limit",
+        "in": "body",
+        "type": "integer",
+        "required": false
+      },
+      {
+        "name": "Order",
+        "in": "body",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "Page",
+        "in": "body",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "ProjectName",
+        "in": "body",
+        "type": "string",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "CreateMemoryStore",
+    "method": "POST",
+    "path": "/memory_stores",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "name",
+        "in": "body",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "description",
+        "in": "body",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "metadata",
+        "in": "body",
+        "type": "object",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "ListMemoryStores",
+    "method": "GET",
+    "path": "/memory_stores",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "limit",
+        "in": "query",
+        "type": "integer",
+        "required": false
+      },
+      {
+        "name": "page",
+        "in": "query",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "created_by",
+        "in": "query",
+        "type": "array",
+        "required": false
+      },
+      {
+        "name": "name",
+        "in": "query",
+        "type": "string",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "GetMemoryStore",
+    "method": "GET",
+    "path": "/memory_stores/:memory_store_id",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "memory_store_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "UpdateMemoryStore",
+    "method": "POST",
+    "path": "/memory_stores/:memory_store_id",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "memory_store_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "name",
+        "in": "body",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "description",
+        "in": "body",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "metadata",
+        "in": "body",
+        "type": "object",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "DeleteMemoryStore",
+    "method": "DELETE",
+    "path": "/memory_stores/:memory_store_id",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "memory_store_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "CreateMemory",
+    "method": "POST",
+    "path": "/memory_stores/:memory_store_id/memories",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "memory_store_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "path",
+        "in": "body",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "content",
+        "in": "body",
+        "type": "string",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "BatchCreateMemories",
+    "method": "POST",
+    "path": "/memory_stores/:memory_store_id/memories/batch_create",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "memory_store_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "items",
+        "in": "body",
+        "type": "array",
+        "required": true
+      },
+      {
+        "name": "on_conflict",
+        "in": "body",
+        "type": "string",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "ListMemories",
+    "method": "GET",
+    "path": "/memory_stores/:memory_store_id/memories",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "memory_store_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "path_prefix",
+        "in": "query",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "depth",
+        "in": "query",
+        "type": "integer",
+        "required": false
+      },
+      {
+        "name": "order_by",
+        "in": "query",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "limit",
+        "in": "query",
+        "type": "integer",
+        "required": false
+      },
+      {
+        "name": "page",
+        "in": "query",
+        "type": "string",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "GetMemory",
+    "method": "GET",
+    "path": "/memory_stores/:memory_store_id/memories/:memory_id",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "memory_store_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "memory_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "UpdateMemory",
+    "method": "POST",
+    "path": "/memory_stores/:memory_store_id/memories/:memory_id",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "memory_store_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "memory_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "content",
+        "in": "body",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "path",
+        "in": "body",
+        "type": "string",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "DeleteMemory",
+    "method": "DELETE",
+    "path": "/memory_stores/:memory_store_id/memories/:memory_id",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "memory_store_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "memory_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "ListMemoryStoreCreators",
+    "method": "POST",
+    "path": "/ListMemoryStoreCreators",
+    "transport": "top",
+    "fields": [
+      {
+        "name": "ProjectName",
+        "in": "body",
+        "type": "string",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "CreateAgent",
+    "method": "POST",
+    "path": "/agents",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "name",
+        "in": "body",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "model",
+        "in": "body",
+        "type": "object",
+        "required": true
+      },
+      {
+        "name": "description",
+        "in": "body",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "system",
+        "in": "body",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "mcp_servers",
+        "in": "body",
+        "type": "array",
+        "required": false
+      },
+      {
+        "name": "tools",
+        "in": "body",
+        "type": "array",
+        "required": false
+      },
+      {
+        "name": "skills",
+        "in": "body",
+        "type": "array",
+        "required": false
+      },
+      {
+        "name": "multiagent",
+        "in": "body",
+        "type": "object",
+        "required": false
+      },
+      {
+        "name": "metadata",
+        "in": "body",
+        "type": "object",
+        "required": false
+      },
+      {
+        "name": "tags",
+        "in": "body",
+        "type": "array",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "GetAgent",
+    "method": "GET",
+    "path": "/agents/:id",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "version",
+        "in": "query",
+        "type": "integer",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "ListAgents",
+    "method": "GET",
+    "path": "/agents",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "created_at_gte",
+        "in": "query",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "created_at_lte",
+        "in": "query",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "limit",
+        "in": "query",
+        "type": "integer",
+        "required": false
+      },
+      {
+        "name": "page",
+        "in": "query",
+        "type": "string",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "UpdateAgent",
+    "method": "POST",
+    "path": "/agents/:id",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "version",
+        "in": "body",
+        "type": "integer",
+        "required": true
+      },
+      {
+        "name": "name",
+        "in": "body",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "model",
+        "in": "body",
+        "type": "object",
+        "required": false
+      },
+      {
+        "name": "description",
+        "in": "body",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "system",
+        "in": "body",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "mcp_servers",
+        "in": "body",
+        "type": "array",
+        "required": false
+      },
+      {
+        "name": "tools",
+        "in": "body",
+        "type": "array",
+        "required": false
+      },
+      {
+        "name": "skills",
+        "in": "body",
+        "type": "array",
+        "required": false
+      },
+      {
+        "name": "multiagent",
+        "in": "body",
+        "type": "object",
+        "required": false
+      },
+      {
+        "name": "metadata",
+        "in": "body",
+        "type": "object",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "DeleteAgent",
+    "method": "DELETE",
+    "path": "/agents/:id",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "ListAgentVersions",
+    "method": "GET",
+    "path": "/agents/:id/versions",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "limit",
+        "in": "query",
+        "type": "integer",
+        "required": false
+      },
+      {
+        "name": "page",
+        "in": "query",
+        "type": "string",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "CreateSkill",
+    "method": "POST",
+    "path": "/skills",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "display_title",
+        "in": "form",
+        "type": "string",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "GetSkill",
+    "method": "GET",
+    "path": "/skills/:id",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "CreateEnvironment",
+    "method": "POST",
+    "path": "/environments",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "name",
+        "in": "body",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "config",
+        "in": "body",
+        "type": "object",
+        "required": false
+      },
+      {
+        "name": "description",
+        "in": "body",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "metadata",
+        "in": "body",
+        "type": "object",
+        "required": false
+      },
+      {
+        "name": "scope",
+        "in": "body",
+        "type": "string",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "GetEnvironment",
+    "method": "GET",
+    "path": "/environments/:id",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "ListEnvironments",
+    "method": "GET",
+    "path": "/environments",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "limit",
+        "in": "query",
+        "type": "integer",
+        "required": false
+      },
+      {
+        "name": "page",
+        "in": "query",
+        "type": "string",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "UpdateEnvironment",
+    "method": "POST",
+    "path": "/environments/:id",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "name",
+        "in": "body",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "config",
+        "in": "body",
+        "type": "object",
+        "required": false
+      },
+      {
+        "name": "description",
+        "in": "body",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "metadata",
+        "in": "body",
+        "type": "object",
+        "required": false
+      },
+      {
+        "name": "scope",
+        "in": "body",
+        "type": "string",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "DeleteEnvironment",
+    "method": "DELETE",
+    "path": "/environments/:id",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "ListSessionEvents",
+    "method": "GET",
+    "path": "/sessions/:session_id/events",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "session_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "created_at[gt]",
+        "in": "query",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "created_at[gte]",
+        "in": "query",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "created_at[lt]",
+        "in": "query",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "created_at[lte]",
+        "in": "query",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "limit",
+        "in": "query",
+        "type": "integer",
+        "required": false
+      },
+      {
+        "name": "page",
+        "in": "query",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "order",
+        "in": "query",
+        "type": "string",
+        "required": false
+      },
+      {
+        "name": "types",
+        "in": "query",
+        "type": "array",
+        "required": false
+      }
+    ]
+  },
+  {
+    "id": "SendSessionEvents",
+    "method": "POST",
+    "path": "/sessions/:session_id/events",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "session_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      },
+      {
+        "name": "events",
+        "in": "body",
+        "type": "array",
+        "required": true
+      }
+    ]
+  },
+  {
+    "id": "StreamSessionEvents",
+    "method": "GET",
+    "path": "/sessions/:session_id/events/stream",
+    "transport": "rest",
+    "fields": [
+      {
+        "name": "session_id",
+        "in": "path",
+        "type": "string",
+        "required": true
+      }
+    ]
+  }
+]
