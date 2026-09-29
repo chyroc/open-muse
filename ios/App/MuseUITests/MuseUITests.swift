@@ -90,8 +90,26 @@ final class MuseLiveUITests: XCTestCase {
         XCTAssertTrue(contains("Example Domain").exists, app.debugDescription)
         XCTAssertFalse(app.buttons["允许这一次"].exists)
         tap(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "查看执行记录")).firstMatch)
-        XCTAssertTrue(contains("已自动批准网页工具").waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertTrue(contains("web_fetch").waitForExistence(timeout: 15), app.debugDescription)
         capture("live-07-web-fetch-auto-approval")
+    }
+
+    func testDirectToolExecution() {
+        // Existing Keychain login; no credential injection or external writes.
+        settings()
+        XCTAssertTrue(contains("API Key 已连接").waitForExistence(timeout: 20))
+        tap(app.links["聊天"])
+        let input = app.textViews["描述你的任务"]
+        tap(input)
+        input.typeText("Use bash to run this read-only command: printf 'muse-direct-%s\\n' 84 . Report its output. Do not modify any files or use other tools.")
+        tap(app.buttons["发送任务"])
+        XCTAssertTrue(app.buttons["收藏"].firstMatch.waitForExistence(timeout: 180), app.debugDescription)
+        XCTAssertTrue(contains("muse-direct-84").exists, app.debugDescription)
+        XCTAssertFalse(app.buttons["允许这一次"].exists)
+        tap(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "查看执行记录")).firstMatch)
+        XCTAssertTrue(contains("bash").waitForExistence(timeout: 15), app.debugDescription)
+        XCTAssertFalse(contains("已自动批准网页工具").exists)
+        capture("live-direct-tool-execution")
     }
 }
 #endif

@@ -281,7 +281,7 @@ export function AuthPanel({
           <p className="auth-consent-note">
             连接后，Muse 会在此项目创建专用密钥，并自动准备助手和云端运行环境。
             密钥可访问项目全部方舟资源，不限制来源
-            IP；云端调用可能计费。云环境可访问公网，网页搜索与读取自动批准，其他工具仍需确认。
+            IP；云端调用可能计费。云环境可访问公网，工具默认直接执行，可能产生外部写入或删除。
           </p>
           <button
             className="button primary"

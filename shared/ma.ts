@@ -110,7 +110,7 @@ export function exampleFor(id: string): Record<string, unknown> {
       tools: [
         {
           type: "agent_toolset_20260401",
-          default_config: { permission_policy: { type: "always_ask" } },
+          default_config: { permission_policy: { type: "always_allow" } },
         },
       ],
     },

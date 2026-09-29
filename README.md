@@ -65,6 +65,8 @@ ARK_API_KEY=在本地填写密钥
 
 iOS 不内嵌服务端。SSO 外链使用系统浏览器，导出使用系统分享面板。模拟器构建使用 ad-hoc 签名；不要禁用签名，否则 Keychain 可能返回权限错误。
 
+真机构建需要本机有效的 Apple 开发签名与描述文件。执行 `npm run ios:build:device -- DEVELOPMENT_TEAM=你的团队ID -allowProvisioningUpdates`，产物位于 `.build/ios-device/Build/Products/Debug-iphoneos/App.app`。团队与设备标识只在本机传入，不写入仓库。安装时使用 `xcrun devicectl device install app --device 设备标识 .build/ios-device/Build/Products/Debug-iphoneos/App.app`。
+
 ### macOS
 
 构建产物为 `.build/macos/Open Muse.app`，可直接打开，不需要另开服务终端。AppKit / WKWebView 原生壳内嵌服务端，仅监听随机回环端口。
@@ -84,9 +86,11 @@ iOS 不内嵌服务端。SSO 外链使用系统浏览器，导出使用系统分
 
 对话通过 SSE 接收事件，在订阅、重连和恢复前台时补拉历史，并按事件 ID 去重。写请求不自动重试；超时后应先检查历史结果。
 
-内置 `web_search` 和 `web_fetch` 的待确认请求自动批准，仅精确匹配协议名称，不包含同名 MCP 工具或其他操作。其他工具仍需手动确认。搜索词和访问请求可能发往外部服务，自动批准不等于没有数据外发风险。
+应用创建助手时将 `tools[].default_config.permission_policy.type` 设为 `always_allow`，由 MA 直接执行工具，不依赖客户端逐次批准。工具调用可能向外部服务发送数据、执行写入或删除，并产生费用。Environment 的 `config.networking.type=unrestricted` 只控制出网，与工具权限不同。
 
-自动审批保留提交状态和审计记录。结果不明确时恢复手动入口，不盲目重复批准；该流程依赖任务页打开，不是后台调度服务。
+已有助手在准备工作空间或创建新任务时同步权限和应用默认提示词。只修改本应用标记的助手，保留自定义提示词、其他工具配置和显式拒绝策略，不创建替代资源。旧会话可能保留原权限快照，建议新建任务。高级管理操作的确认不受影响。
+
+旧会话或自定义工具仍产生待确认事件时，保留原有兼容流程：仅内置 `web_search` 和 `web_fetch` 自动批准，其余手动确认。自动审批保留提交状态和审计记录；结果不明确时恢复手动入口，不盲目重复批准。这一兼容流程依赖任务页打开，不是后台调度服务。
 
 [MA 接入范围](docs/ma-coverage.md)说明适配范围与限制。[MuseAI-Skills 评估](docs/skills.md)说明技能所需依赖和许可边界。
 

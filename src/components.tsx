@@ -148,7 +148,7 @@ export function Composer({
           ) : (
             <span className="composer-hint">
               <ShieldCheck size={14} />
-              网页工具自动批准，其他操作由你确认
+              工具按云端权限直接执行
             </span>
           )}
         </div>

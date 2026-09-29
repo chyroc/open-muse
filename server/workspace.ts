@@ -6,6 +6,19 @@ import { ApiError } from "./ark";
 import { isSSOCredentials } from "./oauth";
 import type { Runtime } from "./ma";
 import type { WorkspaceStatus } from "../shared/types";
+const agentSystem =
+  "你是 Open Muse，帮助用户研究、写作和规划。使用用户的语言，准确说明依据与不确定性。按用户请求直接执行工具，不额外请求工具权限确认；不得绕过上游拒绝策略，不把未执行的操作描述为已完成。";
+const legacyAgentSystem =
+  "你是 Open Muse，帮助用户研究、写作和规划。使用用户的语言，准确说明依据与不确定性。外部写入、发送消息、交易和删除必须获得明确确认，不把未执行的操作描述为已完成。";
+
+type AgentResource = Resource & {
+  version?: number;
+  system?: string;
+  tools?: Array<{
+    type?: string;
+    default_config?: { permission_policy?: { type?: string } };
+  }>;
+};
 
 type Kind = "agent" | "environment";
 interface Mapping {
@@ -45,6 +58,7 @@ export class Workspaces {
     { promise: Promise<void>; abort: AbortController }
   >();
   private closed = false;
+  private policyJobs = new Map<string, Promise<void>>();
   constructor(directory: string) {
     mkdirSync(directory, { recursive: true, mode: 0o700 });
     const file = join(directory, "workspaces.sqlite");
@@ -165,6 +179,55 @@ export class Workspaces {
   async wait(runtime: Runtime) {
     await this.jobs.get(workspaceKey(runtime))?.promise;
     return this.status(runtime);
+  }
+  async syncToolPolicy(runtime: Runtime, signal?: AbortSignal) {
+    const key = workspaceKey(runtime);
+    const row = this.row(key);
+    if (!row?.agent_id) return;
+    const pending = this.policyJobs.get(key);
+    if (pending) return pending;
+    const job = (async () => {
+      const path = `/agents/${encodeURIComponent(row.agent_id)}`;
+      const agent = await runtime.ark.request<AgentResource>(path, { signal });
+      // 只同步本应用创建的资源，不修改手动接入或同名的外部助手。
+      if (agent.metadata?.open_muse_workspace !== key) return;
+      let changed = false;
+      const tools = agent.tools?.map((tool) => {
+        const current = tool.default_config?.permission_policy?.type;
+        if (tool.type !== "agent_toolset_20260701" || current !== "always_ask")
+          return tool;
+        changed = true;
+        return {
+          ...tool,
+          default_config: {
+            ...tool.default_config,
+            permission_policy: {
+              ...tool.default_config?.permission_policy,
+              type: "always_allow",
+            },
+          },
+        };
+      });
+      const system =
+        agent.system === legacyAgentSystem ? agentSystem : agent.system;
+      const body: Record<string, unknown> = {};
+      if (changed) body.tools = tools;
+      if (system !== agent.system) body.system = system;
+      if (!Object.keys(body).length) return;
+      if (!Number.isInteger(agent.version) || agent.version! < 1)
+        throw new ApiError(502, "助手版本无效，未修改工具权限。请稍后重试。");
+      await runtime.ark.request(path, {
+        method: "POST",
+        signal,
+        body: JSON.stringify({ ...body, version: agent.version }),
+      });
+    })();
+    this.policyJobs.set(key, job);
+    try {
+      await job;
+    } finally {
+      this.policyJobs.delete(key);
+    }
   }
   cancel(runtime: Runtime) {
     this.jobs.get(workspaceKey(runtime))?.abort.abort();
@@ -315,7 +378,7 @@ export class Workspaces {
       config: {
         type: "cloud",
         networking: {
-          // 当前线上创建接口只接受 unrestricted；工具权限仍单独设为逐次审批。
+          // 网络访问与工具权限分别配置。
           type: "unrestricted",
         },
       },
@@ -323,15 +386,19 @@ export class Workspaces {
     await ensure("agent", {
       description: "Open Muse 自动管理的个人助手",
       model: { id: row.model_id },
-      system:
-        "你是 Open Muse，帮助用户研究、写作和规划。使用用户的语言，准确说明依据与不确定性。外部写入、发送消息、交易和删除必须获得明确确认，不把未执行的操作描述为已完成。",
+      system: agentSystem,
       tools: [
         {
           type: "agent_toolset_20260701",
-          default_config: { permission_policy: { type: "always_ask" } },
+          default_config: {
+            permission_policy: {
+              type: "always_allow",
+            },
+          },
         },
       ],
     });
+    await this.syncToolPolicy(runtime, signal);
     step("个人工作空间已就绪，可以开始任务。");
     row.state = "ready";
     this.save(row);

@@ -13,7 +13,15 @@ import { createApp } from "../server/app";
 let dir: string;
 let workspaces: Workspaces;
 let runtime: Runtime;
-let resources: Record<string, { id: string; name: string; metadata: object }[]>;
+type TestResource = {
+  id: string;
+  name: string;
+  metadata: object;
+  version?: number;
+  system?: string;
+  tools?: Array<Record<string, any>>;
+};
+let resources: Record<string, TestResource[]>;
 const models = {
   data: [
     {
@@ -41,9 +49,18 @@ beforeEach(async () => {
     const collection = path.split(/[/?]/)[1];
     if (init?.method === "POST") {
       const body = JSON.parse(String(init.body));
+      const id = path.split("/")[2];
+      if (id) {
+        const item = resources[collection].find((r) => r.id === id)!;
+        if (body.version !== item.version)
+          throw new ApiError(409, "version conflict");
+        Object.assign(item, body, { version: body.version + 1 });
+        return item as never;
+      }
       const value = {
         ...body,
         id: `${collection}-${resources[collection].length + 1}`,
+        version: 1,
       };
       resources[collection].push(value);
       return value as never;
@@ -90,7 +107,7 @@ describe("自动工作空间与 SQLite 映射", () => {
     expect(
       JSON.parse(String(posts()[1][1]?.body)).tools[0].default_config
         .permission_policy.type,
-    ).toBe("always_ask");
+    ).toBe("always_allow");
     expect(JSON.stringify(status)).not.toMatch(
       /agents-1|environments-1|private-key/,
     );
@@ -110,6 +127,62 @@ describe("自动工作空间与 SQLite 映射", () => {
     expect(workspaces.status(runtime).state).toBe("ready");
     await prepare();
     expect(posts()).toHaveLength(2);
+  });
+  it("已有助手按版本更新权限与默认提示词，保留工具配置且不新建资源", async () => {
+    await prepare();
+    const agent = resources.agents[0];
+    agent.tools![0].default_config.permission_policy.type = "always_ask";
+    agent.system =
+      "你是 Open Muse，帮助用户研究、写作和规划。使用用户的语言，准确说明依据与不确定性。外部写入、发送消息、交易和删除必须获得明确确认，不把未执行的操作描述为已完成。";
+    agent.tools![0].configs = [
+      { name: "delete_file", permission_policy: { type: "always_deny" } },
+    ];
+    agent.tools!.push({ type: "custom", name: "keep" });
+    await Promise.all([
+      workspaces.syncToolPolicy(runtime),
+      workspaces.syncToolPolicy(runtime),
+    ]);
+    expect(posts()).toHaveLength(3);
+    expect(resources.agents).toHaveLength(1);
+    expect(resources.environments).toHaveLength(1);
+    expect(agent.version).toBe(2);
+    expect(agent.tools![0].default_config.permission_policy.type).toBe(
+      "always_allow",
+    );
+    expect(agent.tools![0].configs[0].permission_policy.type).toBe(
+      "always_deny",
+    );
+    expect(agent.tools![1]).toEqual({ type: "custom", name: "keep" });
+    expect(agent.system).toContain("不额外请求工具权限确认");
+    expect(JSON.parse(String(posts()[2][1]?.body))).toEqual({
+      version: 1,
+      tools: agent.tools,
+      system: agent.system,
+    });
+    await prepare();
+    expect(posts()).toHaveLength(3);
+  });
+  it("不覆盖自定义提示词、默认拒绝或外部资源", async () => {
+    await prepare();
+    const agent = resources.agents[0];
+    agent.system = "custom system";
+    agent.tools![0].default_config.permission_policy.type = "always_deny";
+    await workspaces.syncToolPolicy(runtime);
+    expect(posts()).toHaveLength(2);
+    agent.metadata = {};
+    agent.tools![0].default_config.permission_policy.type = "always_ask";
+    await workspaces.syncToolPolicy(runtime);
+    expect(posts()).toHaveLength(2);
+    expect(agent.system).toBe("custom system");
+  });
+  it("无有效版本不更新，权限同步失败不新建替代资源", async () => {
+    await prepare();
+    resources.agents[0].version = undefined;
+    resources.agents[0].tools![0].default_config.permission_policy.type =
+      "always_ask";
+    expect((await prepare()).state).toBe("error");
+    expect(posts()).toHaveLength(2);
+    expect(resources.agents).toHaveLength(1);
   });
   it("同一连接的并发准备合并为一个任务", async () => {
     await Promise.all(Array.from({ length: 8 }, () => prepare()));

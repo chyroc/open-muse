@@ -292,6 +292,7 @@ export async function createApp(
           : "个人工作空间正在准备。请在设置中查看进度，完成后再开始任务。",
       );
     }
+    await workspaces.syncToolPolicy(runtime);
     const session = await ark.create(input.title, input.category, selection);
     store.data.sessions.unshift(session);
     await store.save();

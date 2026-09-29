@@ -65,7 +65,9 @@ export function WorkspacePanel({ client }: { client: Client }) {
         <div>
           <h3>个人工作空间</h3>
           <p>助手与运行环境由 Muse 自动管理，无需手动配置。</p>
-          <p>云端环境可访问公网；网页搜索与读取自动批准，其他工具仍需确认。</p>
+          <p>
+            云端环境可访问公网；新任务的工具默认直接执行，可能产生外部写入、删除或费用。
+          </p>
         </div>
         <span className="small-badge">
           {preparing
