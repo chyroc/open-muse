@@ -20,7 +20,7 @@ Open Muse is a personal AI task assistant built on Volcano Ark Managed Agents (M
 - `scripts/` — build and asset generation
 - `docs/` — integration notes and verification records
 
-The app runs in a local **demo mode by default**: no model calls and no external actions. Real Ark mode is enabled via SSO or a server-side API key and may incur cloud costs.
+The app requires a real Ark connection through SSO, an in-app API key, or a server-side API key. Without credentials it stays disconnected and never generates simulated replies. Real calls may incur cloud costs. Mock responses belong only in test fixtures, never the application runtime.
 
 ## Commands
 

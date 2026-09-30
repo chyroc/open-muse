@@ -1,21 +1,23 @@
 # Verification record
 
-Verification date: 2026-09-29. Mocked-upstream regression tests are distinguished from real cloud tests. No personal credentials, accounts, resource IDs, or raw logs are included.
+Verification date: 2026-09-30. Mocked-upstream regression tests are distinguished from real cloud tests. No personal credentials, accounts, resource IDs, or raw logs are included.
 
 ## Automated checks
 
-- TypeScript checks pass; 11 test files and 196 tests pass.
-- Coverage includes SSO, API key login, encrypted storage, identity isolation, SQLite auto-configuration, API adaptation, SSE, approvals, goals, and the library.
+- TypeScript checks pass; 12 test files and 216 tests pass.
+- Coverage includes SSO, API key login, encrypted storage, identity isolation, SQLite auto-configuration, API adaptation, SSE, approvals, goals, and the library. Signed-out requests cannot create conversations or read legacy simulated history; upstream failures never produce replacement replies.
 - Frontend production build and iOS Simulator build pass.
 - The macOS native shell has completed local build and window interaction verification; the development build is not yet notarized.
 
 ## Real MA on iOS
 
-Environment: iPhone 17 Pro, iOS 26.5 simulator. Test credentials were entered via the app's password field to connect to the real Ark data plane. Two native end-to-end tests pass:
+Environment: iPhone 17 Pro, iOS 26.5 simulator. The existing API-key login was restored from Keychain to connect to the real Ark data plane. Native end-to-end verification passes:
 
-1. Manual API key login with automatic workspace creation; two rounds of computation returned `42` and `84`, with the second round correctly restoring context.
-2. Saving a reply and viewing it in the library; after terminating and relaunching the app, login and the source conversation were restored.
-3. `web_fetch` read a public example page and returned its title; the execution record retained the auto-approval result with no manual approval needed.
+1. An unconfigured service presents SSO/API-key connection options, disables conversation submission, and displays no simulated replies.
+2. The real account reuses its existing workspace; two rounds of computation returned `42` and `84`, with the second round correctly restoring context.
+3. Saving a reply and viewing it in the library; after terminating and relaunching the app, login and the source conversation were restored.
+
+Earlier real verification also covered `web_fetch` reading a public example page and returning its title, with the execution record retaining the auto-approval result. That tool case was not rerun for this change.
 
 Repeated logins with the same connection reuse one set of workspace mappings. The tests did not send email, make purchases, or delete cloud resources.
 
@@ -30,9 +32,9 @@ npm run build
 npm run ios:build
 ```
 
-`ios/App/MuseUITests/MuseUITests.swift` contains the default demo-mode UI cases and live cases explicitly enabled via the `MUSE_LIVE_TESTS` compilation condition. Live cases incur cloud calls and must not be the default for CI without credentials.
+`ios/App/MuseUITests/MuseUITests.swift` contains a default signed-out connection test and live cases explicitly enabled via the `MUSE_LIVE_TESTS` compilation condition. Live cases incur cloud calls and must not be the default for CI without credentials. Application runtime paths never generate simulated replies; mocked responses are confined to test fixtures.
 
-Demo cases require a standalone demo server listening on `4312`; live cases require a standalone server listening on `4313`, a logged-out app, and a test key provided via the simulator clipboard. Do not put keys in source code, command arguments, or launch environment. Clear the clipboard afterward; result bundles and screenshots stay only in ignored local test directories.
+The signed-out test requires an unconfigured server listening on `4312`; live cases require a standalone server listening on `4313`, a logged-out app, and a test key provided via the simulator clipboard. Do not put keys in source code, command arguments, or launch environment. Clear the clipboard afterward; result bundles and screenshots stay only in ignored local test directories.
 
 ## Not covered
 

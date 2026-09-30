@@ -2,7 +2,7 @@
 
 A personal AI task assistant built on Volcano Ark Managed Agents (MA), with iOS, macOS, and mobile-first web interfaces, plus a retained Android project.
 
-Supports continuous conversations, tool approvals, execution records, goal management, saved replies, and Markdown export. The default demo mode does not call models or perform external actions; once connected to real MA, cloud calls may incur charges.
+Supports continuous conversations, tool approvals, execution records, goal management, saved replies, and Markdown export. Conversations require a real MA connection through SSO, an in-app API key, or a server-side API key. Without a connection, Muse prompts you to sign in and never generates simulated replies. Cloud calls may incur charges.
 
 ## Quick start
 
