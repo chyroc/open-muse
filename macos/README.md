@@ -29,6 +29,9 @@ Mac-specific build. No iOS or Android build is needed.
 - Opening or searching a chat does not create a cloud session. The first explicit
   send prepares the MA workspace; unconfirmed writes are not automatically retried.
 - Closing the window keeps the app running; clicking its Dock icon restores it.
+- Both windows render before the Keychain login is restored. A pending or denied
+  authorization leaves the app usable and disconnected, reports the refusal with
+  a retry, and never writes to secure storage, so the saved credential survives.
 
 This is an incremental desktop implementation, not a verified one-to-one clone.
 Cloud artifact/media indexing, attachments, dictation, desktop

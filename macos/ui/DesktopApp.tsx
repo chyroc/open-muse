@@ -45,6 +45,7 @@ const LibraryPage = lazy(() =>
 import { MacGoals } from "./goals";
 import { libraryPath } from "./library";
 import { openNativeSettings } from "./settings";
+import { connectionError, connectionReady } from "./startup";
 import { WorkspaceBoundary } from "./WorkspaceBoundary";
 import {
   discussionPrompt,
@@ -283,6 +284,15 @@ export function DesktopApp({ client }: { client: Client }) {
       });
     };
     window.addEventListener("muse-credentials-changed", credentials);
+    // Startup restores the Keychain login without blocking this window.
+    const ready = (event: Event) => {
+      if (!alive.current) return;
+      const failure = connectionError(event);
+      if (failure) setError(failure);
+      setConnectionEpoch((value) => value + 1);
+      void reload();
+    };
+    window.addEventListener(connectionReady, ready);
     void reload();
     const timer = setInterval(() => {
       if (!window.document.hidden) void reload();
@@ -294,6 +304,7 @@ export function DesktopApp({ client }: { client: Client }) {
       window.removeEventListener("muse-command", command);
       window.removeEventListener("keydown", key);
       window.removeEventListener("muse-credentials-changed", credentials);
+      window.removeEventListener(connectionReady, ready);
     };
   }, [reload, client]);
   useEffect(() => {

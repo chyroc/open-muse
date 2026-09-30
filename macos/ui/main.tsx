@@ -1,10 +1,11 @@
-import { initializeLanguage, t } from "../../shared/i18n";
+import { initializeLanguage } from "../../shared/i18n";
 import { createRoot } from "react-dom/client";
 import { Client } from "../../src/api";
 import { DesktopApp } from "./DesktopApp";
 import { SettingsWindow } from "./SettingsWindow";
 import { isSettingsRoute } from "./settings";
 import { initializeAppearance } from "./appearance";
+import { restoreInBackground } from "./startup";
 import { nativeCredentials } from "./credentials";
 import "./theme.css";
 import "./desktop.css";
@@ -20,34 +21,14 @@ const client = new Client({ vault: nativeCredentials });
 // serves both windows without the workspace rendering behind it.
 const settingsWindow = isSettingsRoute(location.hash);
 const root = createRoot(document.getElementById("root")!);
-async function start() {
-  root.render(
-    <main className="startup-error" role="status">
-      <h1>{t("Opening your workspace")}</h1>
-      <p>
-        {t(
-          "Restoring your saved connection from macOS Keychain. If macOS asks, review the access request to continue.",
-        )}
-      </p>
-    </main>,
-  );
-  try {
-    await client.restore();
-    root.render(
-      settingsWindow ? (
-        <SettingsWindow client={client} />
-      ) : (
-        <DesktopApp client={client} />
-      ),
-    );
-  } catch (error) {
-    root.render(
-      <main className="startup-error">
-        <h1>{t("Could not open your workspace")}</h1>
-        <p>{(error as Error).message}</p>
-        <button onClick={() => void start()}>{t("Try again")}</button>
-      </main>,
-    );
-  }
-}
-void start();
+// The window renders before the Keychain answer arrives. A pending or denied
+// authorization leaves the app usable and disconnected instead of blank, and
+// the saved credential is untouched either way.
+root.render(
+  settingsWindow ? (
+    <SettingsWindow client={client} />
+  ) : (
+    <DesktopApp client={client} />
+  ),
+);
+void restoreInBackground(client);

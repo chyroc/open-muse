@@ -31,6 +31,11 @@ import {
   type Appearance,
 } from "./appearance";
 import {
+  connectionError,
+  connectionReady,
+  restoreInBackground,
+} from "./startup";
+import {
   activeLanguage,
   appVersion,
   clientWithConfirmedSignOut,
@@ -127,10 +132,21 @@ export function SettingsWindow({ client }: { client: Client }) {
     alive.current = true;
     const route = () => setSection(settingsRouteSection(location.hash));
     window.addEventListener("hashchange", route);
+    // The window renders before the Keychain login is restored, so it refreshes
+    // when the restore settles and reports a denied read instead of hanging.
+    const ready = (event: Event) => {
+      if (!alive.current) return;
+      setError(connectionError(event));
+      void readStatus();
+    };
+    window.addEventListener(connectionReady, ready);
+    window.addEventListener("muse-credentials-changed", ready);
     void readStatus();
     return () => {
       alive.current = false;
       window.removeEventListener("hashchange", route);
+      window.removeEventListener(connectionReady, ready);
+      window.removeEventListener("muse-credentials-changed", ready);
     };
   }, [readStatus]);
   useEffect(() => {
@@ -169,7 +185,10 @@ export function SettingsWindow({ client }: { client: Client }) {
         <h1>{t(active.label)}</h1>
         {error && (
           <p className="settings-error" role="alert">
-            {error}
+            <span>{error}</span>
+            <button onClick={() => void restoreInBackground(client)}>
+              {t("Try again")}
+            </button>
           </p>
         )}
         {active.id === "general" && (

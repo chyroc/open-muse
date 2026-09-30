@@ -16,6 +16,7 @@ import {
   settingsSections,
 } from "../ui/settings";
 import { SettingsWindow } from "../ui/SettingsWindow";
+import { restoreInBackground } from "../ui/startup";
 
 let root: Root | undefined;
 let host: HTMLDivElement | undefined;
@@ -282,6 +283,47 @@ describe("Mac settings window", () => {
         .click(),
     );
     expect(auth).toHaveBeenCalledWith("logout", {});
+  });
+  it("renders before the Keychain login is restored and refreshes after it", async () => {
+    let settle: (value: string) => void = () => {};
+    const client = await fixture();
+    vi.spyOn(client, "restore").mockReturnValue(
+      new Promise<void>((resolve) => {
+        settle = () => resolve();
+      }),
+    );
+    const status = vi.spyOn(client, "auth");
+    await mount(<SettingsWindow client={client} />);
+    // A pending or denied secure-storage read must not blank the window.
+    expect(
+      host!.querySelectorAll(".settings-sidebar-items button"),
+    ).toHaveLength(13);
+    expect(host!.querySelector(".settings-segments")).toBeTruthy();
+    status.mockClear();
+    await act(async () => {
+      settle("");
+      await restoreInBackground(client);
+    });
+    expect(status).toHaveBeenCalledWith("status");
+    expect(host!.querySelector(".settings-error")).toBeNull();
+  });
+  it("reports a denied secure-storage read with a retry instead of hanging", async () => {
+    const client = await fixture();
+    vi.spyOn(client, "restore").mockRejectedValue(
+      new Error("Cannot restore secure credentials"),
+    );
+    await mount(<SettingsWindow client={client} />);
+    await act(async () => {
+      await restoreInBackground(client);
+    });
+    expect(host!.querySelector(".settings-error")?.textContent).toContain(
+      "Cannot restore secure credentials",
+    );
+    expect(
+      host!.querySelectorAll(".settings-sidebar-items button"),
+    ).toHaveLength(13);
+    await click("Try again");
+    expect(client.restore).toHaveBeenCalledTimes(2);
   });
   it("keeps the native shell's window contract", () => {
     const swift = readFileSync("macos/OpenMuse.swift", "utf8");
