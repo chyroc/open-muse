@@ -1,10 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   ArrowDown,
   ArrowUp,
-  Check,
   Copy,
-  List,
   Menu,
   MessageCircle,
   MessagesSquare,
@@ -20,7 +25,17 @@ import type { Client } from "../../src/api";
 import { useTask } from "../../src/useTask";
 import { AuthPanel } from "../../src/AuthPanel";
 import { Markdown } from "../../src/components";
-import { PermissionCard } from "../../src/PermissionCard";
+import { defaultIdentity } from "../../src/direct/identity";
+import type {
+  IdentityDocument,
+  IdentityDocumentName,
+} from "../../shared/identity";
+import { StatusPanel, type StatusTab } from "./StatusPanel";
+const DocumentEditor = lazy(() =>
+  import("./DocumentEditor").then((module) => ({
+    default: module.DocumentEditor,
+  })),
+);
 import {
   currentConversation,
   emptyConversations,
@@ -33,9 +48,8 @@ import {
   type Session,
 } from "../../shared/types";
 import { canAutoApprove } from "../../shared/approval-policy";
-import { ArchiveToggle, Avatar, Empty, Modal, Rail } from "./Chrome";
+import { ArchiveToggle, Empty, Modal, Rail } from "./Chrome";
 import {
-  activityEvents,
   chatMessages,
   parseRoute,
   shouldSendOnKey,
@@ -51,9 +65,11 @@ export function DesktopApp({ client }: { client: Client }) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [drawer, setDrawer] = useState(false);
   const [statusOpen, setStatusOpen] = useState(true);
-  const [statusTab, setStatusTab] = useState<"activity" | "approvals">(
-    "activity",
-  );
+  const [statusTab, setStatusTab] = useState<StatusTab>("activity");
+  const [identity, setIdentity] = useState(defaultIdentity);
+  const [document, setDocument] = useState<IdentityDocument>();
+  const activeDocument = useRef<IdentityDocument | undefined>(undefined);
+  activeDocument.current = document;
   const [settings, setSettings] = useState(false);
   const [search, setSearch] = useState(false);
   const [query, setQuery] = useState("");
@@ -66,7 +82,7 @@ export function DesktopApp({ client }: { client: Client }) {
   const [ready, setReady] = useState(client.signedIn());
   const [loading, setLoading] = useState(false);
   const [menu, setMenu] = useState(false);
-  const [name, setName] = useState("Muse");
+  const name = identity.name;
   const [away, setAway] = useState(false);
   const scroll = useRef<HTMLDivElement>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
@@ -101,7 +117,7 @@ export function DesktopApp({ client }: { client: Client }) {
       if (config.mode !== "ark") {
         setIndex(emptyConversations());
         setSessions([]);
-        setName("Muse");
+        setIdentity(defaultIdentity());
         return;
       }
       const [remote, conversations, identity] = await Promise.all([
@@ -112,7 +128,7 @@ export function DesktopApp({ client }: { client: Client }) {
       if (!alive.current) return;
       setSessions(remote.data);
       setIndex(conversations);
-      setName(identity.name);
+      setIdentity(identity);
       setError("");
     } catch (err) {
       if (alive.current) setError((err as Error).message);
@@ -122,6 +138,12 @@ export function DesktopApp({ client }: { client: Client }) {
   }, [client]);
 
   function navigate(path: string) {
+    if (activeDocument.current) {
+      setNotice(
+        "Close the document before leaving this workspace. Your draft is preserved.",
+      );
+      return;
+    }
     location.hash = path;
   }
   const goPage = (page: Page) => {
@@ -139,6 +161,12 @@ export function DesktopApp({ client }: { client: Client }) {
     };
     const command = (event: Event) => {
       const action = (event as CustomEvent<string>).detail;
+      if (activeDocument.current) {
+        setNotice(
+          "Close the document before switching workspaces or accounts. Your draft is preserved.",
+        );
+        return;
+      }
       if (action === "settings") setSettings(true);
       if (action === "search") setSearch(true);
       if (action === "new-chat") {
@@ -168,7 +196,7 @@ export function DesktopApp({ client }: { client: Client }) {
     window.addEventListener("keydown", key);
     void reload();
     const timer = setInterval(() => {
-      if (!document.hidden) void reload();
+      if (!window.document.hidden) void reload();
     }, 15000);
     return () => {
       alive.current = false;
@@ -235,6 +263,13 @@ export function DesktopApp({ client }: { client: Client }) {
       await reload();
     });
   }
+  const openDocument = (name: IdentityDocumentName) =>
+    void action(async () => {
+      const current = await client.companionIdentity();
+      setIdentity(current);
+      setDocument(current.documents[name]);
+      setDrawer(false);
+    });
   const confirm = (result: "allow" | "deny", event: AgentEvent) =>
     void action(async () => {
       if (!id) return;
@@ -267,10 +302,16 @@ export function DesktopApp({ client }: { client: Client }) {
           setQuery("");
           setSearch(true);
         }}
-        onSettings={() => setSettings(true)}
+        onSettings={() =>
+          document
+            ? setNotice(
+                "Close the document before switching accounts. Your draft is preserved.",
+              )
+            : setSettings(true)
+        }
         onStatus={() => setStatusOpen((value) => !value)}
       />
-      {drawer && (
+      {drawer && !document && (
         <aside className="chat-drawer" aria-label="Side chats">
           <header>
             <label className="search-field">
@@ -344,7 +385,29 @@ export function DesktopApp({ client }: { client: Client }) {
           </button>
         </aside>
       )}
-      <main className="workspace">
+      {document && (
+        <Suspense
+          fallback={
+            <main className="workspace">
+              <Empty title="Opening document…" />
+            </main>
+          }
+        >
+          <DocumentEditor
+            key={document.name}
+            initial={document}
+            client={client}
+            connected={ready}
+            onSaved={setIdentity}
+            onClose={() => setDocument(undefined)}
+            onChat={() => {
+              setDocument(undefined);
+              location.hash = "/";
+            }}
+          />
+        </Suspense>
+      )}
+      <main className="workspace" hidden={Boolean(document)}>
         {route.page === "chat" ? (
           <>
             <header className="chat-toolbar">
@@ -651,98 +714,29 @@ export function DesktopApp({ client }: { client: Client }) {
           </div>
         )}
       </main>
-      {statusOpen && route.page === "chat" && (
-        <aside className="status-panel" aria-label="Assistant status">
-          <button
-            className="status-close icon-button"
-            aria-label="Close panel"
-            onClick={() => setStatusOpen(false)}
-          >
-            <X size={20} />
-          </button>
-          <div className="status-profile">
-            <Avatar large />
-            <h2>{name}</h2>
-            <p className="subtle">
-              {!ready
-                ? "Not connected"
-                : running
-                  ? "Working"
-                  : task.connected
-                    ? "Connected"
-                    : id
-                      ? "Reconnecting…"
-                      : "Ready"}
-            </p>
-          </div>
-          <div
-            className="status-tabs"
-            role="tablist"
-            aria-label="Assistant information"
-          >
-            <button
-              role="tab"
-              aria-label="Activity"
-              aria-selected={statusTab === "activity"}
-              onClick={() => setStatusTab("activity")}
-            >
-              <List size={17} />
-            </button>
-            <button
-              role="tab"
-              aria-label="Approvals"
-              aria-selected={statusTab === "approvals"}
-              onClick={() => setStatusTab("approvals")}
-            >
-              <ShieldCheck size={17} />
-            </button>
-          </div>
-          <div className="status-content" role="tabpanel">
-            {statusTab === "approvals" ? (
-              approvals.length ? (
-                approvals.map((event) => (
-                  <PermissionCard
-                    key={event.id}
-                    event={event}
-                    busy={busy}
-                    onConfirm={confirm}
-                  />
-                ))
-              ) : (
-                <Empty title="No approvals needed">
-                  <p>Requests for permission appear here.</p>
-                </Empty>
-              )
-            ) : (
-              <>
-                <h3>Activity</h3>
-                {activityEvents(currentEvents)
-                  .slice(-30)
-                  .reverse()
-                  .map((event) => (
-                    <details className="activity-item" key={event.id}>
-                      <summary>
-                        <Check size={18} />
-                        <span>{event.name ?? "Tool result"}</span>
-                      </summary>
-                      <pre>
-                        {JSON.stringify(
-                          event.input ?? event.content ?? {},
-                          null,
-                          2,
-                        )}
-                      </pre>
-                    </details>
-                  ))}
-                {!activityEvents(currentEvents).length && (
-                  <Empty title="No activity yet">
-                    <p>Your assistant's work will appear here.</p>
-                  </Empty>
-                )}
-              </>
-            )}
-          </div>
-        </aside>
+      {statusOpen && route.page === "chat" && !document && (
+        <StatusPanel
+          identity={identity}
+          status={
+            !ready
+              ? "Not connected"
+              : running
+                ? "Working"
+                : task.connected
+                  ? "Connected"
+                  : id
+                    ? "Reconnecting…"
+                    : "Ready"
+          }
+          tab={statusTab}
+          onTab={setStatusTab}
+          onClose={() => setStatusOpen(false)}
+          events={currentEvents}
+          approvals={approvals}
+          busy={busy}
+          onConfirm={confirm}
+          onDocument={openDocument}
+        />
       )}
       {settings && (
         <Modal title="Settings" wide onClose={() => setSettings(false)}>

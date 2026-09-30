@@ -1,0 +1,14 @@
+{
+  "name": "open-muse-macos",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@tiptap/core": "3.31.3",
+    "@tiptap/starter-kit": "3.31.3",
+    "@tiptap/markdown": "3.31.3",
+    "@tiptap/extension-table": "3.31.3"
+  },
+  "devDependencies": {
+    "happy-dom": "20.14.5"
+  }
+}

@@ -1,8 +1,17 @@
 import { execFileSync } from "node:child_process";
-import { mkdir, copyFile, cp, mkdtemp, rename } from "node:fs/promises";
+import {
+  mkdir,
+  copyFile,
+  cp,
+  mkdtemp,
+  rename,
+  writeFile,
+} from "node:fs/promises";
+import { editorLicenseNotices } from "../macos/tools/licenses.mjs";
 import path from "node:path";
 import sharp from "sharp";
 const root = path.resolve(import.meta.dirname, "..");
+// Install the isolated editor dependencies with `npm ci --prefix macos`.
 // The Mac workspace has its own entry point and never packages the mobile UI.
 execFileSync(
   process.execPath,
@@ -31,6 +40,10 @@ const contents = path.join(app, "Contents");
 const resources = path.join(contents, "Resources");
 await mkdir(path.join(contents, "MacOS"), { recursive: true });
 await mkdir(resources, { recursive: true });
+await writeFile(
+  path.join(resources, "Editor-LICENSES.txt"),
+  await editorLicenseNotices(root),
+);
 execFileSync(
   "xcrun",
   [

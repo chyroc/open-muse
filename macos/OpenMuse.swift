@@ -21,10 +21,12 @@ private final class BundleAssets: NSObject, WKURLSchemeHandler {
 }
 
 @main
-final class OpenMuseApp: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, WKScriptMessageHandlerWithReply {
+final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, WKScriptMessageHandlerWithReply {
     private var window: NSWindow!
     private var webView: WKWebView!
     private let assets = BundleAssets()
+    private var closingApproved = false
+    private var discardPromptOpen = false
 
     static func main() {
         let app = NSApplication.shared
@@ -37,6 +39,8 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         installMenu()
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1152, height: 768), styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
         window.title = "Open Muse"
+        window.delegate = self
+        window.isReleasedWhenClosed = false
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.toolbar = nil
@@ -174,6 +178,54 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     @objc private func newSideChat() { command("new-chat") }
     @objc private func openSearch() { command("search") }
     @objc private func openMainChat() { command("main-chat") }
+    private func confirmDiscard(_ completion: @escaping (Bool) -> Void) {
+        guard !discardPromptOpen else { completion(false); return }
+        webView.evaluateJavaScript("({dirty: Boolean(window.__OPEN_MUSE_HAS_UNSAVED_DOCUMENT__), saving: Boolean(window.__OPEN_MUSE_DOCUMENT_SAVING__)})") { [weak self] result, error in
+            guard let self else { completion(false); return }
+            // Fail closed when the document state cannot be checked.
+            guard error == nil else { completion(false); return }
+            guard let state = result as? [String: Bool] else { completion(false); return }
+            guard state["dirty"] == true else { completion(true); return }
+            guard !self.discardPromptOpen else { completion(false); return }
+            self.discardPromptOpen = true
+            let alert = NSAlert()
+            if state["saving"] == true {
+                alert.messageText = "The document is still being saved."
+                alert.informativeText = "Wait for MA to confirm the result before closing the workspace."
+                alert.addButton(withTitle: "Keep Open")
+                alert.beginSheetModal(for: self.window) { _ in
+                    self.discardPromptOpen = false
+                    completion(false)
+                }
+                return
+            }
+            alert.messageText = "This document has unsaved changes."
+            alert.informativeText = "Keep editing to save your work, or discard the draft. The saved cloud document will not be changed."
+            alert.addButton(withTitle: "Keep Editing")
+            alert.addButton(withTitle: "Discard Draft")
+            alert.beginSheetModal(for: self.window) { response in
+                self.discardPromptOpen = false
+                guard response == .alertSecondButtonReturn else { completion(false); return }
+                self.webView.evaluateJavaScript("window.dispatchEvent(new Event('muse-discard-document'))") { _, error in
+                    completion(error == nil)
+                }
+            }
+        }
+    }
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        if closingApproved { return true }
+        confirmDiscard { [weak self] allowed in
+            guard let self, allowed else { return }
+            self.closingApproved = true
+            sender.performClose(nil)
+            self.closingApproved = false
+        }
+        return false
+    }
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        confirmDiscard { allowed in sender.reply(toApplicationShouldTerminate: allowed) }
+        return .terminateLater
+    }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag { window.makeKeyAndOrderFront(nil) }
         return true

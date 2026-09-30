@@ -9,6 +9,7 @@ service; existing IndexedDB data stays at the same `muse://app` origin.
 ## Build and check
 
 ```sh
+npm ci --prefix macos
 node scripts/build-macos.mjs
 npx vitest run --config macos/vitest.config.ts
 ```
@@ -30,7 +31,26 @@ Mac-specific build. No iOS or Android build is needed.
 - Closing the window keeps the app running; clicking its Dock icon restores it.
 
 This is an incremental desktop implementation, not a verified one-to-one clone.
-Feed, ideas, goals, library, identity editing, attachments, dictation, desktop
+Feed, ideas, goals, library, attachments, dictation, desktop
 automation, and proactive scheduling still need their Mac-specific implementation
 and acceptance checks. The UI identifies unfinished surfaces. No mock replies are
 included in the app. Real cloud verification requires an authorized connection.
+
+## Identity and memory editing
+
+The right panel uses the desktop Activity, Approvals, Upcoming and Identity tabs.
+Identity opens SOUL and MEMORY cards with their cloud modification dates. A document
+opens in a full-width desktop editor with a 720-point text column, formatting
+toolbar, Markdown source mode, and Command-S. Saves use the existing MA revision
+checks and read-back verification; failures and conflicts retain the draft. Closing
+a changed document asks before discarding it. Reviewing the latest cloud copy does
+not replace the draft until explicitly chosen. Account switching is blocked while
+a document is open so drafts cannot cross connections.
+
+The rich-text editor uses MIT-licensed Tiptap/ProseMirror.
+Mac-only dependencies are isolated in `macos/package.json` and its lockfile.
+Their license texts are bundled in the app's `Contents/Resources/Editor-LICENSES.txt`.
+Unsupported Markdown constructs stay in source mode to avoid losing data. `IDENTITY.md` currently
+uses the shared MA client's name-only JSON schema, so additional character,
+vibe and emoji fields are not yet supported. Upcoming tasks remain explicitly
+unavailable until a real background scheduler is implemented.
