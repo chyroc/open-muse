@@ -31,7 +31,7 @@ Mac-specific build. No iOS or Android build is needed.
 - Closing the window keeps the app running; clicking its Dock icon restores it.
 
 This is an incremental desktop implementation, not a verified one-to-one clone.
-Feed, ideas, goals, library, attachments, dictation, desktop
+Ideas, goals, library, attachments, dictation, desktop
 automation, and proactive scheduling still need their Mac-specific implementation
 and acceptance checks. The UI identifies unfinished surfaces. No mock replies are
 included in the app. Real cloud verification requires an authorized connection.
@@ -54,3 +54,27 @@ Unsupported Markdown constructs stay in source mode to avoid losing data. `IDENT
 uses the shared MA client's name-only JSON schema, so additional character,
 vibe and emoji fields are not yet supported. Upcoming tasks remain explicitly
 unavailable until a real background scheduler is implemented.
+
+## Desktop feed
+
+The feed uses a centered 640-point content column, date/time-of-day editions,
+emoji markers, Markdown posts, source links, love reactions, explanation dialogs,
+and a desktop instructions modal. Discuss quotes a post in the main chat beside
+the feed; it does not create a session or send anything until the user sends a
+message. Closing the chat panel preserves its draft and quote.
+
+Generation uses the shared direct MA client, including its uncertain-write guards
+and exact-name read-only web-tool approval policy. Opening or refreshing the feed
+only reads existing content. Generate explicitly starts or resumes an MA request.
+Background editions, image/media attachments, and rich widgets are not implemented.
+
+Instructions are revision-checked in MA memory. Command-S saves; errors retain the
+draft; reviewing a conflicting cloud copy does not overwrite it. Unsaved instructions
+also participate in the native window-close guard. Navigation/account changes are
+blocked until the editor closes.
+
+Post ordering and removal are a Mac-only, account/project-scoped IndexedDB overlay.
+Move up/down/to-top stay within an edition. Delete asks for confirmation and offers
+Undo; the source MA conversation is never deleted. Likes and generated posts use
+the shared client's local index. These presentation changes do not sync between
+devices. No stock posts are shipped.

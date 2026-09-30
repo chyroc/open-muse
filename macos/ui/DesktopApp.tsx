@@ -31,6 +31,11 @@ import type {
   IdentityDocumentName,
 } from "../../shared/identity";
 import { StatusPanel, type StatusTab } from "./StatusPanel";
+import { FeedPage } from "./FeedPage";
+import {
+  discussionPrompt,
+  type InspirationItem,
+} from "../../shared/inspiration";
 const DocumentEditor = lazy(() =>
   import("./DocumentEditor").then((module) => ({
     default: module.DocumentEditor,
@@ -68,7 +73,15 @@ export function DesktopApp({ client }: { client: Client }) {
   const [statusTab, setStatusTab] = useState<StatusTab>("activity");
   const [identity, setIdentity] = useState(defaultIdentity);
   const [document, setDocument] = useState<IdentityDocument>();
+  const feedEditorOpen = useRef(false);
+  const onFeedEditorChange = useCallback((open: boolean) => {
+    feedEditorOpen.current = open;
+  }, []);
+  const [connectionEpoch, setConnectionEpoch] = useState(0);
+  const [splitChat, setSplitChat] = useState(false);
+  const [quotedPost, setQuotedPost] = useState<InspirationItem>();
   const activeDocument = useRef<IdentityDocument | undefined>(undefined);
+  const acceptedHash = useRef(location.hash);
   activeDocument.current = document;
   const [settings, setSettings] = useState(false);
   const [search, setSearch] = useState(false);
@@ -92,7 +105,9 @@ export function DesktopApp({ client }: { client: Client }) {
       ? route.conversation
         ? currentConversation(index, route.conversation)
         : index.mainId
-      : undefined;
+      : route.page === "feed" && splitChat
+        ? index.mainId
+        : undefined;
   const draftKey = id ?? (route.newSide ? "new-side" : "main");
   const draft = drafts[draftKey] ?? "";
   const task = useTask(client, id);
@@ -138,7 +153,7 @@ export function DesktopApp({ client }: { client: Client }) {
   }, [client]);
 
   function navigate(path: string) {
-    if (activeDocument.current) {
+    if (activeDocument.current || feedEditorOpen.current) {
       setNotice(
         "Close the document before leaving this workspace. Your draft is preserved.",
       );
@@ -154,6 +169,11 @@ export function DesktopApp({ client }: { client: Client }) {
   useEffect(() => {
     alive.current = true;
     const change = () => {
+      if (activeDocument.current || feedEditorOpen.current) {
+        history.replaceState(null, "", acceptedHash.current || "#/");
+        return;
+      }
+      acceptedHash.current = location.hash;
       setRoute(parseRoute(location.hash));
       setError("");
       setMenu(false);
@@ -161,7 +181,7 @@ export function DesktopApp({ client }: { client: Client }) {
     };
     const command = (event: Event) => {
       const action = (event as CustomEvent<string>).detail;
-      if (activeDocument.current) {
+      if (activeDocument.current || feedEditorOpen.current) {
         setNotice(
           "Close the document before switching workspaces or accounts. Your draft is preserved.",
         );
@@ -221,6 +241,10 @@ export function DesktopApp({ client }: { client: Client }) {
     input.style.height = "0px";
     input.style.height = `${Math.min(input.scrollHeight, 150)}px`;
   }, [draft]);
+  useEffect(() => {
+    if (route.page === "feed" && splitChat && quotedPost)
+      composer.current?.focus();
+  }, [route.page, splitChat, quotedPost]);
 
   async function action(fn: () => Promise<void>) {
     if (busyRef.current) return;
@@ -243,6 +267,17 @@ export function DesktopApp({ client }: { client: Client }) {
       setSettings(true);
       return;
     }
+    const quote =
+      !route.newSide && (!id || id === index.mainId) ? quotedPost : undefined;
+    const message = quote
+      ? `${discussionPrompt(quote)}\n\nMy message:\n${text}`
+      : text;
+    if (message.length > 16000) {
+      setError(
+        "This message and its quoted post exceed the message limit. Shorten your message or remove the quote.",
+      );
+      return;
+    }
     await action(async () => {
       let target = id;
       if (!target || target === index.mainId) {
@@ -254,9 +289,14 @@ export function DesktopApp({ client }: { client: Client }) {
         setIndex(await client.conversationIndex());
         // Keep an unconfirmed message with its exact conversation, even across route changes.
         setDrafts((old) => ({ ...old, [draftKey]: "", [target!]: text }));
-        navigate(route.newSide ? `/chat/${target}` : "/");
+        if (route.page !== "feed")
+          navigate(route.newSide ? `/chat/${target}` : "/");
       }
-      await client.send(target, { type: "user.message", text });
+      await client.send(target, {
+        type: "user.message",
+        text: message,
+      });
+      if (quote) setQuotedPost(undefined);
       setDrafts((old) => ({ ...old, [target!]: "" }));
       setAway(false);
       await task.refresh();
@@ -303,13 +343,18 @@ export function DesktopApp({ client }: { client: Client }) {
           setSearch(true);
         }}
         onSettings={() =>
-          document
+          document || feedEditorOpen.current
             ? setNotice(
                 "Close the document before switching accounts. Your draft is preserved.",
               )
             : setSettings(true)
         }
-        onStatus={() => setStatusOpen((value) => !value)}
+        onStatus={() => {
+          if (route.page !== "chat") {
+            navigate("/");
+            setStatusOpen(true);
+          } else setStatusOpen((value) => !value);
+        }}
       />
       {drawer && !document && (
         <aside className="chat-drawer" aria-label="Side chats">
@@ -407,8 +452,28 @@ export function DesktopApp({ client }: { client: Client }) {
           />
         </Suspense>
       )}
-      <main className="workspace" hidden={Boolean(document)}>
-        {route.page === "chat" ? (
+      {route.page === "feed" && !document && (
+        <main className="workspace">
+          <FeedPage
+            key={connectionEpoch}
+            client={client}
+            split={splitChat}
+            onToggleChat={() => setSplitChat((value) => !value)}
+            onEditorChange={onFeedEditorChange}
+            onConnect={() => setSettings(true)}
+            onOpenChat={(id) => navigate(`/chat/${id}`)}
+            onDiscuss={(item) => {
+              setQuotedPost(item);
+              setSplitChat(true);
+            }}
+          />
+        </main>
+      )}
+      <main
+        className={`workspace ${route.page === "feed" ? "feed-split-chat" : ""}`}
+        hidden={Boolean(document) || (route.page === "feed" && !splitChat)}
+      >
+        {route.page === "chat" || (route.page === "feed" && splitChat) ? (
           <>
             <header className="chat-toolbar">
               <button
@@ -421,6 +486,15 @@ export function DesktopApp({ client }: { client: Client }) {
                 {chatTitle}
               </button>
               <div className="toolbar-spacer" />
+              {route.page === "feed" && (
+                <button
+                  className="glass-pill"
+                  aria-label="Close side-by-side chat"
+                  onClick={() => setSplitChat(false)}
+                >
+                  <X size={18} />
+                </button>
+              )}
               <button
                 className="glass-pill"
                 aria-label="Conversation options"
@@ -441,6 +515,7 @@ export function DesktopApp({ client }: { client: Client }) {
                   </button>
                   <button
                     onClick={() => {
+                      if (route.page === "feed") navigate("/");
                       setStatusOpen(true);
                       setMenu(false);
                     }}
@@ -589,6 +664,7 @@ export function DesktopApp({ client }: { client: Client }) {
               <button
                 className="approval-banner"
                 onClick={() => {
+                  if (route.page === "feed") navigate("/");
                   setStatusOpen(true);
                   setStatusTab("approvals");
                 }}
@@ -597,6 +673,19 @@ export function DesktopApp({ client }: { client: Client }) {
                 {approvals.length} approval{approvals.length === 1 ? "" : "s"}{" "}
                 needed
               </button>
+            )}
+            {quotedPost && !route.newSide && (!id || id === index.mainId) && (
+              <aside className="feed-quote">
+                <MessageCircle size={15} />
+                <span>{quotedPost.title}</span>
+                <button
+                  className="icon-button"
+                  aria-label="Remove quoted post"
+                  onClick={() => setQuotedPost(undefined)}
+                >
+                  <X size={15} />
+                </button>
+              </aside>
             )}
             <form
               className="desktop-composer"
@@ -745,6 +834,8 @@ export function DesktopApp({ client }: { client: Client }) {
             onChanged={() => {
               void reload();
               setDrafts({});
+              setQuotedPost(undefined);
+              setConnectionEpoch((value) => value + 1);
             }}
           />
         </Modal>

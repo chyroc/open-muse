@@ -4,6 +4,7 @@ import { DesktopApp } from "./DesktopApp";
 import { nativeCredentials } from "./credentials";
 import "./desktop.css";
 import "./documents.css";
+import "./feed.css";
 
 const client = new Client({ vault: nativeCredentials });
 const root = createRoot(document.getElementById("root")!);
