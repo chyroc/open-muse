@@ -15,7 +15,8 @@ const legacySystem =
 // A public tool-calling model, validated by MA when creating the agent. Existing
 // agents keep their model. Do not depend on the inference catalog's broken CORS
 // policy or infer model availability from an unverified local response.
-export const DEFAULT_MODEL = "doubao-seed-2-0-pro-260215";
+export const DEFAULT_MODEL = "doubao-seed-2-1-pro-260915";
+const legacyDefaultModel = "doubao-seed-2-0-pro-260215";
 type Kind = "agent" | "environment";
 interface Mapping {
   agent_id: string;
@@ -244,7 +245,15 @@ export class DirectWorkspace {
           r.agent_pending = false;
         });
     }
-    if (!(await this.row())!.model_id)
+    const modelRow = (await this.row())!;
+    // Only repair an uncreated assistant's former default. Adopted agents and
+    // custom model selections are preserved, including unconfirmed creations.
+    if (
+      !modelRow.model_id ||
+      (!modelRow.agent_id &&
+        !modelRow.agent_pending &&
+        modelRow.model_id === legacyDefaultModel)
+    )
       await this.update((r) => {
         r.model_id = DEFAULT_MODEL;
       });
