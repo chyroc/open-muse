@@ -159,7 +159,8 @@ export type ConnectionStatus = {
   loggedIn: boolean;
   ready: boolean;
   project?: string;
-  method?: "sso" | "api_key";
+  method?: "api_key";
+  legacy?: "sso";
 };
 
 export function connectionSummary(status: ConnectionStatus | undefined) {
@@ -169,11 +170,7 @@ export function connectionSummary(status: ConnectionStatus | undefined) {
       : status.ready
         ? "Connected"
         : "Choose a project",
-    method: !status?.method
-      ? ""
-      : status.method === "api_key"
-        ? "API Key"
-        : "Volcano SSO",
+    method: status?.method === "api_key" ? "API Key" : "",
     project: status?.project ?? "",
   };
 }

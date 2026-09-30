@@ -139,7 +139,7 @@ export class Client {
       if (error instanceof z.ZodError)
         throw new ApiError(
           400,
-          t("Check the API key, project name, and authorization code format."),
+          t("Check the API key and project name format."),
         );
       throw error;
     }
@@ -153,10 +153,7 @@ export class Client {
   private context() {
     const c = this.identity.value;
     if (!c?.apiKey)
-      throw new ApiError(
-        401,
-        t("Connect to Ark MA with SSO or an API key in Settings first."),
-      );
+      throw new ApiError(401, t("Add an Ark API key in Settings first."));
     const key = digest(
       JSON.stringify([
         ARK_BASE_URL,
@@ -1228,12 +1225,7 @@ export class Client {
     input: object = {},
   ): Promise<T> {
     const r = this.context();
-    const result = await executeOperation(
-      r.ark,
-      this.identity,
-      operation,
-      input,
-    );
+    const result = await executeOperation(r.ark, operation, input);
     if (["CreateSession", "GetSession", "ListSessions"].includes(operation)) {
       const payload = result as Session & { data?: Session[] };
       await this.remember(r, payload.data ?? [payload]);

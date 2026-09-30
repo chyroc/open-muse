@@ -1,15 +1,8 @@
 import { t } from "../shared/i18n";
 import { Capacitor } from "@capacitor/core";
-import { Browser } from "@capacitor/browser";
 import { Share } from "@capacitor/share";
 import { uuid } from "../shared/crypto";
 export const nativeMobile = () => Capacitor.isNativePlatform();
-export async function openAuthorization(url: string) {
-  if (new URL(url).origin !== "https://signin.volcengine.com")
-    throw new Error(t("The authorization site is incorrect."));
-  if (nativeMobile()) await Browser.open({ url });
-  else window.open(url, "_blank", "noopener,noreferrer");
-}
 
 export async function exportText(
   name: string,

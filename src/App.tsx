@@ -528,7 +528,7 @@ function Workspace({
           {config?.mode === "disconnected" && tab !== "settings" && (
             <a className="connect-notice" href="#/settings">
               <Unplug size={16} />
-              <span>{t("Connect with SSO or API Key to start chatting")}</span>
+              <span>{t("Add an Ark API key to start chatting")}</span>
             </a>
           )}
           {(loadError || actionError) && (

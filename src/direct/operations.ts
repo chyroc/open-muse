@@ -7,11 +7,9 @@ import {
 } from "../../shared/ma-request";
 import { ApiError, type ArkClient } from "../../shared/ark";
 import { unbase64 } from "../../shared/crypto";
-import type { DirectAuth } from "./auth";
 
 export async function executeOperation(
   ark: ArkClient,
-  auth: DirectAuth,
   operation: string,
   body: object,
 ) {
@@ -30,13 +28,13 @@ export async function executeOperation(
       t("Open the conversation to view the live event stream."),
     );
   let result: unknown;
+  // Console (TOP) actions need Volcano console credentials, which Open Muse no
+  // longer obtains. Only data-plane endpoints available to an API key run.
   if (op.transport === "top") {
-    result = await auth.action(op.id, {
-      ...input.body,
-      ...(op.fields.some((f) => f.name === "ProjectName")
-        ? { ProjectName: auth.value?.project }
-        : {}),
-    });
+    throw new ApiError(
+      403,
+      t("This console-only operation is not available with an Ark API key."),
+    );
   } else if (["CreateSkill", "UploadFile"].includes(op.id)) {
     const form = new FormData();
     for (const [key, value] of Object.entries(input.body)) {

@@ -349,7 +349,7 @@ export function SettingsWindow({ client }: { client: Client }) {
         >
           <p>
             {t(
-              "Signing out removes this device's sign-in credentials but does not revoke the cloud API Key. You can revoke it in the Ark console. Switch sign-in methods by signing out first.",
+              "Removing the login deletes this device's saved credentials but does not revoke the cloud API Key. You can revoke it in the Ark console.",
             )}
           </p>
           <div className="feed-dialog-actions">

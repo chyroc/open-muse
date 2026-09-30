@@ -1,6 +1,5 @@
 import "fake-indexeddb/auto";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Signer } from "@volcengine/openapi";
 import { Client } from "../src/api";
 import {
   credentials,
@@ -8,8 +7,6 @@ import {
   type CredentialStore,
 } from "../src/direct/storage";
 import { ARK_BASE_URL, directFetch } from "../src/direct/transport";
-import { signAction } from "../shared/signing";
-import { beginLogin, extractCode, OAuthProvider } from "../shared/oauth";
 import { digest, uuid } from "../shared/crypto";
 import { operations } from "../shared/ma";
 import { buildRequest } from "../shared/ma-request";
@@ -417,7 +414,7 @@ describe("Direct MA client", () => {
     expect((await f.client.inspiration()).items).toEqual([]);
     expect(f.fetcher).not.toHaveBeenCalled();
     await expect(f.client.generateInspiration("ideas")).rejects.toThrow(
-      "Connect to Ark MA",
+      "Add an Ark API key",
     );
   });
   it("refreshes a stale memory-enabled main once, pins its original version and preserves custom session instructions", async () => {
@@ -731,7 +728,7 @@ describe("Direct MA client", () => {
     expect(await f.client.conversationIndex()).toEqual({ entries: {} });
     expect((await f.client.companionIdentity()).name).toBe("Muse");
     await expect(f.client.openConversation("main")).rejects.toThrow(
-      "Connect to Ark MA",
+      "Add an Ark API key",
     );
     expect(f.fetcher).not.toHaveBeenCalled();
   });
@@ -780,11 +777,11 @@ describe("Direct MA client", () => {
     expect((await f.client.goals()).data).toEqual([]);
     expect((await f.client.library()).data).toEqual([]);
     await expect(f.client.prepareWorkspace()).rejects.toThrow(
-      "Connect to Ark MA",
+      "Add an Ark API key",
     );
     await expect(
       f.client.send("session", { type: "user.message", text: "hello" }),
-    ).rejects.toThrow("Connect to Ark MA");
+    ).rejects.toThrow("Add an Ark API key");
     expect(f.fetcher).not.toHaveBeenCalled();
   });
   it("verifies keys directly and restores them without app session tokens", async () => {
@@ -1124,7 +1121,11 @@ describe("Direct MA client", () => {
     const top = operations.find(
       (o) => o.transport === "top" && o.id.startsWith("List"),
     )!;
-    await expect(f.client.ma(top.id)).rejects.toThrow("SSO");
+    await expect(f.client.ma(top.id)).rejects.toThrow("console-only");
+    expect(f.fetcher).not.toHaveBeenCalledWith(
+      expect.stringContaining("volcengineapi.com"),
+      expect.anything(),
+    );
     expect(await f.client.ma("ListAgents")).toEqual({ data: [] });
   });
   it("uploads files directly as multipart, never through an app server", async () => {
@@ -1141,67 +1142,46 @@ describe("Direct MA client", () => {
   });
 });
 
-describe("Direct credentials, signing and origin boundaries", () => {
-  it.each([false, true])("matches the official V4 signer (IAM=%s)", (iam) => {
-    const c = {
-      accessKeyId: "test-ak",
-      secretKey: "test-sk",
-      sessionToken: "test-sts",
-    };
-    const host = iam ? "iam.volcengineapi.com" : "open.volcengineapi.com";
-    const params = { Action: "ListProjects", Version: "2021-08-01" };
-    const body = JSON.stringify({ Limit: 100 });
-    const request = {
-      region: iam ? "cn-north-1" : "cn-beijing",
-      method: "POST",
-      pathname: "/",
-      params,
-      headers: { Host: host, "Content-Type": "application/json" } as Record<
-        string,
-        string
-      >,
-      body,
-    };
-    const date = new Date("2026-09-30T00:00:00Z");
-    new Signer(request, iam ? "iam" : "ark").addAuthorization(c, date);
-    const signed = signAction(c, host, params, body, iam, date);
-    expect(signed.authorization).toBe(request.headers.Authorization);
-    expect(signed.host).toBeUndefined();
-  });
-  it("uses local PKCE state, rejects mismatches, and accepts bare authorization codes", () => {
-    const a = beginLogin();
-    const b = beginLogin();
-    expect(a.state).not.toBe(b.state);
-    expect(a.verifier).not.toBe(b.verifier);
-    expect(new URL(a.url).searchParams.get("code_challenge_method")).toBe(
-      "S256",
-    );
-    expect(extractCode("bare-code", a.state)).toBe("bare-code");
-    expect(() => extractCode(`code=secret&state=${b.state}`, a.state)).toThrow(
-      "state mismatch",
-    );
-  });
-  it("exchanges SSO codes directly without a client secret or a backend", async () => {
-    const fetcher = vi.fn<typeof fetch>(async () =>
-      Response.json({
-        access_token: JSON.stringify({
-          access_key_id: "ak",
-          secret_access_key: "sk",
-          session_token: "sts",
-        }),
-        refresh_token: "refresh",
-      }),
-    );
-    const c = await new OAuthProvider(fetcher).exchange(
-      "authorization-code",
-      "verifier",
-    );
-    expect(c.accessKeyId).toBe("ak");
-    expect(fetcher.mock.calls[0][0]).toBe(
-      "https://signin.volcengine.com/authorize/oauth/token",
-    );
-    expect(String(fetcher.mock.calls[0][1]?.body)).not.toContain(
-      "client_secret",
+describe("Direct credentials and origin boundaries", () => {
+  it("keeps an earlier Volcano SSO sign-in untouched but never uses it", async () => {
+    const vault = vaultFixture();
+    const legacy = JSON.stringify({
+      accessKeyId: "test-legacy-ak",
+      secretKey: "test-legacy-sk",
+      sessionToken: "test-legacy-sts",
+      refreshToken: "test-legacy-refresh",
+      expiresAt: Date.now() + 60_000,
+      apiKey: "test-legacy-minted-key-123456",
+      project: "legacy-project",
+    });
+    await vault.write(legacy);
+    const fetcher = vi.fn<typeof fetch>();
+    const client = new Client({
+      vault,
+      database: new LocalDatabase(`test-${uuid()}`),
+      fetcher,
+    });
+    await client.restore();
+    expect(client.signedIn()).toBe(false);
+    expect(await client.auth("status")).toMatchObject({
+      loggedIn: false,
+      ready: false,
+      legacy: "sso",
+    });
+    await expect(
+      client.send("session", { type: "user.message", text: "hello" }),
+    ).rejects.toThrow("API key");
+    await expect(
+      client.auth("api-key", { apiKey: key, project: "", confirm: true }),
+    ).rejects.toThrow("Remove the saved Volcano SSO");
+    for (const path of ["begin", "complete", "projects", "project"])
+      await expect(client.auth(path, {})).rejects.toThrow("Unknown");
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(await vault.read()).toBe(legacy);
+    await client.auth("logout", {});
+    expect(await vault.read()).toBe("");
+    expect((await client.auth<{ legacy?: string }>("status")).legacy).toBe(
+      undefined,
     );
   });
   it("keeps browser secrets only in session storage", async () => {
@@ -1255,6 +1235,10 @@ describe("Direct credentials, signing and origin boundaries", () => {
       "http://127.0.0.1:4311/api/sessions",
       "https://muse.example/api",
       "https://evil.example",
+      // Retired Volcano SSO and console endpoints.
+      "https://signin.volcengine.com/authorize/oauth/token",
+      "https://open.volcengineapi.com/",
+      "https://iam.volcengineapi.com/",
     ])
       await expect(directFetch(url)).rejects.toThrow("allowed Volcano");
     await directFetch(`${ARK_BASE_URL}/models`);

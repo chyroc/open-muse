@@ -22,8 +22,7 @@ export const zhCN: Record<string, string> = {
   "Goals options": "目标选项",
   "Back to chat": "返回对话",
   Settings: "设置",
-  "Connect with SSO or API Key to start chatting":
-    "通过 SSO 或 API Key 连接后开始对话",
+  "Add an Ark API key to start chatting": "添加 Ark API Key 后开始对话",
   "Refresh history": "刷新历史记录",
   "Loading conversation…": "正在加载对话…",
   "Start a side chat": "开始分支对话",
@@ -50,42 +49,26 @@ export const zhCN: Record<string, string> = {
   "If sign-in expires or a request fails, Muse reports the error instead of generating simulated replies.":
     "如果登录过期或请求失败，Muse 会报告错误，不会生成模拟回复。",
   "Connect to Ark MA": "连接 Ark MA",
-  "Connect an Ark project and your personal assistant is set up automatically":
-    "连接 Ark 项目后，系统会自动配置个人助手",
+  "Add an Ark API key and your personal assistant is set up automatically":
+    "添加 Ark API Key 后，系统会自动配置个人助手",
   "Choose a project": "选择项目",
   "Not signed in": "未登录",
   "Sign-in method": "登录方式",
   "Paste an existing Ark API Key": "粘贴已有的 Ark API Key",
   "Project name (optional)": "项目名称（可选）",
   "Leave blank to use the key's own project": "留空以使用密钥所属项目",
-  "This device connects directly to Volcano Ark. Native apps store credentials in system-protected storage; the web app keeps them only for this browser session. The assistant and runtime are created automatically on first use; cloud calls may be billed. Control-plane operations requiring STS still need SSO sign-in.":
-    "此设备直接连接火山方舟。原生应用将凭据存储在系统保护的存储区；网页应用仅在当前浏览器会话中保留凭据。首次使用时会自动创建助手和运行环境，云端调用可能产生费用。需要 STS 的控制面操作仍需通过 SSO 登录。",
+  "This device connects directly to Volcano Ark. Native apps store credentials in system-protected storage; the web app keeps them only for this browser session. The assistant and runtime are created automatically on first use; cloud calls may be billed.":
+    "此设备直接连接火山方舟。原生应用将凭据存储在系统保护的存储区；网页应用仅在当前浏览器会话中保留凭据。首次使用时会自动创建助手和运行环境，云端调用可能产生费用。",
   "Connect with API Key": "使用 API Key 连接",
-  "Sign in on the Volcano website, then paste the authorization code shown on the page back here. This device exchanges the code directly with Volcano using PKCE. Credentials stay on this device; no Open Muse backend is involved.":
-    "在火山引擎网站登录，然后将页面显示的授权码粘贴到此处。此设备通过 PKCE 直接向火山引擎交换授权码。凭据保留在此设备上，不经过 Open Muse 后端。",
-  "Start SSO sign-in": "开始 SSO 登录",
-  "1. Authorize on Volcano": "1. 前往火山引擎授权",
-  "2. Paste the authorization code": "2. 粘贴授权码",
-  "Authorization code, encoded callback, or full callback URL":
-    "授权码、编码后的回调或完整回调 URL",
-  "The authorization link is valid for 10 minutes. Don't share the code with anyone.":
-    "授权链接有效期为 10 分钟。请勿向他人分享授权码。",
-  "Verify authorization code": "验证授权码",
-  "Start over": "重新开始",
+  "Volcano SSO sign-in is no longer supported. This device still holds the earlier SSO sign-in; it is not used. Remove it, then add an Ark API key. Data saved on this device is kept.":
+    "已不再支持火山引擎 SSO 登录。此设备仍保存着之前的 SSO 登录信息，但不会再使用。请先移除它，再添加 Ark API Key。此设备上保存的数据会保留。",
+  "Remove the earlier SSO sign-in": "移除之前的 SSO 登录",
   Project: "项目",
-  "Select a project": "选择项目",
-  "Reload projects": "重新加载项目",
-  "Once connected, Muse creates a dedicated key in this project and automatically sets up the assistant and cloud runtime. The key can access all Ark resources in the project with no source-IP restriction; cloud calls may be billed. The cloud environment can reach the public internet, and tools run directly by default, which may cause external writes or deletions.":
-    "连接后，Muse 会在此项目中创建专用密钥，并自动配置助手和云端运行环境。此密钥可以访问项目中的所有 Ark 资源，且不限制来源 IP；云端调用可能产生费用。云端环境可以访问公网，工具默认直接执行，可能向外部写入或删除数据。",
-  "Continue connecting": "继续连接",
-  "Connect project and get started": "连接项目并开始使用",
   "Connected with API Key": "已通过 API Key 连接",
-  "Connected with SSO": "已通过 SSO 连接",
   "The key's own project": "密钥所属项目",
-  "Key details": "密钥详情",
   "Sign out of this login": "退出当前登录",
-  "Signing out removes this device's sign-in credentials but does not revoke the cloud API Key. You can revoke it in the Ark console. Switch sign-in methods by signing out first.":
-    "退出登录会移除此设备上的登录凭据，但不会撤销云端 API Key。可以在 Ark 控制台撤销密钥。切换登录方式前，请先退出当前登录。",
+  "Removing the login deletes this device's saved credentials but does not revoke the cloud API Key. You can revoke it in the Ark console.":
+    "移除登录会删除此设备上保存的凭据，但不会撤销云端 API Key。可以在 Ark 控制台撤销密钥。",
   "Working, please don't submit again…": "正在处理，请勿重复提交…",
   "Background Feed": "后台动态",
   "While you're away": "离开应用后",
@@ -379,8 +362,8 @@ export const zhCN: Record<string, string> = {
     "助手和运行环境会自动准备就绪；连接更多工具，将想法付诸行动。",
   "Live Ark connection · cloud operations may be billed":
     "已连接 Ark · 云端操作可能产生费用",
-  "Sign in with SSO or an API key in Settings to use Ark MA":
-    "在设置中通过 SSO 或 API Key 登录，即可使用 Ark MA",
+  "Add an Ark API key in Settings to use Ark MA":
+    "在设置中添加 Ark API Key，即可使用 Ark MA",
   "Connection settings": "连接设置",
   "Advanced MA management": "MA 高级管理",
   "API debugging, resources, and skills; not needed for daily use":
@@ -417,8 +400,8 @@ export const zhCN: Record<string, string> = {
   "Next page": "下一页",
   "Open file download link": "打开文件下载链接",
   "Go to service authorization": "前往服务授权",
-  "Public capabilities are integrated via data-plane endpoints; TOP-only capabilities use SSO signing. Internal management endpoints are not exposed. Upstream does not provide skill listing/deletion or memory history versions, so this app does not fake those operations.":
-    "公开能力通过数据面接口接入；仅支持 TOP 的能力使用 SSO 签名。不开放内部管理接口。上游未提供技能列表、技能删除或记忆历史版本能力，因此本应用不会模拟这些操作。",
+  "Public capabilities are integrated via data-plane endpoints available to an Ark API key; console-only (TOP) actions are not offered. Internal management endpoints are not exposed. Upstream does not provide skill listing/deletion or memory history versions, so this app does not fake those operations.":
+    "公开能力通过 Ark API Key 可用的数据面接口接入；不提供仅限控制台（TOP）的操作。不开放内部管理接口。上游未提供技能列表、技能删除或记忆历史版本能力，因此本应用不会模拟这些操作。",
   "Preparing your companion…": "正在准备伙伴…",
   "The welcome request is unconfirmed. Check history; it will not be sent again.":
     "欢迎请求尚未确认。请检查历史记录；不会再次发送。",
@@ -703,7 +686,6 @@ export const zhCN: Record<string, string> = {
   "Help me analyze a piece of material. I'll share the text next; please distill the core conclusions, the structure of the reasoning, the assumptions at play, and the questions worth following up on.":
     "帮我分析一份资料。我接下来会提供文本；请提炼核心结论、推理结构、前提假设和值得继续追问的问题。",
   "Earlier posts": "更早的动态",
-  "The authorization site is incorrect.": "授权网站不正确。",
   "Conversation saved": "已保存对话",
   "Export canceled": "已取消导出",
   "Save failed. Please check file permissions.": "保存失败，请检查文件权限。",
@@ -1034,8 +1016,9 @@ export const zhCN: Record<string, string> = {
   Version: "版本",
   "Unknown outside the Mac app": "在 Mac 应用之外无法获取",
   Appearance: "外观",
-  "This build renders one light appearance. Dark mode and accent colors are not built yet.":
-    "此版本仅提供一种浅色外观，深色模式和主题色尚未实现。",
+  Light: "浅色",
+  Dark: "深色",
+  System: "系统",
   Updates: "更新",
   "Automatic update checks are not built yet. Install a newer build yourself.":
     "自动检查更新尚未实现，请自行安装新版本。",

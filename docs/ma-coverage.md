@@ -12,7 +12,7 @@ The API catalog lives in `shared/ma-contract.json` and `shared/ma.ts`. Each clie
 | Skills                      |     2 | ZIP upload, lookup by ID                                                                           |
 | Files                       |     3 | Upload, metadata and download links, delete                                                        |
 
-52 operations in total. Most operations call the data plane via API key; some control-plane operations require SSO to provide STS. Duplicate control-plane and data-plane entries are not shown twice.
+52 operations in total. Open Muse calls the data plane with an Ark API key. Control-plane (TOP) operations need Volcano console credentials, so Studio hides them and the client rejects them. Duplicate control-plane and data-plane entries are not shown twice.
 
 ## Usage
 

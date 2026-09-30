@@ -22,7 +22,7 @@ Open Muse is a personal AI task assistant built on Volcano Ark Managed Agents (M
 - `scripts/` — build and asset generation
 - `docs/` — integration notes and verification records
 
-All four platforms connect directly to public Volcano APIs through SSO or an in-app API key. There is no Open Muse backend or service URL. Without credentials the app stays disconnected and never generates simulated replies. Real calls may incur cloud costs. Mock responses and the old server migration harness belong only in tests and must never be bundled.
+All four platforms connect directly to public Volcano APIs through an in-app API key. There is no Open Muse backend or service URL. Without credentials the app stays disconnected and never generates simulated replies. Real calls may incur cloud costs. Mock responses and the old server migration harness belong only in tests and must never be bundled.
 
 ## Commands
 

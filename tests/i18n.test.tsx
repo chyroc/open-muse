@@ -93,8 +93,11 @@ describe("Localized mobile UI", () => {
       const auth = renderToStaticMarkup(
         <AuthPanel client={new Client()} onChanged={() => {}} />,
       );
-      expect(auth).toContain(chinese ? "开始 SSO 登录" : "Start SSO sign-in");
-      expect(auth).toContain(chinese ? "未登录" : "Not signed in");
+      expect(auth).toContain(
+        chinese ? "使用 API Key 连接" : "Connect with API Key",
+      );
+      expect(auth).toContain(chinese ? "未连接" : "Not connected");
+      expect(auth).not.toContain("SSO");
     },
   );
 

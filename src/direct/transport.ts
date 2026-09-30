@@ -1,11 +1,6 @@
 import { t } from "../../shared/i18n";
 export const ARK_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3";
-const origins = new Set([
-  "https://ark.cn-beijing.volces.com",
-  "https://signin.volcengine.com",
-  "https://open.volcengineapi.com",
-  "https://iam.volcengineapi.com",
-]);
+const origins = new Set(["https://ark.cn-beijing.volces.com"]);
 
 // All production network traffic goes directly to public Volcano endpoints.
 // No proxy, service URL, app access token, or localhost fallback is accepted.

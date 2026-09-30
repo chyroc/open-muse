@@ -35,16 +35,12 @@ Do not place credentials in build-time environment variables or source files.
 
 ## Connect to Ark
 
-Open **Settings → Connect to Ark MA**, then choose either:
-
-- **Volcano SSO:** authorize on the Volcano website, paste the authorization
-  code or callback, select a project, and connect. OAuth PKCE and STS request
-  signing happen on this device. The app creates a dedicated key with access to
-  the project's Ark resources and no source-IP restriction. The authorization
-  transaction expires after ten minutes and is single-use.
-- **API Key:** enter an existing key, optionally specifying its project. A
-  read-only MA request verifies access before the key is saved. Control-plane
-  operations requiring STS still require SSO.
+Open **Settings → Connect to Ark MA** and enter an existing Ark API key,
+optionally specifying its project. A read-only MA request verifies access
+before the key is saved. Volcano SSO sign-in is not supported, and console-only
+(TOP) actions are not offered. If an earlier release saved a Volcano SSO
+sign-in on this device, the app keeps it untouched but never uses it; Settings
+offers to remove it before a key is added. Data saved on the device is kept.
 
 On first use, Muse prepares an agent and environment automatically. Their
 mapping is stored in IndexedDB, isolated by API-key digest and project. Reusing
@@ -59,7 +55,7 @@ CORS responses, so neither sign-in nor workspace preparation depends on it.
 
 ## Storage and security
 
-- iOS and macOS keep API keys and SSO credentials in Keychain. Android encrypts
+- iOS and macOS keep API keys in Keychain. Android encrypts
   credentials with an Android Keystore-backed AES-GCM key and disables backup.
 - The web app keeps credentials in `sessionStorage`, not persistent local
   storage. A page reload preserves the browser session; signing out clears it.

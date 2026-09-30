@@ -41,6 +41,7 @@ export function Studio({
   const currentGroup = groups.find((g) => g.id === group)!;
   const choices = operations.filter(
     (o) =>
+      o.transport !== "top" &&
       currentGroup.match.test(o.id) &&
       (group !== "agents" || !/Session/.test(o.id)),
   );
@@ -168,7 +169,7 @@ export function Studio({
         <span>
           {isReady
             ? t("Live Ark connection · cloud operations may be billed")
-            : t("Sign in with SSO or an API key in Settings to use Ark MA")}
+            : t("Add an Ark API key in Settings to use Ark MA")}
         </span>
         <a href="#/settings">
           {t("Connection settings")} <ArrowRight size={14} />
@@ -198,7 +199,10 @@ export function Studio({
                 setGroup(g.id);
                 choose(
                   operations.find(
-                    (o) => g.match.test(o.id) && o.id.startsWith("List"),
+                    (o) =>
+                      o.transport !== "top" &&
+                      g.match.test(o.id) &&
+                      o.id.startsWith("List"),
                   )?.id ?? (g.id === "files" ? "UploadFile" : "CreateSkill"),
                 );
               }}
@@ -498,7 +502,7 @@ export function Studio({
         )}
         <p className="studio-footnote">
           {t(
-            "Public capabilities are integrated via data-plane endpoints; TOP-only capabilities use SSO signing. Internal management endpoints are not exposed. Upstream does not provide skill listing/deletion or memory history versions, so this app does not fake those operations.",
+            "Public capabilities are integrated via data-plane endpoints available to an Ark API key; console-only (TOP) actions are not offered. Internal management endpoints are not exposed. Upstream does not provide skill listing/deletion or memory history versions, so this app does not fake those operations.",
           )}
         </p>
       </details>

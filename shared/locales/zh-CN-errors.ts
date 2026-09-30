@@ -3,10 +3,9 @@ export const zhErrors: Record<string, string> = {
   "This main chat's configuration cannot be safely updated. Its history is intact. Open a side chat to continue.":
     "无法安全更新此主对话的配置。历史记录完整保留，可新建分支对话继续。",
   "Invalid resource ID.": "资源 ID 无效。",
-  "Check the API key, project name, and authorization code format.":
-    "请检查 API Key、项目名称和授权码格式。",
-  "Connect to Ark MA with SSO or an API key in Settings first.":
-    "请先在设置中通过 SSO 或 API Key 连接 Ark MA。",
+  "Check the API key and project name format.":
+    "请检查 API Key 和项目名称格式。",
+  "Add an Ark API key in Settings first.": "请先在设置中添加 Ark API Key。",
   "Generation preparation did not finish.": "生成准备尚未完成。",
   "Ark returned an invalid list response.": "Ark 返回的列表响应无效。",
   "History pagination repeated or exceeded the safety limit. No writes were retried.":
@@ -64,18 +63,14 @@ export const zhErrors: Record<string, string> = {
   "Invalid Feed ordering.": "动态排序无效。",
   "Saved login is invalid. Clear this app's credentials and sign in again.":
     "已保存的登录信息无效。请清除此应用的凭据并重新登录。",
-  "This control-plane operation requires SSO sign-in.":
-    "此控制面操作需要通过 SSO 登录。",
+  "This console-only operation is not available with an Ark API key.":
+    "使用 Ark API Key 时无法执行此仅限控制台的操作。",
+  "Remove the saved Volcano SSO sign-in before connecting with an API key.":
+    "请先移除已保存的火山引擎 SSO 登录，再使用 API Key 连接。",
   "A sign-in operation is already in progress. Please wait.":
     "登录操作正在进行中，请稍候。",
-  "Sign out before switching to another project.": "切换项目前，请先退出登录。",
-  "The previous key creation is unconfirmed. Check the Ark console; sign out and connect with the existing key instead of creating another one.":
-    "上次密钥创建结果尚未确认。请检查 Ark 控制台；退出登录后使用现有密钥连接，不要再次创建。",
-  "No access to the selected project.": "无权访问所选项目。",
   "Sign out before connecting another account.":
     "连接其他账号前，请先退出登录。",
-  "The authorization transaction expired. Start sign-in again.":
-    "授权事务已过期，请重新开始登录。",
   "Unknown sign-in operation.": "未知的登录操作。",
   "Confirm uploading the current Ark configuration first.":
     "请先确认上传当前 Ark 配置。",

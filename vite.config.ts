@@ -29,7 +29,7 @@ export default defineConfig({
             tag: "meta",
             attrs: {
               "http-equiv": "Content-Security-Policy",
-              content: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://ark.cn-beijing.volces.com https://signin.volcengine.com https://open.volcengineapi.com https://iam.volcengineapi.com${background ? ` ${background}` : ""}${auth ? ` ${auth}` : ""}; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'`,
+              content: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://ark.cn-beijing.volces.com${background ? ` ${background}` : ""}${auth ? ` ${auth}` : ""}; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'`,
             },
             injectTo: "head-prepend",
           },
