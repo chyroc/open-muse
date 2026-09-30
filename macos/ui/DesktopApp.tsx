@@ -45,6 +45,7 @@ const LibraryPage = lazy(() =>
 import { MacGoals } from "./goals";
 import { libraryPath } from "./library";
 import { openNativeSettings } from "./settings";
+import { navLabel } from "./labels";
 import { connectionError, connectionReady } from "./startup";
 import { WorkspaceBoundary } from "./WorkspaceBoundary";
 import {
@@ -448,7 +449,7 @@ export function DesktopApp({ client }: { client: Client }) {
         goalLabels[id] ??
         task.session?.title ??
         t("Side chat"))
-      : t("Chat");
+      : navLabel("chat");
 
   return (
     <div

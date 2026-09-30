@@ -470,7 +470,7 @@ export const zhCN: Record<string, string> = {
   "Search side chats": "搜索分支对话",
   "Opening document…": "正在打开文档…",
   "Opening ideas…": "正在打开灵感…",
-  "Open chats and side chats": "打开主对话和分支对话",
+  "Open chats and side chats": "打开聊天和分支对话",
   "Close side-by-side chat": "关闭并排对话",
   Unarchive: "取消归档",
   "Chat messages": "对话消息",

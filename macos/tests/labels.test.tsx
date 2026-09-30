@@ -9,6 +9,7 @@ afterEach(() => vi.unstubAllGlobals());
 // Keys this Mac build renamed in place. Each must have no consumer outside
 // macos/, or another client would silently inherit the desktop wording.
 const renamed = [
+  "Open chats and side chats",
   "Search Library",
   "Save reply to library",
   "Library navigation",
@@ -72,6 +73,8 @@ describe("Mac navigation labels", () => {
     }
   });
   it("leaves the wording the other clients depend on untouched", () => {
+    // The main chat pill names the same section as the rail that opens it.
+    expect(zhCN["Open chats and side chats"]).toContain("聊天");
     for (const [key, value] of Object.entries(shared))
       expect(zhCN[key], key).toBe(value);
     for (const key of ["Chat tab", "Ideas tab", "Library tab"])
