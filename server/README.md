@@ -184,6 +184,31 @@ deployed or that a real unattended generation can complete.
   for incremental reads. Each item keeps its original MA session/event reference.
 - `POST /v1/runs/:id/recheck`: `{confirm: true}`; resumes a reviewed run from
   its persisted phase. An uncertain creation/message is only queried, not resent.
+- `GET /v1/account/credential`: Muse account sessions only. Returns
+  `{configured, revision, updatedAt, credential?}` where `credential` is the
+  account's own `{apiKey, project}`. Device tokens receive 403.
+- `PUT /v1/account/credential`: `{credential, revision, confirm: true}`. The key
+  is checked with one read-only Ark request (`GET /agents?limit=1`) and then
+  sealed for this account. A stale revision from another device returns 409.
+- `DELETE /v1/account/credential`: `{revision, confirm: true}` leaves a
+  tombstone for this account only.
+
+### Account Ark credentials
+
+The Ark API key is a model-service credential, not an identity. Each verified
+Muse account owns at most one sealed `{apiKey, project}` record in
+`account_credentials`. AES-256-GCM authenticates the purpose, account owner,
+and revision with every ciphertext, so a row copied to another account or
+revision cannot be decrypted. Two accounts that upload the same key keep
+separate records. Every device signed in to the same account reads that
+account's record.
+
+Replacing or removing the key, in the same D1 batch, also removes the account's
+background binding, disables its schedule, and stops unfinished runs, so no
+scheduled work continues with the previous key. The scheduled handler reseals up
+to 20 rows per table under the current `CREDENTIAL_ENCRYPTION_KEYS` entry. Keep
+a retired key in the keyring until no row reports it. Responses never include
+the keyring. Only the owning account's `GET` returns the key.
 
 Responses use `Cache-Control: no-store`. There is no wildcard CORS and no
 cookie-based authentication. Origin checks do not replace token authentication.

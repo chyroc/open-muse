@@ -8,6 +8,7 @@ import { ArkRemote } from "./ark";
 import { ApiError } from "../../shared/ark";
 import { authorizedOwners } from "./auth";
 import { backgroundReady, HttpError, type Env } from "./env";
+import { isSupabaseOwner } from "../../shared/supabase-auth";
 
 type Row = { revision: number; encrypted: string | null; updated_at: number };
 const envelopeSchema = z
@@ -55,21 +56,23 @@ export function credentialStorageReady(env: Env) {
     return false;
   }
 }
-const aad = (owner: string, revision: number) =>
-  new TextEncoder().encode(
-    JSON.stringify(["open-muse-ark-connection", 1, owner, revision]),
-  );
+// The purpose, owner, and revision are authenticated with every ciphertext, so
+// a row copied to another user, table, or revision cannot be decrypted.
+export type SealPurpose = "open-muse-ark-connection" | "open-muse-account-ark";
+const aad = (purpose: SealPurpose, owner: string, revision: number) =>
+  new TextEncoder().encode(JSON.stringify([purpose, 1, owner, revision]));
 async function cryptoKey(value: string) {
   return crypto.subtle.importKey("raw", bytes(value), "AES-GCM", false, [
     "encrypt",
     "decrypt",
   ]);
 }
-export async function encryptConfiguration(
+export async function seal(
   env: Env,
+  purpose: SealPurpose,
   owner: string,
   revision: number,
-  config: BackgroundConfiguration,
+  value: unknown,
 ) {
   const ring = keyring(env);
   const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -77,13 +80,11 @@ export async function encryptConfiguration(
     {
       name: "AES-GCM",
       iv,
-      additionalData: aad(owner, revision),
+      additionalData: aad(purpose, owner, revision),
       tagLength: 128,
     },
     await cryptoKey(ring.keys[ring.current]),
-    new TextEncoder().encode(
-      JSON.stringify(backgroundConfigurationSchema.parse(config)),
-    ),
+    new TextEncoder().encode(JSON.stringify(value)),
   );
   return JSON.stringify({
     version: 1,
@@ -92,32 +93,70 @@ export async function encryptConfiguration(
     ciphertext: base64(new Uint8Array(encrypted)),
   });
 }
-export async function decryptConfiguration(
+export async function unseal(
   env: Env,
+  purpose: SealPurpose,
   owner: string,
-  row: Row,
-): Promise<BackgroundConfiguration> {
+  revision: number,
+  encrypted: string,
+): Promise<unknown> {
   try {
     const ring = keyring(env),
-      envelope = envelopeSchema.parse(JSON.parse(row.encrypted!));
+      envelope = envelopeSchema.parse(JSON.parse(encrypted));
     if (!ring.keys[envelope.keyId] || bytes(envelope.iv).length !== 12)
       throw new Error();
     const decrypted = await crypto.subtle.decrypt(
       {
         name: "AES-GCM",
         iv: bytes(envelope.iv),
-        additionalData: aad(owner, row.revision),
+        additionalData: aad(purpose, owner, revision),
         tagLength: 128,
       },
       await cryptoKey(ring.keys[envelope.keyId]),
       bytes(envelope.ciphertext),
     );
-    return backgroundConfigurationSchema.parse(
-      JSON.parse(new TextDecoder().decode(decrypted)),
-    );
+    return JSON.parse(new TextDecoder().decode(decrypted));
   } catch {
     throw unavailable();
   }
+}
+// Retired keys stay readable until every row has been sealed again.
+export function currentKeyId(env: Env) {
+  try {
+    return keyring(env).current;
+  } catch {
+    return undefined;
+  }
+}
+export function encryptConfiguration(
+  env: Env,
+  owner: string,
+  revision: number,
+  config: BackgroundConfiguration,
+) {
+  return seal(
+    env,
+    "open-muse-ark-connection",
+    owner,
+    revision,
+    backgroundConfigurationSchema.parse(config),
+  );
+}
+export async function decryptConfiguration(
+  env: Env,
+  owner: string,
+  row: Row,
+): Promise<BackgroundConfiguration> {
+  const value = await unseal(
+    env,
+    "open-muse-ark-connection",
+    owner,
+    row.revision,
+    row.encrypted ?? "",
+  );
+  const config = backgroundConfigurationSchema.safeParse(value);
+  if (!config.success) throw unavailable();
+  return config.data;
 }
 export function configurationEnv(
   env: Env,
@@ -158,8 +197,10 @@ export class ConnectionStore {
     const row = await this.row();
     // Retain existing private deployments. A revocation tombstone disables this
     // fallback, so old service-level credentials can never resurrect access.
+    // End-user accounts never inherit the service-level Ark configuration.
     if (!row)
       return this.owner === this.env.OWNER_ID &&
+        !isSupabaseOwner(this.owner) &&
         authorizedOwners(this.env).length === 1 &&
         authorizedOwners(this.env)[0] === this.owner &&
         backgroundReady(this.env)
@@ -196,6 +237,9 @@ export class ConnectionStore {
     revision: number,
     now = Date.now(),
     fetcher: typeof fetch = fetch,
+    // Account workspaces bind to one stored credential revision. A concurrent
+    // key rotation makes this upload fail instead of reviving the old key.
+    credentialRevision: number | null = null,
   ) {
     const current = await this.row();
     if ((current?.revision ?? 0) !== revision)
@@ -236,13 +280,16 @@ export class ConnectionStore {
       config,
     );
     const mutation = crypto.randomUUID();
+    const credential = `(? IS NULL OR EXISTS(SELECT 1 FROM account_credentials WHERE owner_id=? AND revision=? AND encrypted IS NOT NULL))`;
     const results = await this.env.DB.batch([
       this.env.DB.prepare(
         `INSERT INTO ark_connections(owner_id,revision,encrypted,updated_at,mutation_id)
       SELECT ?,1,?,?,? WHERE (?=0 OR EXISTS(SELECT 1 FROM ark_connections WHERE owner_id=?))
       AND NOT EXISTS(SELECT 1 FROM runs WHERE owner_id=? AND phase NOT IN ('complete','failed') AND (connection_hash IS NULL OR connection_hash<>?))
+      AND ${credential}
       ON CONFLICT(owner_id) DO UPDATE SET revision=ark_connections.revision+1,encrypted=excluded.encrypted,updated_at=excluded.updated_at,mutation_id=excluded.mutation_id
-      WHERE ark_connections.revision=? AND NOT EXISTS(SELECT 1 FROM runs WHERE owner_id=? AND phase NOT IN ('complete','failed') AND (connection_hash IS NULL OR connection_hash<>?))`,
+      WHERE ark_connections.revision=? AND NOT EXISTS(SELECT 1 FROM runs WHERE owner_id=? AND phase NOT IN ('complete','failed') AND (connection_hash IS NULL OR connection_hash<>?))
+      AND ${credential}`,
       ).bind(
         this.owner,
         encrypted,
@@ -252,9 +299,15 @@ export class ConnectionStore {
         this.owner,
         this.owner,
         fingerprint,
+        credentialRevision,
+        this.owner,
+        credentialRevision,
         revision,
         this.owner,
         fingerprint,
+        credentialRevision,
+        this.owner,
+        credentialRevision,
       ),
       this.env.DB.prepare(
         `UPDATE schedules SET enabled=0,next_run_at=NULL,revision=revision+1,updated_at=? WHERE owner_id=?
@@ -277,18 +330,13 @@ export class ConnectionStore {
         ON CONFLICT(owner_id) DO UPDATE SET revision=ark_connections.revision+1,encrypted=NULL,updated_at=excluded.updated_at,mutation_id=excluded.mutation_id
         WHERE ark_connections.revision=?`,
       ).bind(this.owner, now, mutation, revision, this.owner, revision),
-      this.env.DB.prepare(
-        `UPDATE schedules SET enabled=0,next_run_at=NULL,revision=revision+1,updated_at=? WHERE owner_id=?
-        AND EXISTS(SELECT 1 FROM ark_connections WHERE owner_id=? AND mutation_id=?)`,
-      ).bind(now, this.owner, this.owner, mutation),
-      this.env.DB.prepare(
-        `UPDATE runs SET resume_phase=CASE WHEN phase='needs_attention' THEN resume_phase ELSE phase END,
-        phase=CASE WHEN phase IN ('queued','creating','ready') OR
-          (phase='needs_attention' AND resume_phase IN ('queued','creating','ready')) THEN 'failed' ELSE 'needs_attention' END,
-        prompt='',
-        lease_token=NULL,lease_until=NULL,error='Background credentials were removed. Existing MA work is not cancelled.',updated_at=?
-        WHERE owner_id=? AND phase NOT IN ('complete','failed') AND EXISTS(SELECT 1 FROM ark_connections WHERE owner_id=? AND mutation_id=?)`,
-      ).bind(now, this.owner, this.owner, mutation),
+      ...revokeBackground(
+        this.env.DB,
+        this.owner,
+        now,
+        "ark_connections",
+        mutation,
+      ),
     ]);
     if (!result[0].meta.changes)
       throw new HttpError(
@@ -297,4 +345,44 @@ export class ConnectionStore {
       );
     return this.status();
   }
+}
+
+// Runs only after the guarded mutation committed in the same batch. Disables
+// schedules and stops unfinished work without cancelling accepted MA writes.
+export function revokeBackground(
+  db: D1Database,
+  owner: string,
+  now: number,
+  guard: "ark_connections" | "account_credentials",
+  mutation: string,
+) {
+  const committed = `EXISTS(SELECT 1 FROM ${guard} WHERE owner_id=? AND mutation_id=?)`;
+  return [
+    ...(guard === "account_credentials"
+      ? [
+          db
+            .prepare(
+              `UPDATE ark_connections SET revision=revision+1,encrypted=NULL,updated_at=?,mutation_id=?
+              WHERE owner_id=? AND encrypted IS NOT NULL AND ${committed}`,
+            )
+            .bind(now, mutation, owner, owner, mutation),
+        ]
+      : []),
+    db
+      .prepare(
+        `UPDATE schedules SET enabled=0,next_run_at=NULL,revision=revision+1,updated_at=? WHERE owner_id=?
+        AND ${committed}`,
+      )
+      .bind(now, owner, owner, mutation),
+    db
+      .prepare(
+        `UPDATE runs SET resume_phase=CASE WHEN phase='needs_attention' THEN resume_phase ELSE phase END,
+        phase=CASE WHEN phase IN ('queued','creating','ready') OR
+          (phase='needs_attention' AND resume_phase IN ('queued','creating','ready')) THEN 'failed' ELSE 'needs_attention' END,
+        prompt='',
+        lease_token=NULL,lease_until=NULL,error='Background credentials were removed. Existing MA work is not cancelled.',updated_at=?
+        WHERE owner_id=? AND phase NOT IN ('complete','failed') AND ${committed}`,
+      )
+      .bind(now, owner, owner, mutation),
+  ];
 }

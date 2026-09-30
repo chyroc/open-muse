@@ -7,6 +7,8 @@ import { ConnectionStore, credentialStorageReady } from "./connection";
 import { backgroundConfigurationSchema } from "../../shared/background-connection";
 import { ArkRemote } from "./ark";
 import { isSupabaseOwner } from "./supabase";
+import { AccountCredentials, rewrapRetiredKeys } from "./account";
+import { accountCredentialSchema } from "../../shared/account-credential";
 
 async function body(
   request: Request,
@@ -100,6 +102,53 @@ export async function handle(
           connection: await connections.status(),
           schedule: await repo.schedule(),
         });
+      } else if (url.pathname === "/v1/account/credential") {
+        if (!accountTrial)
+          throw new HttpError(
+            403,
+            "Sign in with a Muse account to store an Ark API key.",
+          );
+        const credentials = new AccountCredentials(env, owner);
+        if (request.method === "GET") response = json(await credentials.read());
+        else if (request.method === "PUT") {
+          const input = await body(request, 4096);
+          const credential = accountCredentialSchema.safeParse(
+            input.credential,
+          );
+          if (
+            input.confirm !== true ||
+            !Number.isSafeInteger(input.revision) ||
+            (input.revision as number) < 0 ||
+            Object.keys(input).some(
+              (key) => !["credential", "revision", "confirm"].includes(key),
+            ) ||
+            !credential.success
+          )
+            throw new HttpError(
+              400,
+              "Confirm saving a valid Ark API key and project.",
+            );
+          response = json(
+            await credentials.save(
+              credential.data,
+              input.revision as number,
+              Date.now(),
+              fetcher,
+            ),
+          );
+        } else if (request.method === "DELETE") {
+          const input = await body(request);
+          if (
+            input.confirm !== true ||
+            !Number.isSafeInteger(input.revision) ||
+            (input.revision as number) < 0 ||
+            Object.keys(input).some(
+              (key) => !["revision", "confirm"].includes(key),
+            )
+          )
+            throw new HttpError(400, "Confirm removing the saved Ark API key.");
+          response = json(await credentials.remove(input.revision as number));
+        } else throw new HttpError(405, "Method not allowed.");
       } else if (
         url.pathname === "/v1/connection" &&
         request.method === "PUT"
@@ -272,6 +321,7 @@ export async function handle(
 export default {
   fetch: (request, env) => handle(request, env),
   async scheduled(_event, env) {
+    await rewrapRetiredKeys(env).catch(() => {});
     await tick(env);
   },
 } satisfies ExportedHandler<Env>;
