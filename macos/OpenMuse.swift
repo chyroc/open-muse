@@ -36,6 +36,9 @@ private final class BundleAssets: NSObject, WKURLSchemeHandler {
 final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, WKScriptMessageHandlerWithReply {
     private var window: NSWindow!
     private var webView: WKWebView!
+    private var settingsWindow: NSWindow?
+    private var settingsWebView: WKWebView?
+    private var configuration: WKWebViewConfiguration!
     private let assets = BundleAssets()
     private var closingApproved = false
     private var discardPromptOpen = false
@@ -63,7 +66,16 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         configuration.setURLSchemeHandler(assets, forURLScheme: "muse")
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museCredentials")
         configuration.userContentController.add(self, name: "museExport")
+        configuration.userContentController.add(self, name: "museWindow")
         configuration.userContentController.addUserScript(WKUserScript(source: "window.__OPEN_MUSE_DESKTOP__ = true;", injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        if let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
+           let data = try? JSONSerialization.data(withJSONObject: version, options: .fragmentsAllowed),
+           let json = String(data: data, encoding: .utf8) {
+            configuration.userContentController.addUserScript(WKUserScript(
+                source: "window.__OPEN_MUSE_VERSION__ = \(json);",
+                injectionTime: .atDocumentStart, forMainFrameOnly: true
+            ))
+        }
         if let data = try? JSONSerialization.data(withJSONObject: Locale.preferredLanguages),
            let languages = String(data: data, encoding: .utf8) {
             configuration.userContentController.addUserScript(WKUserScript(
@@ -71,16 +83,41 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
                 injectionTime: .atDocumentStart, forMainFrameOnly: true
             ))
         }
-        webView = WKWebView(frame: window.contentView!.bounds, configuration: configuration)
-        webView.autoresizingMask = [.width, .height]
-        webView.navigationDelegate = self
-        webView.uiDelegate = self
-        #if DEBUG
-        webView.isInspectable = true
-        #endif
+        self.configuration = configuration
+        webView = makeWebView(window.contentView!.bounds)
         window.contentView = webView
         webView.load(URLRequest(url: URL(string: "muse://app/")!))
         window.makeKeyAndOrderFront(nil)
+        NSApplication.shared.activate(ignoringOtherApps: true)
+    }
+    private func makeWebView(_ frame: NSRect) -> WKWebView {
+        let view = WKWebView(frame: frame, configuration: configuration)
+        view.autoresizingMask = [.width, .height]
+        view.navigationDelegate = self
+        view.uiDelegate = self
+        #if DEBUG
+        view.isInspectable = true
+        #endif
+        return view
+    }
+    // The settings window is its own fixed-size window, and it keeps its web view
+    // so reopening it does not repeat the Keychain authorization prompt.
+    @objc private func openSettings() {
+        if settingsWindow == nil {
+            let panel = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 600), styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
+            panel.title = localized("Settings")
+            panel.titleVisibility = .hidden
+            panel.titlebarAppearsTransparent = true
+            panel.isReleasedWhenClosed = false
+            panel.delegate = self
+            panel.center()
+            let view = makeWebView(panel.contentView!.bounds)
+            panel.contentView = view
+            view.load(URLRequest(url: URL(string: "muse://app/#/settings")!))
+            settingsWebView = view
+            settingsWindow = panel
+        }
+        settingsWindow?.makeKeyAndOrderFront(nil)
         NSApplication.shared.activate(ignoringOtherApps: true)
     }
     private func trusted(_ message: WKScriptMessage) -> Bool {
@@ -93,7 +130,14 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         // or discard the eventual reply while the user is deciding.
         DispatchQueue.global(qos: .userInitiated).async { [self] in
             credentials(body) { value, error in
-                DispatchQueue.main.async { replyHandler(value, error) }
+                DispatchQueue.main.async {
+                    replyHandler(value, error)
+                    // Both windows share one connection, so a credential change in
+                    // either of them refreshes the other instead of going stale.
+                    guard error == nil, body["operation"] == "write" else { return }
+                    let other = message.webView === self.webView ? self.settingsWebView : self.webView
+                    other?.evaluateJavaScript("window.dispatchEvent(new Event('muse-credentials-changed'))", completionHandler: nil)
+                }
             }
         }
     }
@@ -127,16 +171,24 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         } else { replyHandler(nil, "Invalid credential operation") }
     }
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        guard trusted(message), message.name == "museExport", let value = message.body as? [String: String], let id = value["id"], let name = value["name"], let content = value["content"], content.utf8.count <= 20_000_000 else { return }
+        guard trusted(message) else { return }
+        if message.name == "museWindow" {
+            if (message.body as? [String: String])?["name"] == "settings" { openSettings() }
+            return
+        }
+        guard message.name == "museExport", let value = message.body as? [String: String], let id = value["id"], let name = value["name"], let content = value["content"], content.utf8.count <= 20_000_000 else { return }
+        // Answer the web view that asked, and sheet its own window, so a second
+        // window never steals or loses another window's export result.
+        guard let sender = message.webView, let host = sender.window else { return }
         let panel = NSSavePanel()
         panel.nameFieldStringValue = URL(fileURLWithPath: name).lastPathComponent
-        panel.beginSheetModal(for: window) { [weak self] response in
+        panel.beginSheetModal(for: host) { [weak sender] response in
             var result: [String: Any] = ["id": id, "success": false, "cancelled": response != .OK]
             if response == .OK, let url = panel.url {
                 do { try Data(content.utf8).write(to: url, options: .atomic); result["success"] = true } catch {}
             }
             if let data = try? JSONSerialization.data(withJSONObject: result), let json = String(data: data, encoding: .utf8) {
-                self?.webView.evaluateJavaScript("window.dispatchEvent(new CustomEvent('muse-export-result', {detail:\(json)}))", completionHandler: nil)
+                sender?.evaluateJavaScript("window.dispatchEvent(new CustomEvent('muse-export-result', {detail:\(json)}))", completionHandler: nil)
             }
         }
     }
@@ -195,9 +247,9 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     }
     private func command(_ name: String) {
         guard let data = try? JSONSerialization.data(withJSONObject: name, options: .fragmentsAllowed), let json = String(data: data, encoding: .utf8) else { return }
+        window.makeKeyAndOrderFront(nil)
         webView?.evaluateJavaScript("window.dispatchEvent(new CustomEvent('muse-command', {detail:\(json)}))", completionHandler: nil)
     }
-    @objc private func openSettings() { command("settings") }
     @objc private func newSideChat() { command("new-chat") }
     @objc private func openSearch() { command("search") }
     @objc private func openMainChat() { command("main-chat") }
@@ -236,6 +288,8 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         }
     }
     func windowShouldClose(_ sender: NSWindow) -> Bool {
+        // Only the workspace window holds an editable document.
+        guard sender === window else { return true }
         if closingApproved { return true }
         confirmDiscard { [weak self] allowed in
             guard let self, allowed else { return }

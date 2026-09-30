@@ -44,6 +44,7 @@ const LibraryPage = lazy(() =>
 );
 import { MacGoals } from "./goals";
 import { libraryPath } from "./library";
+import { openNativeSettings } from "./settings";
 import { WorkspaceBoundary } from "./WorkspaceBoundary";
 import {
   discussionPrompt,
@@ -203,6 +204,10 @@ export function DesktopApp({ client }: { client: Client }) {
     }
     location.hash = path;
   }
+  // The Mac app answers with its own settings window; the panel is the fallback.
+  function openSettings() {
+    if (!openNativeSettings()) setSettings(true);
+  }
   const goPage = (page: Page) => {
     // Reselecting Library closes the side-by-side chat and keeps the category.
     if (
@@ -242,7 +247,7 @@ export function DesktopApp({ client }: { client: Client }) {
         );
         return;
       }
-      if (action === "settings") setSettings(true);
+      if (action === "settings") openSettings();
       if (action === "search") setSearch(true);
       if (action === "new-chat") {
         navigate("/new");
@@ -269,6 +274,15 @@ export function DesktopApp({ client }: { client: Client }) {
     window.addEventListener("hashchange", change);
     window.addEventListener("muse-command", command);
     window.addEventListener("keydown", key);
+    // The settings window can sign in or out for the whole app.
+    const credentials = () => {
+      void client.restore().then(() => {
+        if (!alive.current) return;
+        setConnectionEpoch((value) => value + 1);
+        void reload();
+      });
+    };
+    window.addEventListener("muse-credentials-changed", credentials);
     void reload();
     const timer = setInterval(() => {
       if (!window.document.hidden) void reload();
@@ -279,8 +293,9 @@ export function DesktopApp({ client }: { client: Client }) {
       window.removeEventListener("hashchange", change);
       window.removeEventListener("muse-command", command);
       window.removeEventListener("keydown", key);
+      window.removeEventListener("muse-credentials-changed", credentials);
     };
-  }, [reload]);
+  }, [reload, client]);
   useEffect(() => {
     if (!away && scroll.current)
       scroll.current.scrollTop = scroll.current.scrollHeight;
@@ -328,7 +343,7 @@ export function DesktopApp({ client }: { client: Client }) {
     const text = draft.trim();
     if (!text || running || busyRef.current) return;
     if (!ready) {
-      setSettings(true);
+      openSettings();
       return;
     }
     const quote =
@@ -428,7 +443,7 @@ export function DesktopApp({ client }: { client: Client }) {
                   "Close the document before switching accounts. Your draft is preserved.",
                 ),
               )
-            : setSettings(true)
+            : openSettings()
         }
         onStatus={() => {
           if (route.page !== "chat") {
@@ -542,7 +557,7 @@ export function DesktopApp({ client }: { client: Client }) {
             split={splitChat}
             onToggleChat={() => setSplitChat((value) => !value)}
             onEditorChange={onFeedEditorChange}
-            onConnect={() => setSettings(true)}
+            onConnect={() => openSettings()}
             onOpenChat={(id) => navigate(`/chat/${id}`)}
             onDiscuss={(item) => {
               setQuotedPost(item);
@@ -560,7 +575,7 @@ export function DesktopApp({ client }: { client: Client }) {
               split={splitChat}
               onToggleChat={() => setSplitChat((value) => !value)}
               onEditorChange={onFeedEditorChange}
-              onConnect={() => setSettings(true)}
+              onConnect={() => openSettings()}
               onOpenChat={(id) => navigate(`/chat/${id}`)}
               onMainChat={async (id) => {
                 const conversations = await client.conversationIndex();
@@ -595,7 +610,7 @@ export function DesktopApp({ client }: { client: Client }) {
                 split={splitChat}
                 onToggleChat={() => setSplitChat((value) => !value)}
                 onEditorChange={onFeedEditorChange}
-                onConnect={() => setSettings(true)}
+                onConnect={() => openSettings()}
                 onOpenChat={(id) => navigate(`/chat/${id}`)}
                 onConversation={async (id) => {
                   const [conversations, labels] = await Promise.all([
@@ -647,7 +662,7 @@ export function DesktopApp({ client }: { client: Client }) {
                 view={route.libraryView ?? "all"}
                 split={splitChat}
                 onView={(view) => navigate(libraryPath(view))}
-                onConnect={() => setSettings(true)}
+                onConnect={() => openSettings()}
                 onToggleChat={() => setSplitChat((value) => !value)}
                 onOpenChat={(id) => navigate(`/chat/${id}`)}
                 onDocument={openDocument}
@@ -780,7 +795,7 @@ export function DesktopApp({ client }: { client: Client }) {
                   {!ready && (
                     <button
                       className="pill-button"
-                      onClick={() => setSettings(true)}
+                      onClick={() => openSettings()}
                     >
                       {t("Connect to Ark MA")}
                     </button>

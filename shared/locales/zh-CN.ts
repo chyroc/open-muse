@@ -1002,4 +1002,89 @@ export const zhCN: Record<string, string> = {
     "现有消息尚未发送。是否替换为创建提示？",
   "Nothing was removed. The saved copy changed on this Mac.":
     "未移除任何内容。此 Mac 上保存的副本已发生变化。",
+  "Settings sections": "设置分类",
+  General: "通用",
+  Connectors: "连接器",
+  "Computer use": "电脑操作",
+  "File system access": "文件系统访问",
+  Dictation: "听写",
+  Wallet: "钱包",
+  "Secure storage": "安全存储",
+  Permissions: "权限",
+  "Message channels": "消息渠道",
+  Devices: "设备",
+  "Data controls": "数据控制",
+  "Help and support": "帮助与支持",
+  Legal: "法律信息",
+  "Sign out": "退出登录",
+  "Sign out of this Mac?": "退出此 Mac 的登录？",
+  Connection: "连接",
+  Language: "语言",
+  About: "关于",
+  "Interface language": "界面语言",
+  "Muse follows your system language list and keeps no separate override, so changing it in System Settings changes the app.":
+    "Muse 跟随你的系统语言列表，不保存独立的语言设置；在「系统设置」中更改语言即可改变本应用。",
+  "Date and number format": "日期与数字格式",
+  "System preference list": "系统语言偏好顺序",
+  Version: "版本",
+  "Unknown outside the Mac app": "在 Mac 应用之外无法获取",
+  Appearance: "外观",
+  "This build renders one light appearance. Dark mode and accent colors are not built yet.":
+    "此版本仅提供一种浅色外观，深色模式和主题色尚未实现。",
+  Updates: "更新",
+  "Automatic update checks are not built yet. Install a newer build yourself.":
+    "自动检查更新尚未实现，请自行安装新版本。",
+  Status: "状态",
+  "Manage connection": "管理连接",
+  "Credentials for this Mac live in the macOS Keychain and are read through the native bridge. They are never written into the page, a file, or a server.":
+    "此 Mac 的凭据保存在 macOS 钥匙串中，通过原生桥接读取，不会写入页面、文件或任何服务器。",
+  "Ark credentials": "Ark 凭据",
+  "Stored in your login Keychain for this app. macOS may ask you to authorize access after a new build is installed.":
+    "保存在本应用对应的登录钥匙串条目中。安装新版本后，macOS 可能要求你重新授权访问。",
+  "Other devices": "其他设备",
+  "Credentials never sync. Signing in here does not sign in anywhere else.":
+    "凭据不会同步。在此登录不会让其他设备登录。",
+  "Agent credential vaults": "智能体凭据保险库",
+  "MA vault storage for your agent's own credentials is not connected in this Mac build.":
+    "此 Mac 版本尚未接入 MA 为智能体保存凭据的保险库。",
+  "Permission requests are decided in the chat, not here. These are the rules this build actually applies.":
+    "权限请求在对话中决定，不在这里。以下是此版本实际执行的规则。",
+  "Automatically approved": "自动批准",
+  "Only pending web_search and web_fetch requests, matched by exact protocol name. There is no setting that widens this.":
+    "仅限按协议名精确匹配的待处理 web_search 与 web_fetch 请求，没有任何设置可以放宽。",
+  "Always asked": "始终询问",
+  "Every other tool, including file, memory and connector operations, waits for you in the conversation.":
+    "其他所有工具（包括文件、记忆与连接器操作）都会在对话中等待你确认。",
+  "Write requests": "写入请求",
+  "A write is never retried automatically. If a result is unclear, the app reads history instead of repeating it.":
+    "写入请求永不自动重试。结果不明确时，应用会先查询历史，而不是重复提交。",
+  "Open Muse has no server of its own. Nothing is collected, and no analytics or crash reports leave this Mac.":
+    "Open Muse 没有自己的服务器，不收集任何数据，也不会把分析或崩溃报告发送出这台 Mac。",
+  "On this Mac": "在此 Mac 上",
+  "Conversation index, goals, ideas, feed preferences and saved Library replies live in a local database scoped to the connected account and project.":
+    "对话索引、目标、想法、动态偏好和已保存的资料库回复，存放在按账户与项目隔离的本地数据库中。",
+  "In your Ark project": "在你的 Ark 项目中",
+  "Sessions, events, memory documents and agent configuration stay in the cloud project you connected, under its own retention rules.":
+    "会话、事件、记忆文档和智能体配置保留在你连接的云端项目中，遵循该项目自身的保留规则。",
+  "Signing out": "退出登录",
+  "Removes this Mac's credentials. Local records are preserved and are unreadable without the same connection.":
+    "只移除此 Mac 的凭据。本地记录会保留，且在没有同一连接的情况下无法读取。",
+  "This section is listed because the desktop app it follows has it. Nothing here is simulated.":
+    "此分类之所以列出，是因为参照的桌面应用有它；这里不会模拟任何内容。",
+  "MCP connectors and their OAuth flows are not wired into this Mac build. Tools stay limited to what your agent already has.":
+    "此 Mac 版本尚未接入 MCP 连接器及其 OAuth 流程，可用工具仅限智能体已有的能力。",
+  "This Mac build cannot let an agent control your computer. Nothing on this Mac is exposed to MA.":
+    "此 Mac 版本无法让智能体操作你的电脑，这台 Mac 上的任何内容都不会开放给 MA。",
+  "Sandbox file browsing is not connected. Library's System files only opens your MA memory documents.":
+    "尚未接入沙箱文件浏览。资料库的「系统文件」只能打开你的 MA 记忆文档。",
+  "This client holds no payment method and performs no billing. Cloud usage is billed by your Ark account.":
+    "此客户端不保存任何支付方式，也不进行计费；云端用量由你的 Ark 账户结算。",
+  "There is no Open Muse service to deliver messages from, so no email, SMS or chat channel can be connected.":
+    "Open Muse 没有可用于发送消息的服务，因此无法接入邮件、短信或聊天渠道。",
+  "Each client keeps its own local data and credentials, so this Mac cannot list or manage your other devices.":
+    "每个客户端各自保存本地数据与凭据，因此这台 Mac 无法列出或管理你的其他设备。",
+  "This personal client ships no support channel. Its documentation is the project README.":
+    "这个个人客户端不提供支持渠道，其文档就是项目的 README。",
+  "Open Muse runs no service of its own and ships no legal documents. Cloud use follows the agreement of the Ark account you connect.":
+    "Open Muse 不运行自己的服务，也不附带法律文件；云端使用遵循你所连接的 Ark 账户的协议。",
 };

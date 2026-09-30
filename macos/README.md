@@ -36,6 +36,40 @@ automation, and proactive scheduling still need their Mac-specific implementatio
 and acceptance checks. The UI identifies unfinished surfaces. No mock replies are
 included in the app. Real cloud verification requires an authorized connection.
 
+## Settings window
+
+Command-comma, the rail's settings button and every "connect" action open a
+separate 800 × 600 window with a 225-point section list. The window only closes;
+it does not resize or zoom, and closing it leaves the workspace untouched. Both
+windows share one connection: a sign-in or sign-out in either refreshes the other
+through the native credential bridge, and native callbacks answer the window that
+asked for them.
+
+General opens with grouped rows: connection status, sign-in method and project,
+then the resolved interface language with the rule that the app follows the
+system list and stores no override, then the bundle version. The shared sign-in
+panel stays collapsed behind a "manage connection" row so it never pushes the
+other groups off the first screen. Secure storage describes where credentials
+actually live. Permissions states the rules this build applies: only pending
+`web_search`/`web_fetch` are auto-approved by exact protocol name, everything
+else waits in the conversation, and writes are never retried. Data controls
+inventories local and cloud records. Both sign-out paths — the sidebar entry and
+the shared panel's own button — stop at the same confirmation, and neither
+revokes the cloud key.
+
+Connectors, computer use, file system access, dictation, wallet, message
+channels, devices, help and legal keep their place in the list and explain why
+they are not connected. None of them render a control that does nothing: there is
+no appearance switch, theme picker, language picker, usage meter, startup toggle
+or update check, because this shell does not implement them yet. They are pending
+Mac features, not dropped ones, and each will arrive with its own capability.
+
+Two known differences from the reference window are deliberate. The section list
+is localized, while the reference leaves "Computer use", "File system access" and
+"Dictation" untranslated in a Chinese interface. The account, usage and language
+panes are replaced by facts this client can prove instead of an account portal,
+a quota meter and a 47-language picker it has no data or override for.
+
 ## Desktop Library
 
 Library has a 240-point category sidebar, search, grid/list layouts, pinning,

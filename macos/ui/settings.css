@@ -1,0 +1,163 @@
+/* Matches the reference settings window: fixed 800 x 600, a 225-point list and
+   a content column with 24-point gutters. */
+.settings-window {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  background: #fff;
+  color: #242424;
+}
+.settings-sidebar {
+  width: 225px;
+  flex: 0 0 225px;
+  /* The window draws under the title bar, so the list starts below the
+     traffic lights instead of colliding with them. */
+  padding: 36px 0 16px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--line);
+  background: #fbfbfc;
+}
+.settings-sidebar-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: auto;
+  min-height: 0;
+}
+.settings-sidebar button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 32px;
+  flex-shrink: 0;
+  margin: 0 16px;
+  padding: 0 10px;
+  border-radius: 9px;
+  text-align: left;
+  font-size: 13px;
+  color: #242424;
+}
+.settings-sidebar button svg {
+  color: #6f6f75;
+  flex-shrink: 0;
+}
+.settings-sidebar button:hover {
+  background: #f0f0f2;
+}
+.settings-sidebar button[aria-current] {
+  background: #ebebee;
+  font-weight: 550;
+}
+.settings-sidebar button[aria-current] svg {
+  color: #242424;
+}
+.settings-sign-out {
+  margin-top: auto !important;
+}
+.settings-main {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 20px 24px 40px;
+}
+.settings-main h1 {
+  font-size: 20px;
+  font-weight: 650;
+  margin: 0 0 18px;
+}
+.settings-main h2 {
+  font-size: 14px;
+  font-weight: 500;
+  color: #6f6f75;
+  margin: 22px 0 8px;
+}
+.settings-lead {
+  font-size: 13px;
+  line-height: 1.55;
+  color: #4a4a50;
+  margin: 0 0 16px;
+  max-width: 62ch;
+}
+.settings-group {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+}
+.settings-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+.settings-row:last-child {
+  border-bottom: 0;
+}
+.settings-row strong {
+  font-weight: 500;
+}
+.settings-row p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #6f6f75;
+  max-width: 58ch;
+}
+.settings-row > span {
+  margin-left: auto;
+  font-size: 13px;
+  color: #6f6f75;
+  white-space: nowrap;
+}
+.settings-unavailable .settings-row strong {
+  color: #8a6d3b;
+}
+.settings-disclosure {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 12px;
+  padding: 13px 16px;
+  font-size: 14px;
+  text-align: left;
+}
+.settings-disclosure strong {
+  font-weight: 500;
+}
+.settings-disclosure svg {
+  margin-left: auto;
+  color: #6f6f75;
+  transition: transform 0.15s;
+}
+.settings-disclosure svg.open {
+  transform: rotate(180deg);
+}
+.settings-disclosure:hover {
+  background: #f6f6f7;
+}
+/* The shared sign-in panel keeps its own markup; the group only hosts it. */
+.settings-auth {
+  margin-top: 8px;
+  padding: 4px 6px;
+}
+.settings-auth .settings-card,
+.settings-auth .settings-card-heading {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.settings-auth h2 {
+  font-size: 15px;
+  color: #242424;
+  margin: 0;
+}
+.settings-error {
+  color: #973d39;
+  font-size: 13px;
+}
+.settings-main .settings-card {
+  margin: 0;
+}

@@ -2,6 +2,8 @@ import { initializeLanguage, t } from "../../shared/i18n";
 import { createRoot } from "react-dom/client";
 import { Client } from "../../src/api";
 import { DesktopApp } from "./DesktopApp";
+import { SettingsWindow } from "./SettingsWindow";
+import { isSettingsRoute } from "./settings";
 import { nativeCredentials } from "./credentials";
 import "./desktop.css";
 import "./documents.css";
@@ -11,6 +13,9 @@ import "./goals.css";
 
 initializeLanguage();
 const client = new Client({ vault: nativeCredentials });
+// The native shell opens the settings window on its own route, so one bundle
+// serves both windows without the workspace rendering behind it.
+const settingsWindow = isSettingsRoute(location.hash);
 const root = createRoot(document.getElementById("root")!);
 async function start() {
   root.render(
@@ -25,7 +30,13 @@ async function start() {
   );
   try {
     await client.restore();
-    root.render(<DesktopApp client={client} />);
+    root.render(
+      settingsWindow ? (
+        <SettingsWindow client={client} />
+      ) : (
+        <DesktopApp client={client} />
+      ),
+    );
   } catch (error) {
     root.render(
       <main className="startup-error">
