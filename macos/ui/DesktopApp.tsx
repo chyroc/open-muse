@@ -311,9 +311,17 @@ export function DesktopApp({ client }: { client: Client }) {
     const timer = setInterval(() => {
       if (!window.document.hidden) void reload();
     }, 15000);
+    // The poll skips its work while another window occludes this one, so the
+    // workspace reads the connection again as soon as it is visible instead of
+    // waiting for the next tick. Drafts and open documents are not touched.
+    const visibility = () => {
+      if (!window.document.hidden) void reload();
+    };
+    window.document.addEventListener("visibilitychange", visibility);
     return () => {
       alive.current = false;
       clearInterval(timer);
+      window.document.removeEventListener("visibilitychange", visibility);
       window.removeEventListener("hashchange", change);
       window.removeEventListener("muse-command", command);
       window.removeEventListener("keydown", key);
