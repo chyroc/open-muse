@@ -289,18 +289,33 @@ describe("Account workspace settings changes", () => {
       const resolved = await reconcile();
       expect(updates()).toBe(before + 1);
       if (outcome === "matches_now") {
-        // Ark shows the requested values, which is sealed, but that does not
-        // prove this write executed, so it is never reported as applied.
+        // Ark shows the requested values, which are sealed, but that does
+        // not prove this write executed: it is never reported as applied, and
+        // the environment is marked as possibly different.
         expect(resolved.status).toBe(200);
-        expect(await resolved.json()).toMatchObject({ change: "matches_now" });
+        expect(await resolved.json()).toMatchObject({
+          change: "matches_now",
+          settings: "drift",
+        });
         expect((await record()).workspace.environment).toEqual(
           expect.objectContaining({
-            config: {
-              type: "cloud",
-              networking: { type: `after-${failure}` },
-            },
+            config: config(`after-${failure}`).config,
           }),
         );
+        // A later change is confirmed and sealed; the mark stays.
+        expect((await change("environment", config("next"))).status).toBe(200);
+        expect(await record()).toMatchObject({ settings: "drift" });
+        // The earlier write arrives again late and replaces it.
+        const id = (await record()).workspace.environmentId;
+        ark.environments[id].config = config(`after-${failure}`).config;
+        expect(await (await reconcile()).json()).toMatchObject({
+          change: "drift_kept",
+          settings: "drift",
+        });
+        expect(updates()).toBe(before + 2);
+        expect(await (await reconcile("adopt")).json()).toMatchObject({
+          change: "adopted",
+        });
         expect((await record()).settings).toBeUndefined();
         return;
       }
@@ -356,6 +371,10 @@ describe("Account workspace settings changes", () => {
     expect(updates()).toBe(before + 1);
     expect(await (await reconcile()).json()).toMatchObject({
       change: "matches_now",
+      settings: "drift",
+    });
+    expect(await (await reconcile("adopt")).json()).toMatchObject({
+      change: "adopted",
     });
   });
 
@@ -809,6 +828,24 @@ describe("Account workspace settings changes", () => {
     expect((await new Repository(env.DB, owner).schedule()).enabled).toBe(
       false,
     );
+    // The new agent starts its own version history; the saved snapshot
+    // follows it, so the first change builds on it without a drift.
+    expect(saved.workspace.agent!.version).not.toBe(newAgent.version);
+    expect(rebuilt.workspace.agent).toMatchObject({
+      version: newAgent.version,
+      system: "User instructions to keep",
+    });
+    const beforeChange = updates();
+    expect(
+      (
+        await change("agent", {
+          version: newAgent.version as number,
+          system: "After the rebuild",
+        })
+      ).status,
+    ).toBe(200);
+    expect(updates()).toBe(beforeChange + 1);
+    expect((await record()).settings).toBeUndefined();
   });
 
   it("keeps unusable saved settings and recreates with defaults only when asked", async () => {

@@ -309,7 +309,9 @@ deployed or that a real unattended generation can complete.
   version, which proves this one write executed. For an environment, which has
   no version, Ark showing the requested values is sealed but reported as
   `"matches_now"`: if the write had not executed yet, it may still arrive
-  later. `"not_applied_yet"` is reported only while the agent is still at the
+  later and replace a later change, so the environment is marked as drifted
+  and background work stops in the same batch. `"not_applied_yet"` is
+  reported only while the agent is still at the
   change's base version; the record is released with the saved settings kept,
   and if the change arrives later the agent's version has moved, so the next
   change is refused and checked again instead of overwriting it. Any other
@@ -335,7 +337,9 @@ deployed or that a real unattended generation can complete.
 
 When a recorded agent or environment was deleted at Ark, `POST
 /v1/account/workspace` creates it again from the account's saved settings and
-reports `rebuilt: {agent|environment: "restored"}`. If the saved settings
+reports `rebuilt: {agent|environment: "restored"}`. A restored agent starts a
+new version history, so its saved settings take the new agent's version in the
+same write. If the saved settings
 reference resources an account cannot use, it returns 409
 `{code: "rebuild_review", details}` and keeps them; only `resetSettings: true`
 recreates the resource with default settings, reports

@@ -149,6 +149,44 @@ describe("Workspace settings review", () => {
     expect(host.textContent).toContain("检查时 Ark 与已保存的设置一致");
   });
 
+  it("shows long values in full, since saving accepts all of them", async () => {
+    const system = "x".repeat(64_000);
+    await setup("en-US", "drift", {
+      kind: "agent",
+      saved: { system: "short" },
+      current: { system },
+      differs: ["system"],
+    });
+    const [, now] = host.querySelectorAll("details pre");
+    expect(now.textContent).toBe(system);
+  });
+
+  it("shows the next resource once the first decision is made", async () => {
+    const client = await setup("en-US", "drift");
+    client.compareWorkspaceSettings.mockResolvedValueOnce({
+      revision: 4,
+      kind: "agent",
+      saved: {},
+      current: {},
+      differs: [],
+      unusable: [],
+      tooLarge: false,
+      expected: reviewed,
+    });
+    await act(async () => root!.render(<></>));
+    await act(async () =>
+      root!.render(<WorkspacePanel client={client as unknown as Client} />),
+    );
+    expect(host.querySelector("h4")!.textContent).toBe("Agent settings");
+    // The first resource is accepted; the other one still drifts.
+    client.checkWorkspaceSettings.mockImplementationOnce(async () => ({
+      change: "adopted",
+    }));
+    await press("Save the current settings");
+    expect(host.querySelector("h4")!.textContent).toBe("Environment settings");
+    expect(client.compareWorkspaceSettings).toHaveBeenCalledTimes(3);
+  });
+
   it("offers only a check for an unconfirmed change and defaults to English", async () => {
     const client = await setup("fr-FR", "unconfirmed");
     expect(buttons()).toEqual(["Check the last change"]);

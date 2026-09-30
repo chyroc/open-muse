@@ -24,12 +24,11 @@ function reviewNote(review: NonNullable<WorkspaceStatus["review"]>) {
           );
 }
 
-// Settings values are the user's own and shown as they are, shortened.
+// Settings values are the user's own and shown as they are, in full: saving
+// accepts exactly these values.
 function shown(value: unknown) {
   if (value === undefined || value === null) return t("Not set");
-  const text =
-    typeof value === "string" ? value : JSON.stringify(value, null, 2);
-  return text.length > 4000 ? `${text.slice(0, 4000)}…` : text;
+  return typeof value === "string" ? value : JSON.stringify(value, null, 2);
 }
 
 // Ark's current values next to the saved ones, so adopting saves only what
@@ -134,7 +133,7 @@ export function WorkspacePanel({ client }: { client: Client }) {
       if (result.change === "matches_now")
         setNotice(
           t(
-            "Ark matched the saved settings when checked. An earlier unconfirmed environment change may still arrive, so they stay marked as possibly different.",
+            "Ark matched the saved settings when checked. An earlier unconfirmed environment change may still arrive and replace later changes, so the environment is marked as possibly different.",
           ),
         );
     } catch (e) {

@@ -123,8 +123,8 @@ export const zhAccount: Record<string, string> = {
     "你保留了已保存的设置，但 Ark 中的智能体或环境现在或以后都可能与之不同，因为之前一次未确认的更改仍可能稍后生效。在你保存 Ark 当前设置之前，后台任务保持暂停。",
   "Saving the current settings accepts Ark's values as they are when you save them. An earlier unconfirmed change may still arrive later.":
     "保存当前设置即表示接受保存时 Ark 中的值。之前一次未确认的更改仍可能稍后生效。",
-  "Ark matched the saved settings when checked. An earlier unconfirmed environment change may still arrive, so they stay marked as possibly different.":
-    "检查时 Ark 与已保存的设置一致。之前一次未确认的环境更改仍可能稍后生效，因此仍标记为可能不同。",
+  "Ark matched the saved settings when checked. An earlier unconfirmed environment change may still arrive and replace later changes, so the environment is marked as possibly different.":
+    "检查时 Ark 与已保存的设置一致。之前一次未确认的环境更改仍可能稍后生效并覆盖之后的更改，因此环境已标记为可能不同。",
   "Check the settings again": "重新检查设置",
   "Agent settings": "智能体设置",
   "Environment settings": "环境设置",

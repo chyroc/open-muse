@@ -463,15 +463,17 @@ export class AccountWorkspaces {
         metadata: { [label]: workspaceKey, open_muse_provision: nonce },
       };
       let created: string;
+      let version: unknown;
       try {
-        created = validId(
-          (
-            await ark.request<{ id: string }>(`/${collection}`, {
-              method: "POST",
-              body: JSON.stringify(body),
-            })
-          ).id,
+        const response = await ark.request<{ id: string; version?: unknown }>(
+          `/${collection}`,
+          {
+            method: "POST",
+            body: JSON.stringify(body),
+          },
         );
+        created = validId(response.id);
+        version = response.version;
       } catch (error) {
         if (
           error instanceof ApiError &&
@@ -489,10 +491,20 @@ export class AccountWorkspaces {
           "The workspace creation result is unconfirmed. Continue setup to check it; nothing was repeated.",
         );
       }
+      // A restored agent starts a new version history; the saved snapshot
+      // takes the new agent's version so later changes build on it.
+      let restored: Record<string, unknown> | undefined;
+      if (kind === "agent" && next.agent) {
+        const { version: _old, ...rest } = next.agent as Record<
+          string,
+          unknown
+        >;
+        restored = typeof version === "number" ? { ...rest, version } : rest;
+      }
       await this.write(
         workspaceKey,
         revision,
-        { ...next, [field]: created },
+        { ...next, [field]: created, ...(restored ? { agent: restored } : {}) },
         null,
         now,
         { kind, id: created },
@@ -669,6 +681,9 @@ export class AccountWorkspaces {
     now: number,
     // The user explicitly accepted Ark's current values.
     accepted = false,
+    // Ark shows these values, but nothing proves the write executed: it may
+    // still arrive later, so Ark stays marked as possibly different.
+    unproven = false,
   ) {
     const settings = pick(current, settingsFields[kind]);
     const row = await this.row(workspaceKey);
@@ -704,6 +719,7 @@ export class AccountWorkspaces {
     // a rebuild.
     const drift = { ...workspace.drift };
     if (kind === "agent" || accepted) delete drift[kind];
+    if (unproven) drift[kind] = now;
     await this.write(
       workspaceKey,
       held,
@@ -715,6 +731,9 @@ export class AccountWorkspaces {
       },
       null,
       now,
+      undefined,
+      // A drift stops background work in the same batch.
+      unproven,
     );
     // Background work pins the agent version it was allowed with. Rebinding
     // to the confirmed new version pauses the schedule until the user enables
@@ -905,6 +924,7 @@ export class AccountWorkspaces {
         credentialRevision,
         now,
         change === "adopted",
+        change === "matches_now",
       )),
       change,
     });
@@ -932,8 +952,11 @@ export class AccountWorkspaces {
       current.version === (update.base ?? 0) + 1
     )
       return seal("applied");
-    // Environment: Ark shows the requested values now, but that does not
-    // prove the write executed; if it had not, it may still arrive later.
+    // Environment: Ark shows the requested values now, which are sealed, but
+    // that does not prove the write executed; if it had not, it may still
+    // arrive later and replace a later change. The environment is marked as
+    // possibly different and background work stops, as when the user keeps
+    // the saved settings; only the user's acceptance or a rebuild ends it.
     if (matches && kind === "environment") return seal("matches_now");
     if (mode === "adopt" && update.state === "review") return seal("adopted");
     // An agent still at the base version had not taken the change when read.
