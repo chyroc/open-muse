@@ -60,6 +60,12 @@ export interface AccountProvider {
     credentialRevision: number,
     replaceUnconfirmed?: boolean,
   ): Promise<AccountWorkspaceResponse>;
+  updateAccountWorkspace(
+    kind: "agent" | "environment",
+    changes: Record<string, unknown>,
+    revision: number,
+    credentialRevision: number,
+  ): Promise<AccountWorkspaceResponse>;
 }
 
 export class DirectAuth {

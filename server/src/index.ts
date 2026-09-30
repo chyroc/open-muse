@@ -112,6 +112,41 @@ export async function handle(
           connection: await connections.status(),
           schedule: await repo.schedule(),
         });
+      } else if (
+        url.pathname === "/v1/account/workspace/settings" &&
+        request.method === "PUT"
+      ) {
+        if (!account)
+          throw new HttpError(
+            403,
+            "Sign in with a Muse account to change the workspace.",
+          );
+        const input = await body(request, 131072);
+        if (
+          input.confirm !== true ||
+          !["agent", "environment"].includes(input.kind as string) ||
+          !Number.isSafeInteger(input.revision) ||
+          !Number.isSafeInteger(input.credentialRevision) ||
+          Object.keys(input).some(
+            (key) =>
+              ![
+                "kind",
+                "changes",
+                "revision",
+                "credentialRevision",
+                "confirm",
+              ].includes(key),
+          )
+        )
+          throw new HttpError(400, "Confirm a valid workspace change.");
+        response = json(
+          await new AccountWorkspaces(env, owner, fetcher).update(
+            input.kind as "agent" | "environment",
+            input.changes,
+            input.revision as number,
+            input.credentialRevision as number,
+          ),
+        );
       } else if (url.pathname === "/v1/account/workspace") {
         if (!account)
           throw new HttpError(

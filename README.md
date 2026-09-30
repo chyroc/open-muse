@@ -88,11 +88,21 @@ checked before another write; they are never blindly retried or adopted.
 | Agent, environment, and memory-store IDs; agent model | Open Muse service, `account_workspaces` | AES-GCM, bound to account, workspace key, and revision | Read back from the sealed record |
 | Background binding (resource IDs plus the key, sealed together) | Open Muse service, `ark_connections` | AES-GCM | Server-side only |
 | Schedule (enabled, time zone, time) | Open Muse service, `schedules` | Plain D1 row, account-scoped | Server-side only |
-| Agent instructions, tools, and permission policy | The account's Ark agent, from app-defined defaults | Ark | Same agent resource |
+| Agent model, instructions, tools, permission policy, MCP servers, skills; environment settings | The account's Ark agent and environment, plus a sealed copy in `account_workspaces` of what Ark reported after the last change made through Open Muse | Ark; AES-GCM for the sealed copy | Read back from the sealed record; the resources are the same |
 | Name, SOUL, MEMORY, goals, and Feed instructions | The account's Ark memory store | Ark | Same memory store |
 | Conversation list, saved replies, Library, Feed likes, local approvals | Device IndexedDB, scoped by workspace key | Not app-encrypted | Not synced; conversations themselves remain in Ark |
 | Muse session | Keychain (sessionStorage on web) | OS-protected | Each device signs in |
 | Appearance (Mac) | Device preference | None | Not synced |
+
+In an account build, changes to the agent or environment — Studio's
+`UpdateAgent` and `UpdateEnvironment`, and the app's own policy updates — are
+sent to the Open Muse service, which applies them once to the account's own
+resource, reads the result back, and seals it with the account. Ownership
+labels cannot be changed this way. If background work is allowed, it is rebound
+to the new agent version and the schedule pauses until it is enabled again.
+Studio in an account build reaches only the account's own agent, environment,
+memory store, and sessions; files, skills, and credential vaults are shared by
+everyone who holds the same Ark key and are not account-scoped.
 
 Existing agents retain their model. New agents use the public tool-calling model
 `doubao-seed-2-1-pro-260915`; the Ark project must have access to it. Model access

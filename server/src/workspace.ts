@@ -10,10 +10,12 @@ import {
 } from "../../shared/workspace-spec";
 import {
   accountWorkspaceSchema,
+  agentChangesSchema,
+  environmentChangesSchema,
   type AccountWorkspace,
 } from "../../shared/account-workspace";
 import { AccountCredentials } from "./account";
-import { seal, unseal } from "./connection";
+import { ConnectionStore, seal, unseal } from "./connection";
 import { HttpError, type Env } from "./env";
 
 type Kind = "environment" | "memory_store" | "agent";
@@ -53,7 +55,8 @@ type Row = {
 const purpose = "open-muse-account-workspace";
 const base = "https://ark.cn-beijing.volces.com/api/v3";
 const CREATE_WINDOW = 3_600_000,
-  CREATE_LIMIT = 20;
+  CREATE_LIMIT = 20,
+  UPDATE_LIMIT = 60;
 const validId = (value: unknown) => {
   if (typeof value !== "string" || !/^[\w-]{1,200}$/.test(value))
     throw new HttpError(502, "The upstream resource ID is invalid.");
@@ -189,9 +192,9 @@ export class AccountWorkspaces {
       );
     return revision + 1;
   }
-  private async quota(now: number) {
+  private async quota(now: number, bucket = "provision", limit = CREATE_LIMIT) {
     const result = await this.env.DB.prepare(
-      `INSERT INTO account_rate_limits(owner_id,bucket,window_start,count) VALUES (?,'provision',?,1)
+      `INSERT INTO account_rate_limits(owner_id,bucket,window_start,count) VALUES (?,?,?,1)
       ON CONFLICT(owner_id,bucket) DO UPDATE SET
         count=CASE WHEN account_rate_limits.window_start<=? THEN 1 ELSE account_rate_limits.count+1 END,
         window_start=CASE WHEN account_rate_limits.window_start<=? THEN excluded.window_start ELSE account_rate_limits.window_start END
@@ -199,17 +202,18 @@ export class AccountWorkspaces {
     )
       .bind(
         this.owner,
+        bucket,
         now,
         now - CREATE_WINDOW,
         now - CREATE_WINDOW,
         now - CREATE_WINDOW,
-        CREATE_LIMIT,
+        limit,
       )
       .run();
     if (!result.meta.changes)
       throw new HttpError(
         429,
-        "Too many workspace resources were created for this account. Try again in an hour.",
+        "Too many workspace changes for this account. Try again in an hour.",
       );
   }
   // Only ever lists; the result decides whether a new creation is safe.
@@ -357,5 +361,119 @@ export class AccountWorkspaces {
       );
     }
     return this.read();
+  }
+  // Applies a user's change to the account's own agent or environment. The
+  // target comes from the sealed record, never from the request, and the
+  // resulting settings are sealed with it so other devices and background
+  // work use the same configuration.
+  async update(
+    kind: "agent" | "environment",
+    changes: unknown,
+    revision: number,
+    credentialRevision: number,
+    now = Date.now(),
+  ) {
+    const parsed = (
+      kind === "agent" ? agentChangesSchema : environmentChangesSchema
+    ).safeParse(changes);
+    if (!parsed.success)
+      throw new HttpError(
+        400,
+        "Only name, description, model, instructions, tools, MCP servers, skills, or environment settings can be changed.",
+      );
+    const { workspaceKey, ark } = await this.context(credentialRevision);
+    const row = await this.row(workspaceKey);
+    if ((row?.revision ?? 0) !== revision)
+      throw new HttpError(
+        409,
+        "The workspace settings changed on another device. Refresh before saving.",
+      );
+    const workspace = await this.decode(workspaceKey, row);
+    const { collection, field } = kinds[kind];
+    const id = workspace[field] as string | undefined;
+    if (!id)
+      throw new HttpError(409, "Prepare the workspace before changing it.");
+    await this.quota(now, "update", UPDATE_LIMIT);
+    try {
+      await ark.request(`/${collection}/${encodeURIComponent(id)}`, {
+        method: "POST",
+        body: JSON.stringify(parsed.data),
+      });
+    } catch (error) {
+      if (error instanceof ApiError && error.status < 500)
+        throw new HttpError(
+          422,
+          `Ark refused the change (HTTP ${error.status}). Nothing was saved.`,
+        );
+      // Not repeated: reading the resource again shows whether it applied.
+      throw new HttpError(
+        503,
+        "The change is unconfirmed. Refresh the workspace to check it; it was not repeated.",
+      );
+    }
+    const current = await ark.request<Record<string, unknown>>(
+      `/${collection}/${encodeURIComponent(id)}`,
+    );
+    const fields =
+      kind === "agent"
+        ? [
+            "version",
+            "name",
+            "description",
+            "model",
+            "system",
+            "tools",
+            "mcp_servers",
+            "skills",
+          ]
+        : ["name", "description", "config"];
+    const settings = Object.fromEntries(
+      fields.filter((key) => key in current).map((key) => [key, current[key]]),
+    );
+    if (JSON.stringify(settings).length > 100_000)
+      throw new HttpError(413, "The workspace settings are too large to save.");
+    const model = (settings.model as { id?: unknown } | undefined)?.id;
+    await this.write(
+      workspaceKey,
+      revision,
+      {
+        ...workspace,
+        [kind]: settings,
+        ...(kind === "agent" && typeof model === "string" ? { model } : {}),
+      },
+      null,
+      now,
+    );
+    // Background work pins the agent version it was allowed with. Rebinding
+    // to the new version pauses the schedule until the user enables it again.
+    let background: "unchanged" | "rebound" | "stale" = "unchanged";
+    const connections = new ConnectionStore(this.env, this.owner);
+    const binding = await connections.resolve().catch(() => undefined);
+    if (
+      kind === "agent" &&
+      binding?.revision &&
+      binding.env.ARK_AGENT_ID === id &&
+      typeof settings.version === "number"
+    )
+      try {
+        await connections.save(
+          {
+            apiKey: binding.env.ARK_API_KEY!,
+            project: binding.env.ARK_PROJECT ?? "",
+            agentId: id,
+            agentVersion: settings.version,
+            environmentId: binding.env.ARK_ENVIRONMENT_ID!,
+            memoryStoreId: binding.env.ARK_MEMORY_STORE_ID!,
+          },
+          binding.revision,
+          now,
+          this.fetcher,
+          { credentialRevision, workspaceKey },
+        );
+        background = "rebound";
+      } catch {
+        background = "stale";
+      }
+    return { ...(await this.read()), background };
   }
 }

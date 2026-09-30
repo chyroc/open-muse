@@ -270,6 +270,18 @@ deployed or that a real unattended generation can complete.
   concurrent device, an unconfirmed earlier creation, or a resource changed
   outside Open Muse; 503 when this creation's result is unconfirmed; 429 over the
   hourly limit.
+- `PUT /v1/account/workspace/settings`: `{kind: "agent" | "environment",
+  changes, revision, credentialRevision, confirm: true}`. Applies one change to
+  the account's own recorded agent or environment (the target comes from the
+  sealed record, not the request), reads it back, and seals the reported
+  settings (agent version, name, description, model, system, tools, MCP
+  servers, skills; environment name, description, config) with the record.
+  Only those fields are accepted; `metadata` is refused so ownership labels
+  cannot change. A stale `revision` returns 409 before anything is sent; an
+  unconfirmed result returns 503 and is not repeated. An allowed background
+  binding is rebound to the new agent version, which pauses its schedule, and
+  the response reports `background: "rebound" | "stale" | "unchanged"`. At most
+  60 changes per account per hour.
 
 ### Account Ark credentials
 

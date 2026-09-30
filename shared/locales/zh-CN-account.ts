@@ -103,4 +103,10 @@ export const zhAccount: Record<string, string> = {
     "工作区设置结果尚未确认。继续设置以检查结果；未重复任何操作。",
   "The workspace setup did not finish. Continue setup.":
     "工作区设置尚未完成。请继续设置。",
+  "With a Muse account, Studio reaches only this account's own agent, environment, memory, and sessions.":
+    "使用 Muse 账号时，Studio 只能访问此账号自己的智能体、环境、记忆和会话。",
+  "The workspace settings changed on another device. Refresh and review them before saving again.":
+    "工作区设置已在其他设备上更改。请刷新并检查后再保存。",
+  "The change is unconfirmed. Refresh the workspace to check it; it was not repeated.":
+    "更改结果尚未确认。请刷新工作区检查；未重复提交。",
 };

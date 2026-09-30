@@ -290,8 +290,10 @@ describe("Muse accounts end to end", () => {
       },
     };
   }
-  const workspaces: Record<string, { agentId: string; memoryStoreId: string }> =
-    {};
+  const workspaces: Record<
+    string,
+    { agentId: string; environmentId: string; memoryStoreId: string }
+  > = {};
 
   it("gives two accounts that share one Ark key separate workspaces and memory", async () => {
     for (const email of ["alice@example.com", "bob@example.com"]) {
@@ -337,6 +339,108 @@ describe("Muse accounts end to end", () => {
       )
       .all<{ owner_id: string }>();
     expect(new Set(owners.results.map((row) => row.owner_id)).size).toBe(2);
+  });
+
+  it("seals agent and environment changes with the account and restores them on another device", async () => {
+    const alice = device();
+    await alice.client.restore();
+    await alice.signIn("alice@example.com");
+    const own = workspaces["alice@example.com"];
+    const bob = workspaces["bob@example.com"];
+    const agent = upstream.rows.agents.find((row) => row.id === own.agentId)!;
+    const posts = () =>
+      upstream.fetcher.mock.calls.filter(
+        ([, init]) => (init?.method ?? "GET") === "POST",
+      ).length;
+    // Studio reaches only this account's resources.
+    let before = posts();
+    await expect(
+      alice.client.ma("UpdateAgent", {
+        params: { id: bob.agentId },
+        body: { version: 1, system: "not mine" },
+        confirm: true,
+      }),
+    ).rejects.toThrow("only this account's own");
+    await expect(
+      alice.client.ma("GetMemoryStore", {
+        params: { memory_store_id: bob.memoryStoreId },
+      }),
+    ).rejects.toThrow("only this account's own");
+    expect(
+      (
+        await alice.client.ma<{ data: { id: string }[] }>("ListAgents")
+      ).data.map((row) => row.id),
+    ).toEqual([own.agentId]);
+    // Ownership labels cannot be edited through Open Muse.
+    await expect(
+      alice.client.ma("UpdateAgent", {
+        params: { id: own.agentId },
+        body: {
+          version: agent.version,
+          metadata: { open_muse_workspace: "anything" },
+        },
+        confirm: true,
+      }),
+    ).rejects.toThrow();
+    expect(posts()).toBe(before);
+    // A user's change is applied once by the service and sealed.
+    const result = await alice.client.ma<{
+      workspace: { model: string; agent: { system: string } };
+      background: string;
+    }>("UpdateAgent", {
+      params: { id: own.agentId },
+      body: {
+        version: agent.version,
+        model: { id: "user-chosen-model" },
+        system: "A user-written instruction",
+      },
+      confirm: true,
+    });
+    expect(result.workspace.model).toBe("user-chosen-model");
+    expect(result.workspace.agent.system).toBe("A user-written instruction");
+    // Background work follows the new agent version (its schedule pauses).
+    expect(result.background).toBe("rebound");
+    expect(await alice.account.status()).toMatchObject({
+      backgroundReady: true,
+    });
+    await alice.client.ma("UpdateEnvironment", {
+      params: { id: own.environmentId },
+      body: {
+        config: { type: "cloud", networking: { type: "limited" } },
+      },
+      confirm: true,
+    });
+    const sealed = await fixture.db
+      .prepare("SELECT encrypted FROM account_workspaces")
+      .all<{ encrypted: string }>();
+    for (const row of sealed.results)
+      expect(row.encrypted).not.toContain("user-written");
+    // Another device of the account reads the same sealed settings.
+    const other = device();
+    await other.client.restore();
+    await other.signIn("alice@example.com");
+    expect(await other.account.accountWorkspace()).toMatchObject({
+      workspace: {
+        model: "user-chosen-model",
+        agent: {
+          model: { id: "user-chosen-model" },
+          system: "A user-written instruction",
+        },
+        environment: { config: { networking: { type: "limited" } } },
+      },
+    });
+    // A change based on an older record revision is refused.
+    const stale = (await other.account.accountWorkspace()).revision - 1;
+    before = posts();
+    await expect(
+      other.account.updateAccountWorkspace(
+        "environment",
+        { description: "late" },
+        stale,
+        other.client.accountCredentialRevision()!,
+      ),
+    ).rejects.toThrow("another device");
+    expect(posts()).toBe(before);
   });
 
   it("lets the same account continue on another device without creating resources", async () => {

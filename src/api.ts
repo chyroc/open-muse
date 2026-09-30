@@ -61,6 +61,7 @@ import {
   withConversationHistory,
 } from "../shared/conversation-history";
 import { executeOperation } from "./direct/operations";
+import { operations } from "../shared/ma";
 import {
   Conversations,
   emptyConversations,
@@ -398,6 +399,11 @@ export class Client {
           provision,
           provision
             ? async () => (await account!.accountWorkspace()).workspace
+            : undefined,
+          provision
+            ? async (kind, changes) => {
+                await this.applyWorkspace(kind, changes);
+              }
             : undefined,
         ),
         companion,
@@ -1476,11 +1482,111 @@ export class Client {
     input: object = {},
   ): Promise<T> {
     const r = this.context();
-    const result = await executeOperation(r.ark, operation, input);
+    const scoped = this.identity.accountOwner()
+      ? await this.accountOperation(r, operation, input)
+      : undefined;
+    if (scoped?.handled) return scoped.result as T;
+    let result = await executeOperation(r.ark, operation, input);
+    if (scoped?.filter) result = scoped.filter(result);
     if (["CreateSession", "GetSession", "ListSessions"].includes(operation)) {
       const payload = result as Session & { data?: Session[] };
       await this.remember(r, payload.data ?? [payload]);
     }
     return result as T;
+  }
+  // Changes to the account's own agent and environment go through the
+  // service, which applies them once and seals the result with the account.
+  private async applyWorkspace(
+    kind: "agent" | "environment",
+    changes: Record<string, unknown>,
+  ) {
+    const account = this.identity.account!;
+    const current = await account.accountWorkspace();
+    return account.updateAccountWorkspace(
+      kind,
+      changes,
+      current.revision,
+      this.identity.value!.revision!,
+    );
+  }
+  // In an account, Studio reaches only the account's own agent, environment,
+  // memory store, and sessions, even though the shared Ark key reaches more.
+  private async accountOperation(r: Runtime, operation: string, input: object) {
+    const op = operations.find((value) => value.id === operation);
+    if (!op) return;
+    const [, collection, , child] = op.path.split("/");
+    const param = op.fields.find((field) => field.in === "path")?.name;
+    const target = (input as { params?: Record<string, string> }).params?.[
+      param ?? ""
+    ];
+    const record = (await this.identity.account!.accountWorkspace()).workspace;
+    const own: Record<string, string | undefined> = {
+      agents: record?.agentId,
+      environments: record?.environmentId,
+      memory_stores: record?.memoryStoreId,
+    };
+    const refuse = () =>
+      new ApiError(
+        403,
+        t(
+          "With a Muse account, Studio reaches only this account's own agent, environment, memory, and sessions.",
+        ),
+      );
+    if (collection in own) {
+      if (!param)
+        return op.method === "GET"
+          ? {
+              filter: (value: unknown) => {
+                const page = value as { data?: { id: string }[] };
+                return {
+                  ...page,
+                  data: (page.data ?? []).filter(
+                    (row) => row.id === own[collection],
+                  ),
+                };
+              },
+            }
+          : undefined;
+      if (!target || target !== own[collection]) throw refuse();
+      if (!child && ["UpdateAgent", "UpdateEnvironment"].includes(op.id)) {
+        if ((input as { confirm?: boolean }).confirm !== true)
+          throw new ApiError(
+            400,
+            t(
+              "Confirm the target and impact before modifying cloud resources.",
+            ),
+          );
+        const result = await this.applyWorkspace(
+          op.id === "UpdateAgent" ? "agent" : "environment",
+          (input as { body?: Record<string, unknown> }).body ?? {},
+        );
+        r.abort.signal.throwIfAborted();
+        return { handled: true, result };
+      }
+      return;
+    }
+    if (collection === "sessions") {
+      const mine = (session: Session) => {
+        const agent = (session as { agent?: string | { id?: string } }).agent;
+        return (
+          (typeof agent === "string" ? agent : agent?.id) === record?.agentId
+        );
+      };
+      if (!param)
+        return op.method === "GET"
+          ? {
+              filter: (value: unknown) => {
+                const page = value as { data?: Session[] };
+                return { ...page, data: (page.data ?? []).filter(mine) };
+              },
+            }
+          : undefined;
+      if (
+        !target ||
+        !record?.agentId ||
+        !mine(await r.ark.request<Session>(`/sessions/${validId(target)}`))
+      )
+        throw refuse();
+    }
   }
 }

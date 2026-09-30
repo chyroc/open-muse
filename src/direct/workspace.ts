@@ -52,6 +52,10 @@ export class DirectWorkspace {
     private lookup?: () => Promise<
       { agentId?: string; environmentId?: string; model: string } | undefined
     >,
+    private apply?: (
+      kind: "agent" | "environment",
+      changes: Record<string, unknown>,
+    ) => Promise<void>,
   ) {
     this.storageKey = `${key}:workspace`;
   }
@@ -341,10 +345,7 @@ export class DirectWorkspace {
     if (owned) {
       const config = environmentWithTools(environment.config!);
       if (JSON.stringify(config) !== JSON.stringify(environment.config))
-        await this.request(environmentPath, {
-          method: "POST",
-          body: JSON.stringify({ config }),
-        });
+        await this.change("environment", environmentPath, { config });
     }
     const path = `/agents/${encodeURIComponent(row.agent_id)}`;
     const agent = await this.request<
@@ -388,13 +389,24 @@ export class DirectWorkspace {
         502,
         t("Invalid agent version; no policy changes were submitted."),
       );
-    await this.request(path, {
-      method: "POST",
-      body: JSON.stringify({
-        version: agent.version,
-        tools,
-        system: updatedSystem,
-      }),
+    await this.change("agent", path, {
+      version: agent.version,
+      tools,
+      system: updatedSystem,
     });
+  }
+  // Account workspaces change their agent and environment through the service
+  // so the resulting settings are sealed with the account.
+  private async change(
+    kind: "agent" | "environment",
+    path: string,
+    changes: Record<string, unknown>,
+  ) {
+    if (this.apply) await this.apply(kind, changes);
+    else
+      await this.request(path, {
+        method: "POST",
+        body: JSON.stringify(changes),
+      });
   }
 }

@@ -437,7 +437,10 @@ export class BackgroundClient {
     });
   }
   private accountRequest<T>(
-    path: "/v1/account/credential" | "/v1/account/workspace",
+    path:
+      | "/v1/account/credential"
+      | "/v1/account/workspace"
+      | "/v1/account/workspace/settings",
     schema: z.ZodType<T>,
     init?: RequestInit,
     messages?: Partial<Record<number, string>>,
@@ -505,6 +508,37 @@ export class BackgroundClient {
         ),
         503: t(
           "The workspace setup result is unconfirmed. Continue setup to check it; nothing was repeated.",
+        ),
+      },
+    );
+  }
+  // Changes the account's own agent or environment through the service, which
+  // applies it once and seals the resulting settings with the account.
+  updateAccountWorkspace(
+    kind: "agent" | "environment",
+    changes: Record<string, unknown>,
+    revision: number,
+    credentialRevision: number,
+  ) {
+    return this.accountRequest(
+      "/v1/account/workspace/settings",
+      accountWorkspaceResponseSchema,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          kind,
+          changes,
+          revision,
+          credentialRevision,
+          confirm: true,
+        }),
+      },
+      {
+        409: t(
+          "The workspace settings changed on another device. Refresh and review them before saving again.",
+        ),
+        503: t(
+          "The change is unconfirmed. Refresh the workspace to check it; it was not repeated.",
         ),
       },
     );
