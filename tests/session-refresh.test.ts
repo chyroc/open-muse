@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { identityInstructions, systemWithIdentity } from "../shared/identity";
 import {
   agentSnapshot,
+  continuationAgent,
   canonicalJson,
   needsPromptRefresh,
   refreshedAgentSystem,
@@ -29,6 +30,19 @@ const session = (agent: unknown): Session & { agent: unknown } => ({
 });
 
 describe("Main-conversation instruction refresh", () => {
+  it("requires a verified owned snapshot before preparing a replacement", () => {
+    const owned = snapshot();
+    expect(continuationAgent(session(owned), "owner", owned.id)).toBe(owned);
+    for (const source of [
+      undefined,
+      "agent-test",
+      { ...owned, version: 0 },
+      { ...owned, metadata: { open_muse_workspace: "other" } },
+    ])
+      expect(() =>
+        continuationAgent(session(source), "owner", owned.id),
+      ).toThrow("history is intact");
+  });
   it("detects stale app-owned snapshots but reuses current instructions", () => {
     const old = snapshot();
     expect(needsPromptRefresh(session(old), "owner", old.id)).toBe(true);
@@ -84,9 +98,9 @@ describe("Main-conversation instruction refresh", () => {
       const source = { ...snapshot(), system };
       expect(() =>
         needsPromptRefresh(session(source), "owner", source.id),
-      ).toThrow("No replacement");
+      ).toThrow("history is intact");
       expect(() => refreshedAgentSystem(source, source)).toThrow(
-        "No replacement",
+        "history is intact",
       );
     }
   });
@@ -101,14 +115,14 @@ describe("Main-conversation instruction refresh", () => {
     ] as const) {
       expect(() =>
         refreshedAgentSystem(source, { ...source, [field]: { changed: true } }),
-      ).toThrow("No replacement");
+      ).toThrow("history is intact");
     }
     expect(() =>
       refreshedAgentSystem(source, { ...source, version: 4 }),
-    ).toThrow("No replacement");
+    ).toThrow("history is intact");
     expect(() =>
       refreshedAgentSystem(source, { ...source, id: "other" }),
-    ).toThrow("No replacement");
+    ).toThrow("history is intact");
   });
   it("ignores JSON object order but retains event order and all values", () => {
     const a = [{ id: "tool", input: { a: 1, b: 2 } }, { id: "reply" }];

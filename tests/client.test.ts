@@ -415,6 +415,8 @@ describe("Direct MA client", () => {
     const old = await f.client.openConversation("main");
     const side = await f.client.openConversation("side", "Separate topic");
     const source = f.resources.sessions[0].agent as Record<string, unknown>;
+    // MA's public response uses null for an unbound Vault collection.
+    f.resources.sessions[0].vault_ids = null;
     source.system =
       "Custom prefix.\n<open-muse-identity>Old capability rules.</open-muse-identity>\nCustom suffix.";
     f.events.push({
@@ -473,6 +475,28 @@ describe("Direct MA client", () => {
       expect(f.resources.sessions).toHaveLength(1);
     }
   });
+  it.each(["en", "zh-CN"])(
+    "localizes a safe configuration refusal in %s without locking side-chat creation",
+    async (language) => {
+      vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", [language]);
+      const f = fixture();
+      await f.login();
+      const old = await f.client.openConversation("main");
+      (f.resources.sessions[0].agent as Record<string, unknown>).system =
+        "Old instructions.";
+      f.resources.sessions[0].resources = [
+        { type: "file", file_id: "file-test" },
+      ];
+      await expect(f.client.openConversation("main")).rejects.toThrow(
+        language === "zh-CN" ? "历史记录完整保留" : "history is intact",
+      );
+      expect((await f.client.conversationIndex()).mainId).toBe(old.id);
+      expect((await f.client.conversationIndex()).pending).toBeUndefined();
+      expect(
+        (await f.client.openConversation("side", "Safe alternative")).id,
+      ).not.toBe(old.id);
+    },
+  );
   it("refuses a rollover that would lose custom runtime overrides, credentials or resource mounts", async () => {
     for (const kind of ["tools", "file", "vault"] as const) {
       const f = fixture();
@@ -489,11 +513,14 @@ describe("Direct MA client", () => {
       if (kind === "vault") f.resources.sessions[0].vault_ids = ["vault-test"];
       const before = canonicalJson(f.resources.sessions[0]);
       await expect(f.client.openConversation("main")).rejects.toThrow(
-        "No replacement",
+        "history is intact",
       );
       expect((await f.client.conversationIndex()).mainId).toBe(old.id);
       expect(f.resources.sessions).toHaveLength(1);
       expect(canonicalJson(f.resources.sessions[0])).toBe(before);
+      expect((await f.client.conversationIndex()).pending).toBeUndefined();
+      const side = await f.client.openConversation("side", "Continue safely");
+      expect(side.id).not.toBe(old.id);
     }
   });
   it("does not mistake tool-input key serialization order for changed source history", async () => {

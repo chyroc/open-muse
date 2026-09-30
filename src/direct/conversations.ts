@@ -1,6 +1,7 @@
 import { t } from "../../shared/i18n";
 import { ApiError } from "../../shared/ark";
 import { uuid } from "../../shared/crypto";
+import { IncompatibleConversation } from "../../shared/session-refresh";
 import type { Category, Session } from "../../shared/types";
 import { LocalDatabase } from "./storage";
 
@@ -263,7 +264,22 @@ export class Conversations {
     }
     // Freeze local writes to the old chapter before taking its snapshot. This
     // phase can be resumed: prepare only verifies or creates immutable archives.
-    await this.remote.prepare(await this.remote.get(pending.previous!));
+    try {
+      await this.remote.prepare(await this.remote.get(pending.previous!));
+    } catch (error) {
+      // A recognized compatibility refusal happened before a session POST.
+      // Release only this preparation lease so a side chat remains available.
+      // Network failures and ambiguous creation outcomes keep their guards.
+      if (error instanceof IncompatibleConversation)
+        await this.update((index) => {
+          if (
+            index.pending?.token === pending.token &&
+            index.pending.phase === "preparing"
+          )
+            delete index.pending;
+        });
+      throw error;
+    }
     await this.update((index) => {
       if (
         index.pending?.token !== pending.token ||

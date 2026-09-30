@@ -30,6 +30,8 @@ import { identityDefaults } from "../shared/identity";
 import {
   agentSnapshot,
   canonicalJson,
+  continuationAgent,
+  IncompatibleConversation,
   needsPromptRefresh,
   refreshedAgentSystem,
   unreadableInstructions,
@@ -462,16 +464,24 @@ export class Client {
           type: string;
           memory_store_id?: string;
         }>(r.ark, `/sessions/${validId(session.id)}/resources?limit=100`);
-        if (!resources.some(
-          (resource) =>
-            resource.type === "memory_store" &&
-            resource.memory_store_id === storeId,
-        )) return true;
+        if (
+          !resources.some(
+            (resource) =>
+              resource.type === "memory_store" &&
+              resource.memory_store_id === storeId,
+          )
+        )
+          return true;
         const selected = await r.workspace.selection();
         try {
           return needsPromptRefresh(session, r.key, selected.agent);
         } catch (error) {
-          if (error instanceof Error && error.message === unreadableInstructions)
+          if (error instanceof IncompatibleConversation)
+            throw new IncompatibleConversation(t(error.message));
+          if (
+            error instanceof Error &&
+            error.message === unreadableInstructions
+          )
             throw new ApiError(502, t(unreadableInstructions));
           throw error;
         }
@@ -522,24 +532,35 @@ export class Client {
               ),
             );
           const snapshot = digest(canonicalJson(last.events));
-          const sourceAgent = agentSnapshot(previous);
-          if (sourceAgent && sourceAgent.id !== selection.agent)
-            throw new ApiError(502, t(unreadableInstructions));
+          let sourceAgent: AgentSnapshot;
+          try {
+            sourceAgent = continuationAgent(previous, r.key, selection.agent);
+          } catch (error) {
+            if (error instanceof IncompatibleConversation)
+              throw new IncompatibleConversation(t(error.message));
+            throw error;
+          }
           const sourceResources = await this.collect<{
             type: string;
             memory_store_id?: string;
           }>(r.ark, `/sessions/${validId(previous.id)}/resources?limit=100`);
           // A text-context rollover cannot safely migrate arbitrary mounts or
           // bound account credentials. Refuse it rather than dropping them.
-          const vaults = (previous as Session & { vault_ids?: unknown }).vault_ids;
+          const vaults = (previous as Session & { vault_ids?: unknown })
+            .vault_ids;
           if (
-            sourceResources.some((resource) =>
-              resource.type !== "memory_store" ||
-              resource.memory_store_id !== memory_store_id
+            sourceResources.some(
+              (resource) =>
+                resource.type !== "memory_store" ||
+                resource.memory_store_id !== memory_store_id,
             ) ||
-            (vaults !== undefined &&
-              (!Array.isArray(vaults) || vaults.length > 0))
-          ) throw new ApiError(502, t(unreadableInstructions));
+            (vaults != null && (!Array.isArray(vaults) || vaults.length > 0))
+          )
+            throw new IncompatibleConversation(
+              t(
+                "This main chat's configuration cannot be safely updated. Its history is intact. Open a side chat to continue.",
+              ),
+            );
           const archive = await r.companion.archive(
             conversationArchive(chapters, r.redact),
           );
@@ -552,14 +573,20 @@ export class Client {
             r.ark.request<AgentSnapshot>(
               `/agents/${validId(selection.agent)}${sourceAgent ? `?version=${sourceAgent.version}` : ""}`,
             ),
-            this.collect<unknown>(r.ark, `/sessions/${validId(previous.id)}/resources?limit=100`),
+            this.collect<unknown>(
+              r.ark,
+              `/sessions/${validId(previous.id)}/resources?limit=100`,
+            ),
           ]);
           if (
             ["running", "rescheduling"].includes(fresh.status) ||
             digest(canonicalJson(history)) !== snapshot ||
-            canonicalJson(agentSnapshot(fresh)) !== canonicalJson(sourceAgent) ||
+            canonicalJson(agentSnapshot(fresh)) !==
+              canonicalJson(sourceAgent) ||
             canonicalJson(freshResources) !== canonicalJson(sourceResources) ||
-            canonicalJson((fresh as Session & { vault_ids?: unknown }).vault_ids) !== canonicalJson(vaults)
+            canonicalJson(
+              (fresh as Session & { vault_ids?: unknown }).vault_ids,
+            ) !== canonicalJson(vaults)
           )
             throw new ApiError(
               409,
@@ -579,9 +606,18 @@ export class Client {
               ? refreshedAgentSystem(sourceAgent, agent)
               : agent.system;
             if (sourceAgent) selection.agent_version = sourceAgent.version;
-            selection.system = withConversationHistory(system, archive.store, archive.manifest);
+            selection.system = withConversationHistory(
+              system,
+              archive.store,
+              archive.manifest,
+            );
           } catch (error) {
-            if (error instanceof Error && error.message === unreadableInstructions)
+            if (error instanceof IncompatibleConversation)
+              throw new IncompatibleConversation(t(error.message));
+            if (
+              error instanceof Error &&
+              error.message === unreadableInstructions
+            )
               throw new ApiError(502, t(unreadableInstructions));
             throw error;
           }

@@ -1,5 +1,7 @@
 // Only app-authored errors are translated; upstream diagnostics remain verbatim.
 export const zhErrors: Record<string, string> = {
+  "This main chat's configuration cannot be safely updated. Its history is intact. Open a side chat to continue.":
+    "无法安全更新此主对话的配置。历史记录完整保留，可新建分支对话继续。",
   "Invalid resource ID.": "资源 ID 无效。",
   "Check the API key, project name, and authorization code format.":
     "请检查 API Key、项目名称和授权码格式。",

@@ -7,6 +7,7 @@ import {
 import { LocalDatabase } from "../src/direct/storage";
 import { uuid } from "../shared/crypto";
 import { ApiError } from "../shared/ark";
+import { IncompatibleConversation } from "../shared/session-refresh";
 import type { Category, Session } from "../shared/types";
 
 function fixture() {
@@ -45,6 +46,20 @@ function fixture() {
   };
 }
 describe("Main and side conversations", () => {
+  it("releases only a recognized incompatible preparation so a side chat can still be created", async () => {
+    const f = fixture();
+    const original = await f.store.create("main", "Main chat", "general");
+    f.remote.needsContinuation.mockResolvedValue(true);
+    f.remote.prepare.mockRejectedValueOnce(new IncompatibleConversation());
+    await expect(
+      f.store.create("main", "Main chat", "general"),
+    ).rejects.toThrow("history is intact");
+    expect((await f.store.index()).pending).toBeUndefined();
+    expect((await f.store.index()).mainId).toBe(original.id);
+    const side = await f.store.create("side", "Continue safely", "general");
+    expect((await f.store.index()).entries[side.id].kind).toBe("side");
+    expect(f.remote.create).toHaveBeenCalledTimes(2);
+  });
   it("continues the main chat as linked chapters without deleting or hiding its history", async () => {
     const f = fixture();
     const original = await f.store.create("main", "Main chat", "general");

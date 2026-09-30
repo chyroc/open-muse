@@ -456,6 +456,9 @@ final class MuseLiveUITests: XCTestCase {
         tap(input)
         if !app.keyboards.firstMatch.waitForExistence(timeout: 3) { input.tap() }
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 10))
+        if let savedDraft = input.value as? String, !savedDraft.isEmpty {
+            input.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: savedDraft.count))
+        }
         input.typeText("Recall my favorite imaginary color and calculate 21 doubled. Use only memory tools; do not change any memory. Reply exactly with the color, followed by / 42.")
         tap(app.buttons["Send message"])
         let answer = app.staticTexts.matching(NSPredicate(format: "label MATCHES %@", "welcome-color-[a-f0-9]{6} / 42")).firstMatch
@@ -466,6 +469,7 @@ final class MuseLiveUITests: XCTestCase {
         XCTAssertFalse(app.switches["Choose Kit"].isEnabled)
         capture("main-refresh-context-and-original-choice")
         let marker = "Refresh-choice-" + String(UUID().uuidString.prefix(6)).lowercased()
+        UserDefaults.standard.set(marker, forKey: "lastPromptRefreshChoiceMarker")
         tap(input)
         if !app.keyboards.firstMatch.waitForExistence(timeout: 3) { input.tap() }
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 10))
@@ -485,6 +489,31 @@ final class MuseLiveUITests: XCTestCase {
         XCTAssertEqual(app.switches["Choose Evening"].value as? String, "1")
         XCTAssertFalse(app.switches["Choose Evening"].isEnabled)
         capture("main-refresh-after-relaunch")
+    }
+
+    func testMainInstructionRefreshRestoresWithoutGeneration() {
+        guard let profile = UserDefaults.standard.string(forKey: "lastWelcomeAcceptanceProfile"),
+              let marker = UserDefaults.standard.string(forKey: "lastPromptRefreshChoiceMarker") else {
+            XCTFail("Run the isolated main-chat refresh check before this restoration case")
+            return
+        }
+        app.terminate()
+        app.launchEnvironment["MUSE_UI_TEST_PROFILE"] = profile
+        app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        defer {
+            app.terminate()
+            app.launchEnvironment.removeValue(forKey: "MUSE_UI_TEST_PROFILE")
+            app.launchArguments = []
+            app.launch()
+        }
+        XCTAssertTrue(app.staticTexts["\(marker) / Evening"].waitForExistence(timeout: 60))
+        XCTAssertTrue(app.staticTexts["MEMORY SAVED"].exists)
+        XCTAssertEqual(app.switches["Choose Kit"].value as? String, "1")
+        XCTAssertEqual(app.switches["Choose Evening"].value as? String, "1")
+        XCTAssertFalse(app.switches["Choose Evening"].isEnabled)
+        XCTAssertFalse(app.buttons["Stop response"].exists)
+        capture("main-refresh-read-only-restoration")
     }
 
     func testWelcomeRestoresWithoutNewGeneration() {

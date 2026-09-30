@@ -196,7 +196,16 @@ compare-and-swap contract, so simultaneous edits from different devices still
 require care. Do not put passwords or API keys in personal memory.
 
 Older main conversations attach memory through the history-preserving
-continuation described above. Older side chats retain their original history
+continuation described above. An idle main conversation with outdated app
+instructions also continues into one linked chapter on the next submission,
+without repeating the welcome. The original agent version is pinned; custom
+session instructions and older visible turns remain available. This is a new
+MA session, not an in-place update or a transfer of sandbox files. Malformed
+snapshots, session-specific runtime overrides, extra resource mounts, or bound
+Vaults stop automatic continuation rather than discarding configuration. The
+original history stays intact and a new side chat remains available.
+
+Older side chats retain their original history
 and display a compatibility note; start a new side chat to use personal memory.
 There is no scheduled nightly maintenance or interactive remote desktop in this
 version.

@@ -16,18 +16,27 @@ export interface AgentSnapshot {
 
 export const unreadableInstructions =
   "The agent instructions could not be read. No replacement conversation was created.";
+export const incompatibleConversation =
+  "This main chat's configuration cannot be safely updated. Its history is intact. Open a side chat to continue.";
+export class IncompatibleConversation extends ApiError {
+  constructor(message = incompatibleConversation) {
+    super(409, message);
+  }
+}
 
 // JSON object order is not a revision. MA may serialize tool input maps in a
 // different order on successive reads; array and event order remain significant.
 export function canonicalJson(value: unknown): string {
-  return JSON.stringify(value, (_key, item) =>
-    item && typeof item === "object" && !Array.isArray(item)
-      ? Object.fromEntries(
-          Object.keys(item)
-            .sort()
-            .map((key) => [key, item[key]]),
-        )
-      : item,
+  return (
+    JSON.stringify(value, (_key, item) =>
+      item && typeof item === "object" && !Array.isArray(item)
+        ? Object.fromEntries(
+            Object.keys(item)
+              .sort()
+              .map((key) => [key, item[key]]),
+          )
+        : item,
+    ) ?? "undefined"
   );
 }
 
@@ -46,6 +55,13 @@ export function agentSnapshot(session: Session): AgentSnapshot | undefined {
   return value;
 }
 
+export function continuationAgent(session: Session, owner: string, id: string) {
+  const snapshot = agentSnapshot(session);
+  if (snapshot?.id !== id || snapshot.metadata?.open_muse_workspace !== owner)
+    throw new IncompatibleConversation();
+  return snapshot;
+}
+
 function identityBlock(system: string) {
   const start = "<open-muse-identity>";
   const end = "</open-muse-identity>";
@@ -58,7 +74,7 @@ function identityBlock(system: string) {
     system.indexOf(start, first + start.length) >= 0 ||
     system.indexOf(end, last + end.length) >= 0
   )
-    throw new ApiError(502, unreadableInstructions);
+    throw new IncompatibleConversation();
   return system.slice(first, last + end.length);
 }
 
@@ -82,7 +98,7 @@ export function refreshedAgentSystem(
   versioned: AgentSnapshot,
 ) {
   if (snapshot.id !== versioned.id || snapshot.version !== versioned.version)
-    throw new ApiError(502, unreadableInstructions);
+    throw new IncompatibleConversation();
   for (const field of [
     "model",
     "tools",
@@ -91,7 +107,7 @@ export function refreshedAgentSystem(
     "multiagent",
   ] as const) {
     if (canonicalJson(snapshot[field]) !== canonicalJson(versioned[field]))
-      throw new ApiError(502, unreadableInstructions);
+      throw new IncompatibleConversation();
   }
   identityBlock(snapshot.system);
   return systemWithIdentity(snapshot.system);
