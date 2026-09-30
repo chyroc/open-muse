@@ -670,6 +670,34 @@ describe("Muse accounts end to end", () => {
         .slice(attaching)
         .filter(([, init]) => (init?.method ?? "GET") !== "GET"),
     ).toEqual([]);
+    // A message in the account's own session may cite only files this
+    // account uploaded on this device.
+    const message = (file_id: string) => ({
+      params: { session_id: own.id },
+      body: {
+        events: [
+          {
+            type: "user.message",
+            content: [{ type: "document", source: { type: "file", file_id } }],
+          },
+        ],
+      },
+      confirm: true,
+    });
+    const citing = upstream.fetcher.mock.calls.length;
+    await expect(
+      bob.client.ma("SendSessionEvents", message("file-of-alice")),
+    ).rejects.toThrow("only this account's own");
+    expect(
+      upstream.fetcher.mock.calls
+        .slice(citing)
+        .filter(([, init]) => (init?.method ?? "GET") !== "GET"),
+    ).toEqual([]);
+    const key = accountWorkspaceKey(sharedKey, "", bob.account.accountOwner()!);
+    await bob.db.set(`${key}:attachment-names`, { "file-of-bob": "notes.pdf" });
+    await expect(
+      bob.client.ma("SendSessionEvents", message("file-of-bob")),
+    ).resolves.toBeDefined();
   });
 
   it("lets the same account continue on another device without creating resources", async () => {

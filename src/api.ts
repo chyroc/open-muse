@@ -1655,6 +1655,25 @@ export class Client {
           ("resources" in body && !ownedResources(body.resources)))
       )
         throw refuse();
+      // Messages may reference only files this account uploaded on this
+      // device; any other file ID could belong to another key holder.
+      const files: string[] = [];
+      const collect = (value: unknown) => {
+        if (Array.isArray(value)) value.forEach(collect);
+        else if (value && typeof value === "object")
+          for (const [name, item] of Object.entries(value))
+            if (name === "file_id") files.push(String(item));
+            else collect(item);
+      };
+      collect(body);
+      if (files.length) {
+        const uploaded =
+          (await this.db.get<Record<string, string>>(
+            `${r.key}:attachment-names`,
+          )) ?? {};
+        if (files.some((file) => !Object.hasOwn(uploaded, file)))
+          throw refuse();
+      }
       return;
     }
     // Vaults, credentials, skills, files, and anything else under the shared
