@@ -31,6 +31,20 @@ export function WorkspacePanel({ client }: { client: Client }) {
     };
   }, [client, busy]);
   const preparing = busy || status?.state === "preparing";
+  // A decision the user made about a change or a rebuild that needed review.
+  async function decide(action: () => Promise<unknown>) {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await action();
+      setStatus(await client.startWorkspace());
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   async function prepare() {
     if (busy || (preparing && !error)) return;
     setBusy(true);
@@ -109,6 +123,40 @@ export function WorkspacePanel({ client }: { client: Client }) {
                   : t("Set up workspace")}
           </button>
         )
+      )}
+      {!busy && status?.review && (
+        <div className="background-actions">
+          {status.review === "unconfirmed" && (
+            <button
+              className="button secondary"
+              onClick={() => void decide(() => client.checkWorkspaceSettings())}
+            >
+              {t("Check the last change")}
+            </button>
+          )}
+          {status.review === "settings" && (
+            <button
+              className="button secondary"
+              onClick={() =>
+                void decide(() => client.checkWorkspaceSettings(true))
+              }
+            >
+              {t("Save the current settings")}
+            </button>
+          )}
+          {status.review === "rebuild" && (
+            <button
+              className="button secondary"
+              onClick={() =>
+                void decide(() =>
+                  client.startWorkspace({ resetSettings: true }),
+                )
+              }
+            >
+              {t("Recreate with default settings")}
+            </button>
+          )}
+        </div>
       )}
       {status?.state === "disconnected" && (
         <a className="button secondary" href="#/settings">

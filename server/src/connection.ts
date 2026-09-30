@@ -407,12 +407,12 @@ export function revokeBackground(
   db: D1Database,
   owner: string,
   now: number,
-  guard: "ark_connections" | "account_credentials",
+  guard: "ark_connections" | "account_credentials" | "account_workspaces",
   mutation: string,
 ) {
   const committed = `EXISTS(SELECT 1 FROM ${guard} WHERE owner_id=? AND mutation_id=?)`;
   return [
-    ...(guard === "account_credentials"
+    ...(guard !== "ark_connections"
       ? [
           db
             .prepare(

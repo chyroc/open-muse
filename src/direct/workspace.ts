@@ -29,6 +29,7 @@ interface Mapping {
   environment_pending: boolean;
   state: WorkspaceStatus["state"];
   message: string;
+  review?: WorkspaceStatus["review"];
 }
 type Resource = {
   id: string;
@@ -45,9 +46,10 @@ export class DirectWorkspace {
     private db: LocalDatabase,
     // Account workspaces are created and recorded by the Open Muse service;
     // this client never discovers or creates them by label.
-    private provision?: (
-      replaceUnconfirmed: boolean,
-    ) => Promise<{ agentId: string; environmentId: string; model: string }>,
+    private provision?: (options: {
+      replaceUnconfirmed: boolean;
+      resetSettings: boolean;
+    }) => Promise<{ agentId: string; environmentId: string; model: string }>,
     // The account's sealed workspace record, read without creating anything.
     private lookup?: () => Promise<
       { agentId?: string; environmentId?: string; model: string } | undefined
@@ -133,6 +135,9 @@ export class DirectWorkspace {
       ? {
           state: row.state,
           message: row.state === "error" ? row.message : t(row.message),
+          ...(row.state === "error" && row.review
+            ? { review: row.review }
+            : {}),
         }
       : {
           state: "idle",
@@ -151,18 +156,34 @@ export class DirectWorkspace {
       );
     return { agent: row.agent_id, environment_id: row.environment_id };
   }
-  // replaceUnconfirmed is set only by an explicit user action: it lets the
-  // service abandon an unconfirmed earlier creation and create a new resource.
-  async start(replaceUnconfirmed = false) {
+  // Both options are set only by an explicit user action: replaceUnconfirmed
+  // lets the service abandon an unconfirmed earlier creation, resetSettings
+  // recreates a deleted agent or environment with default settings when its
+  // saved settings cannot be used.
+  async start(
+    options: { replaceUnconfirmed?: boolean; resetSettings?: boolean } = {},
+  ) {
     if (!this.job)
-      this.job = this.prepare(replaceUnconfirmed)
+      this.job = this.prepare({
+        replaceUnconfirmed: options.replaceUnconfirmed === true,
+        resetSettings: options.resetSettings === true,
+      })
         .catch(async (error) => {
+          const code = (error as { code?: string }).code;
           await this.update((row) => {
             row.state = "error";
             row.message =
               error instanceof Error
                 ? error.message
                 : t("Preparation failed. Resume to verify existing resources.");
+            row.review =
+              code === "rebuild_review"
+                ? "rebuild"
+                : code === "settings_review"
+                  ? "settings"
+                  : code === "settings_pending" || code === "unconfirmed"
+                    ? "unconfirmed"
+                    : undefined;
           });
         })
         .finally(() => {
@@ -281,14 +302,18 @@ export class DirectWorkspace {
       throw error;
     }
   }
-  private async prepare(replaceUnconfirmed: boolean) {
+  private async prepare(options: {
+    replaceUnconfirmed: boolean;
+    resetSettings: boolean;
+  }) {
     await this.update((row) => {
       row.state = "preparing";
       row.message = "Checking your personal workspace…";
+      row.review = undefined;
     });
     if (this.provision) {
       await this.reconcile();
-      const created = await this.provision(replaceUnconfirmed);
+      const created = await this.provision(options);
       await this.update((r) => {
         r.agent_id = created.agentId;
         r.environment_id = created.environmentId;

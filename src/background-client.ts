@@ -12,7 +12,29 @@ import {
 } from "../shared/account-credential";
 import { accountWorkspaceResponseSchema } from "../shared/account-workspace";
 
-class BackgroundRequestError extends Error {}
+// Carries the service's machine-readable reason so callers can act on it.
+export class BackgroundRequestError extends Error {
+  constructor(
+    message: string,
+    readonly code?: string,
+  ) {
+    super(message);
+  }
+}
+const reasons = (): Record<string, string> => ({
+  settings_pending: t(
+    "A workspace settings change is unconfirmed. Open Muse checks it before anything else is changed.",
+  ),
+  settings_review: t(
+    "The workspace settings need your review: they reference resources an account cannot use or differ from what Open Muse saved. Nothing was changed.",
+  ),
+  rebuild_review: t(
+    "A deleted agent or environment cannot be restored because its saved settings reference resources an account cannot use. The saved settings are kept; recreate it with default settings to continue.",
+  ),
+  unconfirmed: t(
+    "The change was sent but its result is unconfirmed. Open Muse checks it before anything else is changed; it was not repeated.",
+  ),
+});
 const RENEW_MARGIN = 120_000;
 const credentialStatus = z.object({
   configured: z.boolean(),
@@ -205,8 +227,14 @@ export class BackgroundClient {
       if (!response.ok) {
         if (response.status === 401 && !token.startsWith("muse_device_"))
           await this.expire(token);
+        // A machine-readable reason, when the service gives one; its wording
+        // is never shown.
+        const code = z
+          .object({ code: z.string().max(40) })
+          .safeParse(await response.json().catch(() => undefined)).data?.code;
         throw new BackgroundRequestError(
-          messages[response.status] ??
+          (code && reasons()[code]) ??
+            messages[response.status] ??
             (response.status === 401
               ? token.startsWith("muse_device_")
                 ? t("This device token was rejected or revoked.")
@@ -233,6 +261,7 @@ export class BackgroundClient {
                             status: response.status,
                           },
                         )),
+          code,
         );
       }
       return await response.json();
@@ -440,7 +469,8 @@ export class BackgroundClient {
     path:
       | "/v1/account/credential"
       | "/v1/account/workspace"
-      | "/v1/account/workspace/settings",
+      | "/v1/account/workspace/settings"
+      | "/v1/account/workspace/reconcile",
     schema: z.ZodType<T>,
     init?: RequestInit,
     messages?: Partial<Record<number, string>>,
@@ -490,6 +520,7 @@ export class BackgroundClient {
   provisionAccountWorkspace(
     credentialRevision: number,
     replaceUnconfirmed = false,
+    resetSettings = false,
   ) {
     return this.accountRequest(
       "/v1/account/workspace",
@@ -499,6 +530,7 @@ export class BackgroundClient {
         body: JSON.stringify({
           credentialRevision,
           ...(replaceUnconfirmed ? { replaceUnconfirmed } : {}),
+          ...(resetSettings ? { resetSettings } : {}),
           confirm: true,
         }),
       },
@@ -514,6 +546,28 @@ export class BackgroundClient {
   }
   // Changes the account's own agent or environment through the service, which
   // applies it once and seals the resulting settings with the account.
+  // Resolves an unconfirmed settings change by reading Ark on the service;
+  // nothing is sent to Ark. adopt saves the current values only after the
+  // user reviewed them.
+  reconcileAccountWorkspace(
+    revision: number,
+    credentialRevision: number,
+    adopt = false,
+  ) {
+    return this.accountRequest(
+      "/v1/account/workspace/reconcile",
+      accountWorkspaceResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          revision,
+          credentialRevision,
+          ...(adopt ? { adopt } : {}),
+          confirm: true,
+        }),
+      },
+    );
+  }
   updateAccountWorkspace(
     kind: "agent" | "environment",
     changes: Record<string, unknown>,

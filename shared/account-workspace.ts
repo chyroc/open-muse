@@ -58,6 +58,11 @@ export const accountWorkspaceSchema = z
     model: z.string().min(1).max(200),
     agent: snapshot.optional(),
     environment: snapshot.optional(),
+    // Settings replaced by an explicit reset to defaults, kept for the user.
+    previous: z
+      .object({ agent: snapshot.optional(), environment: snapshot.optional() })
+      .strict()
+      .optional(),
   })
   .strict();
 export type AccountWorkspace = z.infer<typeof accountWorkspaceSchema>;
@@ -66,6 +71,18 @@ export const accountWorkspaceResponseSchema = z
     revision: z.number().int().nonnegative(),
     workspace: accountWorkspaceSchema.optional(),
     unconfirmed: z.boolean(),
+    // A settings change whose result is unconfirmed or needs the user's review.
+    settings: z.enum(["unconfirmed", "review"]).optional(),
+    // How a deleted agent or environment was created again.
+    rebuilt: z
+      .object({
+        agent: z.enum(["restored", "recreated_with_defaults"]).optional(),
+        environment: z.enum(["restored", "recreated_with_defaults"]).optional(),
+      })
+      .strict()
+      .optional(),
+    // How an unconfirmed change was resolved.
+    change: z.enum(["applied", "adopted", "not_applied"]).optional(),
     // After a settings change: whether background work was rebound to the
     // new agent version (which pauses the schedule) or needs review.
     background: z.enum(["unchanged", "rebound", "stale"]).optional(),

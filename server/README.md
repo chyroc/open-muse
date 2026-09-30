@@ -273,15 +273,39 @@ deployed or that a real unattended generation can complete.
 - `PUT /v1/account/workspace/settings`: `{kind: "agent" | "environment",
   changes, revision, credentialRevision, confirm: true}`. Applies one change to
   the account's own recorded agent or environment (the target comes from the
-  sealed record, not the request), reads it back, and seals the reported
-  settings (agent version, name, description, model, system, tools, MCP
-  servers, skills; environment name, description, config) with the record.
-  Only those fields are accepted; `metadata` is refused so ownership labels
-  cannot change. A stale `revision` returns 409 before anything is sent; an
-  unconfirmed result returns 503 and is not repeated. An allowed background
-  binding is rebound to the new agent version, which pauses its schedule, and
-  the response reports `background: "rebound" | "stale" | "unchanged"`. At most
-  60 changes per account per hour.
+  sealed record, not the request) and seals the settings Ark reports (agent
+  version, name, description, model, system, tools, MCP servers, skills;
+  environment name, description, config). Only those fields are accepted;
+  `metadata`, uploaded (custom) skills, and `config.tos` are refused. Before
+  anything is sent, the record is held with a pending marker by compare-and-swap
+  on its revision, so a second device or a stale `revision` gets 409 without a
+  request to Ark, and no change or setup runs while one is pending. The change is
+  sent once. Only Ark's 400, 401, 403, 404, and 413 responses, or a 409 while
+  the agent still has the change's base version, release the record as not
+  applied (422). Timeouts, 408, 429, other statuses, network errors, unparsable
+  responses, and a result that cannot be read back return 503
+  `{code: "unconfirmed"}` and keep the record held. Settings that reference
+  resources an account cannot use are never sealed. A confirmed agent change
+  rebinds allowed background work to the new version, which pauses its
+  schedule; the response reports `background: "rebound" | "stale" |
+  "unchanged"`. At most 60 changes per account per hour.
+- `POST /v1/account/workspace/reconcile`: `{revision, credentialRevision,
+  adopt?, confirm: true}` resolves a held change by reading Ark only. It reports
+  `change: "applied"` (sealed), `"not_applied"` (released, saved settings kept),
+  or 409 `{code: "settings_review"}` when Ark's values match neither, in which
+  case only `adopt: true` after the user's review seals the current values. A
+  change still being sent is left alone for two minutes.
+
+When a recorded agent or environment was deleted at Ark, `POST
+/v1/account/workspace` creates it again from the account's saved settings and
+reports `rebuilt: {agent|environment: "restored"}`. If the saved settings
+reference resources an account cannot use, it returns 409
+`{code: "rebuild_review", details}` and keeps them; only `resetSettings: true`
+recreates the resource with default settings, reports
+`"recreated_with_defaults"`, and keeps the replaced settings under
+`previous`. Replacing a resource revokes the account's background binding and
+pauses its schedule in the same batch. Changes made directly at Ark outside Open
+Muse are not recorded.
 
 ### Account Ark credentials
 

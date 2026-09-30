@@ -97,9 +97,16 @@ checked before another write; they are never blindly retried or adopted.
 In an account build, changes to the agent or environment — Studio's
 `UpdateAgent` and `UpdateEnvironment`, and the app's own policy updates — are
 sent to the Open Muse service, which applies them once to the account's own
-resource, reads the result back, and seals it with the account. Ownership
-labels cannot be changed this way. If background work is allowed, it is rebound
-to the new agent version and the schedule pauses until it is enabled again.
+resource and seals the result with the account. Only one change can be in
+flight per workspace. If its result is unconfirmed (a timeout or lost
+response), nothing else is changed until the app checks Ark read-only; when Ark
+shows neither the saved nor the new values, Settings asks the user to review
+and explicitly save the current settings. Ownership labels cannot be changed
+this way. If background work is allowed, it is rebound to the new agent version
+and the schedule pauses until it is enabled again. If the agent or environment
+is deleted at Ark, preparing the workspace creates it again with the saved
+settings; if those settings reference resources an account cannot use, they
+are kept and Settings offers an explicit recreation with default settings.
 Studio in an account build reaches only the account's own agent, environment,
 memory store, and sessions: listings are filtered to them, sessions can be
 created only with the account's own agent, environment, and memory store and
@@ -110,8 +117,10 @@ attributed to an account, so an account build refuses them both as Studio
 operations and as references: in agent skills (built-in and hub skills remain
 available), environment `config.tos`, session-level agent overrides (skills,
 `multiagent`), session `vault_ids`, and session resources other than the
-account's own memory store. Changes made directly at Ark outside Open Muse are
-not recorded in the account's sealed settings.
+account's own memory store. Messages sent from Studio may cite only files this
+account uploaded on the same device; files uploaded on another device and
+session output files cannot be cited there. Changes made directly at Ark
+outside Open Muse are not recorded in the account's sealed settings.
 
 Existing agents retain their model. New agents use the public tool-calling model
 `doubao-seed-2-1-pro-260915`; the Ark project must have access to it. Model access

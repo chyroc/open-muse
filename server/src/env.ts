@@ -37,6 +37,9 @@ export class HttpError extends Error {
   constructor(
     public status: number,
     message: string,
+    // Machine-readable reason clients may act on; never contains user data.
+    public code?: string,
+    public details?: string[],
   ) {
     super(message);
   }

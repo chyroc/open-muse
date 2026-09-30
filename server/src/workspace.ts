@@ -9,13 +9,16 @@ import {
   resourceName,
 } from "../../shared/workspace-spec";
 import {
+  accountSkills,
   accountWorkspaceSchema,
   agentChangesSchema,
   environmentChangesSchema,
   type AccountWorkspace,
 } from "../../shared/account-workspace";
+import { digest } from "../../shared/crypto";
+import { canonicalJson } from "../../shared/session-refresh";
 import { AccountCredentials } from "./account";
-import { ConnectionStore, seal, unseal } from "./connection";
+import { ConnectionStore, revokeBackground, seal, unseal } from "./connection";
 import { HttpError, type Env } from "./env";
 
 type Kind = "environment" | "memory_store" | "agent";
@@ -39,7 +42,7 @@ const kinds: Record<
     label: "open_muse_workspace",
   },
 };
-const pendingSchema = z
+const creationPending = z
   .object({
     kind: z.enum(["environment", "memory_store", "agent"]),
     nonce: z.string().uuid(),
@@ -47,6 +50,68 @@ const pendingSchema = z
     review: z.boolean().optional(),
   })
   .strict();
+// A settings change holds the record while it is sent. Only the changed keys
+// and a digest of their values are kept here, never the values themselves.
+const updatePending = z
+  .object({
+    op: z.literal("update"),
+    kind: z.enum(["agent", "environment"]),
+    nonce: z.string().uuid(),
+    base: z.number().int().positive().optional(),
+    keys: z.array(z.string()),
+    hash: z.string(),
+    state: z.enum(["sending", "unconfirmed", "review"]),
+    startedAt: z.number().int(),
+  })
+  .strict();
+const pendingSchema = z.union([updatePending, creationPending]);
+type Pending = z.infer<typeof pendingSchema>;
+const settingsFields = {
+  agent: [
+    "version",
+    "name",
+    "description",
+    "model",
+    "system",
+    "tools",
+    "mcp_servers",
+    "skills",
+  ],
+  environment: ["name", "description", "config"],
+};
+// Fields restored when a deleted agent or environment is created again.
+const restoredFields = {
+  agent: ["description", "model", "system", "tools", "mcp_servers", "skills"],
+  environment: ["description", "config"],
+};
+const pick = (value: Record<string, unknown>, keys: string[]) =>
+  Object.fromEntries(
+    keys.filter((key) => key in value).map((key) => [key, value[key]]),
+  );
+const fingerprint = (value: Record<string, unknown>, keys: string[]) =>
+  digest(
+    canonicalJson(
+      Object.fromEntries(keys.map((key) => [key, value[key] ?? null])),
+    ),
+  );
+// Settings that reference uploaded skills, other agents, or TOS buckets are
+// never sealed or applied for an account.
+const usable = (
+  kind: "agent" | "environment",
+  settings: Record<string, unknown>,
+) =>
+  kind === "agent"
+    ? accountSkills(settings.skills) && !settings.multiagent
+    : !(
+        settings.config &&
+        typeof settings.config === "object" &&
+        "tos" in settings.config
+      );
+// Statuses with which Ark definitely did not apply a write. Timeouts, server
+// errors, and lost responses leave the result unconfirmed.
+const REJECTED = [400, 401, 403, 404, 409, 413, 422, 429];
+const unconfirmed = (message: string) =>
+  new HttpError(503, message, "unconfirmed");
 type Row = {
   revision: number;
   encrypted: string | null;
@@ -56,7 +121,8 @@ const purpose = "open-muse-account-workspace";
 const base = "https://ark.cn-beijing.volces.com/api/v3";
 const CREATE_WINDOW = 3_600_000,
   CREATE_LIMIT = 20,
-  UPDATE_LIMIT = 60;
+  UPDATE_LIMIT = 60,
+  SENDING_WINDOW = 120_000;
 const validId = (value: unknown) => {
   if (typeof value !== "string" || !/^[\w-]{1,200}$/.test(value))
     throw new HttpError(502, "The upstream resource ID is invalid.");
@@ -127,18 +193,27 @@ export class AccountWorkspaces {
       );
     return parsed.data;
   }
+  private pending(row: Row | null): Pending | undefined {
+    return row?.pending
+      ? pendingSchema.parse(JSON.parse(row.pending))
+      : undefined;
+  }
   async read() {
     const { workspaceKey } = await this.context();
     const row = await this.row(workspaceKey);
-    const pending = row?.pending
-      ? pendingSchema.parse(JSON.parse(row.pending))
-      : undefined;
+    const pending = this.pending(row);
     return {
       revision: row?.revision ?? 0,
       workspace: row?.encrypted
         ? await this.decode(workspaceKey, row)
         : undefined,
-      unconfirmed: Boolean(pending?.review),
+      unconfirmed: Boolean(pending && !("op" in pending) && pending.review),
+      ...(pending && "op" in pending
+        ? {
+            settings:
+              pending.state === "sending" ? "unconfirmed" : pending.state,
+          }
+        : {}),
     };
   }
   // Compare-and-swap on the record revision; the owner and workspace key are
@@ -147,9 +222,11 @@ export class AccountWorkspaces {
     workspaceKey: string,
     revision: number,
     workspace: AccountWorkspace,
-    pending: z.infer<typeof pendingSchema> | null,
+    pending: Pending | null,
     now: number,
     claim?: { kind: Kind; id: string },
+    // A replaced resource invalidates any background binding to the old one.
+    revoke = false,
   ) {
     const encrypted = await seal(this.env, purpose, this.owner, revision + 1, {
       workspaceKey,
@@ -183,6 +260,15 @@ export class AccountWorkspaces {
               ON CONFLICT(kind,resource_id) DO NOTHING`,
             ).bind(claim.kind, claim.id, this.owner, now, this.owner, mutation),
           ]
+        : []),
+      ...(revoke
+        ? revokeBackground(
+            this.env.DB,
+            this.owner,
+            now,
+            "account_workspaces",
+            mutation,
+          )
         : []),
     ]);
     if (!results[0].meta.changes)
@@ -242,15 +328,29 @@ export class AccountWorkspaces {
   async provision(
     credentialRevision: number,
     replaceUnconfirmed = false,
+    // Explicit user choice to recreate a deleted agent or environment with
+    // default settings when its saved settings cannot be used by an account.
+    resetSettings = false,
     now = Date.now(),
   ) {
     const { workspaceKey, ark } = await this.context(credentialRevision);
+    const rebuilt: Partial<
+      Record<"agent" | "environment", "restored" | "recreated_with_defaults">
+    > = {};
+    const first = this.pending(await this.row(workspaceKey));
+    if (first && "op" in first)
+      throw new HttpError(
+        409,
+        "A workspace settings change is unconfirmed. Check it before preparing the workspace.",
+        "settings_pending",
+      );
     for (const kind of ["environment", "memory_store", "agent"] as Kind[]) {
       const { collection, field, label } = kinds[kind];
-      let row = await this.row(workspaceKey);
+      const row = await this.row(workspaceKey);
       let revision = row?.revision ?? 0;
       const workspace = await this.decode(workspaceKey, row);
       const id = workspace[field] as string | undefined;
+      let replaced = false;
       if (id) {
         try {
           const resource = await ark.request<{
@@ -264,23 +364,14 @@ export class AccountWorkspaces {
             );
           continue;
         } catch (error) {
-          // A resource deleted at Ark is recreated; anything else stops here.
+          // Only a definite 404 means the resource is gone; it is created
+          // again from the account's saved settings. Anything else stops.
           if (!(error instanceof ApiError) || error.status !== 404) throw error;
-          delete workspace[field];
-          revision = await this.write(
-            workspaceKey,
-            revision,
-            workspace,
-            null,
-            now,
-          );
-          row = await this.row(workspaceKey);
+          replaced = true;
         }
       }
-      const pending = row?.pending
-        ? pendingSchema.parse(JSON.parse(row.pending))
-        : undefined;
-      if (pending) {
+      const pending = this.pending(row);
+      if (pending && !("op" in pending)) {
         if (!pending.review) {
           // The last creation was unconfirmed. Query instead of repeating it.
           const found = await this.created(ark, pending.kind, pending.nonce);
@@ -305,26 +396,54 @@ export class AccountWorkspaces {
             "An earlier setup step may have created a resource that Open Muse will not use. Continue setup to create a new one.",
           );
       }
+      // Saved settings are restored as they are. Settings an account may not
+      // use are kept and block recreation until the user decides.
+      let body: Record<string, unknown> =
+        kind === "memory_store"
+          ? { name: memoryStoreName }
+          : kind === "agent"
+            ? agentSpec(workspace.model)
+            : environmentSpec();
+      const next = { ...workspace };
+      delete next[field];
+      if (kind !== "memory_store" && workspace[kind]) {
+        const saved = pick(workspace[kind]!, restoredFields[kind]);
+        if (usable(kind, saved)) {
+          body = { ...body, ...saved };
+          rebuilt[kind] = "restored";
+        } else if (!resetSettings)
+          throw new HttpError(
+            409,
+            `The saved ${kind} settings reference resources an account cannot use. They are kept unchanged; choose to recreate it with default settings to continue.`,
+            "rebuild_review",
+            kind === "agent"
+              ? ["skills", "multiagent"].filter((key) => key in saved)
+              : ["config.tos"],
+          );
+        else {
+          next.previous = { ...next.previous, [kind]: workspace[kind] };
+          delete next[kind];
+          rebuilt[kind] = "recreated_with_defaults";
+        }
+      }
       await this.quota(now);
       const nonce = crypto.randomUUID();
       revision = await this.write(
         workspaceKey,
         revision,
-        workspace,
+        next,
         { kind, nonce },
         now,
+        undefined,
+        replaced,
       );
-      const metadata = { [label]: workspaceKey, open_muse_provision: nonce };
-      const body =
-        kind === "memory_store"
-          ? { name: memoryStoreName, metadata }
-          : {
-              ...(kind === "agent"
-                ? agentSpec(workspace.model)
-                : environmentSpec()),
-              name: `${resourceName(workspaceKey)}-${kind}`,
-              metadata,
-            };
+      body = {
+        ...body,
+        ...(kind === "memory_store"
+          ? {}
+          : { name: `${resourceName(workspaceKey)}-${kind}` }),
+        metadata: { [label]: workspaceKey, open_muse_provision: nonce },
+      };
       let created: string;
       try {
         created = validId(
@@ -338,7 +457,7 @@ export class AccountWorkspaces {
       } catch (error) {
         if (
           error instanceof ApiError &&
-          [400, 401, 403, 404, 413, 422, 429].includes(error.status)
+          REJECTED.filter((status) => status !== 409).includes(error.status)
         ) {
           await this.write(workspaceKey, revision, workspace, null, now);
           throw new HttpError(
@@ -346,26 +465,28 @@ export class AccountWorkspaces {
             `Ark refused to create the workspace ${kind.replace("_", " ")} (HTTP ${error.status}).`,
           );
         }
-        throw new HttpError(
-          503,
+        throw unconfirmed(
           "The workspace creation result is unconfirmed. Continue setup to check it; nothing was repeated.",
         );
       }
       await this.write(
         workspaceKey,
         revision,
-        { ...workspace, [field]: created },
+        { ...next, [field]: created },
         null,
         now,
         { kind, id: created },
       );
     }
-    return this.read();
+    return {
+      ...(await this.read()),
+      ...(Object.keys(rebuilt).length ? { rebuilt } : {}),
+    };
   }
   // Applies a user's change to the account's own agent or environment. The
-  // target comes from the sealed record, never from the request, and the
-  // resulting settings are sealed with it so other devices and background
-  // work use the same configuration.
+  // target comes from the sealed record, never from the request. The record is
+  // held before the change is sent, so only one change can be in flight, and
+  // the result is sealed only when it is certain.
   async update(
     kind: "agent" | "environment",
     changes: unknown,
@@ -383,10 +504,11 @@ export class AccountWorkspaces {
       );
     const { workspaceKey, ark } = await this.context(credentialRevision);
     const row = await this.row(workspaceKey);
-    if ((row?.revision ?? 0) !== revision)
+    if ((row?.revision ?? 0) !== revision || this.pending(row))
       throw new HttpError(
         409,
-        "The workspace settings changed on another device. Refresh before saving.",
+        "The workspace settings changed on another device or a change is unconfirmed. Refresh before saving.",
+        this.pending(row) ? "settings_pending" : undefined,
       );
     const workspace = await this.decode(workspaceKey, row);
     const { collection, field } = kinds[kind];
@@ -394,48 +516,130 @@ export class AccountWorkspaces {
     if (!id)
       throw new HttpError(409, "Prepare the workspace before changing it.");
     await this.quota(now, "update", UPDATE_LIMIT);
+    const values = parsed.data as Record<string, unknown>;
+    const keys = Object.keys(values).filter((key) => key !== "version");
+    const pending: Pending = {
+      op: "update",
+      kind,
+      nonce: crypto.randomUUID(),
+      ...(kind === "agent" ? { base: values.version as number } : {}),
+      keys,
+      hash: fingerprint(values, keys),
+      state: "sending",
+      startedAt: now,
+    };
+    // Held before anything is sent: a second device fails here without a POST.
+    const held = await this.write(
+      workspaceKey,
+      revision,
+      workspace,
+      pending,
+      now,
+    );
+    const path = `/${collection}/${encodeURIComponent(id)}`;
+    const leave = async (state: "unconfirmed" | "review") => {
+      await this.write(
+        workspaceKey,
+        held,
+        workspace,
+        { ...pending, state },
+        now,
+      );
+    };
+    let response: Record<string, unknown>;
     try {
-      await ark.request(`/${collection}/${encodeURIComponent(id)}`, {
+      response = await ark.request<Record<string, unknown>>(path, {
         method: "POST",
-        body: JSON.stringify(parsed.data),
+        body: JSON.stringify(values),
       });
     } catch (error) {
-      if (error instanceof ApiError && error.status < 500)
+      let rejected =
+        error instanceof ApiError &&
+        REJECTED.filter((status) => status !== 409 && status !== 429).includes(
+          error.status,
+        );
+      // An agent version conflict is a rejection only if the agent still has
+      // the version the change was based on.
+      if (error instanceof ApiError && error.status === 409 && kind === "agent")
+        rejected = await ark
+          .request<{ version?: unknown }>(path)
+          .then((agent) => agent.version === pending.base)
+          .catch(() => false);
+      if (rejected) {
+        await this.write(workspaceKey, held, workspace, null, now);
         throw new HttpError(
           422,
-          `Ark refused the change (HTTP ${error.status}). Nothing was saved.`,
+          `Ark refused the change (HTTP ${(error as ApiError).status}). Nothing was saved.`,
         );
-      // Not repeated: reading the resource again shows whether it applied.
-      throw new HttpError(
-        503,
-        "The change is unconfirmed. Refresh the workspace to check it; it was not repeated.",
+      }
+      await leave("unconfirmed");
+      throw unconfirmed(
+        "The change was sent but its result is unconfirmed. Check it before making another change; it was not repeated.",
       );
     }
-    const current = await ark.request<Record<string, unknown>>(
-      `/${collection}/${encodeURIComponent(id)}`,
+    let current = response;
+    if (
+      current.id !== id ||
+      settingsFields[kind].some(
+        (key) => (kind === "agent" || key !== "version") && !(key in current),
+      )
+    )
+      try {
+        current = await ark.request<Record<string, unknown>>(path);
+      } catch {
+        await leave("unconfirmed");
+        throw unconfirmed(
+          "The change was sent but could not be read back. Check it before making another change; it was not repeated.",
+        );
+      }
+    return this.settle(
+      workspaceKey,
+      held,
+      workspace,
+      kind,
+      id,
+      current,
+      credentialRevision,
+      now,
     );
-    const fields =
-      kind === "agent"
-        ? [
-            "version",
-            "name",
-            "description",
-            "model",
-            "system",
-            "tools",
-            "mcp_servers",
-            "skills",
-          ]
-        : ["name", "description", "config"];
-    const settings = Object.fromEntries(
-      fields.filter((key) => key in current).map((key) => [key, current[key]]),
-    );
+  }
+  // Seals what Ark reports for the account's agent or environment and releases
+  // the record. Values referencing resources an account may not use are never
+  // sealed; the change is left for review instead.
+  private async settle(
+    workspaceKey: string,
+    held: number,
+    workspace: AccountWorkspace,
+    kind: "agent" | "environment",
+    id: string,
+    current: Record<string, unknown>,
+    credentialRevision: number,
+    now: number,
+  ) {
+    const settings = pick(current, settingsFields[kind]);
+    const row = await this.row(workspaceKey);
+    const pending = this.pending(row);
+    if (!usable(kind, settings)) {
+      if (pending && "op" in pending)
+        await this.write(
+          workspaceKey,
+          held,
+          workspace,
+          { ...pending, state: "review" },
+          now,
+        );
+      throw new HttpError(
+        409,
+        "The current settings reference resources an account cannot use, so they were not saved. Edit them in Studio.",
+        "settings_review",
+      );
+    }
     if (JSON.stringify(settings).length > 100_000)
       throw new HttpError(413, "The workspace settings are too large to save.");
     const model = (settings.model as { id?: unknown } | undefined)?.id;
     await this.write(
       workspaceKey,
-      revision,
+      held,
       {
         ...workspace,
         [kind]: settings,
@@ -445,7 +649,8 @@ export class AccountWorkspaces {
       now,
     );
     // Background work pins the agent version it was allowed with. Rebinding
-    // to the new version pauses the schedule until the user enables it again.
+    // to the confirmed new version pauses the schedule until the user enables
+    // it again.
     let background: "unchanged" | "rebound" | "stale" = "unchanged";
     const connections = new ConnectionStore(this.env, this.owner);
     const binding = await connections.resolve().catch(() => undefined);
@@ -453,7 +658,8 @@ export class AccountWorkspaces {
       kind === "agent" &&
       binding?.revision &&
       binding.env.ARK_AGENT_ID === id &&
-      typeof settings.version === "number"
+      typeof settings.version === "number" &&
+      String(settings.version) !== binding.env.ARK_AGENT_VERSION
     )
       try {
         await connections.save(
@@ -475,5 +681,95 @@ export class AccountWorkspaces {
         background = "stale";
       }
     return { ...(await this.read()), background };
+  }
+  // Resolves an unconfirmed change by reading Ark only; nothing is sent. The
+  // result is sealed only when it is certain, or when the user explicitly
+  // adopts the current values of a change left for review.
+  async reconcile(
+    revision: number,
+    credentialRevision: number,
+    adopt = false,
+    now = Date.now(),
+  ) {
+    const { workspaceKey, ark } = await this.context(credentialRevision);
+    const row = await this.row(workspaceKey);
+    const pending = this.pending(row);
+    if ((row?.revision ?? 0) !== revision)
+      throw new HttpError(
+        409,
+        "The workspace settings changed on another device. Refresh before saving.",
+      );
+    // A change still being sent on another device is left alone; a Worker
+    // request cannot outlive this window.
+    if (
+      !pending ||
+      !("op" in pending) ||
+      (pending.state === "sending" && now - pending.startedAt < SENDING_WINDOW)
+    )
+      throw new HttpError(409, "There is no unconfirmed change to check.");
+    const workspace = await this.decode(workspaceKey, row);
+    const { collection, field, label } = kinds[pending.kind];
+    const id = workspace[field] as string;
+    const current = await ark
+      .request<Record<string, unknown> & { metadata?: Record<string, string> }>(
+        `/${collection}/${encodeURIComponent(id)}`,
+      )
+      .catch(() => {
+        throw unconfirmed("Ark could not be read. Nothing was changed.");
+      });
+    const held = row!.revision;
+    if (current.id !== id || current.metadata?.[label] !== workspaceKey) {
+      await this.write(
+        workspaceKey,
+        held,
+        workspace,
+        { ...pending, state: "review" },
+        now,
+      );
+      throw new HttpError(
+        409,
+        "A workspace resource was changed outside Open Muse. Review it in the Ark console.",
+        "settings_review",
+      );
+    }
+    const matches = fingerprint(current, pending.keys) === pending.hash;
+    const applied =
+      matches &&
+      (pending.kind !== "agent" || current.version === (pending.base ?? 0) + 1);
+    const untouched =
+      pending.kind === "agent"
+        ? current.version === pending.base
+        : fingerprint(current, pending.keys) ===
+          fingerprint(workspace.environment ?? {}, pending.keys);
+    if (applied || (adopt && pending.state === "review"))
+      return {
+        ...(await this.settle(
+          workspaceKey,
+          held,
+          workspace,
+          pending.kind,
+          id,
+          current,
+          credentialRevision,
+          now,
+        )),
+        change: applied ? "applied" : "adopted",
+      };
+    if (untouched && !matches) {
+      await this.write(workspaceKey, held, workspace, null, now);
+      return { ...(await this.read()), change: "not_applied" };
+    }
+    await this.write(
+      workspaceKey,
+      held,
+      workspace,
+      { ...pending, state: "review" },
+      now,
+    );
+    throw new HttpError(
+      409,
+      "The current settings differ from both the saved settings and the change. Review them, then choose to save the current settings.",
+      "settings_review",
+    );
   }
 }

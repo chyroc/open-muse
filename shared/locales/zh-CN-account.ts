@@ -109,4 +109,17 @@ export const zhAccount: Record<string, string> = {
     "工作区设置已在其他设备上更改。请刷新并检查后再保存。",
   "The change is unconfirmed. Refresh the workspace to check it; it was not repeated.":
     "更改结果尚未确认。请刷新工作区检查；未重复提交。",
+  "A workspace settings change is unconfirmed. Open Muse checks it before anything else is changed.":
+    "工作区设置的一次更改结果尚未确认。Open Muse 会先检查它，再进行其他更改。",
+  "The workspace settings need your review: they reference resources an account cannot use or differ from what Open Muse saved. Nothing was changed.":
+    "工作区设置需要你确认：它们引用了账号无法使用的资源，或与 Open Muse 保存的设置不一致。未做任何更改。",
+  "A deleted agent or environment cannot be restored because its saved settings reference resources an account cannot use. The saved settings are kept; recreate it with default settings to continue.":
+    "已删除的智能体或环境无法恢复，因为保存的设置引用了账号无法使用的资源。已保存的设置会保留；如需继续，请使用默认设置重新创建。",
+  "The change was sent but its result is unconfirmed. Open Muse checks it before anything else is changed; it was not repeated.":
+    "更改已发送，但结果尚未确认。Open Muse 会先检查它，再进行其他更改；未重复提交。",
+  "The change was not applied. Nothing else was sent; make the change again if you still want it.":
+    "更改未生效。未发送其他请求；如仍需要，请重新更改。",
+  "Check the last change": "检查上次更改",
+  "Save the current settings": "保存当前设置",
+  "Recreate with default settings": "使用默认设置重新创建",
 };

@@ -358,11 +358,24 @@ export class Client {
       // Account workspaces are created and recorded by the service; the
       // client only receives their IDs.
       const provision = owner
-        ? async (replaceUnconfirmed: boolean) => {
-            const { workspace } = await account!.provisionAccountWorkspace(
-              c.revision!,
-              replaceUnconfirmed,
-            );
+        ? async (options: {
+            replaceUnconfirmed: boolean;
+            resetSettings: boolean;
+          }) => {
+            const request = () =>
+              account!.provisionAccountWorkspace(
+                c.revision!,
+                options.replaceUnconfirmed,
+                options.resetSettings,
+              );
+            // A pending settings change blocks setup before anything is
+            // created; it is checked read-only first, then setup is asked again.
+            const { workspace } = await request().catch(async (error) => {
+              if ((error as { code?: string }).code !== "settings_pending")
+                throw error;
+              await this.checkWorkspaceSettings();
+              return request();
+            });
             if (
               !workspace?.agentId ||
               !workspace.environmentId ||
@@ -383,7 +396,12 @@ export class Client {
       const resolve = provision
         ? async (create: boolean) =>
             create
-              ? (await provision(false)).memoryStoreId
+              ? (
+                  await provision({
+                    replaceUnconfirmed: false,
+                    resetSettings: false,
+                  })
+                ).memoryStoreId
               : (await account!.accountWorkspace()).workspace?.memoryStoreId
         : undefined;
       const companion = new DirectIdentity(
@@ -434,9 +452,24 @@ export class Client {
       };
     return this.context().workspace.status();
   }
-  // replaceUnconfirmed only from an explicit "continue setup" action.
-  startWorkspace(options: { replaceUnconfirmed?: boolean } = {}) {
-    return this.context().workspace.start(options.replaceUnconfirmed === true);
+  // Both options only from an explicit user action in Settings.
+  startWorkspace(
+    options: { replaceUnconfirmed?: boolean; resetSettings?: boolean } = {},
+  ) {
+    return this.context().workspace.start(options);
+  }
+  // Resolves an unconfirmed agent or environment change by reading Ark on the
+  // service; nothing is sent to Ark. adopt saves the current values and is
+  // only for an explicit user decision after review.
+  async checkWorkspaceSettings(adopt = false) {
+    const account = this.identity.account!;
+    const current = await account.accountWorkspace();
+    if (!current.settings) return current;
+    return account.reconcileAccountWorkspace(
+      current.revision,
+      this.identity.value!.revision!,
+      adopt,
+    );
   }
   async backgroundConfiguration(confirm: boolean) {
     const r = this.context();
@@ -1507,12 +1540,30 @@ export class Client {
   ) {
     const account = this.identity.account!;
     const current = await account.accountWorkspace();
-    return account.updateAccountWorkspace(
-      kind,
-      changes,
-      current.revision,
-      this.identity.value!.revision!,
-    );
+    try {
+      return await account.updateAccountWorkspace(
+        kind,
+        changes,
+        current.revision,
+        this.identity.value!.revision!,
+      );
+    } catch (error) {
+      // An unconfirmed result is checked once by reading Ark; the change is
+      // never sent again.
+      if ((error as { code?: string }).code !== "unconfirmed") throw error;
+      const checked = await this.checkWorkspaceSettings();
+      if (checked.change === "applied") return checked;
+      throw new ApiError(
+        409,
+        checked.change === "not_applied"
+          ? t(
+              "The change was not applied. Nothing else was sent; make the change again if you still want it.",
+            )
+          : t(
+              "The change was sent but its result is unconfirmed. Open Muse checks it before anything else is changed; it was not repeated.",
+            ),
+      );
+    }
   }
   // In an account, Studio reaches only the account's own agent, environment,
   // memory store, and sessions, even though the shared Ark key reaches more.

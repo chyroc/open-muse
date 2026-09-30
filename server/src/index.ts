@@ -113,6 +113,36 @@ export async function handle(
           schedule: await repo.schedule(),
         });
       } else if (
+        url.pathname === "/v1/account/workspace/reconcile" &&
+        request.method === "POST"
+      ) {
+        if (!account)
+          throw new HttpError(
+            403,
+            "Sign in with a Muse account to change the workspace.",
+          );
+        const input = await body(request);
+        if (
+          input.confirm !== true ||
+          !Number.isSafeInteger(input.revision) ||
+          !Number.isSafeInteger(input.credentialRevision) ||
+          (input.adopt !== undefined && typeof input.adopt !== "boolean") ||
+          Object.keys(input).some(
+            (key) =>
+              !["revision", "credentialRevision", "adopt", "confirm"].includes(
+                key,
+              ),
+          )
+        )
+          throw new HttpError(400, "Confirm checking the workspace settings.");
+        response = json(
+          await new AccountWorkspaces(env, owner, fetcher).reconcile(
+            input.revision as number,
+            input.credentialRevision as number,
+            input.adopt === true,
+          ),
+        );
+      } else if (
         url.pathname === "/v1/account/workspace/settings" &&
         request.method === "PUT"
       ) {
@@ -162,11 +192,14 @@ export async function handle(
             !Number.isSafeInteger(input.credentialRevision) ||
             (input.replaceUnconfirmed !== undefined &&
               typeof input.replaceUnconfirmed !== "boolean") ||
+            (input.resetSettings !== undefined &&
+              typeof input.resetSettings !== "boolean") ||
             Object.keys(input).some(
               (key) =>
                 ![
                   "credentialRevision",
                   "replaceUnconfirmed",
+                  "resetSettings",
                   "confirm",
                 ].includes(key),
             )
@@ -176,6 +209,7 @@ export async function handle(
             await workspaces.provision(
               input.credentialRevision as number,
               input.replaceUnconfirmed === true,
+              input.resetSettings === true,
             ),
           );
         } else throw new HttpError(405, "Method not allowed.");
@@ -421,6 +455,9 @@ export async function handle(
           error instanceof HttpError
             ? error.message
             : "The service could not complete this request.",
+        ...(error instanceof HttpError && error.code
+          ? { code: error.code, details: error.details }
+          : {}),
       },
       error instanceof HttpError ? error.status : 500,
     );

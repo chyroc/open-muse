@@ -59,6 +59,12 @@ export interface AccountProvider {
   provisionAccountWorkspace(
     credentialRevision: number,
     replaceUnconfirmed?: boolean,
+    resetSettings?: boolean,
+  ): Promise<AccountWorkspaceResponse>;
+  reconcileAccountWorkspace(
+    revision: number,
+    credentialRevision: number,
+    adopt?: boolean,
   ): Promise<AccountWorkspaceResponse>;
   updateAccountWorkspace(
     kind: "agent" | "environment",
