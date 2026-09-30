@@ -1,4 +1,5 @@
 import Foundation
+import ImageIO
 import UIKit
 import WebKit
 import QuickLook
@@ -190,6 +191,7 @@ final class MuseFilesHandler: NSObject, WKScriptMessageHandlerWithReply, QLPrevi
     private var file: URL?
     private var directory: URL?
     private var busy = false
+    private var thumbnails = 0
 
     init(presenter: UIViewController) {
         self.presenter = presenter
@@ -214,8 +216,11 @@ final class MuseFilesHandler: NSObject, WKScriptMessageHandlerWithReply, QLPrevi
               let host = url.host,
               host.range(of: "^[a-z0-9][a-z0-9-]*\\.tos-cn-beijing\\.volces\\.com$", options: .regularExpression) != nil,
               url.user == nil, url.password == nil, url.port == nil, url.fragment == nil,
-              let name = body["name"], name.utf8.count <= 4096,
-              let action = body["action"], action == "preview" || action == "share",
+              let action = body["action"]
+        else { replyHandler("unavailable", nil); return }
+        if action == "thumbnail" { thumbnail(url, reply: replyHandler); return }
+        guard let name = body["name"], name.utf8.count <= 4096,
+              action == "preview" || action == "share",
               let closeLabel = body["closeLabel"], !closeLabel.isEmpty, closeLabel.utf8.count <= 200,
               !busy, let presenter = presenter, presenter.presentedViewController == nil
         else { replyHandler("unavailable", nil); return }
@@ -267,6 +272,48 @@ final class MuseFilesHandler: NSObject, WKScriptMessageHandlerWithReply, QLPrevi
     }
 
     func numberOfPreviewItems(in controller: QLPreviewController) -> Int { file == nil ? 0 : 1 }
+
+    // Thumbnails are decoded in memory and returned as re-encoded pixels, so
+    // no signed URL, original bytes or temporary file reaches the page or disk.
+    private func thumbnail(_ url: URL, reply: @escaping (Any?, String?) -> Void) {
+        guard thumbnails < 2 else { reply("busy", nil); return }
+        thumbnails += 1
+        MuseFileDownload().start(url) { [weak self] result in
+            guard case .success(let data) = result else {
+                self?.thumbnails -= 1
+                reply(result == .failure(.tooLarge) ? "too-large" : "unavailable", nil)
+                return
+            }
+            DispatchQueue.global(qos: .utility).async {
+                let encoded = Self.encodedThumbnail(data)
+                DispatchQueue.main.async {
+                    self?.thumbnails -= 1
+                    reply(encoded ?? "unavailable", nil)
+                }
+            }
+        }
+    }
+
+    // ImageIO downsamples without decoding the full image, which bounds memory
+    // for very large dimensions. SVG and other non-bitmap types are rejected.
+    private static func encodedThumbnail(_ data: Data) -> String? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
+              CGImageSourceGetCount(source) > 0,
+              let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                  kCGImageSourceCreateThumbnailFromImageAlways: true,
+                  kCGImageSourceCreateThumbnailWithTransform: true,
+                  kCGImageSourceShouldCacheImmediately: true,
+                  kCGImageSourceThumbnailMaxPixelSize: 480,
+              ] as CFDictionary)
+        else { return nil }
+        let opaque = [.none, .noneSkipFirst, .noneSkipLast].contains(image.alphaInfo)
+        let bitmap = UIImage(cgImage: image)
+        if opaque, let jpeg = bitmap.jpegData(compressionQuality: 0.8) {
+            return "data:image/jpeg;base64," + jpeg.base64EncodedString()
+        }
+        guard let png = bitmap.pngData() else { return nil }
+        return "data:image/png;base64," + png.base64EncodedString()
+    }
 
     func previewController(_ controller: QLPreviewController, previewItemAt index: Int) -> QLPreviewItem {
         return file! as NSURL

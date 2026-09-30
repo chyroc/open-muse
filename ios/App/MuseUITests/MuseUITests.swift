@@ -981,6 +981,63 @@ final class MuseLiveUITests: XCTestCase {
         verifyLibraryOutputs(marker)
     }
 
+    // Samples the rendered cover of one card. Element screenshots keep other
+    // Library files out of the evidence.
+    private func coverColor(_ card: XCUIElement) -> (r: Int, g: Int, b: Int)? {
+        guard let image = card.screenshot().image.cgImage else { return nil }
+        let x = image.width / 2, y = image.height * 3 / 10
+        var pixel = [UInt8](repeating: 0, count: 4)
+        guard let context = CGContext(data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                                      space: CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        context.draw(image, in: CGRect(x: -x, y: y - image.height + 1, width: image.width, height: image.height))
+        return (Int(pixel[0]), Int(pixel[1]), Int(pixel[2]))
+    }
+
+    private func waitForTealCover(_ card: XCUIElement, _ message: String) {
+        var last: (r: Int, g: Int, b: Int)?
+        for _ in 0..<40 {
+            last = coverColor(card)
+            if let c = last, c.r < 40, (100...160).contains(c.g), (100...160).contains(c.b), abs(c.g - c.b) < 20 { return }
+            Thread.sleep(forTimeInterval: 1)
+        }
+        XCTFail("\(message); last cover color \(String(describing: last))")
+    }
+
+    // Reuses the synthetic 64x64 teal PNG; sends nothing to MA and opens no other file.
+    func testMediaThumbnailRendersRealImage() {
+        relaunch()
+        openLibrary()
+        let card = libraryFile("library-check-b352a1.png", section: "Media")
+        waitForTealCover(card, "The Media card must show the real image, not a type icon")
+        add({ let a = XCTAttachment(screenshot: card.screenshot()); a.name = "thumbnail-card"; a.lifetime = .keepAlways; return a }())
+        tap(app.buttons["Artifacts"])
+        let document = libraryFile("library-check-b352a1.md", section: "Artifacts")
+        XCTAssertNil(coverColor(document).flatMap { $0.r < 40 && $0.g > 100 ? $0 : nil }, "Documents keep their type icon")
+        tap(app.buttons["Media"])
+        tap(card)
+        XCTAssertTrue(app.buttons["Preview file"].waitForExistence(timeout: 15))
+        let cards = app.buttons.matching(NSPredicate(format: "label == %@", "Open file: library-check-b352a1.png"))
+        // The modal sheet hides the grid from accessibility, leaving the details card.
+        XCTAssertEqual(cards.count, 1)
+        let detail = cards.element(boundBy: 0)
+        XCTAssertGreaterThan(detail.frame.minY, app.buttons["Close"].frame.maxY, "The remaining card is the one in the sheet")
+        waitForTealCover(detail, "The details card reuses the thumbnail")
+        add({ let a = XCTAttachment(screenshot: detail.screenshot()); a.name = "thumbnail-detail"; a.lifetime = .keepAlways; return a }())
+        tap(app.buttons["Preview file"])
+        let close = app.buttons["museFilePreviewClose"]
+        XCTAssertTrue(close.waitForExistence(timeout: 60))
+        close.tap()
+        XCTAssertTrue(app.buttons["Preview file"].waitForExistence(timeout: 15))
+        tap(app.buttons["Close"])
+        // Nothing is persisted: after relaunch the thumbnail is fetched and rendered again.
+        relaunch()
+        openLibrary()
+        let again = libraryFile("library-check-b352a1.png", section: "Media")
+        waitForTealCover(again, "The thumbnail must render again after relaunch")
+        add({ let a = XCTAttachment(screenshot: again.screenshot()); a.name = "thumbnail-after-relaunch"; a.lifetime = .keepAlways; return a }())
+    }
+
     // Reuses the synthetic outputs from a previous real run; sends nothing to MA.
     func testLibraryOutputsRestoreWithoutGeneration() {
         relaunch()

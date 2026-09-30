@@ -8,14 +8,21 @@ import {
   libraryDownloadURL,
   libraryFile,
   libraryFileKind,
+  type LibraryFile,
 } from "../shared/library";
 import { DirectLibrary } from "../src/direct/library";
 import {
   LibraryEmpty,
   LibraryFileCard,
   LibrarySegments,
+  loadThumbnails,
+  wantsThumbnail,
 } from "../src/LibraryPage";
-import { openLibraryFile } from "../src/library-platform";
+import {
+  canRenderThumbnails,
+  libraryThumbnail,
+  openLibraryFile,
+} from "../src/library-platform";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -282,5 +289,136 @@ describe("Native file bridge", () => {
     await expect(openLibraryFile(signed, "x", "preview")).rejects.toThrow(
       "Open this file in the iOS app to preview or share it.",
     );
+  });
+});
+
+describe("Media thumbnails", () => {
+  const png = "data:image/png;base64,iVBORw0KGgo=";
+  function bridge(respond: (body: Record<string, string>) => unknown) {
+    const postMessage = vi.fn(async (body: Record<string, string>) =>
+      respond(body),
+    );
+    vi.stubGlobal("window", {
+      webkit: { messageHandlers: { museFiles: { postMessage } } },
+    });
+    return postMessage;
+  }
+  const item = (overrides: Partial<LibraryFile> = {}) =>
+    ({
+      ...libraryFile(
+        raw("file-img", { filename: "cat.png", mime_type: "image/png" }),
+        sessions,
+        now,
+      )!,
+      ...overrides,
+    }) as LibraryFile;
+  it("requests thumbnails only for active images within the size cap", () => {
+    expect(wantsThumbnail(item())).toBe(true);
+    expect(wantsThumbnail(item({ bytes: undefined }))).toBe(true);
+    expect(wantsThumbnail(item({ bytes: 10 * 1024 * 1024 + 1 }))).toBe(false);
+    expect(wantsThumbnail(item({ status: "processing" }))).toBe(false);
+    expect(wantsThumbnail(item({ kind: "video" }))).toBe(false);
+    expect(wantsThumbnail(item({ kind: "artifact" }))).toBe(false);
+  });
+  it("sends only a validated capability and accepts only re-encoded pixels", async () => {
+    const post = bridge(() => png);
+    const signedURL = vi.fn(async () => signed);
+    expect(await libraryThumbnail(signedURL)).toBe(png);
+    expect(post).toHaveBeenCalledWith({ url: signed, action: "thumbnail" });
+    for (const result of [
+      signed,
+      "data:image/svg+xml;base64,PHN2Zz4=",
+      "data:text/html;base64,PGI+",
+      "data:image/png;base64,<script>",
+      "data:image/jpeg;base64," + "A".repeat(2 * 1024 * 1024),
+      "unavailable",
+      "busy",
+      42,
+    ]) {
+      bridge(() => result);
+      expect(await libraryThumbnail(signedURL)).toBeUndefined();
+    }
+    const unsafe = bridge(() => png);
+    await expect(
+      libraryThumbnail(async () => "https://evil.test/x"),
+    ).rejects.toThrow();
+    expect(unsafe).not.toHaveBeenCalled();
+    vi.stubGlobal("window", {});
+    const unused = vi.fn(async () => signed);
+    expect(await libraryThumbnail(unused)).toBeUndefined();
+    expect(unused).not.toHaveBeenCalled();
+    expect(canRenderThumbnails()).toBe(false);
+  });
+  it("keeps at most two native requests in flight and fetches URLs only when a slot is free", async () => {
+    const releases: (() => void)[] = [];
+    let active = 0;
+    let peak = 0;
+    bridge(
+      () =>
+        new Promise((resolve) => {
+          active++;
+          peak = Math.max(peak, active);
+          releases.push(() => {
+            active--;
+            resolve(png);
+          });
+        }),
+    );
+    const signedURL = vi.fn(async () => signed);
+    const all = Promise.all(
+      Array.from({ length: 5 }, () => libraryThumbnail(signedURL)),
+    );
+    await vi.waitFor(() => expect(releases).toHaveLength(2));
+    expect(signedURL).toHaveBeenCalledTimes(2);
+    while (releases.length) {
+      releases.shift()!();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    expect(await all).toEqual(Array(5).fill(png));
+    expect(peak).toBe(2);
+    expect(signedURL).toHaveBeenCalledTimes(5);
+  });
+  it("loads each id once with a bounded pool, tolerating failures and cancellation", async () => {
+    const seen: string[] = [];
+    const results: [string, string | undefined][] = [];
+    await loadThumbnails(
+      ["a", "b", "c"],
+      async (id) => {
+        seen.push(id);
+        if (id === "b") throw new Error("offline");
+        return `data-${id}`;
+      },
+      (id, data) => results.push([id, data]),
+      () => false,
+    );
+    expect(seen.sort()).toEqual(["a", "b", "c"]);
+    expect(Object.fromEntries(results)).toEqual({
+      a: "data-a",
+      b: undefined,
+      c: "data-c",
+    });
+    let stop = false;
+    const delivered: string[] = [];
+    await loadThumbnails(
+      ["x", "y", "z"],
+      async (id) => {
+        stop = true;
+        return id;
+      },
+      (id) => delivered.push(id),
+      () => stop,
+      1,
+    );
+    expect(delivered).toEqual([]);
+  });
+  it("renders a thumbnail as a decorative image inside the labelled card", () => {
+    const html = renderToStaticMarkup(
+      <LibraryFileCard item={item()} thumbnail={png} onOpen={() => {}} />,
+    );
+    expect(html).toContain('aria-label="Open file: cat.png"');
+    expect(html).toContain(`src="${png}"`);
+    expect(html).toContain('alt=""');
+    expect(html).not.toContain(">PNG<");
+    expect(html).not.toContain("tos-cn-beijing");
   });
 });

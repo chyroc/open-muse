@@ -18,7 +18,11 @@ import type { Client } from "./api";
 import { Markdown, dateLabel } from "./components";
 import { Sheet } from "./MusePages";
 import { exportText } from "./platform";
-import { openLibraryFile } from "./library-platform";
+import {
+  canRenderThumbnails,
+  libraryThumbnail,
+  openLibraryFile,
+} from "./library-platform";
 import "./library.css";
 
 type Section = "artifacts" | "media";
@@ -28,6 +32,40 @@ const fileIcons = {
   audio: Music2,
   video: Video,
 };
+
+export function wantsThumbnail(item: LibraryFile) {
+  return (
+    item.kind === "image" &&
+    item.status === "active" &&
+    (item.bytes == null || item.bytes <= 10 * 1024 * 1024)
+  );
+}
+
+// Loads each id once with a small worker pool; results arrive as they finish.
+export async function loadThumbnails(
+  ids: readonly string[],
+  load: (id: string) => Promise<string | undefined>,
+  done: (id: string, data: string | undefined) => void,
+  cancelled: () => boolean,
+  concurrency = 2,
+) {
+  let next = 0;
+  const worker = async () => {
+    while (!cancelled() && next < ids.length) {
+      const id = ids[next++];
+      let data: string | undefined;
+      try {
+        data = await load(id);
+      } catch {
+        data = undefined;
+      }
+      if (!cancelled()) done(id, data);
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, ids.length) }, worker),
+  );
+}
 
 // A file extension reads better than a generic MIME type such as text/plain.
 function fileTypeLabel(item: LibraryFile) {
@@ -72,9 +110,11 @@ export function LibrarySegments({
 
 export function LibraryFileCard({
   item,
+  thumbnail,
   onOpen,
 }: {
   item: LibraryFile;
+  thumbnail?: string;
   onOpen: () => void;
 }) {
   const Icon = fileIcons[item.kind];
@@ -84,10 +124,16 @@ export function LibraryFileCard({
       aria-label={t("Open file: {name}", { name: item.name })}
       onClick={onOpen}
     >
-      <div className={`library-file-cover file-${item.kind}`}>
-        <Icon size={38} strokeWidth={1.5} />
-        <span>{fileTypeLabel(item)}</span>
-      </div>
+      {thumbnail ? (
+        <div className="library-file-cover has-thumbnail">
+          <img src={thumbnail} alt="" draggable={false} />
+        </div>
+      ) : (
+        <div className={`library-file-cover file-${item.kind}`}>
+          <Icon size={38} strokeWidth={1.5} />
+          <span>{fileTypeLabel(item)}</span>
+        </div>
+      )}
       <strong>{item.name}</strong>
       <small>{dateLabel(item.created_at)}</small>
       {item.status !== "active" && (
@@ -176,6 +222,36 @@ export function LibraryPage({ client }: { client: Client }) {
       ? item.kind === "artifact"
       : item.kind !== "artifact",
   );
+  // Thumbnails live only in this page's memory; signed URLs are never kept.
+  const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+  const requested = useRef(new Set<string>());
+  useEffect(() => {
+    if (section !== "media" || !canRenderThumbnails()) return;
+    const ids = files
+      .filter((item) => wantsThumbnail(item) && !requested.current.has(item.id))
+      .map((item) => item.id);
+    if (!ids.length) return;
+    ids.forEach((id) => requested.current.add(id));
+    const settled = new Set<string>();
+    let stopped = false;
+    void loadThumbnails(
+      ids,
+      (id) =>
+        libraryThumbnail(
+          async () => (await client.libraryFileDownload(id)).url,
+        ),
+      (id, data) => {
+        settled.add(id);
+        if (data) setThumbnails((current) => ({ ...current, [id]: data }));
+      },
+      () => stopped || !alive.current,
+    );
+    return () => {
+      stopped = true;
+      // Unfinished requests may be retried when the section is shown again.
+      for (const id of ids) if (!settled.has(id)) requested.current.delete(id);
+    };
+  }, [section, files, client]);
   const savedVisible = section === "artifacts" ? items : [];
   const select = (item: LibraryItem | LibraryFile) => {
     setDetailError("");
@@ -240,6 +316,7 @@ export function LibraryPage({ client }: { client: Client }) {
               <LibraryFileCard
                 key={item.id}
                 item={item}
+                thumbnail={thumbnails[item.id]}
                 onOpen={() => select(item)}
               />
             ))}
@@ -283,6 +360,7 @@ export function LibraryPage({ client }: { client: Client }) {
               <div className="library-file-info">
                 <LibraryFileCard
                   item={selected}
+                  thumbnail={thumbnails[selected.id]}
                   onOpen={() => void fileAction("preview")}
                 />
                 <p>{selected.session_title}</p>
