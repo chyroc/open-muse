@@ -8,6 +8,10 @@ Conversations use real MA responses. Without an Ark connection the app stays
 signed out; network failures never produce simulated replies. Cloud calls and
 cloud environments may incur charges.
 
+Current feature development and acceptance focus on iOS. The other platform
+projects are retained; shared-client changes do not establish platform-specific
+verification. See [verification coverage](docs/verification.md) for limitations.
+
 ## Run and build
 
 Requires Node.js 22.21+ for development. Apple builds require Xcode; Android
@@ -66,6 +70,9 @@ CORS responses, so neither sign-in nor workspace preparation depends on it.
   content is not encrypted by the app. Protect the device/browser profile.
 - Goals and saved replies are device-local, not automatically synced across
   devices. Conversations and execution history are read directly from MA.
+- Personal identity documents live in an app-owned MA memory store, scoped to
+  the API key and project. Local pending-write records can contain document
+  drafts until cloud readback confirms them. These records are not encrypted.
 - Signing out removes local credentials, not cloud resources or keys. Revoke
   keys in the Ark console when needed. Sign out before switching accounts.
 - Only fixed public Volcano API origins are allowed. Redirects carrying
@@ -93,7 +100,82 @@ port. The build targets macOS 14+ and is not notarized.
 credential-storage plugin. Open with `npm run android`; build the Gradle project
 with JDK 21 and SDK 36. See verification notes for platform coverage.
 
+## Conversations
+
+Chat opens a persistent main conversation. The first message creates its MA
+session; subsequent messages and app launches reuse its active chapter. Opening
+the app without sending a message does not create a session.
+
+When an older main session lacks personal memory, its next message prepares a
+memory-enabled continuation. The app preserves the original MA sessions and
+shows their messages in the same timeline. Earlier visible turns become a
+content-addressed archive in the personal memory store, with known connection
+credentials redacted. The new session reads its own archive to retain context;
+the archive is not inserted as a fake user message. Old execution records remain
+at their original source, including source links for saved replies. Running
+tools and sandbox files are not migrated to the new session.
+
+Local write guards serialize continuation and message submission. Interrupted
+preparation can resume; an uncertain session-creation result is queried by its
+unique marker before any further creation. A message with an uncertain result
+also requires history evidence before another main-chat submission.
+
+The sidebar contains the main chat, searchable side chats, archived chats, and
+Settings. Start a side chat for a separate topic. Archiving and restoring only
+change the local sidebar index; they never delete or terminate a cloud session.
+Existing cloud conversations remain accessible as side chats.
+
+Main-chat selection and archive state are device-local and isolated by API key
+and project. They are not cross-device preferences. Creation attempts are
+recorded before submission and recovered by a random marker after ambiguous
+failures, rather than creating another session automatically.
+
+## Personal identity and memory
+
+Tap the companion avatar to open Activity, Approvals, Desktop, Recent, or
+Identity. Identity contains your assistant's name, editable `SOUL.md` persona,
+and `MEMORY.md` facts, preferences, and commitments. The name is stored as JSON
+text in `IDENTITY.md`; MA memory stores accept `.md` and `.txt` paths only.
+
+Opening Identity is read-only. The first save or new conversation creates an
+owned memory store and any missing starting documents. New conversations mount
+that store and receive instructions to read it with MA memory tools, preserve
+unrelated edits, and verify updates before claiming to remember something.
+Persona changes made by the assistant should be announced in the conversation.
+
+The editor compares the latest content with the version opened by the user,
+preserves drafts on conflicts, and verifies saves by reading them back. Delayed
+readback never triggers a repeated write. MA does not expose an atomic document
+compare-and-swap contract, so simultaneous edits from different devices still
+require care. Do not put passwords or API keys in personal memory.
+
+Older main conversations attach memory through the history-preserving
+continuation described above. Older side chats retain their original history
+and display a compatibility note; start a new side chat to use personal memory.
+There is no scheduled nightly maintenance or interactive remote desktop in this
+version.
+
 ## Capabilities
+
+Feed and Ideas use separate MA conversations to generate personalized posts and
+suggestions from personal memory, recent main-chat messages, active goals, and
+liked posts. They do not display preset content or task-status cards. Open a
+post's information to see why it was suggested and inspect its generation
+conversation. Sources are supplied by the assistant and may need verification.
+
+Feed instructions are editable through the top-right control and saved to
+`FEED.md` in personal MA memory with conflict checks and readback verification.
+Changes affect future posts only. Likes, generated-post indexes, dismissed
+instructions, and discussion links are device-local and scoped to the active
+connection. Opening Discuss or an idea prepares an editable side-chat draft;
+it does not send a message until the user presses Send. Existing discussions
+reopen their linked conversation.
+
+Generation runs persist submission markers and recover from real session
+history after relaunch. Ambiguous session or message submissions are never
+automatically repeated. Invalid output leaves existing content unchanged and
+links to the generation conversation. Generation is user-triggered; no periodic
+background delivery, push notifications, or autonomous scheduling is enabled.
 
 Conversations support streamed events, history backfill, interruption, tool
 approvals, Markdown export, goals, and saving real replies with source links.
