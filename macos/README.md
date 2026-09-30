@@ -31,7 +31,7 @@ Mac-specific build. No iOS or Android build is needed.
 - Closing the window keeps the app running; clicking its Dock icon restores it.
 
 This is an incremental desktop implementation, not a verified one-to-one clone.
-Goals, library, attachments, dictation, desktop
+Library, attachments, dictation, desktop
 automation, and proactive scheduling still need their Mac-specific implementation
 and acceptance checks. The UI identifies unfinished surfaces. No mock replies are
 included in the app. Real cloud verification requires an authorized connection.
@@ -115,3 +115,50 @@ validation, split chat, and lost-create/send recovery. Native acceptance covers 
 connected empty state and read-only split-chat navigation. Populated rendering and
 write behavior are tested with isolated fixtures, not claimed as real-cloud
 end-to-end acceptance.
+
+## Desktop goals
+
+Goals uses a 768-point reading column, category rows, expandable goal trees, and
+centered desktop dialogs. Normal categories open a 420-point introduction dialog;
+"Let's do it" explicitly creates a dedicated MA conversation and sends the category
+starter beside Goals. "Something else" confirms the introduction then fills the
+main-chat composer without creating or sending. Add subgoal also prepares a draft.
+An existing composer draft requires a replacement choice. Goal drafts prepare MA
+goal memory only on explicit Send. Existing goal conversations can be reopened.
+
+The cloud GOALS.md document remains authoritative. Completing a parent completes
+its descendants; reactivating a child reactivates its ancestors. Rename, plan-step
+updates and subtree deletion are revision-checked and verified by readback. Legacy
+records are imported only on explicit actions. Whole-document transitions use the
+shared same-origin goals lock after preparation. This is not a cross-device lock;
+cloud revision/content checks and the shared pending-write guard still apply.
+
+The 600-point goal detail shows saved descriptions, steps, subgoals, and a bounded
+local journal of changes actually observed on this Mac. Deleted goals are removed
+from that journal. The options menu controls subtitles and opens completed goals.
+Rename drafts survive errors and conflicts; adopting a new revision or replacing
+the draft requires an explicit choice. They participate in the native unsaved-close
+guard and block workspace/account switching.
+
+Dedicated conversation creation and its starter event are durably guarded. Lost
+creates require an exact unique session-title match; lost sends require both the
+stable event ID and exact text in cloud history. Refresh does not repeat writes.
+Recovery can open a confirmed conversation without creating another. Friendly chat
+labels are stored locally; cloud recovery titles retain their unique tokens.
+
+Goal deletion removes the goal and descendants from personal memory, not their
+cloud conversations. Completing a goal does not cancel running tools. Automatic
+monitoring, a suggestions/artifact timeline, and a tracking
+schema are not implemented by this adapter; no tracking section or invented
+activity is displayed. Local subtitles, journal and chat labels do not sync across
+devices. Automated acceptance uses isolated fixtures excluded from the app;
+native acceptance covers the empty page, introduction and unsent split-chat drafts.
+It also covers the completed-goals list and the 600-point detail dialog by reading
+an existing synthetic cloud acceptance goal; no goal or conversation was created,
+sent, renamed, completed, or deleted during that native check. English, Simplified
+Chinese and unsupported-language fallback are tested without translating personal
+goal titles, descriptions or steps. Chat labels follow the current app language.
+
+Goals is lazy-loaded independently. If its native bundle chunk becomes unavailable,
+the workspace retains navigation and offers an explicit reload instead of taking
+down the whole window. This recovery does not retry any cloud write.

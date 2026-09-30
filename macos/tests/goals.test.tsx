@@ -24,6 +24,7 @@ import {
   goalOwner,
   goalStatusChange,
   goalActivityLabel,
+  goalChatTitle,
 } from "../ui/goals";
 
 vi.mock("../../src/useTask", () => ({
@@ -567,6 +568,9 @@ describe("Mac Goals desktop UI", () => {
         "Keep original name",
       );
       expect(goalActivityLabel("Step added: User step")).toContain("User step");
+      expect(goalChatTitle("health")).toBe(
+        language === "zh-CN" ? "健康目标" : "Health goal",
+      );
     },
   );
   it("renders empty categories and intro without creating or sending", async () => {

@@ -910,6 +910,7 @@ export const zhCN: Record<string, string> = {
   "The saved name is invalid. Edit your identity to repair it; the original document is preserved.":
     "已保存的名称无效。请编辑身份以修复；原文档已保留。",
   "Continue {category} goal": "继续{category}目标",
+  "{category} goal": "{category}目标",
   custom: "自定义",
   "Goal saved": "目标已保存",
   "Goal completed": "目标已完成",

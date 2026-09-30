@@ -6,6 +6,7 @@ import { ARK_BASE_URL, directFetch } from "../../src/direct/transport";
 import { ApiError, ArkClient } from "../../shared/ark";
 import { digest, uuid } from "../../shared/crypto";
 import {
+  goalCategories,
   parseGoals,
   serializeGoals,
   type GoalCategory,
@@ -113,6 +114,11 @@ export function macGoalStarter(category: GoalCategory) {
     : t("I want to start a {category} goal", { category: t(category) });
 }
 
+export function goalChatTitle(category: GoalCategory) {
+  return t("{category} goal", {
+    category: t(goalCategories.find((item) => item.id === category)!.label),
+  });
+}
 // The local journal keeps its original English text so IDs and existing records
 // remain stable across language changes. Only presentation is localized.
 export function goalActivityLabel(title: string) {
@@ -206,7 +212,7 @@ export class MacGoals {
     return Object.fromEntries(
       state.chats
         .filter((run) => run.session)
-        .map((run) => [run.session!, run.title]),
+        .map((run) => [run.session!, goalChatTitle(run.category)]),
     );
   }
   async snapshot() {
