@@ -1,0 +1,3 @@
+ALTER TABLE runs ADD COLUMN connection_hash TEXT;
+ALTER TABLE runs ADD COLUMN resume_phase TEXT;
+ALTER TABLE runs ADD COLUMN deadline_at INTEGER NOT NULL DEFAULT 0;

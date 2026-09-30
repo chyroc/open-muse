@@ -5,6 +5,7 @@
   "compatibility_date": "2026-01-14",
   "workers_dev": true,
   "preview_urls": false,
+  "triggers": { "crons": ["*/5 * * * *"] },
   "d1_databases": [
     {
       "binding": "DB",
@@ -13,5 +14,5 @@
       "migrations_dir": "migrations",
     },
   ],
-  "vars": { "OWNER_ID": "private-owner" },
+  "vars": { "OWNER_ID": "private-owner", "BACKGROUND_ENABLED": "false" },
 }

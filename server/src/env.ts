@@ -4,6 +4,24 @@ export interface Env {
   // JSON object mapping SHA-256 device-token hashes to non-secret device labels.
   DEVICE_TOKEN_HASHES?: string;
   ALLOWED_ORIGINS?: string;
+  BACKGROUND_ENABLED?: string;
+  ARK_API_KEY?: string;
+  ARK_PROJECT?: string;
+  ARK_AGENT_ID?: string;
+  ARK_AGENT_VERSION?: string;
+  ARK_ENVIRONMENT_ID?: string;
+  ARK_MEMORY_STORE_ID?: string;
+}
+
+export function backgroundReady(env: Env) {
+  return (
+    env.BACKGROUND_ENABLED === "true" &&
+    Boolean(env.ARK_API_KEY) &&
+    [env.ARK_AGENT_ID, env.ARK_ENVIRONMENT_ID, env.ARK_MEMORY_STORE_ID].every(
+      (id) => /^[\w-]{1,200}$/.test(id ?? ""),
+    ) &&
+    /^[1-9]\d*$/.test(env.ARK_AGENT_VERSION ?? "")
+  );
 }
 
 export class HttpError extends Error {

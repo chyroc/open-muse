@@ -1,5 +1,5 @@
 import { Miniflare } from "miniflare";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 
 export async function database() {
   const mf = new Miniflare({
@@ -9,10 +9,12 @@ export async function database() {
     d1Databases: ["DB"],
   });
   const db = await mf.getD1Database("DB");
-  const sql = readFileSync(
-    new URL("../migrations/0001_background_feed.sql", import.meta.url),
-    "utf8",
-  );
+  const dir = new URL("../migrations/", import.meta.url);
+  const sql = readdirSync(dir)
+    .filter((p) => p.endsWith(".sql"))
+    .sort()
+    .map((p) => readFileSync(new URL(p, dir), "utf8"))
+    .join("\n");
   await db.batch(
     sql
       .split(";")

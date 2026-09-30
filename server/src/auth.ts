@@ -29,7 +29,7 @@ export async function authenticate(request: Request, env: Env) {
   } catch {
     throw new HttpError(503, "Device access is not configured.");
   }
-  const match = /^Bearer ([A-Za-z0-9_-]{32,256})$/.exec(
+  const match = /^Bearer (muse_device_[A-Za-z0-9_-]{32,128})$/.exec(
     request.headers.get("Authorization") ?? "",
   );
   if (!match || !Object.hasOwn(hashes, await tokenHash(match[1])))
