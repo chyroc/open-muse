@@ -63,6 +63,11 @@ import {
 import { executeOperation } from "./direct/operations";
 import { operations } from "../shared/ma";
 import {
+  accountSkills,
+  agentChangesSchema,
+  environmentChangesSchema,
+} from "../shared/account-workspace";
+import {
   Conversations,
   emptyConversations,
   type ConversationKind,
@@ -1533,20 +1538,21 @@ export class Client {
         ),
       );
     if (collection in own) {
-      if (!param)
-        return op.method === "GET"
-          ? {
-              filter: (value: unknown) => {
-                const page = value as { data?: { id: string }[] };
-                return {
-                  ...page,
-                  data: (page.data ?? []).filter(
-                    (row) => row.id === own[collection],
-                  ),
-                };
-              },
-            }
-          : undefined;
+      if (!param) {
+        // Account resources are created only by the service.
+        if (op.method !== "GET") throw refuse();
+        return {
+          filter: (value: unknown) => {
+            const page = value as { data?: { id: string }[] };
+            return {
+              ...page,
+              data: (page.data ?? []).filter(
+                (row) => row.id === own[collection],
+              ),
+            };
+          },
+        };
+      }
       if (!target || target !== own[collection]) throw refuse();
       if (!child && ["UpdateAgent", "UpdateEnvironment"].includes(op.id)) {
         if ((input as { confirm?: boolean }).confirm !== true)
@@ -1556,9 +1562,19 @@ export class Client {
               "Confirm the target and impact before modifying cloud resources.",
             ),
           );
+        const changes =
+          (input as { body?: Record<string, unknown> }).body ?? {};
+        if (
+          !(
+            op.id === "UpdateAgent"
+              ? agentChangesSchema
+              : environmentChangesSchema
+          ).safeParse(changes).success
+        )
+          throw refuse();
         const result = await this.applyWorkspace(
           op.id === "UpdateAgent" ? "agent" : "environment",
-          (input as { body?: Record<string, unknown> }).body ?? {},
+          changes,
         );
         r.abort.signal.throwIfAborted();
         return { handled: true, result };
@@ -1572,21 +1588,77 @@ export class Client {
           (typeof agent === "string" ? agent : agent?.id) === record?.agentId
         );
       };
-      if (!param)
-        return op.method === "GET"
-          ? {
-              filter: (value: unknown) => {
-                const page = value as { data?: Session[] };
-                return { ...page, data: (page.data ?? []).filter(mine) };
-              },
-            }
-          : undefined;
+      const body = (input as { body?: Record<string, unknown> }).body ?? {};
+      // Anything a session is given must belong to this account: its own
+      // agent and environment, its own memory store, and no shared vaults.
+      const ownedResources = (resources: unknown) =>
+        resources === undefined ||
+        (Array.isArray(resources) &&
+          resources.every(
+            (item) =>
+              (item as { type?: unknown })?.type === "memory_store" &&
+              (item as { memory_store_id?: unknown }).memory_store_id ===
+                record?.memoryStoreId &&
+              Boolean(record?.memoryStoreId),
+          ));
+      if (!param) {
+        if (op.method === "GET")
+          return {
+            filter: (value: unknown) => {
+              const page = value as { data?: Session[] };
+              return { ...page, data: (page.data ?? []).filter(mine) };
+            },
+          };
+        const agent = body.agent as
+          string | ({ id?: string } & Record<string, unknown>) | undefined;
+        const overrides =
+          agent && typeof agent === "object" ? agent : ({} as object);
+        if (
+          op.id !== "CreateSession" ||
+          !record?.agentId ||
+          (typeof agent === "string" ? agent : agent?.id) !== record.agentId ||
+          // Session-level agent overrides may not pull in other agents or
+          // uploaded skills.
+          "multiagent" in overrides ||
+          !accountSkills((overrides as { skills?: unknown }).skills) ||
+          Object.keys(body).some(
+            (key) =>
+              ![
+                "agent",
+                "environment_id",
+                "tags",
+                "resources",
+                "title",
+                "vault_ids",
+              ].includes(key),
+          ) ||
+          (body.environment_id !== undefined &&
+            body.environment_id !== record.environmentId) ||
+          (body.vault_ids !== undefined &&
+            (!Array.isArray(body.vault_ids) || body.vault_ids.length > 0)) ||
+          !ownedResources(body.resources)
+        )
+          throw refuse();
+        return;
+      }
       if (
         !target ||
         !record?.agentId ||
         !mine(await r.ark.request<Session>(`/sessions/${validId(target)}`))
       )
         throw refuse();
+      if (
+        op.method !== "GET" &&
+        (("vault_ids" in body &&
+          (!Array.isArray(body.vault_ids) || body.vault_ids.length > 0)) ||
+          (op.id === "CreateSessionResource" && !ownedResources([body])) ||
+          ("resources" in body && !ownedResources(body.resources)))
+      )
+        throw refuse();
+      return;
     }
+    // Vaults, credentials, skills, files, and anything else under the shared
+    // key cannot be attributed to an account, so an account never reaches them.
+    throw refuse();
   }
 }

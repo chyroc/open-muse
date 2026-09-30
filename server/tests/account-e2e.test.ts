@@ -443,6 +443,235 @@ describe("Muse accounts end to end", () => {
     expect(posts()).toBe(before);
   });
 
+  it("keeps Studio away from resources no account owns and from other accounts' sessions", async () => {
+    const alice = device();
+    await alice.client.restore();
+    await alice.signIn("alice@example.com");
+    const bob = device();
+    await bob.client.restore();
+    await bob.signIn("bob@example.com");
+    const a = workspaces["alice@example.com"];
+    const b = workspaces["bob@example.com"];
+    const aliceSession = await alice.client.ma<{ id: string }>(
+      "CreateSession",
+      {
+        body: {
+          agent: a.agentId,
+          environment_id: a.environmentId,
+          resources: [
+            { type: "memory_store", memory_store_id: a.memoryStoreId },
+          ],
+        },
+        confirm: true,
+      },
+    );
+    const shared = /\/(vaults|skills|files)/;
+    const before = upstream.fetcher.mock.calls.length;
+    const attempts: [string, object][] = [
+      ["ListVaults", {}],
+      ["GetVault", { params: { vault_id: "vault-of-alice" } }],
+      [
+        "DeleteVault",
+        { params: { vault_id: "vault-of-alice" }, confirm: true },
+      ],
+      ["ListCredentials", { params: { vault_id: "vault-of-alice" } }],
+      [
+        "UpdateCredential",
+        {
+          params: { vault_id: "vault-of-alice", credential_id: "cred-1" },
+          body: {},
+          confirm: true,
+        },
+      ],
+      [
+        "ValidateCredential",
+        {
+          params: { vault_id: "vault-of-alice", credential_id: "cred-1" },
+          confirm: true,
+        },
+      ],
+      ["GetSkill", { params: { id: "skill-of-alice" } }],
+      ["CreateAgent", { body: { name: "x" }, confirm: true }],
+      // Sessions built from another account's agent, vault, or memory.
+      ["CreateSession", { body: { agent: a.agentId }, confirm: true }],
+      [
+        "CreateSession",
+        {
+          body: { agent: b.agentId, environment_id: a.environmentId },
+          confirm: true,
+        },
+      ],
+      [
+        "CreateSession",
+        {
+          body: { agent: b.agentId, vault_ids: ["vault-of-alice"] },
+          confirm: true,
+        },
+      ],
+      [
+        "CreateSession",
+        {
+          body: {
+            agent: b.agentId,
+            resources: [
+              { type: "memory_store", memory_store_id: a.memoryStoreId },
+            ],
+          },
+          confirm: true,
+        },
+      ],
+    ];
+    for (const [operation, input] of attempts)
+      await expect(bob.client.ma(operation, input)).rejects.toThrow(
+        "only this account's own",
+      );
+    for (const [operation, input] of [
+      ["GetSession", { params: { session_id: aliceSession.id } }],
+      [
+        "SendSessionEvents",
+        {
+          params: { session_id: aliceSession.id },
+          body: { events: [{ type: "user.message", content: [] }] },
+          confirm: true,
+        },
+      ],
+    ] as [string, object][])
+      await expect(bob.client.ma(operation, input)).rejects.toThrow(
+        "only this account's own",
+      );
+    const sent = upstream.fetcher.mock.calls.slice(before);
+    expect(sent.filter(([input]) => shared.test(String(input)))).toEqual([]);
+    expect(
+      sent.filter(([, init]) => (init?.method ?? "GET") !== "GET"),
+    ).toEqual([]);
+    // References to resources no account owns are refused inside the
+    // account's own agent, environment, and sessions too.
+    const ownAgent = upstream.rows.agents.find((row) => row.id === b.agentId)!;
+    const references: [string, object][] = [
+      [
+        "UpdateAgent",
+        {
+          params: { id: b.agentId },
+          body: {
+            version: ownAgent.version,
+            skills: [{ type: "custom", skill_id: "skill-of-alice" }],
+          },
+          confirm: true,
+        },
+      ],
+      [
+        "UpdateEnvironment",
+        {
+          params: { id: b.environmentId },
+          body: {
+            config: { type: "cloud", tos: { bucket: "alice", prefix: "" } },
+          },
+          confirm: true,
+        },
+      ],
+      [
+        "CreateSession",
+        {
+          body: {
+            agent: {
+              type: "agent_with_overrides",
+              id: b.agentId,
+              skills: [{ type: "custom", skill_id: "skill-of-alice" }],
+            },
+          },
+          confirm: true,
+        },
+      ],
+      [
+        "CreateSession",
+        {
+          body: {
+            agent: {
+              type: "agent_with_overrides",
+              id: b.agentId,
+              multiagent: { agents: [{ id: a.agentId }] },
+            },
+          },
+          confirm: true,
+        },
+      ],
+      [
+        "CreateSession",
+        {
+          body: {
+            agent: b.agentId,
+            resources: [{ type: "file", file_id: "file-of-alice" }],
+          },
+          confirm: true,
+        },
+      ],
+    ];
+    const posts = upstream.fetcher.mock.calls.length;
+    for (const [operation, input] of references)
+      await expect(bob.client.ma(operation, input)).rejects.toThrow(
+        "only this account's own",
+      );
+    // The service enforces the same rule when the client is bypassed.
+    const record = await bob.account.accountWorkspace();
+    await expect(
+      bob.account.updateAccountWorkspace(
+        "agent",
+        {
+          version: ownAgent.version,
+          skills: [{ type: "custom", skill_id: "skill-of-alice" }],
+        },
+        record.revision,
+        bob.client.accountCredentialRevision()!,
+      ),
+    ).rejects.toThrow();
+    expect(
+      upstream.fetcher.mock.calls
+        .slice(posts)
+        .filter(([, init]) => (init?.method ?? "GET") !== "GET"),
+    ).toEqual([]);
+    // Built-in and hub skills stay available.
+    await expect(
+      bob.client.ma("UpdateAgent", {
+        params: { id: b.agentId },
+        body: {
+          version: ownAgent.version,
+          skills: [{ type: "skill_hub", name: "public-skill" }],
+        },
+        confirm: true,
+      }),
+    ).resolves.toMatchObject({
+      workspace: { agent: { skills: [{ type: "skill_hub" }] } },
+    });
+    // Bob's own sessions still work, and listings show only his.
+    const own = await bob.client.ma<{ id: string }>("CreateSession", {
+      body: {
+        agent: b.agentId,
+        environment_id: b.environmentId,
+        resources: [{ type: "memory_store", memory_store_id: b.memoryStoreId }],
+      },
+      confirm: true,
+    });
+    const listed = await bob.client.ma<{ data: { id: string }[] }>(
+      "ListSessions",
+    );
+    expect(listed.data.map((row) => row.id)).toContain(own.id);
+    expect(listed.data.map((row) => row.id)).not.toContain(aliceSession.id);
+    // Another holder's file cannot be attached to the account's own session.
+    const attaching = upstream.fetcher.mock.calls.length;
+    await expect(
+      bob.client.ma("CreateSessionResource", {
+        params: { session_id: own.id },
+        body: { type: "file", file_id: "file-of-alice" },
+        confirm: true,
+      }),
+    ).rejects.toThrow("only this account's own");
+    expect(
+      upstream.fetcher.mock.calls
+        .slice(attaching)
+        .filter(([, init]) => (init?.method ?? "GET") !== "GET"),
+    ).toEqual([]);
+  });
+
   it("lets the same account continue on another device without creating resources", async () => {
     const second = device();
     await second.client.restore();

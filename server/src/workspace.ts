@@ -379,7 +379,7 @@ export class AccountWorkspaces {
     if (!parsed.success)
       throw new HttpError(
         400,
-        "Only name, description, model, instructions, tools, MCP servers, skills, or environment settings can be changed.",
+        "Only name, description, model, instructions, tools, MCP servers, built-in or hub skills, or environment settings without TOS buckets can be changed.",
       );
     const { workspaceKey, ark } = await this.context(credentialRevision);
     const row = await this.row(workspaceKey);

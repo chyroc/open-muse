@@ -101,8 +101,17 @@ resource, reads the result back, and seals it with the account. Ownership
 labels cannot be changed this way. If background work is allowed, it is rebound
 to the new agent version and the schedule pauses until it is enabled again.
 Studio in an account build reaches only the account's own agent, environment,
-memory store, and sessions; files, skills, and credential vaults are shared by
-everyone who holds the same Ark key and are not account-scoped.
+memory store, and sessions: listings are filtered to them, sessions can be
+created only with the account's own agent, environment, and memory store and
+without vaults, and resources of these kinds are created only by the service.
+Credential vaults and their credentials, uploaded (custom) skills, files, and
+TOS buckets are shared by everyone who holds the same Ark key and cannot be
+attributed to an account, so an account build refuses them both as Studio
+operations and as references: in agent skills (built-in and hub skills remain
+available), environment `config.tos`, session-level agent overrides (skills,
+`multiagent`), session `vault_ids`, and session resources other than the
+account's own memory store. Changes made directly at Ark outside Open Muse are
+not recorded in the account's sealed settings.
 
 Existing agents retain their model. New agents use the public tool-calling model
 `doubao-seed-2-1-pro-260915`; the Ark project must have access to it. Model access

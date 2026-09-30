@@ -1,6 +1,18 @@
 import { z } from "zod";
 
 const resourceId = z.string().regex(/^[\w-]{1,200}$/);
+// Uploaded (custom) skills, vaults, files, and TOS buckets are reachable by
+// every holder of the same Ark key and cannot be attributed to an account, so
+// an account's agent, environment, and sessions may not reference them.
+// Built-in and hub skills are public.
+export const accountSkills = (skills: unknown) =>
+  skills === undefined ||
+  (Array.isArray(skills) &&
+    skills.every((skill) =>
+      ["ark", "skill_hub"].includes(
+        (skill as { type?: unknown })?.type as string,
+      ),
+    ));
 // Settings a user may change on the account's own agent and environment. Labels
 // and ownership metadata are never accepted from a client.
 export const agentChangesSchema = z
@@ -15,14 +27,21 @@ export const agentChangesSchema = z
     system: z.string().max(64000).optional(),
     tools: z.array(z.record(z.string(), z.unknown())).max(50).optional(),
     mcp_servers: z.array(z.record(z.string(), z.unknown())).max(50).optional(),
-    skills: z.array(z.record(z.string(), z.unknown())).max(50).optional(),
+    skills: z
+      .array(z.record(z.string(), z.unknown()))
+      .max(50)
+      .refine(accountSkills)
+      .optional(),
   })
   .strict();
 export const environmentChangesSchema = z
   .object({
     name: z.string().max(200).optional(),
     description: z.string().max(2000).optional(),
-    config: z.record(z.string(), z.unknown()).optional(),
+    config: z
+      .record(z.string(), z.unknown())
+      .refine((config) => !("tos" in config))
+      .optional(),
   })
   .strict();
 // What Ark reports for the account's agent and environment after the last
