@@ -98,7 +98,12 @@ function arkServer() {
   const memories: Record<string, Row[]> = {};
   let next = 0;
   const created = vi.fn();
+  const state: { beforeReply?: () => Promise<void> } = {};
   const fetcher = vi.fn<typeof fetch>(async (input, init = {}) => {
+    // Lets a test act between two requests of one client operation.
+    const hook = state.beforeReply;
+    state.beforeReply = undefined;
+    await hook?.();
     const url = new URL(String(input));
     expect(url.origin).toBe(ark);
     if (
@@ -111,6 +116,19 @@ function arkServer() {
     const memory = path.match(
       /^\/memory_stores\/([^/]+)\/memories(?:\/(.+))?$/,
     );
+    // A live event stream that stays open until the client aborts it.
+    if (path.endsWith("/events/stream"))
+      return new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode(": open\n\n"));
+            init.signal?.addEventListener("abort", () =>
+              controller.error(init.signal!.reason),
+            );
+          },
+        }),
+        { headers: { "Content-Type": "text/event-stream" } },
+      );
     if (memory) {
       const docs = (memories[memory[1]] ??= []);
       if (post && memory[2])
@@ -141,7 +159,7 @@ function arkServer() {
     }
     return Response.json(row ?? { data: list });
   });
-  return { fetcher, rows, created };
+  return { fetcher, rows, created, state };
 }
 
 function memoryVault(): CredentialStore & { value: string } {
@@ -168,9 +186,11 @@ describe("Muse accounts end to end", () => {
   // The client reaches the Worker over HTTP; here the request is handed to
   // the Worker's own fetch handler without any shortcut.
   const worker = vi.fn<typeof fetch>(async (input, init = {}) => {
+    if (serviceDown) throw new TypeError("service unreachable");
     const { cache: _cache, credentials: _credentials, ...rest } = init;
     return handle(new Request(String(input), rest), env, outbound);
   });
+  let serviceDown = false;
   beforeAll(async () => {
     fixture = await database();
     env = {
@@ -204,7 +224,11 @@ describe("Muse accounts end to end", () => {
     await fixture.dispose();
   });
   // One app install: its own Keychain entries and IndexedDB.
-  function device(legacy = "") {
+  function device(
+    legacy = "",
+    check = { read: 0, write: 0, interval: 60_000 },
+    now = Date.now,
+  ) {
     const vault = memoryVault(),
       accountVault = memoryVault();
     vault.value = legacy;
@@ -221,8 +245,10 @@ describe("Muse accounts end to end", () => {
       database: db,
       fetcher: upstream.fetcher,
       account,
-      // Verify before every Ark request so tests need no clock control.
-      accountCheck: { read: 0, write: 0 },
+      // By default verify before every Ark request; window tests pass their
+      // own limits and clock.
+      accountCheck: check,
+      now,
     });
     return {
       account,
@@ -422,5 +448,115 @@ describe("Muse accounts end to end", () => {
     expect(running.client.signedIn()).toBe(false);
     expect(running.account.accountOwner()).toBeUndefined();
     expect(running.accountVault.value).toBe("");
+  });
+
+  describe("with the production verification windows", () => {
+    let clock = Date.now();
+    const now = () => clock;
+    const credentialChecks = () =>
+      worker.mock.calls.filter(([input]) =>
+        String(input).endsWith("/v1/account/credential"),
+      ).length;
+    async function ready(email: string, interval = 60_000) {
+      provider.register(email);
+      const d = device("", { read: 60_000, write: 10_000, interval }, now);
+      await d.client.restore();
+      await d.signIn(email);
+      await d.client.auth("api-key", {
+        apiKey: sharedKey,
+        project: "",
+        confirm: true,
+      });
+      await d.prepare();
+      return d;
+    }
+
+    it("reuses a verification for reads for 60 s and for writes for 10 s", async () => {
+      const d = await ready("frank@example.com");
+      const checks = credentialChecks();
+      clock += 30_000;
+      await d.client.companionIdentity();
+      expect(credentialChecks()).toBe(checks);
+      const identity = await d.client.companionIdentity();
+      clock += 1_000;
+      await d.client.saveIdentityDocument(
+        "IDENTITY.md",
+        JSON.stringify({ name: "Frank" }),
+        identity.documents["IDENTITY.md"].revision,
+      );
+      // The write came more than 10 s after the last verification.
+      expect(credentialChecks()).toBeGreaterThan(checks);
+    });
+
+    it("stops a runtime inside the window as soon as the session is gone locally", async () => {
+      const d = await ready("grace@example.com");
+      await d.client.companionIdentity();
+      provider.revoke("grace@example.com");
+      // A background-service request is the first to see the revocation.
+      await expect(d.account.status()).rejects.toThrow();
+      expect(d.account.accountOwner()).toBeUndefined();
+      const calls = upstream.fetcher.mock.calls.length;
+      await expect(d.client.companionIdentity()).resolves.toMatchObject({
+        name: "Muse",
+      });
+      await expect(d.client.prepareWorkspace()).rejects.toThrow(
+        "Sign in to your Muse account",
+      );
+      expect(upstream.fetcher.mock.calls.length).toBe(calls);
+    });
+
+    it("sends nothing to Ark while the account service cannot be reached", async () => {
+      const d = await ready("heidi@example.com");
+      clock += 61_000;
+      const calls = upstream.fetcher.mock.calls.length;
+      serviceDown = true;
+      try {
+        await expect(d.client.companionIdentity()).rejects.toThrow();
+        expect(upstream.fetcher.mock.calls.length).toBe(calls);
+      } finally {
+        serviceDown = false;
+      }
+      await expect(d.client.companionIdentity()).resolves.toMatchObject({
+        store_id: expect.any(String),
+      });
+    });
+
+    it("stops an operation already running when the session ends between its requests", async () => {
+      const d = await ready("judy@example.com");
+      let after = 0;
+      upstream.state.beforeReply = async () => {
+        provider.revoke("judy@example.com");
+        await d.account.status().catch(() => {});
+        after = upstream.fetcher.mock.calls.length;
+      };
+      // Reading identity makes several Ark requests with one runtime.
+      await expect(d.client.companionIdentity()).rejects.toThrow(
+        "session ended",
+      );
+      expect(upstream.fetcher.mock.calls.length).toBe(after);
+    });
+
+    it("closes an open event stream once the session ends", async () => {
+      const d = await ready("ivan@example.com", 50);
+      const stream = d.client.stream(
+        "session-live",
+        new AbortController().signal,
+        () => {},
+        () => {},
+      );
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      provider.revoke("ivan@example.com");
+      await expect(d.account.status()).rejects.toThrow();
+      // The runtime's periodic check aborts the stream within its interval.
+      await expect(
+        Promise.race([
+          stream.then(
+            () => "closed",
+            () => "closed",
+          ),
+          new Promise((resolve) => setTimeout(() => resolve("open"), 1_000)),
+        ]),
+      ).resolves.toBe("closed");
+    });
   });
 });
