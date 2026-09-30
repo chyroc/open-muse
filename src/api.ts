@@ -108,6 +108,12 @@ export class Client {
   private runtime?: Runtime;
   private sends = new Set<string>();
   private scope?: string;
+  // Account builds re-verify the session and key revision with the service
+  // before Ark requests, so a revoked session or a key removed elsewhere stops
+  // this device instead of continuing with the key held in memory.
+  private accountCheck: { read: number; write: number };
+  private verifiedAt = 0;
+  private verifying?: Promise<void>;
   constructor(
     options: {
       vault?: CredentialStore;
@@ -118,10 +124,13 @@ export class Client {
       // The Muse account service. When the build configures it, the signed-in
       // account is the user identity and owns the Ark key and workspace.
       account?: AccountProvider;
+      // Longest time, in ms, a verification covers Ark reads and writes.
+      accountCheck?: { read: number; write: number };
     } = {},
   ) {
     this.db = options.database ?? new LocalDatabase();
     this.fetcher = options.fetcher ?? directFetch;
+    this.accountCheck = options.accountCheck ?? { read: 60_000, write: 10_000 };
     this.identity = new DirectAuth(
       options.vault,
       this.fetcher,
@@ -136,34 +145,72 @@ export class Client {
   async restore() {
     if (this.identity.accountMode()) await this.identity.account!.restore();
     this.reset();
-    return this.identity.restore();
+    await this.identity.restore();
+    if (this.identity.accountMode()) this.verifiedAt = Date.now();
   }
   // Call after signing in to or out of a Muse account. The previous account's
   // runtime, key, and pending work are dropped before anything else runs.
   async accountChanged() {
     this.reset();
     await this.identity.sync();
+    this.verifiedAt = Date.now();
   }
-  // Picks up a key replaced or removed on another device or window. Returns
-  // true when the account or key changed; otherwise running work is kept.
+  // Picks up a key replaced or removed on another device or window, and a
+  // session the account service no longer accepts. Returns true when the
+  // account or key changed; otherwise running work is kept.
   async syncAccount() {
     if (!this.identity.accountMode()) return false;
     const owner = this.identity.accountOwner();
-    const stored = owner
-      ? await this.identity.account!.accountCredential()
-      : undefined;
+    let stored: { revision: number } | undefined;
+    if (owner)
+      try {
+        stored = await this.identity.account!.accountCredential();
+      } catch (error) {
+        // A rejected session is removed by the account service; treat the
+        // device as signed out. Other failures keep the state but propagate.
+        if (this.identity.accountOwner() === owner) throw error;
+      }
     if (
+      this.identity.accountOwner() === owner &&
       owner === this.identity.syncedOwner() &&
       (stored?.revision ?? 0) === this.identity.storedRevision()
-    )
+    ) {
+      this.verifiedAt = Date.now();
       return false;
+    }
     await this.accountChanged();
     return true;
+  }
+  // Fails closed: without a recent successful verification, no Ark request
+  // leaves this device.
+  private verifyAccount(write: boolean) {
+    if (!this.identity.accountMode()) return Promise.resolve();
+    const limit = write ? this.accountCheck.write : this.accountCheck.read;
+    if (this.verifiedAt && Date.now() - this.verifiedAt < limit)
+      return Promise.resolve();
+    return (this.verifying ??= this.syncAccount()
+      .then((changed) => {
+        if (!changed) return;
+        throw new ApiError(
+          409,
+          this.identity.accountOwner()
+            ? t(
+                "Your Ark API key changed on another device. Nothing was sent; review and try again.",
+              )
+            : t(
+                "Your Muse account session ended. Sign in again; nothing was sent.",
+              ),
+        );
+      })
+      .finally(() => {
+        this.verifying = undefined;
+      }));
   }
   private reset() {
     this.runtime?.abort.abort();
     this.runtime?.workspace.cancel();
     this.runtime = undefined;
+    this.verifiedAt = 0;
   }
   signedIn() {
     const c = this.identity.value;
@@ -226,13 +273,32 @@ export class Client {
       const apiKey = c.apiKey;
       this.reset();
       const abort = new AbortController();
+      const fetcher: typeof fetch = owner
+        ? async (input, init) => {
+            await this.verifyAccount(
+              (init?.method ?? "GET").toUpperCase() !== "GET",
+            );
+            // Verification may have switched accounts or keys meanwhile.
+            abort.signal.throwIfAborted();
+            return this.fetcher(input, init);
+          }
+        : this.fetcher;
+      if (owner) {
+        // Long-lived streams and idle windows are re-checked as well; a
+        // failed check resets the runtime, which aborts its requests.
+        const timer = setInterval(
+          () => void this.verifyAccount(false).catch(() => {}),
+          Math.max(this.accountCheck.read, 5_000),
+        );
+        abort.signal.addEventListener("abort", () => clearInterval(timer));
+      }
       const ark = new ArkClient(
         {
           arkBaseUrl: ARK_BASE_URL,
           arkKey: c.apiKey,
           project: c.project ?? "",
         },
-        this.fetcher,
+        fetcher,
         abort.signal,
       );
       const account = this.identity.account;

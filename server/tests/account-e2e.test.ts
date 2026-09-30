@@ -74,6 +74,13 @@ function gotrue() {
         id: crypto.randomUUID(),
         password: "a-test-only-password",
       }),
+    // Ends every session of a user at the provider, as an administrator or a
+    // password change would.
+    revoke: (email: string) => {
+      const id = users.get(email)?.id;
+      for (const map of [access, refresh])
+        for (const [token, owner] of map) if (owner === id) map.delete(token);
+    },
   };
 }
 
@@ -214,6 +221,8 @@ describe("Muse accounts end to end", () => {
       database: db,
       fetcher: upstream.fetcher,
       account,
+      // Verify before every Ark request so tests need no clock control.
+      accountCheck: { read: 0, write: 0 },
     });
     return {
       account,
@@ -367,9 +376,15 @@ describe("Muse accounts end to end", () => {
     const other = device();
     await other.client.restore();
     await other.signIn("bob@example.com");
+    await other.prepare();
     await first.client.auth("logout", { confirm: true });
     expect((await first.account.status()).backgroundReady).toBe(false);
-    await other.client.accountChanged();
+    // The other device was not told; its next Ark request is refused first.
+    const calls = upstream.fetcher.mock.calls.length;
+    await expect(other.client.companionIdentity()).rejects.toThrow(
+      "changed on another device",
+    );
+    expect(upstream.fetcher.mock.calls.length).toBe(calls);
     expect(other.client.signedIn()).toBe(false);
     await expect(
       other.client.auth("api-key", {
@@ -378,5 +393,34 @@ describe("Muse accounts end to end", () => {
         confirm: true,
       }),
     ).resolves.toMatchObject({ ready: true });
+  });
+
+  it("stops a running device as soon as its session is revoked at the provider", async () => {
+    provider.register("dana@example.com");
+    const running = device();
+    await running.client.restore();
+    await running.signIn("dana@example.com");
+    await running.client.auth("api-key", {
+      apiKey: sharedKey,
+      project: "",
+      confirm: true,
+    });
+    await running.prepare();
+    provider.revoke("dana@example.com");
+    const calls = upstream.fetcher.mock.calls.length;
+    await expect(
+      running.client.send("any-session", {
+        type: "user.message",
+        text: "hello",
+      }),
+    ).rejects.toThrow();
+    await expect(running.client.companionIdentity()).resolves.toMatchObject({
+      name: "Muse",
+    });
+    // No Ark request left the device after the revocation.
+    expect(upstream.fetcher.mock.calls.length).toBe(calls);
+    expect(running.client.signedIn()).toBe(false);
+    expect(running.account.accountOwner()).toBeUndefined();
+    expect(running.accountVault.value).toBe("");
   });
 });

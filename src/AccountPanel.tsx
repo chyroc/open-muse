@@ -48,7 +48,8 @@ export function AccountPanel({
       onChanged();
     }
   }
-  const device = service.connected() && !owner;
+  const unconfirmed = service.accountSessionUnconfirmed();
+  const device = service.connected() && !owner && !unconfirmed;
   return (
     <section className="settings-card account-card">
       <div className="settings-card-heading">
@@ -83,12 +84,19 @@ export function AccountPanel({
             "This device is connected to the service with a private device token. Remove that connection under Background Feed to sign in to a Muse account.",
           )}
         </p>
-      ) : owner ? (
+      ) : owner || unconfirmed ? (
         <div className="logout-row">
-          <p className="background-note">
-            {t("Signed in. Account ID: {id}", {
-              id: `${owner.slice(10, 18)}…`,
-            })}
+          <p
+            className="background-note"
+            role={unconfirmed ? "alert" : undefined}
+          >
+            {owner
+              ? t("Signed in. Account ID: {id}", {
+                  id: `${owner.slice(10, 18)}…`,
+                })
+              : t(
+                  "The last session renewal could not be confirmed, so this session is no longer used. Sign out of Muse and sign in again.",
+                )}
           </p>
           <button
             className="button secondary"

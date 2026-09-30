@@ -91,4 +91,10 @@ export const zhAccount: Record<string, string> = {
     "Muse 账号已变化。请重新加载后再继续。",
   "This device has no saved API key from an earlier version.":
     "此设备上没有旧版保存的 API Key。",
+  "The last session renewal could not be confirmed, so this session is no longer used. Sign out of Muse and sign in again.":
+    "上次会话续期结果无法确认，因此不再使用此会话。请退出 Muse 后重新登录。",
+  "Your Ark API key changed on another device. Nothing was sent; review and try again.":
+    "你的 Ark API Key 已在其他设备上更改。未发送任何请求；请检查后重试。",
+  "Your Muse account session ended. Sign in again; nothing was sent.":
+    "你的 Muse 账号会话已结束。请重新登录；未发送任何请求。",
 };

@@ -1,9 +1,10 @@
 import { t } from "../shared/i18n";
-import { SupabaseAuth } from "./supabase-auth";
+import { AccountRequestError, SupabaseAuth } from "./supabase-auth";
 import {
   authToken,
   supabaseOwner,
   supabaseSessionSchema,
+  type SupabaseSession,
 } from "../shared/supabase-auth";
 import {
   accountCredentialResponseSchema,
@@ -198,7 +199,9 @@ export class BackgroundClient {
           ...init.headers,
         },
       });
-      if (!response.ok)
+      if (!response.ok) {
+        if (response.status === 401 && !token.startsWith("muse_device_"))
+          await this.expire(token);
         throw new BackgroundRequestError(
           response.status === 401
             ? token.startsWith("muse_device_")
@@ -222,6 +225,7 @@ export class BackgroundClient {
                         status: response.status,
                       }),
         );
+      }
       return await response.json();
     } catch (e) {
       if (e instanceof BackgroundRequestError) throw e;
@@ -353,7 +357,15 @@ export class BackgroundClient {
         };
         await this.vault.write(JSON.stringify(pending));
         this.current = pending;
-        const session = await this.accounts.renew(c.account.session);
+        let session: SupabaseSession;
+        try {
+          session = await this.accounts.renew(c.account.session);
+        } catch (error) {
+          // A definite rejection means the refresh token can never work
+          // again; an unconfirmed result keeps the pending marker instead.
+          if (error instanceof AccountRequestError) await this.expire(c.token);
+          throw error;
+        }
         // The old refresh token is spent. Persist the verified same-user
         // rotation before any later request can fail and lose it.
         const next: Credentials = {
@@ -375,8 +387,26 @@ export class BackgroundClient {
       },
     );
   }
+  // No owner while a renewal is unconfirmed: the session cannot be used.
   accountOwner() {
-    return this.current?.account ? this.current.owner : undefined;
+    return this.current?.account && !this.current.account.refreshPending
+      ? this.current.owner
+      : undefined;
+  }
+  accountSessionUnconfirmed() {
+    return Boolean(this.current?.account?.refreshPending);
+  }
+  // The provider no longer accepts this session: remove it so the app treats
+  // the device as signed out instead of continuing with the account's key.
+  private async expire(token: string) {
+    if (this.current?.token !== token || !this.current.account) return;
+    this.current = undefined;
+    try {
+      const saved = JSON.parse((await this.vault.read()) || "{}");
+      if (saved.token === token) await this.vault.write("");
+    } catch {
+      /* The in-memory session is gone either way. */
+    }
   }
   // Signing out revokes this session at the provider once, then always removes
   // it from this device. Other devices stay signed in.
@@ -496,20 +526,29 @@ export class BackgroundClient {
       return result;
     });
   }
-  syncConfiguration(source: {
+  async syncConfiguration(source: {
     backgroundConfiguration(confirm: boolean): Promise<BackgroundConfiguration>;
     accountCredentialRevision?(): number | undefined;
   }) {
-    return this.exclusive(async () => {
-      const status = await this.status(),
-        c = this.credentials();
+    const owner = await this.exclusive(async () => {
+      const status = await this.status();
       if (!status.credentialStorageReady || !status.connection)
         throw new Error(
           t("Encrypted credential storage is not available on this service."),
         );
-      const value = backgroundConfigurationSchema.safeParse(
-        await source.backgroundConfiguration(true),
-      );
+      return status.owner;
+    });
+    // Reading the workspace makes Ark requests that re-verify the account
+    // through this client, so it must not hold the request queue.
+    const exported = await source.backgroundConfiguration(true);
+    return this.exclusive(async () => {
+      const status = await this.status(),
+        c = this.credentials();
+      if (c.owner !== owner || !status.connection)
+        throw new Error(
+          t("The background connection changed; refresh before continuing."),
+        );
+      const value = backgroundConfigurationSchema.safeParse(exported);
       if (!value.success)
         throw new Error(
           t(

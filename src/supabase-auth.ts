@@ -10,7 +10,8 @@ import {
   type SupabaseSession,
 } from "../shared/supabase-auth";
 
-class AccountRequestError extends Error {}
+// The provider answered with an error status: the request definitely failed.
+export class AccountRequestError extends Error {}
 const login = z
   .object({
     email: z.string().trim().email().max(254),
