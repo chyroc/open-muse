@@ -371,6 +371,96 @@ final class MuseLiveUITests: XCTestCase {
         capture("choice-custom-answer-keeps-history")
     }
 
+    func testAutomaticWelcomeNamingAndMemoryUseRealMA() {
+        // A fresh profile isolates cloud resources, memory and local mappings,
+        // while using the existing authorized Keychain login and production flow.
+        let profile = "welcome-" + String(UUID().uuidString.prefix(8)).lowercased()
+        UserDefaults.standard.set(profile, forKey: "lastWelcomeAcceptanceProfile")
+        app.terminate()
+        app.launchEnvironment["MUSE_UI_TEST_PROFILE"] = profile
+        app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        capture("welcome-profile-\(profile)")
+        let kit = app.switches["Choose Kit"]
+        XCTAssertTrue(kit.waitForExistence(timeout: 240), app.debugDescription)
+        XCTAssertTrue(app.switches["Choose Milo"].exists)
+        XCTAssertTrue(app.switches["Choose Muse"].exists)
+        expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: kit)
+        waitForExpectations(timeout: 60)
+        XCTAssertFalse(contains("<open-muse-welcome>").exists)
+        XCTAssertFalse(contains("```muse-choice").exists)
+        capture("welcome-real-first-greeting-and-name-options")
+        tap(kit)
+        XCTAssertTrue(app.staticTexts["Kit"].waitForExistence(timeout: 20), "One tap must submit the selected name")
+        XCTAssertTrue(app.textViews["Message Kit"].waitForExistence(timeout: 180), "The header and composer must reflect the saved cloud name")
+        expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: app.buttons["Stop response"])
+        waitForExpectations(timeout: 120)
+        XCTAssertEqual(kit.value as? String, "1")
+        XCTAssertFalse(kit.isEnabled)
+        let followUp = app.staticTexts.matching(NSPredicate(format: "label CONTAINS '?' AND NOT (label CONTAINS[c] 'call')"))
+        XCTAssertGreaterThan(followUp.count, 0, "A real focused follow-up must follow the saved name: \(app.debugDescription)")
+        capture("welcome-name-saved-with-proactive-follow-up")
+        let marker = "welcome-color-" + String(UUID().uuidString.prefix(6)).lowercased()
+        let input = app.textViews["Message Kit"]
+        tap(input)
+        if !app.keyboards.firstMatch.waitForExistence(timeout: 3) { input.tap() }
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 10))
+        input.typeText("Remember that my favorite imaginary color is \(marker). Save it in personal memory, then reply with only MEMORY SAVED. Do not use external services.")
+        tap(app.buttons["Send message"])
+        XCTAssertTrue(app.staticTexts["MEMORY SAVED"].waitForExistence(timeout: 180), app.debugDescription)
+        let greetingCount = app.switches.matching(identifier: "Choose Kit").count
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(app.textViews["Message Kit"].waitForExistence(timeout: 60))
+        XCTAssertTrue(app.switches["Choose Kit"].waitForExistence(timeout: 60), "Wait for actual chat history, not only the independently restored name")
+        XCTAssertEqual(app.switches.matching(identifier: "Choose Kit").count, greetingCount)
+        XCTAssertEqual(app.switches["Choose Kit"].value as? String, "1")
+        XCTAssertTrue(app.staticTexts["MEMORY SAVED"].exists)
+        capture("welcome-name-and-chat-survive-relaunch")
+        tap(app.buttons["Open sidebar"])
+        tap(app.buttons["New side chat"])
+        let sideInput = app.textViews["Message Kit"]
+        tap(sideInput)
+        if !app.keyboards.firstMatch.waitForExistence(timeout: 3) { sideInput.tap() }
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 10))
+        sideInput.typeText("Read my personal memory and reply with only my favorite imaginary color. No external services or memory changes.")
+        tap(app.buttons["Send message"])
+        XCTAssertTrue(app.staticTexts[marker].waitForExistence(timeout: 180), "A new MA session must read the saved preference: \(app.debugDescription)")
+        capture("welcome-preference-recalled-in-new-ma-session")
+        app.terminate()
+        app.launchEnvironment.removeValue(forKey: "MUSE_UI_TEST_PROFILE")
+        app.launchArguments = []
+        app.launch()
+        XCTAssertTrue(app.textViews["Message Muse"].waitForExistence(timeout: 60), "The original identity must remain unchanged")
+    }
+
+    func testWelcomeRestoresWithoutNewGeneration() {
+        guard let profile = UserDefaults.standard.string(forKey: "lastWelcomeAcceptanceProfile") else {
+            XCTFail("Run the real automatic welcome case before this read-only restoration check")
+            return
+        }
+        app.terminate()
+        app.launchEnvironment["MUSE_UI_TEST_PROFILE"] = profile
+        app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        XCTAssertTrue(app.textViews["Message Kit"].waitForExistence(timeout: 60))
+        XCTAssertTrue(app.switches["Choose Kit"].waitForExistence(timeout: 60))
+        XCTAssertEqual(app.switches.matching(identifier: "Choose Kit").count, 1)
+        XCTAssertEqual(app.switches["Choose Kit"].value as? String, "1")
+        XCTAssertFalse(app.switches["Choose Kit"].isEnabled)
+        XCTAssertTrue(app.staticTexts["MEMORY SAVED"].exists)
+        XCTAssertFalse(contains("<open-muse-welcome>").exists)
+        XCTAssertFalse(app.buttons["Stop response"].exists)
+        capture("welcome-restored-without-new-generation")
+        app.webViews.firstMatch.swipeDown()
+        app.webViews.firstMatch.swipeDown()
+        capture("welcome-restored-greeting-bubble-layout")
+        app.terminate()
+        app.launchEnvironment.removeValue(forKey: "MUSE_UI_TEST_PROFILE")
+        app.launchArguments = []
+        app.launch()
+    }
+
     func testInlineChoiceStateRestoresWithoutNewGeneration() {
         tap(app.buttons["Open sidebar"], timeout: 40)
         let saved = app.links.matching(NSPredicate(format: "label BEGINSWITH %@", "Choice-check-")).firstMatch

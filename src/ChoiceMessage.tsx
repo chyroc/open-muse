@@ -2,6 +2,7 @@ import { Check } from "lucide-react";
 import { parseChoiceMessage, type ChoiceReply } from "../shared/chat-choices";
 import { Markdown } from "./components";
 import "./choices.css";
+import { MessageBubble } from "./ChatUI";
 
 export function ChoiceMessage({
   text,
@@ -10,6 +11,7 @@ export function ChoiceMessage({
   busy,
   streaming,
   onChoose,
+  omitIntroduction = false,
 }: {
   text: string;
   reply?: ChoiceReply;
@@ -17,13 +19,16 @@ export function ChoiceMessage({
   busy: boolean;
   streaming: boolean;
   onChoose: (id: string) => void;
+  omitIntroduction?: boolean;
 }) {
   const message = parseChoiceMessage(text);
   const answered = reply && reply.state !== "rejected";
   const disabled = busy || streaming || !active || Boolean(answered);
   return (
     <>
-      {message.text && <Markdown text={message.text} />}
+      {!omitIntroduction && (message.before ?? message.text) && (
+        <Markdown text={message.before ?? message.text} />
+      )}
       {message.choice && (
         <section className="chat-choice" aria-label={message.choice.question}>
           <p>{message.choice.question}</p>
@@ -70,6 +75,7 @@ export function ChoiceMessage({
           )}
         </section>
       )}
+      {message.after && <Markdown text={message.after} />}
       {(message.invalid || (message.pending && !streaming)) && (
         <p className="choice-unavailable">
           This question could not be displayed. You can reply in the message
@@ -81,6 +87,34 @@ export function ChoiceMessage({
           Preparing a question…
         </span>
       )}
+    </>
+  );
+}
+
+// Keep the greeting and naming question in separate bubbles. Both are real
+// text from the same MA event; actions retain that event's source provenance.
+export function AssistantMessage({
+  welcome,
+  label,
+  onOptions,
+  ...props
+}: Parameters<typeof ChoiceMessage>[0] & {
+  welcome?: boolean;
+  label: string;
+  onOptions: () => void;
+}) {
+  const message = parseChoiceMessage(props.text);
+  const split = welcome && message.choice && Boolean(message.before);
+  return (
+    <>
+      {split && (
+        <MessageBubble label={label} onOptions={onOptions}>
+          <Markdown text={message.before!} />
+        </MessageBubble>
+      )}
+      <MessageBubble label={label} onOptions={onOptions}>
+        <ChoiceMessage {...props} omitIntroduction={Boolean(split)} />
+      </MessageBubble>
     </>
   );
 }

@@ -52,7 +52,8 @@ export function currentConversation(index: ConversationIndex, id: string) {
 
 // A device-local index, scoped to the same identity as the rest of the client.
 // Old cloud sessions remain accessible as side chats; none are renamed or removed
-// during migration. Opening the app alone never provisions a cloud conversation.
+// during migration. The first-run welcome explicitly requests a new main chat;
+// ordinary history navigation never provisions a cloud conversation.
 export class Conversations {
   private storageKey: string;
   constructor(

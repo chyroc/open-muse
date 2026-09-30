@@ -15,7 +15,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 9px 10px;
-  border: 1px solid #aaaeb2;
+  border: 1px dashed #aaaeb2;
   border-radius: 7px;
   text-align: left;
   line-height: 1.3;
@@ -29,6 +29,7 @@
 }
 .chat-choice-options button.selected {
   border-color: #171719;
+  border-style: solid;
 }
 .chat-choice-options button:disabled {
   opacity: 1;

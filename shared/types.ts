@@ -30,6 +30,9 @@ export interface AgentEvent {
   source_event_id?: string;
   // Device-local answer receipt, never trusted from upstream or sent to MA.
   choice_reply?: import("./chat-choices").ChoiceReply;
+  // Verified app-generated MA initiation; retained in execution history.
+  app_initiation?: "welcome";
+  welcome_reply?: boolean;
   is_error?: boolean;
   error?: { message?: string; type?: string };
   stop_reason?: { type: string; event_ids?: string[] };

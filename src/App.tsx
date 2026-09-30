@@ -20,7 +20,10 @@ import { useTask } from "./useTask";
 import { discussionPrompt, type InspirationItem } from "../shared/inspiration";
 import { InspirationPage } from "./InspirationPages";
 import { GoalsPage } from "./GoalsPage";
-import { ChoiceMessage } from "./ChoiceMessage";
+import { AssistantMessage } from "./ChoiceMessage";
+import { WelcomeStatus } from "./WelcomeStatus";
+import type { WelcomeState } from "./direct/welcome";
+import { isWelcomeReply } from "../shared/welcome";
 import { currentChoiceEvent } from "../shared/chat-choices";
 import { digest } from "../shared/crypto";
 import { goalPrompt, goalStarter, type GoalCategory } from "../shared/goals";
@@ -59,7 +62,15 @@ function navigate(path: string) {
 
 export default function App() {
   const [revision, setRevision] = useState(0);
-  const client = useMemo(() => new Client(), []);
+  const client = useMemo(
+    () =>
+      new Client({
+        scope: (
+          globalThis as typeof globalThis & { __MUSE_TEST_PROFILE__?: string }
+        ).__MUSE_TEST_PROFILE__,
+      }),
+    [],
+  );
   const [restored, setRestored] = useState(false);
   const [restoreError, setRestoreError] = useState("");
   const [restoreAttempt, setRestoreAttempt] = useState(0);
@@ -148,6 +159,11 @@ function Workspace({
   const [actionError, setActionError] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [welcome, setWelcome] = useState<WelcomeState>();
+  const [welcomeBusy, setWelcomeBusy] = useState(false);
+  const [welcomeError, setWelcomeError] = useState("");
+  const checkedWelcome = useRef(false);
+  const welcomeJob = useRef(false);
   const busyRef = useRef(false);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [category, setCategory] = useState<Category>("general");
@@ -233,6 +249,61 @@ function Workspace({
   useEffect(() => {
     if (lastStatusId) void reload();
   }, [lastStatusId, reload]);
+  async function beginWelcome(retry = false) {
+    if (welcomeJob.current) return;
+    welcomeJob.current = true;
+    setWelcomeBusy(true);
+    setWelcomeError("");
+    try {
+      const value = await client.startWelcome(navigator.language, retry);
+      if (alive.current) setWelcome(value);
+    } catch (error) {
+      if (alive.current) {
+        setWelcomeError((error as Error).message);
+        const value = await client.welcomeState().catch(() => undefined);
+        if (alive.current) setWelcome(value);
+      }
+    } finally {
+      welcomeJob.current = false;
+      if (alive.current) {
+        setWelcomeBusy(false);
+        await reload();
+      }
+    }
+  }
+  useEffect(() => {
+    if (
+      loading ||
+      config?.mode !== "ark" ||
+      Boolean(loadError) ||
+      tab !== "home" ||
+      isSideDraft ||
+      taskRoute ||
+      checkedWelcome.current
+    )
+      return;
+    checkedWelcome.current = true;
+    void beginWelcome();
+  }, [client, loading, config?.mode, loadError, tab, isSideDraft, taskRoute]);
+  useEffect(() => {
+    if (config?.mode !== "ark" || !lastStatusId) return;
+    let active = true;
+    void client
+      .welcomeState()
+      .then((value) => {
+        if (active) {
+          setWelcome(value);
+          if (value?.phase === "confirmed" || value?.phase === "skipped")
+            setWelcomeError("");
+        }
+      })
+      .catch(() => {
+        /* History exposes storage failures; do not restart setup. */
+      });
+    return () => {
+      active = false;
+    };
+  }, [client, config?.mode, lastStatusId]);
   useEffect(() => {
     let active = true;
     void client
@@ -372,8 +443,10 @@ function Workspace({
     const text =
       `# ${index.entries[activeId ?? ""]?.title ?? task.session?.title ?? "Main chat"}\n\n` +
       events
-        .filter((event) =>
-          ["user.message", "agent.message"].includes(event.type),
+        .filter(
+          (event) =>
+            !event.app_initiation &&
+            ["user.message", "agent.message"].includes(event.type),
         )
         .map(
           (event) =>
@@ -404,6 +477,7 @@ function Workspace({
   const messageEvents = events.filter(
     (event) =>
       ["user.message", "agent.message"].includes(event.type) &&
+      !event.app_initiation &&
       eventText(event),
   );
   const isChat = tab === "home";
@@ -475,6 +549,14 @@ function Workspace({
                 );
               }}
             >
+              {!isSideDraft && !taskRoute && (
+                <WelcomeStatus
+                  state={welcome}
+                  busy={welcomeBusy}
+                  error={welcomeError}
+                  onCheck={() => void beginWelcome(true)}
+                />
+              )}
               {task.error && (
                 <div className="inline-error" role="alert">
                   {task.error}
@@ -488,7 +570,11 @@ function Workspace({
                 </div>
               ) : (
                 !messageEvents.length &&
-                !task.error && (
+                !task.error &&
+                !welcomeBusy &&
+                !welcomeError &&
+                (!welcome ||
+                  ["confirmed", "skipped"].includes(welcome.phase)) && (
                   <div className="main-chat-empty">
                     <h1>
                       {isSideDraft ? "Start a side chat" : "Your main chat"}
@@ -526,41 +612,47 @@ function Workspace({
                         })}
                       </time>
                     )}
-                    <MessageBubble
-                      label={`${event.type === "agent.message" ? "Reply" : "Message"} options ${position + 1}`}
-                      onOptions={() => setSelectedMessage(event)}
-                    >
-                      {event.type === "agent.message" ? (
-                        <ChoiceMessage
-                          text={eventText(event)}
-                          reply={event.choice_reply}
-                          active={
-                            !event.source_session_id &&
-                            currentChoiceEvent(events)?.id === event.id
-                          }
-                          busy={busy || task.loading}
-                          streaming={state === "running"}
-                          onChoose={(option) =>
-                            void action(async () => {
-                              if (!activeId) return;
-                              try {
-                                await client.answerChoice(
-                                  activeId,
-                                  event.id,
-                                  option,
-                                  digest(eventText(event)),
-                                );
-                                setAwayFromBottom(false);
-                              } finally {
-                                await task.refresh();
-                              }
-                            })
-                          }
-                        />
-                      ) : (
+                    {event.type === "agent.message" ? (
+                      <AssistantMessage
+                        welcome={
+                          event.welcome_reply ||
+                          isWelcomeReply(events, event.id)
+                        }
+                        label={`Reply options ${position + 1}`}
+                        onOptions={() => setSelectedMessage(event)}
+                        text={eventText(event)}
+                        reply={event.choice_reply}
+                        active={
+                          !event.source_session_id &&
+                          currentChoiceEvent(events)?.id === event.id
+                        }
+                        busy={busy || task.loading}
+                        streaming={state === "running"}
+                        onChoose={(option) =>
+                          void action(async () => {
+                            if (!activeId) return;
+                            try {
+                              await client.answerChoice(
+                                activeId,
+                                event.id,
+                                option,
+                                digest(eventText(event)),
+                              );
+                              setAwayFromBottom(false);
+                            } finally {
+                              await task.refresh();
+                            }
+                          })
+                        }
+                      />
+                    ) : (
+                      <MessageBubble
+                        label={`Message options ${position + 1}`}
+                        onOptions={() => setSelectedMessage(event)}
+                      >
                         <Markdown text={eventText(event)} />
-                      )}
-                    </MessageBubble>
+                      </MessageBubble>
+                    )}
                   </div>
                 );
               })}
@@ -652,9 +744,18 @@ function Workspace({
                 onSend={sendMessage}
                 onStop={stop}
                 running={state === "running"}
-                busy={busy}
+                busy={busy || welcomeBusy}
                 disabled={
                   loading ||
+                  welcomeBusy ||
+                  (!isSideDraft &&
+                    !taskRoute &&
+                    Boolean(
+                      welcome &&
+                      ["preparing", "sending", "unconfirmed"].includes(
+                        welcome.phase,
+                      ),
+                    )) ||
                   config?.mode !== "ark" ||
                   Boolean(
                     activeId &&

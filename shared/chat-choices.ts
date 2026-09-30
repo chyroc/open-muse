@@ -33,6 +33,8 @@ export interface ChoiceReply {
 }
 export interface ChoiceMessage {
   text: string;
+  before?: string;
+  after?: string;
   choice?: ChatChoice;
   pending?: boolean;
   invalid?: boolean;
@@ -91,7 +93,15 @@ export function parseChoiceMessage(text: string): ChoiceMessage {
   if (!block.closed) return { text: visible, pending: true };
   try {
     if (block.raw.length > 4000) throw new Error("Question too large");
-    return { text: visible, choice: choiceSchema.parse(JSON.parse(block.raw)) };
+    return {
+      text: visible,
+      before: lines.slice(0, block.start).join("\n").trim(),
+      after: lines
+        .slice(block.end + 1)
+        .join("\n")
+        .trim(),
+      choice: choiceSchema.parse(JSON.parse(block.raw)),
+    };
   } catch {
     return { text: visible, invalid: true };
   }

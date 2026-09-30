@@ -285,6 +285,9 @@ body {
   border-radius: 24px;
   max-width: 87%;
 }
+.chat-bubble + .chat-bubble {
+  margin-top: 4px;
+}
 .chat-bubble .markdown {
   font-size: inherit;
   line-height: inherit;

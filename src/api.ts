@@ -23,6 +23,8 @@ import { DirectWorkspace } from "./direct/workspace";
 import { DirectIdentity, defaultIdentity } from "./direct/identity";
 import { DirectGoals } from "./direct/goals";
 import { DirectChoices } from "./direct/choices";
+import { DirectWelcome } from "./direct/welcome";
+import { identityDefaults } from "../shared/identity";
 import { goalCategoryInput, type GoalCategory } from "../shared/goals";
 import type { IdentityDocumentName } from "../shared/identity";
 import { DirectInspiration } from "./direct/inspiration";
@@ -73,6 +75,7 @@ type Runtime = {
   companion: DirectIdentity;
   goals: DirectGoals;
   choices?: DirectChoices;
+  welcome?: DirectWelcome;
   redact: (text: string) => string;
   abort: AbortController;
 };
@@ -90,16 +93,24 @@ export class Client {
   private fetcher: typeof fetch;
   private runtime?: Runtime;
   private sends = new Set<string>();
+  private scope?: string;
   constructor(
     options: {
       vault?: CredentialStore;
       database?: LocalDatabase;
       fetcher?: typeof fetch;
+      // Isolated simulator acceptance profile; does not change credentials.
+      scope?: string;
     } = {},
   ) {
     this.db = options.database ?? new LocalDatabase();
     this.fetcher = options.fetcher ?? directFetch;
     this.identity = new DirectAuth(options.vault, this.fetcher);
+    if (options.scope !== undefined)
+      this.scope = z
+        .string()
+        .regex(/^welcome-[a-z0-9-]{1,60}$/)
+        .parse(options.scope);
   }
   restore() {
     return this.identity.restore();
@@ -134,7 +145,12 @@ export class Client {
         "Connect to Ark MA with SSO or an API key in Settings first.",
       );
     const key = digest(
-      JSON.stringify([ARK_BASE_URL, c.apiKey, c.project ?? ""]),
+      JSON.stringify([
+        ARK_BASE_URL,
+        c.apiKey,
+        c.project ?? "",
+        ...(this.scope ? [this.scope] : []),
+      ]),
     );
     if (this.runtime?.key !== key) {
       const apiKey = c.apiKey;
@@ -521,6 +537,71 @@ export class Client {
       ? this.conversations(this.context()).index()
       : emptyConversations();
   }
+  private welcomeService(r: Runtime) {
+    return (r.welcome ??= new DirectWelcome(r.key, this.db, {
+      eligible: async () => {
+        const index = await this.conversations(r).index();
+        if (index.mainId || index.pending || Object.keys(index.entries).length)
+          return false;
+        const identity = await r.companion.read();
+        if (
+          identity.warning ||
+          Object.entries(identityDefaults).some(
+            ([name, content]) =>
+              identity.documents[
+                name as IdentityDocumentName
+              ].content.trim() !== content.trim(),
+          )
+        )
+          return false;
+        const [agents, sessions] = await Promise.all([
+          this.collect<{ id: string; metadata?: Record<string, string> }>(
+            r.ark,
+            "/agents?limit=100",
+          ),
+          this.collect<
+            Session & {
+              agent?:
+                string | { id?: string; metadata?: Record<string, string> };
+              agent_id?: string;
+            }
+          >(r.ark, "/sessions?limit=100&order=desc"),
+        ]);
+        const owned = new Set(
+          agents
+            .filter((agent) => agent.metadata?.open_muse_workspace === r.key)
+            .map((agent) => agent.id),
+        );
+        return !sessions.some(
+          (session) =>
+            owned.has(
+              typeof session.agent === "string"
+                ? session.agent
+                : (session.agent?.id ?? session.agent_id ?? ""),
+            ) ||
+            (typeof session.agent === "object" &&
+              session.agent?.metadata?.open_muse_workspace === r.key),
+        );
+      },
+      open: () => this.openConversationFor(r, "main", "Main chat", "general"),
+      history: (id) =>
+        this.collect<AgentEvent>(
+          r.ark,
+          `/sessions/${validId(id)}/events?order=asc&limit=200`,
+        ),
+      send: (id, text, eventId) =>
+        this.submit(id, { type: "user.message", text }, undefined, {
+          runtime: r,
+          eventId,
+        }),
+    }));
+  }
+  startWelcome(language: string, retry = false) {
+    return this.welcomeService(this.context()).start(language, retry);
+  }
+  welcomeState() {
+    return this.welcomeService(this.context()).state();
+  }
   async openConversation(
     kind: ConversationKind,
     title = "Main chat",
@@ -534,6 +615,15 @@ export class Client {
       })
       .parse({ kind, title, category });
     const r = this.context();
+    return this.openConversationFor(r, input.kind, input.title, input.category);
+  }
+  private async openConversationFor(
+    r: Runtime,
+    kind: ConversationKind,
+    title: string,
+    category: Category,
+  ) {
+    r.abort.signal.throwIfAborted();
     const index = await this.conversations(r).index();
     if (index.sending) {
       const history = await this.collect<AgentEvent>(
@@ -545,11 +635,7 @@ export class Client {
         history.map((event) => event.id),
       );
     }
-    const session = await this.conversations(r).create(
-      input.kind,
-      input.title,
-      input.category,
-    );
+    const session = await this.conversations(r).create(kind, title, category);
     await this.remember(r, [session]);
     return session;
   }
@@ -596,14 +682,17 @@ export class Client {
       source_session_id: _source,
       source_event_id: _sourceEvent,
       choice_reply: _choice,
+      app_initiation: _initiation,
+      welcome_reply: _welcome,
       ...original
     } = event;
+    const annotated = await this.welcomeService(r).annotate(id, original);
     if (event.type === "agent.message") {
       const reply = await this.choiceService(r).reply(id, event.id);
-      return reply ? { ...original, choice_reply: reply } : original;
+      return reply ? { ...annotated, choice_reply: reply } : annotated;
     }
     if (event.type !== "user.tool_confirmation" || !event.tool_use_id)
-      return original;
+      return annotated;
     const record = await this.db.get<Approval>(
       this.approvalKey(r, id, event.tool_use_id),
     );
@@ -622,6 +711,7 @@ export class Client {
         signal,
       );
       await this.choiceService(r).reconcile(source, rows);
+      await this.welcomeService(r).reconcile(source, rows);
       previous.push(
         ...(await Promise.all(
           rows.map(async (event) => ({
@@ -639,6 +729,7 @@ export class Client {
       signal,
     );
     await this.choiceService(r).reconcile(id, rows);
+    await this.welcomeService(r).reconcile(id, rows);
     await this.conversations(r).confirmSend(
       id,
       rows.map((event) => event.id),
@@ -665,6 +756,21 @@ export class Client {
     const r = request?.runtime ?? this.context();
     r.abort.signal.throwIfAborted();
     validId(id);
+    if (input.type === "user.message") {
+      const welcome = await this.welcomeService(r).state();
+      if (
+        welcome?.phase === "preparing" ||
+        (welcome &&
+          "eventId" in welcome &&
+          ["sending", "unconfirmed"].includes(welcome.phase) &&
+          welcome.session === id &&
+          welcome.eventId !== request?.eventId)
+      )
+        throw new ApiError(
+          409,
+          "The first conversation is being prepared or its welcome is unconfirmed. Check its history before sending.",
+        );
+    }
     const lock = `${r.key}:${id}`;
     if (this.sends.has(lock))
       throw new ApiError(

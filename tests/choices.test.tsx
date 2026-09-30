@@ -91,6 +91,8 @@ describe("Structured conversation choices", () => {
       ),
     ).toEqual({
       text: "A small step.\nOr type your own answer.",
+      before: "A small step.",
+      after: "Or type your own answer.",
       choice: question,
     });
     expect(
