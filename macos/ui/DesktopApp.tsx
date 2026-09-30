@@ -39,7 +39,11 @@ const IdeasPage = lazy(() =>
 const GoalsPage = lazy(() =>
   import("./GoalsPage").then((module) => ({ default: module.GoalsPage })),
 );
+const LibraryPage = lazy(() =>
+  import("./LibraryPage").then((module) => ({ default: module.LibraryPage })),
+);
 import { MacGoals } from "./goals";
+import { libraryPath } from "./library";
 import { WorkspaceBoundary } from "./WorkspaceBoundary";
 import {
   discussionPrompt,
@@ -97,6 +101,7 @@ export function DesktopApp({ client }: { client: Client }) {
   const [goalDraftReplacement, setGoalDraftReplacement] = useState<{
     key: string;
     text: string;
+    goal?: boolean;
   }>();
   const routePage = useRef(route.page);
   routePage.current = route.page;
@@ -121,7 +126,10 @@ export function DesktopApp({ client }: { client: Client }) {
   const composer = useRef<HTMLTextAreaElement>(null);
   const alive = useRef(true);
   const inspirationPage =
-    route.page === "feed" || route.page === "ideas" || route.page === "goals";
+    route.page === "feed" ||
+    route.page === "ideas" ||
+    route.page === "goals" ||
+    route.page === "library";
   const id =
     route.page === "chat" && !route.newSide
       ? route.conversation
@@ -196,6 +204,17 @@ export function DesktopApp({ client }: { client: Client }) {
     location.hash = path;
   }
   const goPage = (page: Page) => {
+    // Reselecting Library closes the side-by-side chat and keeps the category.
+    if (
+      page === "library" &&
+      route.page === "library" &&
+      !activeDocument.current &&
+      !feedEditorOpen.current
+    ) {
+      setSplitChat(false);
+      setDrawer(false);
+      return;
+    }
     navigate(page === "chat" ? "/" : `/${page}`);
     setDrawer(false);
     setQuery("");
@@ -283,6 +302,10 @@ export function DesktopApp({ client }: { client: Client }) {
   useEffect(() => {
     if (route.page === "goals" && splitChat) composer.current?.focus();
   }, [route.page, splitChat, goalConversation, draft]);
+  useEffect(() => {
+    if (route.page === "library" && splitChat && draft)
+      composer.current?.focus();
+  }, [route.page, splitChat, draft]);
   useEffect(() => {
     if (route.page !== "goals") setGoalConversation(undefined);
   }, [route.page]);
@@ -388,7 +411,9 @@ export function DesktopApp({ client }: { client: Client }) {
       : t("Chat");
 
   return (
-    <div className="desktop-shell">
+    <div
+      className={`desktop-shell ${route.page === "library" && splitChat ? "library-split" : ""}`}
+    >
       <Rail
         page={route.page}
         onNavigate={goPage}
@@ -600,7 +625,7 @@ export function DesktopApp({ client }: { client: Client }) {
                   setQuotedPost(undefined);
                   setSplitChat(true);
                   if (drafts[key]?.trim() && drafts[key] !== text)
-                    setGoalDraftReplacement({ key, text });
+                    setGoalDraftReplacement({ key, text, goal: true });
                   else {
                     setDrafts((old) => ({ ...old, [key]: text }));
                     setGoalDrafts((old) => ({ ...old, [key]: true }));
@@ -611,8 +636,39 @@ export function DesktopApp({ client }: { client: Client }) {
           </WorkspaceBoundary>
         </main>
       )}
+      {route.page === "library" && !document && (
+        <main className="workspace library-workspace">
+          <WorkspaceBoundary key={connectionEpoch}>
+            <Suspense fallback={<Empty title={t("Opening Library…")} />}>
+              <LibraryPage
+                key={connectionEpoch}
+                client={client}
+                identity={identity}
+                view={route.libraryView ?? "all"}
+                split={splitChat}
+                onView={(view) => navigate(libraryPath(view))}
+                onConnect={() => setSettings(true)}
+                onToggleChat={() => setSplitChat((value) => !value)}
+                onOpenChat={(id) => navigate(`/chat/${id}`)}
+                onDocument={openDocument}
+                onDraft={(text) => {
+                  const key = index.mainId ?? "main";
+                  setQuotedPost(undefined);
+                  setSplitChat(true);
+                  if (drafts[key]?.trim() && drafts[key] !== text)
+                    setGoalDraftReplacement({ key, text });
+                  else {
+                    setDrafts((old) => ({ ...old, [key]: text }));
+                    setGoalDrafts((old) => ({ ...old, [key]: false }));
+                  }
+                }}
+              />
+            </Suspense>
+          </WorkspaceBoundary>
+        </main>
+      )}
       <main
-        className={`workspace ${inspirationPage ? "feed-split-chat" : ""}`}
+        className={`workspace ${inspirationPage ? "feed-split-chat" : ""} ${route.page === "library" ? "library-split-chat" : ""}`}
         hidden={Boolean(document) || (inspirationPage && !splitChat)}
       >
         {route.page === "chat" || (inspirationPage && splitChat) ? (
@@ -782,6 +838,9 @@ export function DesktopApp({ client }: { client: Client }) {
                                 event.source_event_id ?? event.id,
                               );
                               setNotice(t("Saved to Library"));
+                              window.dispatchEvent(
+                                new Event("muse-library-changed"),
+                              );
                             })
                           }
                         >
@@ -1050,9 +1109,13 @@ export function DesktopApp({ client }: { client: Client }) {
           onClose={() => setGoalDraftReplacement(undefined)}
         >
           <p>
-            {t(
-              "Your existing message has not been sent. Replace it with the goal prompt?",
-            )}
+            {goalDraftReplacement.goal
+              ? t(
+                  "Your existing message has not been sent. Replace it with the goal prompt?",
+                )
+              : t(
+                  "Your existing message has not been sent. Replace it with the creation prompt?",
+                )}
           </p>
           <div className="feed-dialog-actions">
             <button
@@ -1064,9 +1127,9 @@ export function DesktopApp({ client }: { client: Client }) {
             <button
               className="pill-button"
               onClick={() => {
-                const { key, text } = goalDraftReplacement;
+                const { key, text, goal } = goalDraftReplacement;
                 setDrafts((old) => ({ ...old, [key]: text }));
-                setGoalDrafts((old) => ({ ...old, [key]: true }));
+                setGoalDrafts((old) => ({ ...old, [key]: Boolean(goal) }));
                 setGoalDraftReplacement(undefined);
               }}
             >

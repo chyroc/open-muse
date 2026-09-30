@@ -31,10 +31,47 @@ Mac-specific build. No iOS or Android build is needed.
 - Closing the window keeps the app running; clicking its Dock icon restores it.
 
 This is an incremental desktop implementation, not a verified one-to-one clone.
-Library, attachments, dictation, desktop
+Cloud artifact/media indexing, attachments, dictation, desktop
 automation, and proactive scheduling still need their Mac-specific implementation
 and acceptance checks. The UI identifies unfinished surfaces. No mock replies are
 included in the app. Real cloud verification requires an authorized connection.
+
+## Desktop Library
+
+Library has a 240-point category sidebar, search, grid/list layouts, pinning,
+last-opened/created/title sorting, selection and bulk removal. Saved replies are
+actual MA text documents with source-session/event provenance, not executable
+artifacts or generated media. Automatic sorting groups pinned, recently opened,
+and remaining documents without duplicates. Search matches original titles and
+text; opening content never sends a message. Pinning, recents and view preferences
+are account/project-scoped on this Mac and do not sync between devices. Selection
+replaces the header with a selected-count title, a destructive removal action, a
+select-all action and an exit control, instead of adding a second toolbar.
+
+A document opens in a desktop reading surface with a 60-point title bar. Its menu
+opens the source conversation, exports the original Markdown through macOS's
+Save dialog, or removes the saved copy from this Mac. Removal requires confirmation,
+preserves the cloud conversation, and offers Undo while Library remains open.
+Undo merges concurrent saves; removal only deletes the exact reviewed record.
+Native exports clean up callbacks on completion, timeout or workspace unmount.
+PDF/binary exports and public sharing are not claimed by the text-only bridge.
+
+Create only seeds an unsent composer draft. Chat opens to the left of Library;
+the compact title menu retains category navigation and search when the sidebar
+is hidden. An existing draft requires an explicit replacement choice. Creating
+does not create a session, send, upload, or manufacture an artifact. SOUL.md,
+MEMORY.md and IDENTITY.md link to the existing revision-safe editor under System
+files, explicitly identified as MA memory documents rather than a sandbox tree.
+
+Web artifacts, cloud media, podcasts, and sandbox filesystem browsing remain
+unconnected in this adapter. Their category surfaces explain the limitation.
+Podcast creation is absent rather than simulated: it needs a scheduled series,
+which no connected capability provides. Searching replaces the category surface,
+so list controls stay hidden until the query is cleared.
+No proprietary reference artwork, account content or test fixtures are shipped.
+Isolated tests cover populated rendering, safe local removal/recovery, the native
+text-export contract, both languages and the system-language fallback. Native
+acceptance is read-only and does not imply real-cloud creation acceptance.
 
 ## Identity and memory editing
 

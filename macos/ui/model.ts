@@ -1,5 +1,6 @@
 import { eventText, type AgentEvent, type Session } from "../../shared/types";
 import type { ConversationIndex } from "../../src/direct/conversations";
+import type { LibraryView } from "./library";
 
 export type Page = "chat" | "feed" | "ideas" | "goals" | "library";
 export type Route = {
@@ -7,6 +8,7 @@ export type Route = {
   conversation?: string;
   newSide?: boolean;
   goal?: string;
+  libraryView?: LibraryView;
 };
 
 export function chatMessages(events: AgentEvent[]) {
@@ -28,6 +30,27 @@ export function parseRoute(hash: string): Route {
   if (match) return { page: "chat", conversation: match[1] };
   const goal = /^\/goals\/([\w-]{1,80})$/.exec(path);
   if (goal) return { page: "goals", goal: goal[1] };
+  const library =
+    /^\/library(?:\/(artifacts|media|podcasts|files))?(?:\?view=(all|documents|web|images|video))?$/.exec(
+      path,
+    );
+  if (library) {
+    const section = library[1];
+    const view = library[2];
+    return {
+      page: "library",
+      libraryView:
+        section === "files" || section === "podcasts"
+          ? section
+          : section === "media"
+            ? view === "video"
+              ? "video"
+              : "images"
+            : view === "documents" || view === "web"
+              ? view
+              : "all",
+    };
+  }
   if (["/feed", "/ideas", "/goals", "/library"].includes(path))
     return { page: path.slice(1) as Page };
   return { page: "chat" };

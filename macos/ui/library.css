@@ -1,0 +1,536 @@
+.library-page {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  background: #fdfdfd;
+}
+.library-sidebar {
+  width: 240px;
+  flex: 0 0 240px;
+  border-right: 1px solid var(--line);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+}
+.library-clear-search {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: #6f6f75;
+  background: #e9e9ec;
+}
+.library-clear-search:hover {
+  background: #dededf;
+}
+.library-sidebar .search-field {
+  min-height: 36px;
+  padding: 8px 13px;
+  border: 1px solid #dedee0;
+  border-radius: 24px;
+}
+.library-sidebar h3 {
+  margin: 22px 10px 9px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #767679;
+}
+.library-sidebar a,
+.library-section-menu a {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-radius: 12px;
+  min-height: 37px;
+  padding: 8px 10px;
+  text-decoration: none;
+  color: inherit;
+}
+.library-sidebar a svg {
+  color: #77777b;
+}
+.library-sidebar a[aria-current],
+.library-section-menu a[aria-current] {
+  background: #f4f4f5;
+}
+.library-sidebar a[aria-current] svg {
+  color: #242424;
+}
+.library-sidebar a:hover,
+.library-section-menu a:hover {
+  background: #efeff1;
+}
+.library-sidebar-bottom {
+  margin-top: auto;
+  padding-bottom: 8px;
+}
+.library-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.library-header {
+  padding: 44px 64px 22px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.library-header > .library-menu-anchor {
+  min-width: 0;
+  flex-shrink: 1;
+}
+.library-header h1 {
+  font-size: 32px;
+  letter-spacing: -0.7px;
+  font-weight: 650;
+  margin: 0;
+  line-height: 1.2;
+  min-width: 0;
+}
+/* The title yields width before the labelled actions do. */
+.library-title-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.library-header h1 button {
+  display: inline-flex;
+  gap: 9px;
+  align-items: center;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  max-width: 100%;
+}
+.library-header h1 button > svg {
+  flex-shrink: 0;
+}
+.library-header-spacer {
+  flex: 1;
+}
+.library-header .pill-button {
+  background: #f1f1f2;
+  min-height: 36px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.library-sort-button {
+  background: #f1f1f2;
+  width: 36px;
+  height: 36px;
+}
+.library-header .library-create {
+  background: #0668cf;
+  color: #fff;
+}
+.library-header .library-create:hover {
+  background: #005ebd;
+}
+.library-chat-toggle {
+  color: #818185;
+}
+.library-content {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+  padding: 12px 64px 42px;
+}
+.library-content > .empty-state {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px 72px;
+  gap: 8px;
+  color: #737377;
+}
+.library-content > .empty-state h3 {
+  color: #242424;
+  margin: 0;
+  font-weight: 500;
+}
+.library-content > .empty-state p {
+  max-width: 330px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.library-capability {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 22px;
+}
+.library-group {
+  margin-bottom: 32px;
+}
+.library-group h2 {
+  font-size: 16px;
+  font-weight: 550;
+  margin-bottom: 16px;
+}
+.library-items.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+}
+.library-card {
+  position: relative;
+  min-width: 0;
+}
+.library-card-open {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  text-align: left;
+  width: 100%;
+  padding: 0;
+  background: #fff;
+}
+.library-card-open:hover {
+  background: #fff !important;
+  border-color: #c9c9ce;
+}
+.library-card-preview {
+  aspect-ratio: 4/3;
+  width: 100%;
+  background: #f5f5f6;
+  padding: 20px 16px 0;
+  overflow: hidden;
+}
+.library-card-preview > div {
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #525258;
+  background: #fff;
+  box-shadow: 0 1px 8px #00000009;
+  padding: 17px;
+  min-height: 100%;
+  border-radius: 4px 4px 0 0;
+}
+.library-card-footer {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  height: 60px;
+  border-top: 1px solid var(--line);
+}
+.library-card-footer > svg {
+  color: #77777b;
+}
+.library-card-footer > div {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+.library-card-footer strong {
+  font-weight: 500;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.library-card-footer span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.library-item-menu {
+  position: absolute !important;
+  bottom: 14px;
+  right: 8px;
+}
+.library-item-menu > button {
+  background: #fff;
+  width: 28px;
+  height: 28px;
+  opacity: 0;
+}
+.library-card:hover .library-item-menu > button,
+.library-card:focus-within .library-item-menu > button,
+.library-item-menu > button[aria-expanded="true"] {
+  opacity: 1;
+}
+.library-card:hover .library-card-footer > div,
+.library-card:focus-within .library-card-footer > div {
+  padding-right: 30px;
+}
+.library-menu-anchor {
+  position: relative;
+}
+.library-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 220px;
+  z-index: 8;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fffffff7;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 5px 28px #0000001a;
+  font-size: 13px;
+}
+.library-menu button {
+  width: 100%;
+  text-align: left;
+  padding: 9px 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 7px;
+}
+.library-menu button[aria-checked="true"] {
+  font-weight: 550;
+}
+.library-menu hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 5px 0;
+}
+.library-item-menu .library-menu {
+  top: auto;
+  bottom: calc(100% + 5px);
+}
+.library-section-menu {
+  left: 0;
+  right: auto;
+  top: calc(100% + 10px);
+}
+.library-section-menu .search-field {
+  margin: 4px 2px 8px;
+}
+.library-pin-mark {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: #78787d;
+  pointer-events: none;
+}
+.library-items.list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.library-items.list .library-card-open {
+  flex-direction: row;
+  align-items: center;
+  border-radius: 10px;
+  border-color: transparent;
+  gap: 12px;
+  padding: 4px 14px;
+}
+.library-items.list .library-card-open:hover {
+  background: #f4f4f5 !important;
+}
+.library-items.list .library-card-footer {
+  border: 0;
+  padding-left: 0;
+}
+.library-items.list .library-card-footer > svg {
+  display: none;
+}
+.library-items.list .library-pin-mark {
+  top: 22px;
+  right: 43px;
+}
+.library-selection-check {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 20px;
+  height: 20px;
+  border: 1px solid #aaaab0;
+  background: #fff;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.library-card.selected .library-selection-check {
+  background: #0668cf;
+  border-color: #0668cf;
+  color: #fff;
+}
+.library-card.selected .library-card-open {
+  border-color: #0668cf;
+}
+.library-items.list .library-selection-check {
+  top: 25px;
+  left: 12px;
+}
+.library-items.list
+  .library-card:has(.library-selection-check)
+  .library-card-open {
+  padding-left: 46px;
+}
+.library-header .pill-button:disabled {
+  opacity: 0.45;
+}
+.library-header .library-remove-selected {
+  background: #fcecec;
+  color: #ad2f2b;
+}
+.library-header .library-remove-selected:hover:not(:disabled) {
+  background: #f8dedd;
+}
+.library-exit-selection {
+  background: #f1f1f2;
+  width: 36px;
+  height: 36px;
+}
+.library-preview-bar {
+  height: 60px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px 0 20px;
+  flex-shrink: 0;
+}
+.library-preview-bar strong {
+  max-width: 360px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 550;
+}
+.library-document-scroll {
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+}
+.library-document {
+  max-width: 760px;
+  padding: 46px 28px 90px;
+  margin: auto;
+  font-size: 16px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.library-document .markdown table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.library-document th,
+.library-document td {
+  border: 1px solid var(--line);
+  padding: 8px 12px;
+}
+.library-provenance {
+  font-size: 12px;
+  color: var(--muted);
+}
+.library-system-files {
+  display: flex;
+  flex-direction: column;
+}
+.library-system-files > button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+.library-system-files strong {
+  font-weight: 500;
+}
+.library-system-files span {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+}
+.library-notice,
+.library-error {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 24px 15px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  font-size: 13px;
+}
+.library-notice span,
+.library-error span {
+  flex: 1;
+}
+.library-notice > button:not(.icon-button) {
+  color: #0668cf;
+}
+.library-error {
+  color: #973d39;
+}
+.desktop-shell.library-split > .rail {
+  order: 0;
+}
+.desktop-shell.library-split > .workspace.library-split-chat {
+  order: 1;
+  flex: 0 0 44%;
+  border-right: 1px solid var(--line);
+  border-left: 0;
+}
+.desktop-shell.library-split > .library-workspace {
+  order: 2;
+}
+.desktop-shell.library-split .library-header {
+  padding: 44px 32px 22px;
+}
+.desktop-shell.library-split .library-content {
+  padding-left: 32px;
+  padding-right: 32px;
+}
+/* The reference keeps a labelled create pill on comparable desktop widths, so
+   the title truncates first and the label only drops once the header actions
+   themselves no longer fit. */
+@container (max-width: 820px) {
+  .library-header,
+  .library-content {
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+}
+@container (max-width: 420px) {
+  .library-create span {
+    display: none;
+  }
+  .library-create {
+    padding: 8px !important;
+    width: 36px;
+  }
+}
+.library-main {
+  container-type: inline-size;
+}
+@media (max-width: 1150px) {
+  .library-header {
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+  .library-content {
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .library-card-open {
+    transition: border-color 0.15s;
+  }
+}
