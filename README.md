@@ -31,22 +31,52 @@ npm run native:sync   # Build and sync the iOS and Android bundles
 Open [http://127.0.0.1:4310](http://127.0.0.1:4310). Deploy `dist/` to any
 trusted HTTPS static host. The static host serves assets only; it never receives
 Ark credentials or proxies API requests. Native apps bundle these same assets.
-Do not place credentials in build-time environment variables or source files.
+Do not place credentials in build-time environment variables or source files;
+the three account build values described below are public.
+
+## Muse accounts
+
+Release builds set three public values at build time: `VITE_MUSE_BACKGROUND_URL`
+(the Open Muse service origin), `VITE_MUSE_SUPABASE_URL` (the Auth origin), and
+`VITE_MUSE_SUPABASE_ANON_KEY` (the anon or publishable key; secret and
+service-role keys are rejected). Both origins are pinned in the app's CSP. In
+such a build, **Settings → Muse account** signs in or registers with an email
+and password. The account is the user's identity on every device. The session is
+stored in Keychain (sessionStorage on the web), renewed shortly before it
+expires with protection against replaying a rotated refresh token, and revoked
+at the provider on sign-out. Other devices stay signed in.
+
+Builds without these values run in single-user local mode: the API key is kept
+on the device and no account or service request is made.
 
 ## Connect to Ark
 
 Open **Settings → Connect to Ark MA** and enter an existing Ark API key,
-optionally specifying its project. A read-only MA request verifies access
-before the key is saved. Volcano SSO sign-in is not supported, and console-only
-(TOP) actions are not offered. If an earlier release saved a Volcano SSO
-sign-in on this device, the app keeps it untouched but never uses it; Settings
-offers to remove it before a key is added. Data saved on the device is kept.
+optionally specifying its project. A read-only MA request verifies access. In
+an account build the key is then stored encrypted in the account by the Open
+Muse service and every device signed in to that account reads it from there;
+it is kept in memory only, never in device storage. Replacing the key starts a
+separate workspace and stops background work tied to the old key; removing it
+applies to all of the account's devices. Volcano SSO sign-in is not supported,
+and console-only (TOP) actions are not offered.
 
-On first use, Muse prepares an agent and environment automatically. Their
-mapping is stored in IndexedDB, isolated by API-key digest and project. Reusing
-the same connection recovers app-owned cloud resources by ownership metadata,
-including resources created by the earlier server-backed version. Uncertain
-creation results are checked before another write; they are never blindly retried.
+After an upgrade, a key or Volcano SSO sign-in saved on the device by an earlier
+release is kept untouched and never used. In an account build Settings offers to
+save that earlier key to the signed-in account or to remove it from the device;
+neither happens automatically, and conversations and data from the earlier
+setup stay on the device without being attributed to the account.
+
+On first use, Muse prepares an agent and environment automatically. In an
+account build their ownership labels, the personal memory store, and every
+IndexedDB record are scoped by `accountWorkspaceKey(apiKey, project, owner)`,
+so two accounts sharing one Ark key never adopt each other's resources, and
+the account's other devices recover the same workspace by those labels. Each
+resource is also recorded for the account at the Open Muse service right after
+it is created or adopted. A holder of the same Ark key can still reach any
+resource directly at Ark; use separate keys when accounts must not reach each
+other's data. Local builds scope by API-key digest and project. Uncertain
+creation results are checked before another write; they are never blindly
+retried.
 
 Existing agents retain their model. New agents use the public tool-calling model
 `doubao-seed-2-1-pro-260915`; the Ark project must have access to it. Model access
@@ -55,8 +85,9 @@ CORS responses, so neither sign-in nor workspace preparation depends on it.
 
 ## Storage and security
 
-- iOS and macOS keep API keys in Keychain. Android encrypts
-  credentials with an Android Keystore-backed AES-GCM key and disables backup.
+- iOS and macOS keep API keys (local builds) and Muse account sessions in
+  Keychain. Android encrypts credentials with an Android Keystore-backed
+  AES-GCM key and disables backup; Muse accounts are not supported on Android.
 - The web app keeps credentials in `sessionStorage`, not persistent local
   storage. A page reload preserves the browser session; signing out clears it.
   Browser extensions or injected scripts can still access browser-held secrets:
@@ -67,13 +98,16 @@ CORS responses, so neither sign-in nor workspace preparation depends on it.
 - Saved replies and conversation indexes are device-local. Current goals live
   in personal MA memory; conversations and execution history are read from MA.
 - Personal identity documents live in an app-owned MA memory store, scoped to
-  the API key and project. Local pending-write records can contain document
-  drafts until cloud readback confirms them. These records are not encrypted.
-- Signing out removes local credentials, not cloud resources or keys. Revoke
-  keys in the Ark console when needed. Sign out before switching accounts.
-- Only fixed public Volcano API origins are allowed. Redirects carrying
-  credentials are rejected. Production assets include a restrictive CSP; CORS
-  remains enforced rather than bypassed.
+  the same workspace key as the agent (account owner, API key, and project in
+  account builds). Local pending-write records can contain document drafts
+  until cloud readback confirms them. These records are not encrypted.
+- Signing out of a Muse account ends that session and drops the in-memory key
+  and runtime; nothing is deleted. In local builds, signing out removes the
+  device's key. Neither revokes the key at Ark; do that in the Ark console.
+- Only fixed public Volcano API origins, plus the configured Open Muse service
+  and Auth origins, are allowed. Redirects carrying credentials are rejected.
+  Production assets include a restrictive CSP; CORS remains enforced rather
+  than bypassed.
 
 Upgrading from the backend version requires signing in again. Old `.data/`,
 SQLite mappings, and backend credential files are left untouched. Old local

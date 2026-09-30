@@ -5,8 +5,18 @@ import {
   supabaseOwner,
   supabaseSessionSchema,
 } from "../shared/supabase-auth";
+import {
+  accountCredentialResponseSchema,
+  type AccountCredential,
+} from "../shared/account-credential";
 
 class BackgroundRequestError extends Error {}
+const RENEW_MARGIN = 120_000;
+const credentialStatus = z.object({
+  configured: z.boolean(),
+  revision: z.number().int().positive(),
+  updatedAt: z.number().nullable(),
+});
 import { z } from "zod";
 import { backgroundOrigin } from "../shared/background-origin";
 import { digest, uuid } from "../shared/crypto";
@@ -198,9 +208,19 @@ export class BackgroundClient {
               ? t(
                   "The action conflicts with current server state. Refresh and review the schedule or active run.",
                 )
-              : t("Background service request failed (HTTP {status}).", {
-                  status: response.status,
-                }),
+              : response.status === 403 && !token.startsWith("muse_device_")
+                ? t(
+                    "This workspace belongs to another Muse account. Nothing was changed.",
+                  )
+                : response.status === 429
+                  ? t("Too many attempts. Try again later.")
+                  : response.status === 422
+                    ? t(
+                        "Ark could not verify this key or workspace. Check it and try again; nothing was saved.",
+                      )
+                    : t("Background service request failed (HTTP {status}).", {
+                        status: response.status,
+                      }),
         );
       return await response.json();
     } catch (e) {
@@ -248,7 +268,9 @@ export class BackgroundClient {
         status.account?.provider !== "supabase"
       )
         throw new Error(
-          t("The account identity changed. Disconnect and sign in again."),
+          t(
+            "The account identity changed. Sign out of Muse and sign in again.",
+          ),
         );
       const value: Credentials = {
         origin: this.origin,
@@ -277,67 +299,149 @@ export class BackgroundClient {
     });
   }
   renewAccountLogin() {
-    return this.exclusive(async () => {
-      if (typeof navigator === "undefined" || !navigator.locks)
-        throw new Error(
-          t(
-            "This device cannot coordinate login renewal safely. Disconnect and sign in again.",
-          ),
-        );
-      return navigator.locks.request(
-        `muse-account-renew:${this.origin}`,
-        async () => {
-          const c = this.credentials();
-          if (!c.account)
-            throw new Error(t("Sign in to a Muse account first."));
-          const disk = saved.safeParse(JSON.parse(await this.vault.read()));
-          if (
-            !disk.success ||
-            disk.data.owner !== c.owner ||
-            disk.data.token !== c.token ||
-            disk.data.account?.session.refreshToken !==
-              c.account.session.refreshToken
-          )
-            throw new Error(
-              t(
-                "The account connection changed in another window. Disconnect and sign in again.",
-              ),
-            );
-          if (c.account.refreshPending || disk.data.account.refreshPending)
-            throw new Error(
-              t(
-                "The previous login renewal could not be confirmed. Disconnect and sign in again; it was not retried.",
-              ),
-            );
-          const pending: Credentials = {
-            ...c,
-            account: { ...c.account, refreshPending: true },
-          };
-          await this.vault.write(JSON.stringify(pending));
-          this.current = pending;
-          const session = await this.accounts.renew(c.account.session);
-          // The old refresh token is spent. Persist the verified same-user
-          // rotation before any later request can fail and lose it.
-          const next: Credentials = {
-            ...c,
-            token: session.accessToken,
-            account: { origin: c.account.origin, session },
-          };
-          await this.vault.write(JSON.stringify(next));
-          this.current = next;
-          const status = statusSchema.parse(
-            await this.call("/v1/status", session.accessToken),
-          );
-          if (
-            status.owner !== c.owner ||
-            status.account?.provider !== "supabase"
-          )
-            throw new Error(
-              t("The account identity changed. Disconnect and sign in again."),
-            );
-        },
+    return this.exclusive(() => this.renew(true));
+  }
+  // Access tokens are short-lived. Renew shortly before expiry, at the start of
+  // an operation, so no request switches credentials halfway through.
+  private async fresh() {
+    const session = this.current?.account?.session;
+    if (session && session.expiresAt - this.accounts.now() < RENEW_MARGIN)
+      await this.renew(false);
+  }
+  private async renew(force: boolean) {
+    if (typeof navigator === "undefined" || !navigator.locks)
+      throw new Error(
+        t(
+          "This device cannot coordinate login renewal safely. Sign out of Muse and sign in again.",
+        ),
       );
+    return navigator.locks.request(
+      `muse-account-renew:${this.origin}`,
+      async () => {
+        const c = this.credentials();
+        if (!c.account) throw new Error(t("Sign in to a Muse account first."));
+        // Another operation in this window may have renewed while this one
+        // waited for the lock.
+        if (
+          !force &&
+          c.account.session.expiresAt - this.accounts.now() >= RENEW_MARGIN &&
+          !c.account.refreshPending
+        )
+          return;
+        const disk = saved.safeParse(JSON.parse(await this.vault.read()));
+        if (
+          !disk.success ||
+          disk.data.owner !== c.owner ||
+          disk.data.token !== c.token ||
+          disk.data.account?.session.refreshToken !==
+            c.account.session.refreshToken
+        )
+          throw new Error(
+            t(
+              "The account connection changed in another window. Sign out of Muse and sign in again.",
+            ),
+          );
+        if (c.account.refreshPending || disk.data.account.refreshPending)
+          throw new Error(
+            t(
+              "The previous login renewal could not be confirmed. Sign out of Muse and sign in again; it was not retried.",
+            ),
+          );
+        const pending: Credentials = {
+          ...c,
+          account: { ...c.account, refreshPending: true },
+        };
+        await this.vault.write(JSON.stringify(pending));
+        this.current = pending;
+        const session = await this.accounts.renew(c.account.session);
+        // The old refresh token is spent. Persist the verified same-user
+        // rotation before any later request can fail and lose it.
+        const next: Credentials = {
+          ...c,
+          token: session.accessToken,
+          account: { origin: c.account.origin, session },
+        };
+        await this.vault.write(JSON.stringify(next));
+        this.current = next;
+        const status = statusSchema.parse(
+          await this.call("/v1/status", session.accessToken),
+        );
+        if (status.owner !== c.owner || status.account?.provider !== "supabase")
+          throw new Error(
+            t(
+              "The account identity changed. Sign out of Muse and sign in again.",
+            ),
+          );
+      },
+    );
+  }
+  accountOwner() {
+    return this.current?.account ? this.current.owner : undefined;
+  }
+  // Signing out revokes this session at the provider once, then always removes
+  // it from this device. Other devices stay signed in.
+  signOutAccount() {
+    this.abort.abort();
+    return this.exclusive(async () => {
+      const c = this.credentials();
+      if (!c.account) throw new Error(t("Sign in to a Muse account first."));
+      let revoked = true;
+      try {
+        await this.accounts.signOut(c.token);
+      } catch {
+        revoked = false;
+      }
+      await this.vault.write("");
+      this.current = undefined;
+      this.abort = new AbortController();
+      return { revoked };
     });
+  }
+  private accountRequest<T>(
+    path: "/v1/account/credential" | "/v1/account/resources",
+    schema: z.ZodType<T>,
+    init?: RequestInit,
+  ) {
+    return this.exclusive(async () => {
+      await this.status();
+      const c = this.credentials();
+      if (!c.account) throw new Error(t("Sign in to a Muse account first."));
+      const result = schema.parse(await this.call(path, c.token, init));
+      this.assertCurrent(c);
+      return result;
+    });
+  }
+  // The key returns only to a verified session of the same account. It is kept
+  // in memory by the caller and never written to this device's storage.
+  accountCredential() {
+    return this.accountRequest(
+      "/v1/account/credential",
+      accountCredentialResponseSchema,
+    );
+  }
+  saveAccountCredential(credential: AccountCredential, revision: number) {
+    return this.accountRequest("/v1/account/credential", credentialStatus, {
+      method: "PUT",
+      body: JSON.stringify({ credential, revision, confirm: true }),
+    });
+  }
+  removeAccountCredential(revision: number) {
+    return this.accountRequest("/v1/account/credential", credentialStatus, {
+      method: "DELETE",
+      body: JSON.stringify({ revision, confirm: true }),
+    });
+  }
+  // Records a workspace resource for this account right after it is created
+  // or adopted, before it is used.
+  async claimResource(
+    kind: "agent" | "environment" | "memory_store",
+    id: string,
+  ) {
+    await this.accountRequest(
+      "/v1/account/resources",
+      z.object({ claimed: z.literal(true) }),
+      { method: "POST", body: JSON.stringify({ kind, id }) },
+    );
   }
   disconnect() {
     this.abort.abort();
@@ -359,11 +463,12 @@ export class BackgroundClient {
       );
   }
   async status(): Promise<BackgroundStatus> {
+    await this.fresh();
     const c = this.credentials();
     if (c.account?.refreshPending)
       throw new Error(
         t(
-          "The previous login renewal could not be confirmed. Disconnect and sign in again; it was not retried.",
+          "The previous login renewal could not be confirmed. Sign out of Muse and sign in again; it was not retried.",
         ),
       );
     const result = statusSchema.parse(await this.call("/v1/status", c.token));
@@ -393,6 +498,7 @@ export class BackgroundClient {
   }
   syncConfiguration(source: {
     backgroundConfiguration(confirm: boolean): Promise<BackgroundConfiguration>;
+    accountCredentialRevision?(): number | undefined;
   }) {
     return this.exclusive(async () => {
       const status = await this.status(),
@@ -411,13 +517,34 @@ export class BackgroundClient {
           ),
         );
       this.assertCurrent(c);
-      const result = await this.call("/v1/connection", c.token, {
-        method: "PUT",
-        body: JSON.stringify({
+      let body: object;
+      if (c.account) {
+        // The service already holds this account's key. Send only the
+        // workspace resource IDs prepared with that same key revision.
+        const revision = source.accountCredentialRevision?.();
+        if (!status.account || revision !== status.account.credential.revision)
+          throw new Error(
+            t(
+              "Your Ark API key changed on another device. Reload Settings before allowing background work.",
+            ),
+          );
+        const { agentId, agentVersion, environmentId, memoryStoreId } =
+          value.data;
+        body = {
+          workspace: { agentId, agentVersion, environmentId, memoryStoreId },
+          credentialRevision: revision,
+          revision: status.connection.revision,
+          confirm: true,
+        };
+      } else
+        body = {
           config: value.data,
           revision: status.connection.revision,
           confirm: true,
-        }),
+        };
+      const result = await this.call("/v1/connection", c.token, {
+        method: "PUT",
+        body: JSON.stringify(body),
       });
       this.assertCurrent(c);
       return z

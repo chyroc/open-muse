@@ -15,6 +15,7 @@ Open Muse is a personal AI task assistant built on Volcano Ark Managed Agents (M
 
 - `src/` — React UI and direct MA client; `src/direct/` owns local auth, storage, and provisioning
 - `shared/` — event types, approval policy, and the MA API catalog/contract
+- `server/` — Open Muse service (Cloudflare Worker + D1): Muse account verification, per-account encrypted Ark keys, background work
 - `ios/` — Capacitor + SwiftPM iOS project
 - `macos/` — AppKit/WKWebView shell loading bundled static assets, with no server or Node runtime
 - `android/` — retained Capacitor project (no build/device verification yet)
@@ -22,7 +23,7 @@ Open Muse is a personal AI task assistant built on Volcano Ark Managed Agents (M
 - `scripts/` — build and asset generation
 - `docs/` — integration notes and verification records
 
-All four platforms connect directly to public Volcano APIs through an in-app API key. There is no Open Muse backend or service URL. Without credentials the app stays disconnected and never generates simulated replies. Real calls may incur cloud costs. Mock responses and the old server migration harness belong only in tests and must never be bundled.
+Builds configured with `VITE_MUSE_BACKGROUND_URL`, `VITE_MUSE_SUPABASE_URL`, and `VITE_MUSE_SUPABASE_ANON_KEY` use a Muse account (Supabase Auth email/password) as the user's identity. The Ark API key is only the model-service credential: it is stored encrypted per account by the Open Muse service, read back only by that account's verified sessions, and scoped with the account owner so accounts sharing one key keep separate workspaces, memory, history, and local records. Clients still call public Volcano Ark APIs directly with that key. Builds without that configuration run in single-user local mode with a device-held API key. Volcano SSO is not supported. Without credentials the app stays disconnected and never generates simulated replies. Real calls may incur cloud costs. Mock responses and the old server migration harness belong only in tests and must never be bundled.
 
 ## Commands
 
@@ -49,8 +50,8 @@ Requires Node.js 22.21+. Native Apple builds require Xcode.
 
 ## Safety boundaries
 
-- Each client owns its credentials and local data. The static web host must never receive credentials or proxy MA traffic.
-- Native credentials use Keychain or Android Keystore-backed encryption. Web credentials stay in sessionStorage; all remain sensitive to a compromised client.
-- Non-secret records live in identity-scoped IndexedDB. Preserve legacy local data on upgrades; do not silently migrate credentials or delete old files.
+- The account owner comes only from a session verified by the configured Auth provider, never from client input, an email, or an Ark key digest. The static web host must never receive credentials or proxy MA traffic; the Open Muse service never logs keys, tokens, or passwords and never uses a service-role Auth key.
+- Native credentials use Keychain or Android Keystore-backed encryption. Web credentials stay in sessionStorage; all remain sensitive to a compromised client. In account builds the Ark key is held in memory only.
+- Non-secret records live in identity-scoped IndexedDB. Preserve legacy local data on upgrades; do not silently migrate credentials, attribute earlier local data to an account, or delete old files.
 - Auto-approval only covers pending `web_search` / `web_fetch` requests matched by exact protocol name; everything else stays manual.
 - Write requests are never auto-retried; when a result is ambiguous, query history first instead of repeating creation or approval.

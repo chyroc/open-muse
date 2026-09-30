@@ -4,13 +4,18 @@ import { KeyRound, LoaderCircle, LogOut } from "lucide-react";
 import type { Client } from "./api";
 import { WorkspacePanel } from "./WorkspacePanel";
 import { BackgroundSettings } from "./BackgroundSettings";
+import { AccountPanel } from "./AccountPanel";
+import type { BackgroundClient } from "./background-client";
 
 interface Status {
   loggedIn: boolean;
   ready: boolean;
   project?: string;
   method?: "api_key";
-  legacy?: "sso";
+  legacy?: "sso" | "api_key";
+  legacyKey?: boolean;
+  // Present in builds with a Muse account service.
+  account?: { signedIn: boolean };
 }
 function ArkAuthPanel({
   client,
@@ -22,6 +27,8 @@ function ArkAuthPanel({
   const [status, setStatus] = useState<Status>();
   const [apiKey, setAPIKey] = useState("");
   const [keyProject, setKeyProject] = useState("");
+  const [replacing, setReplacing] = useState(false);
+  const [removeConsent, setRemoveConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [error, setError] = useState("");
@@ -45,6 +52,15 @@ function ArkAuthPanel({
       setBusy(false);
     }
   }
+  const account = status?.account;
+  const signedOut = Boolean(account && !account.signedIn);
+  // Local builds keep the earlier behavior: a saved earlier login must be
+  // removed before a key is added. Account builds never use it directly.
+  const showForm =
+    !signedOut &&
+    (account
+      ? !status?.ready || replacing
+      : !status?.loggedIn && !status?.legacy);
   return (
     <section className="settings-card auth-card">
       <div className="settings-card-heading">
@@ -68,14 +84,69 @@ function ArkAuthPanel({
           {error}
         </p>
       )}
-      {status?.legacy === "sso" && (
+      {signedOut && (
+        <p className="auth-consent-note" role="status">
+          {t("Sign in to your Muse account above to add your Ark API key.")}
+        </p>
+      )}
+      {status?.legacy === "sso" && !status.legacyKey && (
         <p className="auth-consent-note" role="status">
           {t(
             "Volcano SSO sign-in is no longer supported. This device still holds the earlier SSO sign-in; it is not used. Remove it, then add an Ark API key. Data saved on this device is kept.",
           )}
         </p>
       )}
-      {!status?.loggedIn && !status?.legacy && (
+      {account && status?.legacyKey && (
+        <div className="auth-steps">
+          <p className="auth-consent-note" role="status">
+            {t(
+              "This device has an Ark API key saved by an earlier version of Open Muse. It is not used until you save it to your Muse account. Conversations and data from that earlier setup stay on this device and are not moved into your account.",
+            )}
+          </p>
+          <div className="background-actions">
+            <button
+              className="button primary"
+              disabled={busy || signedOut}
+              onClick={() =>
+                void run(async () => {
+                  await client.auth("import-legacy", { confirm: true });
+                  await refresh();
+                  onChanged();
+                })
+              }
+            >
+              {t("Save this key to my account")}
+            </button>
+            <button
+              className="button secondary"
+              disabled={busy}
+              onClick={() =>
+                void run(async () => {
+                  await client.auth("remove-legacy", { confirm: true });
+                  await refresh();
+                })
+              }
+            >
+              {t("Remove it from this device")}
+            </button>
+          </div>
+        </div>
+      )}
+      {account && status?.legacy === "sso" && !status.legacyKey && (
+        <button
+          className="button secondary"
+          disabled={busy}
+          onClick={() =>
+            void run(async () => {
+              await client.auth("remove-legacy", { confirm: true });
+              await refresh();
+            })
+          }
+        >
+          {t("Remove the earlier SSO sign-in")}
+        </button>
+      )}
+      {showForm && (
         <form
           className="auth-steps"
           onSubmit={(event) => {
@@ -90,6 +161,7 @@ function ArkAuthPanel({
               } finally {
                 setAPIKey("");
               }
+              setReplacing(false);
               await refresh();
               onChanged();
             });
@@ -123,19 +195,43 @@ function ArkAuthPanel({
             />
           </label>
           <p className="auth-consent-note">
-            {t(
-              "This device connects directly to Volcano Ark. Native apps store credentials in system-protected storage; the web app keeps them only for this browser session. The assistant and runtime are created automatically on first use; cloud calls may be billed.",
-            )}
+            {account
+              ? t(
+                  "Ark checks the key once, then it is stored encrypted in your Muse account so your signed-in devices can use it. The key is a model-service credential, not your identity. Replacing it starts a separate workspace and stops background work tied to the old key. Cloud calls may be billed.",
+                )
+              : t(
+                  "This device connects directly to Volcano Ark. Native apps store credentials in system-protected storage; the web app keeps them only for this browser session. The assistant and runtime are created automatically on first use; cloud calls may be billed.",
+                )}
           </p>
-          <button className="button primary" disabled={busy || !apiKey.trim()}>
-            {t("Connect with API Key")}
-          </button>
+          <div className="background-actions">
+            <button
+              className="button primary"
+              disabled={busy || !apiKey.trim()}
+            >
+              {account
+                ? t("Save API key to my account")
+                : t("Connect with API Key")}
+            </button>
+            {replacing && (
+              <button
+                type="button"
+                className="button secondary"
+                disabled={busy}
+                onClick={() => setReplacing(false)}
+              >
+                {t("Cancel")}
+              </button>
+            )}
+          </div>
         </form>
       )}
       {status?.ready && (
         <div className="auth-connected">
           <p>
-            {t("Connected with API Key")} ·{" "}
+            {account
+              ? t("Saved in your Muse account")
+              : t("Connected with API Key")}{" "}
+            ·{" "}
             {status.project ? (
               <>
                 {t("Project")} <strong>{status.project}</strong>
@@ -147,30 +243,71 @@ function ArkAuthPanel({
           <WorkspacePanel client={client} />
         </div>
       )}
-      {(status?.loggedIn || status?.legacy || client.signedIn()) && (
+      {account && status?.ready ? (
         <div className="logout-row">
+          {!replacing && (
+            <button
+              className="button secondary"
+              disabled={busy}
+              onClick={() => setReplacing(true)}
+            >
+              {t("Replace API key")}
+            </button>
+          )}
+          <label className="background-consent background-remove-consent">
+            <input
+              type="checkbox"
+              checked={removeConsent}
+              disabled={busy}
+              onChange={(event) => setRemoveConsent(event.target.checked)}
+            />
+            {t(
+              "Remove the key from my Muse account on all devices and stop background work that uses it. The key stays valid at Ark until you revoke it there.",
+            )}
+          </label>
           <button
             className="button secondary"
-            disabled={busy}
+            disabled={busy || !removeConsent}
             onClick={() =>
               void run(async () => {
-                await client.auth("logout", {});
+                await client.auth("logout", { confirm: true });
+                setRemoveConsent(false);
                 await refresh();
                 onChanged();
               })
             }
           >
             <LogOut size={15} />
-            {status?.legacy
-              ? t("Remove the earlier SSO sign-in")
-              : t("Sign out of this login")}
+            {t("Remove API key from my account")}
           </button>
-          <small>
-            {t(
-              "Removing the login deletes this device's saved credentials but does not revoke the cloud API Key. You can revoke it in the Ark console.",
-            )}
-          </small>
         </div>
+      ) : (
+        !account &&
+        (status?.loggedIn || status?.legacy || client.signedIn()) && (
+          <div className="logout-row">
+            <button
+              className="button secondary"
+              disabled={busy}
+              onClick={() =>
+                void run(async () => {
+                  await client.auth("logout", {});
+                  await refresh();
+                  onChanged();
+                })
+              }
+            >
+              <LogOut size={15} />
+              {status?.legacy
+                ? t("Remove the earlier SSO sign-in")
+                : t("Sign out of this login")}
+            </button>
+            <small>
+              {t(
+                "Removing the login deletes this device's saved credentials but does not revoke the cloud API Key. You can revoke it in the Ark console.",
+              )}
+            </small>
+          </div>
+        )
       )}
       {busy && (
         <p className="muted" role="status">
@@ -182,11 +319,37 @@ function ArkAuthPanel({
   );
 }
 
-export function AuthPanel(props: Parameters<typeof ArkAuthPanel>[0]) {
+export function AuthPanel({
+  client,
+  onChanged,
+  service,
+}: {
+  client: Client;
+  onChanged: () => void;
+  service?: BackgroundClient;
+}) {
+  // Remount the account-dependent cards whenever the signed-in account changes.
+  const [account, setAccount] = useState(0);
   return (
     <>
-      <ArkAuthPanel {...props} />
-      <BackgroundSettings client={props.client} />
+      <AccountPanel
+        service={service}
+        client={client}
+        onChanged={() => {
+          setAccount((value) => value + 1);
+          onChanged();
+        }}
+      />
+      <ArkAuthPanel
+        key={`ark-${account}`}
+        client={client}
+        onChanged={onChanged}
+      />
+      <BackgroundSettings
+        key={`background-${account}`}
+        service={service}
+        client={client}
+      />
     </>
   );
 }

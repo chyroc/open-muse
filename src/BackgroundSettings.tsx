@@ -11,14 +11,14 @@ import { backgroundClient, type BackgroundClient } from "./background-client";
 import type { Client } from "./api";
 import { Markdown } from "./components";
 import "./background.css";
-import { SupabaseLoginForm } from "./SupabaseLoginForm";
 
 export function BackgroundSettings({
   service = backgroundClient,
   client,
 }: {
   service?: BackgroundClient;
-  client?: Pick<Client, "backgroundConfiguration" | "signedIn">;
+  client?: Pick<Client, "backgroundConfiguration" | "signedIn"> &
+    Partial<Pick<Client, "accountCredentialRevision">>;
 }) {
   const [connected, setConnected] = useState(false),
     [status, setStatus] = useState<BackgroundStatus>();
@@ -90,6 +90,8 @@ export function BackgroundSettings({
     setDirty(true);
     setSchedule((current) => (current ? { ...current, ...patch } : current));
   }
+  // Signed in with a Muse account rather than a private device token.
+  const account = connected && Boolean(service.accountConnected?.());
   return (
     <section
       className="settings-card background-panel"
@@ -121,29 +123,11 @@ export function BackgroundSettings({
         <>
           <p className="background-origin">{service.origin}</p>
           {!connected && service.accountConfigured?.() ? (
-            <SupabaseLoginForm
-              busy={busy}
-              onSignIn={(email, password) =>
-                action(async () => {
-                  const next = await service.signInAccount(email, password);
-                  if (alive.current) {
-                    setStatus(next);
-                    setSchedule(next.schedule);
-                  }
-                  await load();
-                })
-              }
-              onSignUp={(email, password) =>
-                action(async () => {
-                  await service.signUpAccount(email, password);
-                  setNotice(
-                    t(
-                      "Registration submitted. Check your email if verification is required, then sign in. This does not confirm that a new account was created.",
-                    ),
-                  );
-                })
-              }
-            />
+            <p className="background-note">
+              {t(
+                "Sign in to your Muse account above to use background features.",
+              )}
+            </p>
           ) : !connected ? (
             <form
               className="background-form"
@@ -193,33 +177,14 @@ export function BackgroundSettings({
             </form>
           ) : (
             <>
-              <p className="background-note">
-                {t("Private service account:")}{" "}
-                {status?.owner ?? t("Checking…")}.{" "}
-                {t(
-                  "This connection is independent of the Ark login above. Signing out of Ark does not stop this schedule.",
-                )}
-              </p>
-              {service.accountConnected?.() && (
-                <>
-                  <p className="background-note">
-                    {t(
-                      "Account login trial only. Per-user Ark workspaces are not migrated yet, so credential uploads and background generation stay disabled.",
-                    )}
-                  </p>
-                  <button
-                    className="button secondary"
-                    disabled={busy}
-                    onClick={() =>
-                      void action(async () => {
-                        await service.renewAccountLogin();
-                        await load();
-                      })
-                    }
-                  >
-                    {t("Renew account login")}
-                  </button>
-                </>
+              {!account && (
+                <p className="background-note">
+                  {t("Private service account:")}{" "}
+                  {status?.owner ?? t("Checking…")}.{" "}
+                  {t(
+                    "This connection is independent of the Ark login above. Signing out of Ark does not stop this schedule.",
+                  )}
+                </p>
               )}
               {status && !status.backgroundReady && (
                 <p className="background-note">
@@ -228,18 +193,28 @@ export function BackgroundSettings({
                   )}
                 </p>
               )}
-              {client && !status?.account && (
+              {client && (
                 <div className="background-authorization">
-                  <h3>{t("Use your current Ark workspace")}</h3>
+                  <h3>
+                    {account
+                      ? t("Allow background work with this workspace")
+                      : t("Use your current Ark workspace")}
+                  </h3>
                   <p className="background-note">
-                    {t(
-                      "No second key or agent to configure. Sync the API key, project, agent version, environment, and memory-store IDs from this app. SSO and refresh credentials stay on-device. The service stores the configuration encrypted and decrypts it to call Ark while you are away. Its administrators remain trusted; this is not end-to-end encryption.",
-                    )}
+                    {account
+                      ? t(
+                          "Your Ark API key is already saved in your Muse account. Allowing background work lets the service use it with this workspace's agent, environment, and memory while you are away. The service keeps this binding encrypted and its administrators remain trusted; this is not end-to-end encryption.",
+                        )
+                      : t(
+                          "No second key or agent to configure. Sync the API key, project, agent version, environment, and memory-store IDs from this app. The service stores the configuration encrypted and decrypts it to call Ark while you are away. Its administrators remain trusted; this is not end-to-end encryption.",
+                        )}
                   </p>
                   <p className="background-note" role="status">
                     {status?.connection?.configured
-                      ? `${t("Configuration uploaded")}${status.connection.updatedAt ? ` · ${new Date(status.connection.updatedAt).toLocaleString(formatLocale())}` : ""}`
-                      : t("No app configuration uploaded.")}
+                      ? `${account ? t("Background work allowed") : t("Configuration uploaded")}${status.connection.updatedAt ? ` · ${new Date(status.connection.updatedAt).toLocaleString(formatLocale())}` : ""}`
+                      : account
+                        ? t("Background work is not allowed yet.")
+                        : t("No app configuration uploaded.")}
                     {status &&
                       !status.credentialStorageReady &&
                       t("Encrypted storage is not available yet.")}
@@ -257,9 +232,13 @@ export function BackgroundSettings({
                         setUploadConsent(event.target.checked)
                       }
                     />
-                    {t(
-                      "I authorize uploading this app's current Ark configuration to this private service for background Feed generation. Personal context will be read from Ark. Cloud calls may be billed.",
-                    )}
+                    {account
+                      ? t(
+                          "I allow the Muse service to use my saved Ark API key with this workspace for background Feed generation. Personal context will be read from Ark. Cloud calls may be billed.",
+                        )
+                      : t(
+                          "I authorize uploading this app's current Ark configuration to this private service for background Feed generation. Personal context will be read from Ark. Cloud calls may be billed.",
+                        )}
                   </label>
                   <div className="background-actions">
                     <button
@@ -279,14 +258,20 @@ export function BackgroundSettings({
                           setConsent(false);
                           await load();
                           setNotice(
-                            t(
-                              "Current Ark configuration synced. A changed connection pauses the schedule; review it before enabling. Generation remains subject to the server's safety checks.",
-                            ),
+                            account
+                              ? t(
+                                  "Background work is allowed for this workspace. Review the schedule before enabling it.",
+                                )
+                              : t(
+                                  "Current Ark configuration synced. A changed connection pauses the schedule; review it before enabling. Generation remains subject to the server's safety checks.",
+                                ),
                           );
                         })
                       }
                     >
-                      {t("Sync current Ark configuration")}
+                      {account
+                        ? t("Allow background work")
+                        : t("Sync current Ark configuration")}
                     </button>
                   </div>
                   {status?.connection?.configured && (
@@ -324,7 +309,9 @@ export function BackgroundSettings({
                           })
                         }
                       >
-                        {t("Remove uploaded Ark access")}
+                        {account
+                          ? t("Stop background work")
+                          : t("Remove uploaded Ark access")}
                       </button>
                     </>
                   )}
@@ -541,37 +528,35 @@ export function BackgroundSettings({
               </div>
             </>
           )}
-          <div className="background-disconnect">
-            <button
-              className="button secondary"
-              disabled={busy}
-              onClick={() =>
-                void action(async () => {
-                  await service.disconnect();
-                  setStatus(undefined);
-                  setSchedule(undefined);
-                  setPosts([]);
-                  setRuns([]);
-                  dirtyRef.current = false;
-                  setDirty(false);
-                  setConsent(false);
-                  setUploadConsent(false);
-                  setRemoveConsent(false);
-                })
-              }
-            >
-              {t("Remove this device connection")}
-            </button>
-            <small>
-              {service.accountConnected?.()
-                ? t(
-                    "Removes the account session from this device only. It does not sign out other devices or revoke the session at the Auth provider.",
-                  )
-                : t(
-                    "Removes the local token only. Pause the schedule before disconnecting to stop future automatic runs; revoke this device's token on the server if needed.",
-                  )}
-            </small>
-          </div>
+          {!account && (connected || !service.accountConfigured?.()) && (
+            <div className="background-disconnect">
+              <button
+                className="button secondary"
+                disabled={busy}
+                onClick={() =>
+                  void action(async () => {
+                    await service.disconnect();
+                    setStatus(undefined);
+                    setSchedule(undefined);
+                    setPosts([]);
+                    setRuns([]);
+                    dirtyRef.current = false;
+                    setDirty(false);
+                    setConsent(false);
+                    setUploadConsent(false);
+                    setRemoveConsent(false);
+                  })
+                }
+              >
+                {t("Remove this device connection")}
+              </button>
+              <small>
+                {t(
+                  "Removes the local token only. Pause the schedule before disconnecting to stop future automatic runs; revoke this device's token on the server if needed.",
+                )}
+              </small>
+            </div>
+          )}
         </>
       )}
       {busy && (

@@ -1,6 +1,10 @@
 import { t } from "../../shared/i18n";
 import { z } from "zod";
 import { ArkClient, ApiError } from "../../shared/ark";
+import type {
+  AccountCredential,
+  AccountCredentialResponse,
+} from "../../shared/account-credential";
 import { credentials as defaultVault, type CredentialStore } from "./storage";
 import { ARK_BASE_URL, directFetch } from "./transport";
 
@@ -22,38 +26,120 @@ const apiKeyLogin = z.object({
 });
 // Earlier releases could also save a Volcano SSO session. Volcano SSO sign-in is
 // no longer supported: such a record is kept untouched until the user removes
-// it, and none of its credentials is ever used.
+// it, and none of its session credentials is ever used.
 const legacySSO = z
   .object({
     accessKeyId: z.string().min(1),
     secretKey: z.string().min(1),
     sessionToken: z.string().min(1),
+    apiKey: apiKey.optional(),
+    project: projectName.optional(),
   })
   .passthrough();
-export type APIKeyLogin = z.infer<typeof apiKeyLogin>;
+export type APIKeyLogin = z.infer<typeof apiKeyLogin> & {
+  // Set for keys stored in a Muse account: the verified owner and the stored
+  // credential revision they were read at.
+  owner?: string;
+  revision?: number;
+};
+type ResourceKind = "agent" | "environment" | "memory_store";
+// The signed-in Muse account and its server-side Ark credential.
+export interface AccountProvider {
+  accountConfigured(): boolean;
+  accountOwner(): string | undefined;
+  restore(): Promise<void>;
+  accountCredential(): Promise<AccountCredentialResponse>;
+  saveAccountCredential(
+    credential: AccountCredential,
+    revision: number,
+  ): Promise<{ revision: number }>;
+  removeAccountCredential(revision: number): Promise<{ revision: number }>;
+  claimResource(kind: ResourceKind, id: string): Promise<void>;
+}
 
 export class DirectAuth {
   value?: APIKeyLogin;
-  legacy?: "sso";
+  // A login saved on this device by an earlier release. In account builds even
+  // a saved API key is only offered for an explicit upload; it is never used
+  // directly or attributed to an account automatically.
+  legacy?: { kind: "sso" | "api_key"; key?: AccountCredential };
+  private revision = 0;
+  private owner?: string;
   private busy = false;
   constructor(
     private vault: CredentialStore = defaultVault,
     private fetcher: typeof fetch = directFetch,
+    readonly account?: AccountProvider,
   ) {}
+  // Builds configured with a Muse account service use the account as the
+  // user's identity; the Ark key is only the model-service credential.
+  accountMode() {
+    return Boolean(this.account?.accountConfigured());
+  }
+  accountOwner() {
+    return this.accountMode() ? this.account!.accountOwner() : undefined;
+  }
+  // The account and credential revision the current value was read for.
+  syncedOwner() {
+    return this.owner;
+  }
+  storedRevision() {
+    return this.revision;
+  }
   async restore() {
     const raw = await this.vault.read();
     this.value = this.legacy = undefined;
-    if (!raw) return;
-    const saved = JSON.parse(raw);
-    const login = apiKeyLogin.safeParse(saved);
-    if (login.success) this.value = login.data;
-    else if (legacySSO.safeParse(saved).success) this.legacy = "sso";
-    else
-      throw new Error(
-        t(
-          "Saved login is invalid. Clear this app's credentials and sign in again.",
-        ),
+    if (raw) {
+      const saved = JSON.parse(raw);
+      const login = apiKeyLogin.safeParse(saved);
+      const sso = legacySSO.safeParse(saved);
+      if (login.success && !this.accountMode()) this.value = login.data;
+      else if (login.success)
+        this.legacy = {
+          kind: "api_key",
+          key: {
+            apiKey: login.data.apiKey,
+            project: login.data.project ?? "",
+          },
+        };
+      else if (sso.success)
+        this.legacy = {
+          kind: "sso",
+          key: sso.data.apiKey
+            ? { apiKey: sso.data.apiKey, project: sso.data.project ?? "" }
+            : undefined,
+        };
+      else
+        throw new Error(
+          t(
+            "Saved login is invalid. Clear this app's credentials and sign in again.",
+          ),
+        );
+    }
+    if (this.accountMode()) await this.sync();
+  }
+  // Reads the signed-in account's key from the service. Called on launch and
+  // whenever the account changes; nothing is kept for a signed-out account.
+  async sync() {
+    this.value = undefined;
+    this.revision = 0;
+    this.owner = this.accountOwner();
+    if (!this.owner) return;
+    const owner = this.owner;
+    const stored = await this.account!.accountCredential();
+    if (this.accountOwner() !== owner)
+      throw new ApiError(
+        409,
+        t("The Muse account changed. Reload before continuing."),
       );
+    this.revision = stored.revision;
+    if (stored.credential)
+      this.value = {
+        kind: "api_key",
+        ...stored.credential,
+        owner,
+        revision: stored.revision,
+      };
   }
   status() {
     const c = this.value;
@@ -62,7 +148,11 @@ export class DirectAuth {
       ready: Boolean(c),
       method: c ? ("api_key" as const) : undefined,
       project: c?.project,
-      legacy: this.legacy,
+      legacy: this.legacy?.kind,
+      legacyKey: Boolean(this.legacy?.key),
+      ...(this.accountMode()
+        ? { account: { signedIn: Boolean(this.accountOwner()) } }
+        : {}),
     };
   }
   private async save(value: APIKeyLogin | undefined) {
@@ -83,15 +173,88 @@ export class DirectAuth {
       this.busy = false;
     }
   }
+  // Validate access to MA itself. The inference /models endpoint has a
+  // different CORS policy and must not gate browser or WebView sign-in.
+  private async verify(credential: AccountCredential) {
+    await new ArkClient(
+      {
+        arkBaseUrl: ARK_BASE_URL,
+        arkKey: credential.apiKey,
+        project: credential.project,
+      },
+      this.fetcher,
+    ).request("/agents?limit=1");
+  }
+  private signedInOwner() {
+    const owner = this.accountOwner();
+    if (!owner || owner !== this.owner)
+      throw new ApiError(401, t("Sign in to your Muse account first."));
+    return owner;
+  }
+  // Stores the key in the signed-in account, replacing any earlier key. The
+  // service revokes background access tied to the previous key.
+  private async store(credential: AccountCredential) {
+    const owner = this.signedInOwner();
+    await this.verify(credential);
+    const result = await this.account!.saveAccountCredential(
+      credential,
+      this.revision,
+    );
+    this.revision = result.revision;
+    this.value = {
+      kind: "api_key",
+      ...credential,
+      owner,
+      revision: result.revision,
+    };
+    return { ready: true };
+  }
   async execute(path: string, body: unknown = {}) {
     if (path === "status") return this.status();
+    const confirmed = z.object({ confirm: z.literal(true) }).strict();
     return this.serial(async () => {
-      if (path === "logout") {
+      if (this.accountMode()) {
+        if (path === "logout") {
+          confirmed.parse(body);
+          this.signedInOwner();
+          const result = await this.account!.removeAccountCredential(
+            this.revision,
+          );
+          this.revision = result.revision;
+          this.value = undefined;
+          return { ok: true };
+        }
+        if (path === "import-legacy") {
+          confirmed.parse(body);
+          if (!this.legacy?.key)
+            throw new ApiError(
+              404,
+              t("This device has no saved API key from an earlier version."),
+            );
+          return this.store(this.legacy.key);
+        }
+        if (path === "remove-legacy") {
+          confirmed.parse(body);
+          await this.vault.write("");
+          this.legacy = undefined;
+          return { ok: true };
+        }
+      } else if (path === "logout") {
         await this.save(undefined);
         return { ok: true };
       }
       if (path !== "api-key")
         throw new ApiError(404, t("Unknown sign-in operation."));
+      const input = z
+        .object({
+          apiKey,
+          project: projectName.default(""),
+          confirm: z.literal(true),
+        })
+        .strict()
+        .parse(body);
+      if (this.accountMode())
+        return this.store({ apiKey: input.apiKey, project: input.project });
       if (this.value)
         throw new ApiError(
           409,
@@ -104,29 +267,12 @@ export class DirectAuth {
             "Remove the saved Volcano SSO sign-in before connecting with an API key.",
           ),
         );
-      const input = z
-        .object({
-          apiKey,
-          project: projectName.default(""),
-          confirm: z.literal(true),
-        })
-        .strict()
-        .parse(body);
       const value = {
         kind: "api_key" as const,
         apiKey: input.apiKey,
         project: input.project,
       };
-      // Validate access to MA itself. The inference /models endpoint has a
-      // different CORS policy and must not gate browser or WebView sign-in.
-      await new ArkClient(
-        {
-          arkBaseUrl: ARK_BASE_URL,
-          arkKey: value.apiKey,
-          project: value.project,
-        },
-        this.fetcher,
-      ).request("/agents?limit=1");
+      await this.verify(value);
       await this.save(value);
       return { ready: true };
     });

@@ -85,7 +85,7 @@ describe("Shared native account login form", () => {
       "private-password",
     );
     expect(f.onSignIn).not.toHaveBeenCalled();
-    expect(host.textContent).toContain("background generation stay disabled");
+    expect(host.textContent).toContain("not used to identify you");
   });
   it("clears a rejected login's password without creating an unhandled rejection", async () => {
     const f = await setup("en");

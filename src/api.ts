@@ -2,6 +2,7 @@ import { t } from "../shared/i18n";
 import { z } from "zod";
 import { ArkClient, ApiError } from "../shared/ark";
 import { digest, uuid } from "../shared/crypto";
+import { accountWorkspaceKey } from "../shared/workspace-key";
 import { readSSE } from "../shared/sse";
 import { boundedSignal } from "../shared/abort";
 import { canAutoApprove } from "../shared/approval-policy";
@@ -17,7 +18,7 @@ import {
   type Session,
   type WorkspaceStatus,
 } from "../shared/types";
-import { DirectAuth } from "./direct/auth";
+import { DirectAuth, type AccountProvider } from "./direct/auth";
 import { LocalDatabase, type CredentialStore } from "./direct/storage";
 import { ARK_BASE_URL, directFetch } from "./direct/transport";
 import { DirectWorkspace } from "./direct/workspace";
@@ -114,22 +115,66 @@ export class Client {
       fetcher?: typeof fetch;
       // Isolated simulator acceptance profile; does not change credentials.
       scope?: string;
+      // The Muse account service. When the build configures it, the signed-in
+      // account is the user identity and owns the Ark key and workspace.
+      account?: AccountProvider;
     } = {},
   ) {
     this.db = options.database ?? new LocalDatabase();
     this.fetcher = options.fetcher ?? directFetch;
-    this.identity = new DirectAuth(options.vault, this.fetcher);
+    this.identity = new DirectAuth(
+      options.vault,
+      this.fetcher,
+      options.account,
+    );
     if (options.scope !== undefined)
       this.scope = z
         .string()
         .regex(/^welcome-[a-z0-9-]{1,60}$/)
         .parse(options.scope);
   }
-  restore() {
+  async restore() {
+    if (this.identity.accountMode()) await this.identity.account!.restore();
+    this.reset();
     return this.identity.restore();
   }
+  // Call after signing in to or out of a Muse account. The previous account's
+  // runtime, key, and pending work are dropped before anything else runs.
+  async accountChanged() {
+    this.reset();
+    await this.identity.sync();
+  }
+  // Picks up a key replaced or removed on another device or window. Returns
+  // true when the account or key changed; otherwise running work is kept.
+  async syncAccount() {
+    if (!this.identity.accountMode()) return false;
+    const owner = this.identity.accountOwner();
+    const stored = owner
+      ? await this.identity.account!.accountCredential()
+      : undefined;
+    if (
+      owner === this.identity.syncedOwner() &&
+      (stored?.revision ?? 0) === this.identity.storedRevision()
+    )
+      return false;
+    await this.accountChanged();
+    return true;
+  }
+  private reset() {
+    this.runtime?.abort.abort();
+    this.runtime?.workspace.cancel();
+    this.runtime = undefined;
+  }
   signedIn() {
-    return Boolean(this.identity.value);
+    const c = this.identity.value;
+    return Boolean(
+      c &&
+      (!this.identity.accountMode() ||
+        c.owner === this.identity.accountOwner()),
+    );
+  }
+  accountCredentialRevision() {
+    return this.identity.value?.revision;
   }
   async auth<T = unknown>(path: string, body?: object): Promise<T> {
     let result: unknown;
@@ -143,29 +188,43 @@ export class Client {
         );
       throw error;
     }
-    if (path === "logout") {
-      this.runtime?.abort.abort();
-      this.runtime?.workspace.cancel();
-      this.runtime = undefined;
-    }
+    if (["logout", "api-key", "import-legacy"].includes(path)) this.reset();
     return result as T;
   }
   private context() {
     const c = this.identity.value;
+    const owner = this.identity.accountOwner();
+    if (this.identity.accountMode() && (!owner || c?.owner !== owner)) {
+      this.reset();
+      throw new ApiError(
+        401,
+        owner
+          ? t("Add an Ark API key in Settings first.")
+          : t("Sign in to your Muse account first."),
+      );
+    }
     if (!c?.apiKey)
       throw new ApiError(401, t("Add an Ark API key in Settings first."));
-    const key = digest(
-      JSON.stringify([
-        ARK_BASE_URL,
-        c.apiKey,
-        c.project ?? "",
-        ...(this.scope ? [this.scope] : []),
-      ]),
-    );
+    // Account workspaces include the verified owner, so accounts sharing one
+    // Ark key never adopt each other's agent, memory, or local records.
+    const base = owner
+      ? accountWorkspaceKey(c.apiKey, c.project ?? "", owner)
+      : undefined;
+    const key = base
+      ? this.scope
+        ? digest(JSON.stringify([base, this.scope]))
+        : base
+      : digest(
+          JSON.stringify([
+            ARK_BASE_URL,
+            c.apiKey,
+            c.project ?? "",
+            ...(this.scope ? [this.scope] : []),
+          ]),
+        );
     if (this.runtime?.key !== key) {
       const apiKey = c.apiKey;
-      this.runtime?.abort.abort();
-      this.runtime?.workspace.cancel();
+      this.reset();
       const abort = new AbortController();
       const ark = new ArkClient(
         {
@@ -176,12 +235,17 @@ export class Client {
         this.fetcher,
         abort.signal,
       );
-      const companion = new DirectIdentity(key, ark, this.db);
+      const account = this.identity.account;
+      const claim = owner
+        ? (kind: "agent" | "environment" | "memory_store", id: string) =>
+            account!.claimResource(kind, id)
+        : undefined;
+      const companion = new DirectIdentity(key, ark, this.db, undefined, claim);
       this.runtime = {
         key,
         ark,
         abort,
-        workspace: new DirectWorkspace(key, ark, this.db),
+        workspace: new DirectWorkspace(key, ark, this.db, claim),
         companion,
         goals: new DirectGoals(key, this.db, companion),
         redact: (text) => text.replaceAll(apiKey, "[redacted]"),
@@ -191,13 +255,13 @@ export class Client {
   }
   async config(): Promise<AppConfig> {
     return {
-      mode: this.identity.value?.apiKey ? "ark" : "disconnected",
+      mode: this.signedIn() ? "ark" : "disconnected",
       authRequired: false,
       agentConfigured: (await this.workspaceStatus()).state === "ready",
     };
   }
   async workspaceStatus(): Promise<WorkspaceStatus> {
-    if (!this.identity.value?.apiKey)
+    if (!this.signedIn())
       return {
         state: "disconnected",
         message:
@@ -406,7 +470,7 @@ export class Client {
     return rows.map((row) => saved[row.id]);
   }
   async sessions(): Promise<Page<Session>> {
-    if (!this.identity.value?.apiKey) return { data: [] };
+    if (!this.signedIn()) return { data: [] };
     const r = this.context();
     const rows = await this.collect<Session>(
       r.ark,
@@ -1037,8 +1101,7 @@ export class Client {
     return r.goals;
   }
   async goals() {
-    if (!this.identity.value?.apiKey)
-      return { data: [] as Goal[], revision: "" };
+    if (!this.signedIn()) return { data: [] as Goal[], revision: "" };
     return this.goalService(this.context()).snapshot();
   }
   prepareGoals() {
@@ -1108,7 +1171,7 @@ export class Client {
     return this.goalService(r).update(id, input, revision);
   }
   async library(): Promise<Page<LibraryItem>> {
-    if (!this.identity.value?.apiKey) return { data: [] };
+    if (!this.signedIn()) return { data: [] };
     return {
       data: (
         (await this.db.get<LibraryItem[]>(`${this.context().key}:library`)) ??

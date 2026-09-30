@@ -39,6 +39,10 @@ export class SupabaseAuth {
   configured() {
     return Boolean(this.origin && this.key);
   }
+  // The clock session expiry times are measured against.
+  now() {
+    return this.clock();
+  }
   private async request(path: string, init: RequestInit = {}) {
     if (!this.configured())
       throw new Error(t("Muse account login is not configured in this build."));
@@ -137,6 +141,15 @@ export class SupabaseAuth {
     // Signup can require email verification. Do not infer successful login,
     // disclose account existence, or adopt a signup session without review.
   }
+  // Revokes this session's refresh token at the provider. Sent once; the
+  // caller removes the local session whatever the outcome.
+  async signOut(accessToken: string) {
+    authToken.parse(accessToken);
+    await this.request("/logout?scope=local", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+  }
   async renew(session: SupabaseSession) {
     const checked = supabaseSessionSchema.parse(session);
     const next = this.session(
@@ -147,7 +160,7 @@ export class SupabaseAuth {
     );
     if (next.userId !== checked.userId)
       throw new Error(
-        t("The account identity changed. Disconnect and sign in again."),
+        t("The account identity changed. Sign out of Muse and sign in again."),
       );
     return next;
   }

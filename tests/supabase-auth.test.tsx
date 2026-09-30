@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { SupabaseAuth } from "../src/supabase-auth";
 import { BackgroundClient } from "../src/background-client";
 import { BackgroundSettings } from "../src/BackgroundSettings";
+import { AccountPanel } from "../src/AccountPanel";
 import {
   supabaseOrigin,
   supabaseOwner,
@@ -79,7 +80,8 @@ function fixture() {
     if (String(input).includes("/v1/runs")) return Response.json({ runs: [] });
     return Response.json({ items: [], cursor: 0, hasMore: false });
   });
-  const auth = new SupabaseAuth(origin, key, authFetch, () => 1000);
+  let now = 1000;
+  const auth = new SupabaseAuth(origin, key, authFetch, () => now);
   const db = new LocalDatabase(`supabase-test-${crypto.randomUUID()}`);
   const client = new BackgroundClient(
     background,
@@ -96,6 +98,9 @@ function fixture() {
     vault,
     db,
     read: () => saved,
+    advance: (ms: number) => {
+      now += ms;
+    },
   };
 }
 afterEach(() => vi.unstubAllGlobals());
@@ -152,7 +157,7 @@ describe("Native Supabase Auth trial", () => {
     expect(source.backgroundConfiguration).not.toHaveBeenCalled();
     await expect(
       f.client.signInAccount("other@example.com", password),
-    ).rejects.toThrow("Disconnect");
+    ).rejects.toThrow("before signing in to another Muse account");
     expect(f.authFetch).toHaveBeenCalledTimes(1);
   });
   it("renews once on explicit request and preserves the same user and pending action", async () => {
@@ -171,13 +176,52 @@ describe("Native Supabase Auth trial", () => {
       supabaseOwner(origin, subject),
     );
   });
+  it("renews automatically once, shortly before the access token expires", async () => {
+    const f = fixture();
+    await f.client.signInAccount("person@example.com", password);
+    await f.client.status();
+    expect(f.authFetch).toHaveBeenCalledTimes(1);
+    f.advance(3600_000 - 60_000);
+    f.authFetch.mockResolvedValueOnce(
+      Response.json({ ...session(), refresh_token: "auto_refresh_token" }),
+    );
+    await Promise.all([f.client.status(), f.client.status()]);
+    expect(f.authFetch).toHaveBeenCalledTimes(2);
+    expect(String(f.authFetch.mock.calls[1][0])).toContain(
+      "grant_type=refresh_token",
+    );
+    expect(JSON.parse(f.read()).account.session.refreshToken).toBe(
+      "auto_refresh_token",
+    );
+  });
+  it("revokes the session at the provider once on sign-out and always removes it locally", async () => {
+    for (const reachable of [true, false]) {
+      const f = fixture();
+      await f.client.signInAccount("person@example.com", password);
+      if (reachable)
+        f.authFetch.mockResolvedValueOnce(new Response(null, { status: 204 }));
+      else f.authFetch.mockRejectedValueOnce(new Error("offline"));
+      expect(await f.client.signOutAccount()).toEqual({ revoked: reachable });
+      const [url, init] = f.authFetch.mock.calls[1];
+      expect(String(url)).toBe(`${origin}/auth/v1/logout?scope=local`);
+      expect(init?.method).toBe("POST");
+      expect(new Headers(init?.headers).get("Authorization")).toBe(
+        `Bearer ${access}`,
+      );
+      expect(f.authFetch).toHaveBeenCalledTimes(2);
+      expect(f.read()).toBe("");
+      expect(f.client.accountOwner()).toBeUndefined();
+    }
+  });
   it("persists an uncertain refresh marker and never reuses the rotated refresh token", async () => {
     const f = fixture();
     await f.client.signInAccount("person@example.com", password);
     f.authFetch.mockRejectedValueOnce(new Error(refresh));
     await expect(f.client.renewAccountLogin()).rejects.toThrow("not retried");
     expect(JSON.parse(f.read()).account.refreshPending).toBe(true);
-    await expect(f.client.renewAccountLogin()).rejects.toThrow("Disconnect");
+    await expect(f.client.renewAccountLogin()).rejects.toThrow(
+      "Sign out of Muse",
+    );
     const restored = new BackgroundClient(
       background,
       f.vault,
@@ -186,8 +230,10 @@ describe("Native Supabase Auth trial", () => {
       f.auth,
     );
     await restored.restore();
-    await expect(restored.renewAccountLogin()).rejects.toThrow("Disconnect");
-    await expect(restored.status()).rejects.toThrow("Disconnect");
+    await expect(restored.renewAccountLogin()).rejects.toThrow(
+      "Sign out of Muse",
+    );
+    await expect(restored.status()).rejects.toThrow("Sign out of Muse");
     expect(f.authFetch).toHaveBeenCalledTimes(2);
     await restored.disconnect();
     expect(f.read()).toBe("");
@@ -230,7 +276,7 @@ describe("Native Supabase Auth trial", () => {
       "identity changed",
     );
     expect(JSON.parse(f.read()).owner).toBe(supabaseOwner(origin, subject));
-    await expect(f.client.status()).rejects.toThrow("Disconnect");
+    await expect(f.client.status()).rejects.toThrow("Sign out of Muse");
   });
   it("does not renew the same session in two windows or on devices without cross-window locks", async () => {
     const f = fixture();
@@ -331,14 +377,25 @@ describe("Native Supabase Auth trial", () => {
       vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", languages);
       const f = fixture();
       const html = renderToStaticMarkup(
-        <BackgroundSettings service={f.client} />,
+        <>
+          <AccountPanel
+            service={f.client}
+            client={{ accountChanged: async () => {} }}
+            onChanged={() => {}}
+          />
+          <BackgroundSettings service={f.client} />
+        </>,
       );
       const chinese = languages[0].startsWith("zh");
       expect(html).toContain(chinese ? "账号邮箱" : "Account email");
+      expect(html).toContain(chinese ? "未登录" : "Not signed in");
       expect(html).toContain(
-        chinese ? "当前仅试用账号登录" : "Account login trial only",
+        chinese
+          ? "请先在上方登录 Muse 账号，再使用后台功能。"
+          : "Sign in to your Muse account above to use background features.",
       );
       expect(html).not.toContain("muse_device_…");
+      expect(html).not.toMatch(/trial|试用/);
       expect(f.authFetch).not.toHaveBeenCalled();
     },
   );

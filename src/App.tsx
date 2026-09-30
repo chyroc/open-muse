@@ -41,6 +41,7 @@ import { canAutoApprove } from "../shared/approval-policy";
 import { AuthPanel } from "./AuthPanel";
 import { Studio } from "./Studio";
 import { exportText } from "./platform";
+import { backgroundClient } from "./background-client";
 import { Sheet, primaryNavigation } from "./MusePages";
 import { LibraryPage } from "./LibraryPage";
 import {
@@ -70,6 +71,7 @@ export default function App() {
         scope: (
           globalThis as typeof globalThis & { __MUSE_TEST_PROFILE__?: string }
         ).__MUSE_TEST_PROFILE__,
+        account: backgroundClient,
       }),
     [],
   );
@@ -91,6 +93,20 @@ export default function App() {
       active = false;
     };
   }, [client, restoreAttempt]);
+  // A key replaced or removed on another device lives at the account service,
+  // so re-check it whenever the app returns to the foreground.
+  useEffect(() => {
+    if (!restored) return;
+    const foreground = () => {
+      if (document.hidden) return;
+      void client.syncAccount().then(
+        (changed) => changed && setRevision((value) => value + 1),
+        () => {},
+      );
+    };
+    document.addEventListener("visibilitychange", foreground);
+    return () => document.removeEventListener("visibilitychange", foreground);
+  }, [client, restored]);
   if (!restored)
     return (
       <main className="restore-screen" aria-live="polite">
@@ -528,7 +544,12 @@ function Workspace({
           {config?.mode === "disconnected" && tab !== "settings" && (
             <a className="connect-notice" href="#/settings">
               <Unplug size={16} />
-              <span>{t("Add an Ark API key to start chatting")}</span>
+              <span>
+                {client.identity.accountMode() &&
+                !client.identity.accountOwner()
+                  ? t("Sign in to your Muse account to start chatting")
+                  : t("Add an Ark API key to start chatting")}
+              </span>
             </a>
           )}
           {(loadError || actionError) && (

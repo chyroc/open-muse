@@ -1,16 +1,19 @@
-# Background Feed service
+# Open Muse service
 
-Optional Cloudflare Workers API for the iOS and macOS apps. No website, static
-assets, chat proxy, or native app binaries are hosted here. Direct Ark usage
-remains independent of this service.
+Cloudflare Workers API for the iOS and macOS apps. It verifies Muse account
+sessions, keeps each account's Ark API key encrypted, records account workspace
+ownership, and runs background Feed work. No website, static assets, chat
+proxy, or native app binaries are hosted here. Clients call Ark directly with
+the account's key.
 
 ## Current scope
 
 The service supports explicit one-off Feed generation, a daily local-time
 schedule, durable MA submission/reconciliation, and cursor-based Feed retrieval.
-It is disabled by default. Both native apps include an optional connection in
-Settings, under **While you're away**. Background results currently appear in
-that card, not in the main Feed tab. Push notifications are not implemented.
+Background generation is disabled by default. Both native apps include the
+controls in Settings, under **While you're away**. Background results currently
+appear in that card, not in the main Feed tab. Push notifications are not
+implemented.
 
 Cron runs every five minutes; each invocation advances a persisted stage instead
 of waiting for the agent. Generation and delivery are not exact-time guarantees.
@@ -21,8 +24,8 @@ hour of monitoring, a run requires explicit review; this does not stop MA or
 guarantee a model-spend cap. Pausing a schedule stops future automatic dispatch,
 not already queued or running work.
 
-This is a privately provisioned, user-isolated deployment, not a public
-registration service. Each authorized device uses a different random token.
+Private deployments can also enroll devices without accounts. Each authorized
+device uses a different random token.
 Only SHA-256 token hashes are configured on the server; each hash maps to a
 trusted `{ownerId, deviceLabel}` record. Different devices belonging to the same
 user share that user's stable, opaque `ownerId`. Different users must receive
@@ -96,26 +99,34 @@ Configure the app build with `VITE_MUSE_BACKGROUND_URL`,
 API origin, a public Auth origin, and an anon/publishable key; service-role JWTs
 and secret keys are rejected. The exact Auth origin is added to both Apple
 clients' connection policies. Do not put credentials in URLs or tracked files.
-Builds without Auth configuration retain private-device-token enrollment and
-make no Supabase requests.
+Builds without Auth configuration run in single-user local mode, retain
+private-device-token enrollment, and make no Supabase requests.
 
-The optional settings card supports email/password signup and login. Signup
-requires explicit confirmation and does not count as a confirmed login; follow
-the provider's email-verification policy, then sign in. Passwords are sent
-directly to Auth and never saved. Only after the Worker confirms the same user
-is the access/refresh session stored in the existing separate background
-Keychain entry (sessionStorage on web, not supported on Android). No account
-token or password goes into IndexedDB, a URL, logs, or Cloudflare storage.
+The **Muse account** settings card supports email/password signup and login.
+Signup requires explicit confirmation and does not count as a confirmed login;
+follow the provider's email-verification policy, then sign in. Passwords are
+sent directly to Auth and never saved. Only after the Worker confirms the same
+user is the access/refresh session stored in the separate background Keychain
+entry (sessionStorage on web, not supported on Android). No account token or
+password goes into IndexedDB, a URL, logs, or Cloudflare storage.
 
-Login renewal is explicit, not timer-driven. Before the one refresh POST the
-client saves a pending marker; an ambiguous outcome requires disconnecting and
-signing in again, never replaying the potentially rotated refresh token. A
-successful same-user refresh is saved immediately, before the Worker check. Web
-Locks coordinate renewal across windows and a saved-session comparison rejects
-stale windows. Devices without Web Locks must sign in again instead. Disconnect
-removes this app's local session only; it does not revoke all provider sessions
-or delete the account. Account deletion, password reset, OAuth callbacks,
-Apple capabilities, and an end-user workspace migration are not implemented.
+The client renews the session shortly before the access token expires, at the
+start of an operation, and also on explicit request. Before the one refresh POST
+it saves a pending marker; an ambiguous outcome requires signing out and in
+again, never replaying the potentially rotated refresh token. A successful
+same-user refresh is saved immediately, before the Worker check. Web Locks
+coordinate renewal across windows and a saved-session comparison rejects stale
+windows. Devices without Web Locks must sign in again instead. Signing out sends
+one `POST /auth/v1/logout?scope=local` and always removes the local session;
+other devices stay signed in. Account deletion, password reset, and OAuth
+callbacks are not implemented.
+
+After sign-in the client reads the account's Ark key with
+`GET /v1/account/credential`, keeps it in memory, and scopes the workspace with
+the account owner. Saving, replacing, or removing the key goes through the same
+endpoint. Allowing background work sends only the workspace resource IDs. The
+app re-reads the key when it returns to the foreground (and when the Mac main
+window is focused) to pick up changes from other devices.
 
 Signup failures use one generic message and do not surface provider status
 codes, so the form does not reveal whether an email is registered. Live use
@@ -299,41 +310,25 @@ not revoke another user's upload; revoking the key at Ark affects everyone
 using it. Device enrollment is a trusted administrative operation; end users
 sign in with Muse accounts as described above.
 
-### End-user identity and rollout prerequisite
+### End-user identity
 
 Device tokens identify users only through the trusted server-side enrollment
-binding. A random client UUID, a person's name, an Ark key, an API-key digest,
-an Apple device ID, or a claimed user ID is not authentication. Multiple devices
-share one owner only after trusted enrollment; a new device is not automatically
-recognized as the same person.
+binding. Muse accounts identify users only through sessions the configured Auth
+provider verifies. A random client UUID, a person's name or email, an Ark key,
+an API-key digest, an Apple device ID, or a claimed user ID is not
+authentication.
 
-The current direct iOS/macOS client derives workspace and personal-memory
-metadata from the Ark endpoint/key/project digest, not from a separate Muse
-account. Two people using the same key/project can therefore discover the same
-MA memory store and workspace. Server-side D1 isolation does not repair this
-upstream sharing. Do not enable unattended multi-user generation until client
-identity, resource provisioning, and legacy-data migration have been addressed.
-Tests cover separate per-user resources, including users sharing a key; they
-do not establish end-to-end native account isolation.
-
-For native account onboarding, the proposed default is Sign in with Apple on
-both iOS and macOS. Verify Apple's token signature, issuer, allowed app audience,
-expiry, and login-challenge nonce on the Worker, then map the verified provider
-subject to a server-issued stable Muse user ID. Do not trust a client-submitted
-subject or use an email/name as the identifier. Configure the app identifiers
-for shared Apple identity before linking iOS/macOS accounts. Issue separate
-revocable device sessions stored in Keychain and derive every request's owner
-from the verified session. Apple login and its signing/capability setup are
-proposed, not implemented by this private-token service.
-
-Client workspace metadata and memory-store provisioning must use that Muse user
-ID (plus a separate connection/workspace ID), not the key digest. Personal
-memory, session selection, local caches, and pending actions must remain scoped
-to that identity. Preserve legacy records; do not automatically assign a
-previously shared memory store to a newly logged-in user. A shared Ark key can
-grant direct upstream access to both users' resources: application partitioning
-is not an Ark authorization boundary. Use separately scoped Ark credentials if
-the users must not be able to access one another's data outside Open Muse.
+Account clients derive workspace and personal-memory ownership labels, and
+scope local caches and pending actions, with
+`accountWorkspaceKey(apiKey, project, owner)`. Two accounts using the same
+key/project therefore provision separate MA resources, and the Worker refuses to
+bind or record a resource for an account whose label or ownership record says
+otherwise. Legacy records are preserved and never assigned to a newly signed-in
+account; an earlier device-held key is used only after the user explicitly saves
+it to the account. A shared Ark key can grant direct upstream access to both
+users' resources: application partitioning is not an Ark authorization
+boundary. Use separately scoped Ark credentials if the users must not be able
+to access one another's data outside Open Muse.
 
 Different credentials/workspaces cannot replace an unresolved run's connection.
 Unchanged syncs are deduplicated. Stale revisions fail instead of overwriting a
@@ -352,8 +347,8 @@ agent is modified. This contract still requires live MA acceptance. Sessions
 mount neither memories nor credential vaults.
 The server reads bounded SOUL, MEMORY, GOALS, and FEED documents into the prompt.
 This mode produces personalized ideas, not web research or current news. It does
-not access device-local likes or main-chat selection. Tool access and public
-multi-user credential custody remain out of scope.
+not access device-local likes or main-chat selection. Tool access remains out
+of scope.
 
 Only set `BACKGROUND_ENABLED=true` after real-account policy and connectivity
 verification. Upload requires explicit native consent; local sign-out does not

@@ -28,10 +28,9 @@ export function SupabaseLoginForm({
         );
       }}
     >
-      <h3>{t("Muse account")}</h3>
       <p className="background-note">
         {t(
-          "Sign in with your own account, not an Ark API key. Your Muse identity is shared across your devices; Ark login remains separate.",
+          "Sign in with your Muse account. Your Ark API key is saved to the account separately and is not used to identify you.",
         )}
       </p>
       <label className="field">
@@ -74,11 +73,6 @@ export function SupabaseLoginForm({
           )}
         </label>
       )}
-      <p className="background-note">
-        {t(
-          "Account login trial only. Per-user Ark workspaces are not migrated yet, so credential uploads and background generation stay disabled.",
-        )}
-      </p>
       <div className="background-actions">
         <button
           className="button primary"

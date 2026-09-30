@@ -58,6 +58,9 @@ export class DirectIdentity {
       wait: (ms: number) =>
         new Promise<void>((resolve) => setTimeout(resolve, ms)),
     },
+    // Account workspaces record the memory store with the service right after
+    // it is created or adopted, before it is used.
+    private claim?: (kind: "memory_store", id: string) => Promise<void>,
   ) {
     this.key = `${owner}:identity:v1`;
   }
@@ -120,6 +123,7 @@ export class DirectIdentity {
       );
     if (owned[0]) {
       const id = validId(owned[0].id);
+      await this.claim?.("memory_store", id);
       await this.db.set<Mapping>(this.key, { store_id: id });
       return id;
     }
@@ -144,6 +148,7 @@ export class DirectIdentity {
         }),
       });
       const id = validId(store.id);
+      await this.claim?.("memory_store", id);
       await this.db.set<Mapping>(this.key, { store_id: id });
       return id;
     } catch (error) {

@@ -42,6 +42,9 @@ export class DirectWorkspace {
     private key: string,
     private ark: ArkClient,
     private db: LocalDatabase,
+    // Account workspaces record each resource with the service right after it
+    // is created or adopted, before it is used.
+    private claim?: (kind: Kind, id: string) => Promise<void>,
   ) {
     this.storageKey = `${key}:workspace`;
   }
@@ -185,6 +188,7 @@ export class DirectWorkspace {
           502,
           t("Creation result is unconfirmed. Resume to check cloud resources."),
         );
+      await this.claim?.(kind, resource.id);
       await this.update((r) => {
         r[`${kind}_id`] = resource.id;
         r[`${kind}_pending`] = false;
@@ -247,11 +251,13 @@ export class DirectWorkspace {
     // Recover the existing agent without depending on model catalog access.
     if (!row.agent_id) {
       const existing = await this.discover("agent");
-      if (existing)
+      if (existing) {
+        await this.claim?.("agent", existing.id);
         await this.update((r) => {
           r.agent_id = existing.id;
           r.agent_pending = false;
         });
+      }
     }
     const modelRow = (await this.row())!;
     // Only repair an uncreated assistant's former default. Adopted agents and

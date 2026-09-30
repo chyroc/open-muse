@@ -284,6 +284,19 @@ export function DesktopApp({ client }: { client: Client }) {
       });
     };
     window.addEventListener("muse-credentials-changed", credentials);
+    // An Ark key replaced in the settings window or on another device is kept
+    // by the account service, not in Keychain, so re-check it on focus.
+    const focus = () => {
+      void client.syncAccount().then(
+        (changed) => {
+          if (!changed || !alive.current) return;
+          setConnectionEpoch((value) => value + 1);
+          void reload();
+        },
+        () => {},
+      );
+    };
+    window.addEventListener("focus", focus);
     // Startup restores the Keychain login without blocking this window.
     const ready = (event: Event) => {
       if (!alive.current) return;
@@ -304,6 +317,7 @@ export function DesktopApp({ client }: { client: Client }) {
       window.removeEventListener("muse-command", command);
       window.removeEventListener("keydown", key);
       window.removeEventListener("muse-credentials-changed", credentials);
+      window.removeEventListener("focus", focus);
       window.removeEventListener(connectionReady, ready);
     };
   }, [reload, client]);

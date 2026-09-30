@@ -1,6 +1,7 @@
 import { initializeLanguage } from "../../shared/i18n";
 import { createRoot } from "react-dom/client";
 import { Client } from "../../src/api";
+import { backgroundClient } from "../../src/background-client";
 import { DesktopApp } from "./DesktopApp";
 import { SettingsWindow } from "./SettingsWindow";
 import { isSettingsRoute } from "./settings";
@@ -16,7 +17,10 @@ import "./goals.css";
 
 initializeLanguage();
 initializeAppearance();
-const client = new Client({ vault: nativeCredentials });
+const client = new Client({
+  vault: nativeCredentials,
+  account: backgroundClient,
+});
 // The native shell opens the settings window on its own route, so one bundle
 // serves both windows without the workspace rendering behind it.
 const settingsWindow = isSettingsRoute(location.hash);

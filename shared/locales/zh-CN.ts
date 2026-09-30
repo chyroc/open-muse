@@ -87,8 +87,8 @@ export const zhCN: Record<string, string> = {
   "The server is connected, but background MA access is disabled or not configured. No generation can start yet.":
     "已连接服务器，但后台 MA 访问已禁用或尚未配置，暂时无法开始生成。",
   "Use your current Ark workspace": "使用当前 Ark 工作区",
-  "No second key or agent to configure. Sync the API key, project, agent version, environment, and memory-store IDs from this app. SSO and refresh credentials stay on-device. The service stores the configuration encrypted and decrypts it to call Ark while you are away. Its administrators remain trusted; this is not end-to-end encryption.":
-    "无需另行配置密钥或智能体。将此应用的 API Key、项目、智能体版本、环境和记忆存储 ID 同步到服务。SSO 和刷新凭据保留在设备上。服务会加密存储配置，并在后台调用 Ark 时解密。仍需信任服务管理员；这不是端到端加密。",
+  "No second key or agent to configure. Sync the API key, project, agent version, environment, and memory-store IDs from this app. The service stores the configuration encrypted and decrypts it to call Ark while you are away. Its administrators remain trusted; this is not end-to-end encryption.":
+    "无需另行配置密钥或智能体。将此应用的 API Key、项目、智能体版本、环境和记忆存储 ID 同步到服务。服务会加密存储配置，并在后台调用 Ark 时解密。仍需信任服务管理员；这不是端到端加密。",
   "No app configuration uploaded.": "尚未上传应用配置。",
   "Encrypted storage is not available yet.": "加密存储暂不可用。",
   "I authorize uploading this app's current Ark configuration to this private service for background Feed generation. Personal context will be read from Ark. Cloud calls may be billed.":
