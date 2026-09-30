@@ -1,0 +1,144 @@
+.background-panel {
+  margin-top: 20px;
+}
+.background-panel h2,
+.background-panel h3,
+.background-panel h4 {
+  margin: 0;
+}
+.background-panel .settings-card-heading {
+  align-items: flex-start;
+}
+.background-panel .settings-card-heading p {
+  margin: 5px 0 0;
+}
+.background-origin {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  opacity: 0.6;
+}
+.background-form {
+  display: grid;
+  gap: 16px;
+  margin: 20px 0;
+}
+.background-form .field {
+  display: grid;
+  gap: 7px;
+  font-size: 13px;
+}
+.background-form input:not([type="checkbox"]) {
+  min-height: 44px;
+  min-width: 0;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #dedbd5;
+  border-radius: 8px;
+  background: #fff;
+  color: #292824;
+  font: inherit;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+.background-time {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 12px;
+}
+.background-toggle,
+.background-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  line-height: 1.6;
+}
+.background-consent {
+  font-size: 13px;
+}
+.background-toggle input,
+.background-consent input {
+  margin-top: 6px;
+  accent-color: #555b4c;
+}
+.background-note {
+  font-size: 13px;
+  line-height: 1.65;
+  color: #77746c;
+}
+.background-note svg {
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.background-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.background-runs {
+  margin: 20px 0;
+  font-size: 13px;
+}
+.background-runs summary,
+.background-post summary {
+  cursor: pointer;
+  padding: 8px 0;
+}
+.background-run {
+  display: grid;
+  gap: 7px;
+  border-top: 1px solid #e9e6e0;
+  padding: 14px 0;
+}
+.background-run p {
+  margin: 0;
+  line-height: 1.5;
+}
+.background-run time,
+.background-run small {
+  opacity: 0.7;
+  overflow-wrap: anywhere;
+}
+.background-feed {
+  border-top: 1px solid #e9e6e0;
+  margin-top: 24px;
+  padding-top: 24px;
+}
+.background-post {
+  border-bottom: 1px solid #e9e6e0;
+  padding: 20px 0;
+}
+.background-post > span {
+  display: block;
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+.background-post h4 {
+  font-size: 17px;
+  line-height: 1.5;
+}
+.background-post small,
+.background-post details {
+  color: #77746c;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.background-disconnect {
+  border-top: 1px solid #e9e6e0;
+  padding-top: 18px;
+  margin-top: 24px;
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+.background-disconnect small {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #77746c;
+}
+@media (max-width: 400px) {
+  .background-time {
+    grid-template-columns: 1fr;
+  }
+}

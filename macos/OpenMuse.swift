@@ -79,7 +79,11 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         }
     }
     private func credentials(_ body: [String: String], replyHandler: @escaping (Any?, String?) -> Void) {
-        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "app.openmuse.desktop.direct-ma.v1", kSecAttrAccount as String: "active"]
+        guard body["namespace"] == nil || body["namespace"] == "background"
+        else { replyHandler(nil, "Invalid credential namespace"); return }
+        let service = body["namespace"] == "background"
+            ? "app.openmuse.desktop.background.v1" : "app.openmuse.desktop.direct-ma.v1"
+        let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: "active"]
         if body["operation"] == "read" {
             var lookup = query
             lookup[kSecReturnData as String] = true

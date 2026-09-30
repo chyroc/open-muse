@@ -1,8 +1,14 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { createHash } from "node:crypto";
+import { backgroundOrigin } from "./shared/background-origin";
+
+const background = backgroundOrigin(process.env.VITE_MUSE_BACKGROUND_URL);
 
 export default defineConfig({
+  define: {
+    "import.meta.env.VITE_MUSE_BACKGROUND_URL": JSON.stringify(background),
+  },
   plugins: [
     react(),
     {
@@ -14,8 +20,7 @@ export default defineConfig({
             tag: "meta",
             attrs: {
               "http-equiv": "Content-Security-Policy",
-              content:
-                "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://ark.cn-beijing.volces.com https://signin.volcengine.com https://open.volcengineapi.com https://iam.volcengineapi.com; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'",
+              content: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://ark.cn-beijing.volces.com https://signin.volcengine.com https://open.volcengineapi.com https://iam.volcengineapi.com${background ? ` ${background}` : ""}; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'`,
             },
             injectTo: "head-prepend",
           },

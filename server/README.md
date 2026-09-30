@@ -8,7 +8,9 @@ remains independent of this service.
 
 The service supports explicit one-off Feed generation, a daily local-time
 schedule, durable MA submission/reconciliation, and cursor-based Feed retrieval.
-It is disabled by default. Native integration is a separate slice.
+It is disabled by default. Both native apps include an optional connection in
+Settings, under **While you're away**. Background results currently appear in
+that card, not in the main Feed tab. Push notifications are not implemented.
 
 Cron runs every five minutes; each invocation advances a persisted stage instead
 of waiting for the agent. Generation and delivery are not exact-time guarantees.
@@ -52,6 +54,43 @@ Configure local bindings in ignored `.dev.vars`:
 
 Store device tokens in native Keychain. Remove a hash to revoke that device.
 Never put tokens in tracked config, URLs, screenshots, logs, or build variables.
+
+## Native app connection
+
+After deploying the private API, set `VITE_MUSE_BACKGROUND_URL` in the build
+process environment for each app. It is a public HTTPS origin, not a secret;
+paths, credentials, query strings, and fragments are rejected. For example:
+
+```sh
+VITE_MUSE_BACKGROUND_URL=https://background.example.com npm run macos:build
+VITE_MUSE_BACKGROUND_URL=https://background.example.com npm run ios:build
+```
+
+Run these commands from the repository root. Only this exact API origin is
+added to the app's connection policy. Builds without the variable have no
+background connection and make no requests to this service. Existing Ark
+requests still go directly to the existing allowlisted Volcano endpoints.
+
+Enter a separate device token in each app. iOS and macOS store it in a dedicated
+Keychain namespace, separate from Ark authentication. They do not copy or upload
+existing Ark credentials. Signing out of Ark or removing the local background
+connection does not pause the server schedule. Pause the schedule explicitly
+before disconnecting if future automatic runs should stop. Revocation requires
+removing the corresponding token hash on the server.
+
+The settings card supports revision-checked schedule changes with explicit
+consent, one-off generation, reviewed reconciliation, and recent runs. A pending
+one-off operation ID is saved in Keychain before submission and reused after a
+lost response or app restart; writes are not retried automatically. Refreshing
+does not discard unsaved schedule edits. Feed content is cached in owner- and
+origin-scoped IndexedDB for offline reading, without device tokens. Cached posts
+remain on the device after disconnecting. Foreground and network-recovery events
+refresh results; native background timers are not needed.
+
+This integration targets iOS and macOS. It has local client, UI, and build
+verification, but requires live origin/CORS, Keychain, and MA acceptance before
+use. In particular, a passing build does not prove that a configured service is
+deployed or that a real unattended generation can complete.
 
 ## API
 

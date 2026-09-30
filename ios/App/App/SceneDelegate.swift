@@ -14,7 +14,10 @@ private final class MuseCredentialsHandler: NSObject, WKScriptMessageHandlerWith
               message.webView?.url?.scheme == "capacitor", message.webView?.url?.host == "localhost",
               let body = message.body as? [String: String]
         else { replyHandler(nil, "Invalid credential request"); return }
-        var service = "app.openmuse.mobile.direct-ma.v1"
+        guard body["namespace"] == nil || body["namespace"] == "background"
+        else { replyHandler(nil, "Invalid credential namespace"); return }
+        var service = body["namespace"] == "background"
+            ? "app.openmuse.mobile.background.v1" : "app.openmuse.mobile.direct-ma.v1"
         #if DEBUG && targetEnvironment(simulator)
         if ProcessInfo.processInfo.environment["MUSE_UI_TEST_SIGNED_OUT"] == "1" { service += ".signed-out-test" }
         #endif

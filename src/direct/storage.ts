@@ -9,6 +9,12 @@ const android = registerPlugin<{
   write(input: { value: string }): Promise<void>;
 }>("MuseCredentials");
 const credentialKey = "muse.direct.credentials.v1";
+export const backgroundCredentials: CredentialStore = {
+  read: () => vault("read", "", "background") as Promise<string>,
+  write: async (value) => {
+    await vault("write", value, "background");
+  },
+};
 export const credentials: CredentialStore = {
   async read() {
     return vault("read") as Promise<string>;
@@ -20,6 +26,7 @@ export const credentials: CredentialStore = {
 async function vault(
   operation: "read" | "write",
   value = "",
+  namespace: "direct" | "background" = "direct",
 ): Promise<unknown> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -33,20 +40,31 @@ async function vault(
       }
     ).webkit?.messageHandlers?.museCredentials;
     let request: Promise<unknown>;
-    if (bridge) request = bridge.postMessage({ operation, value });
-    else if (Capacitor.getPlatform() === "android")
-      request =
-        operation === "read"
-          ? android.read().then((r) => r.value)
-          : android.write({ value });
-    else if (Capacitor.isNativePlatform())
+    if (bridge)
+      request = bridge.postMessage({
+        operation,
+        value,
+        ...(namespace === "background" ? { namespace } : {}),
+      });
+    else if (Capacitor.getPlatform() === "android") {
+      if (namespace === "background")
+        throw new Error("Background service is not supported on Android.");
+      else
+        request =
+          operation === "read"
+            ? android.read().then((r) => r.value)
+            : android.write({ value });
+    } else if (Capacitor.isNativePlatform())
       throw new Error("Missing secure storage bridge");
     else {
       // Web credentials never go to localStorage, IndexedDB, caches, or a server.
-      if (operation === "read")
-        return sessionStorage.getItem(credentialKey) ?? "";
-      if (value) sessionStorage.setItem(credentialKey, value);
-      else sessionStorage.removeItem(credentialKey);
+      const key =
+        namespace === "background"
+          ? "muse.background.credentials.v1"
+          : credentialKey;
+      if (operation === "read") return sessionStorage.getItem(key) ?? "";
+      if (value) sessionStorage.setItem(key, value);
+      else sessionStorage.removeItem(key);
       return;
     }
     return await Promise.race([

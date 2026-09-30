@@ -3,6 +3,7 @@ import { ExternalLink, KeyRound, LoaderCircle, LogOut } from "lucide-react";
 import type { Client } from "./api";
 import { nativeMobile, openAuthorization } from "./platform";
 import { WorkspacePanel } from "./WorkspacePanel";
+import { BackgroundSettings } from "./BackgroundSettings";
 
 interface Status {
   loggedIn: boolean;
@@ -11,7 +12,7 @@ interface Status {
   apiKeyId?: string;
   method?: "sso" | "api_key";
 }
-export function AuthPanel({
+function ArkAuthPanel({
   client,
   onChanged,
 }: {
@@ -370,5 +371,14 @@ export function AuthPanel({
         </p>
       )}
     </section>
+  );
+}
+
+export function AuthPanel(props: Parameters<typeof ArkAuthPanel>[0]) {
+  return (
+    <>
+      <ArkAuthPanel {...props} />
+      <BackgroundSettings />
+    </>
   );
 }
