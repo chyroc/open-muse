@@ -8,10 +8,14 @@ Office, OCR, data-science, plotting, media and extra development packages are no
 
 ## Usage
 
-1. Create a new task after updating the server. Existing app-owned environment and agent configurations are synchronized before the new session is created. Existing sessions are not restarted or modified.
+1. Create a new task after updating the server. Existing app-owned environment and agent configurations are synchronized before the new session is created. A main chat whose app-owned instruction blocks are older continues into one linked session with the current text, pinned to its original agent version, model, tools and memory store, with its earlier history archived for context. Other existing sessions are not restarted or modified.
 2. Run `/opt/open-muse/check` to verify Python imports, command availability, Chrome/CDP launch, clicking, valid PNG/PDF signatures, Lark CLI version/help, and installed skill files. Exit code 75 means installation is not ready. Poll the status file in short bounded intervals while its stage is `installing`; on `failed`, inspect `/opt/open-muse/setup.log` instead of starting duplicate installers.
 3. Run CDP scripts with `/opt/open-muse/python`. This wrapper selects the isolated virtual environment and CDP helper module. It does not replace the system Python or Node installation.
 4. Read `/opt/open-muse/status.json` for setup status. A stored `ready` result describes the last successful setup; the live check is authoritative if files or packages changed afterward.
+
+## Deliverables and Library
+
+MA exports files written to `/mnt/session/outputs` as session-scoped agent files. The agent instructions ask for every file the user should keep to be saved there with a descriptive name, one final verified copy per deliverable. Files elsewhere, such as `/workspace` or `/tmp`, are not exported. The iOS Library lists these exports for the connected identity's own sessions and opens them through short-lived signed URLs. MA sets an expiry on exported files, currently about seven days.
 
 First-time provisioning downloads system packages, Python wheels, Chrome, Lark CLI and skills. It requires package repository access, root permissions in the cloud sandbox, adequate disk space, and Ubuntu 22.04 with Python 3.10+ and Node/npm/npx. Chrome packages support Linux x86-64 and ARM64. It can add several minutes to a cold start. The setup payload records readiness only after real browser/PDF and CLI/skills smoke tests pass. An unsuccessful setup must not be reported as an available capability.
 

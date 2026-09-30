@@ -104,6 +104,18 @@ describe("Managed environment toolbox", () => {
     expect(first).toContain("Login, MFA and CAPTCHAs");
     expect(first).toContain("do not expand the scope");
   });
+  it("tells the agent where deliverables must go to reach the Library", () => {
+    expect(toolingInstructions).toContain(
+      "Save every file the user should keep",
+    );
+    expect(toolingInstructions).toContain("in /mnt/session/outputs");
+    expect(toolingInstructions).toContain("exported automatically");
+    expect(toolingInstructions).toContain(
+      "including /workspace and /tmp, are not visible",
+    );
+    expect(toolingInstructions).toContain("not drafts or intermediate files");
+    expect(toolingInstructions).not.toContain("session outputs directory");
+  });
   it("uses pinned public Python packages, an isolated interpreter, and real readiness checks", () => {
     expect(
       pythonTools.every((name) => /^[a-z0-9-]+==\d+\.\d+\.\d+$/.test(name)),

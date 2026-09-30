@@ -1,4 +1,5 @@
 import { identityInstructions, systemWithIdentity } from "./identity";
+import { systemWithTools, toolingInstructions } from "./tooling";
 import { ApiError } from "./ark";
 import type { Session } from "./types";
 
@@ -63,8 +64,16 @@ export function continuationAgent(session: Session, owner: string, id: string) {
 }
 
 function identityBlock(system: string) {
-  const start = "<open-muse-identity>";
-  const end = "</open-muse-identity>";
+  return appBlock(system, "<open-muse-identity>", "</open-muse-identity>");
+}
+
+// The tools block is only present when Open Muse manages the environment, so
+// its absence is preserved rather than treated as stale.
+function toolsBlock(system: string) {
+  return appBlock(system, "<open-muse-tools>", "</open-muse-tools>");
+}
+
+function appBlock(system: string, start: string, end: string) {
   const first = system.indexOf(start);
   const last = system.indexOf(end);
   if (first < 0 && last < 0) return "";
@@ -86,13 +95,18 @@ export function needsPromptRefresh(
   const snapshot = agentSnapshot(session);
   if (snapshot?.id !== id || snapshot.metadata?.open_muse_workspace !== owner)
     return false;
-  return identityBlock(snapshot.system) !== identityInstructions;
+  const tools = toolsBlock(snapshot.system);
+  return (
+    identityBlock(snapshot.system) !== identityInstructions ||
+    (tools !== "" && tools !== toolingInstructions)
+  );
 }
 
 // Pin the original public Agent version rather than adopting the latest model
-// and tools. Only the app-owned identity block changes; session custom text and
-// the scoped history instructions remain intact. Unsupported session-specific
-// runtime overrides must not be silently discarded during a rollover.
+// and tools. Only the app-owned identity and tools text blocks change; session
+// custom text and the scoped history instructions remain intact. Unsupported
+// session-specific runtime overrides must not be silently discarded during a
+// rollover.
 export function refreshedAgentSystem(
   snapshot: AgentSnapshot,
   versioned: AgentSnapshot,
@@ -110,5 +124,8 @@ export function refreshedAgentSystem(
       throw new IncompatibleConversation();
   }
   identityBlock(snapshot.system);
-  return systemWithIdentity(snapshot.system);
+  const system = toolsBlock(snapshot.system)
+    ? systemWithTools(snapshot.system)
+    : snapshot.system;
+  return systemWithIdentity(system);
 }

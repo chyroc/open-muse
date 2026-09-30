@@ -809,15 +809,89 @@ final class MuseLiveUITests: XCTestCase {
     }
 
     // MA exports sandbox outputs asynchronously, so refresh a bounded number of times.
-    private func libraryFile(_ name: String, section: String) -> XCUIElement {
+    private func libraryFile(_ name: String, section: String, attempts: Int = 12) -> XCUIElement {
         let card = app.buttons["Open file: \(name)"]
-        for _ in 0..<12 {
+        for _ in 0..<attempts {
             tap(app.buttons[section])
             if card.waitForExistence(timeout: 10) { return card }
             tap(app.buttons["Refresh Library"])
         }
         XCTAssertTrue(card.waitForExistence(timeout: 20), app.debugDescription)
         return card
+    }
+
+    private func deliverablePrompt(_ marker: String) -> String {
+        "\(marker): please make me a short packing checklist for a weekend hike as a Markdown file I can keep, named \(marker)-packing-checklist.md, under 15 lines. Do not use the network and do not read or change memory."
+    }
+
+    // The request never names a directory; the app-owned instructions must.
+    private func verifyDeliverable(_ marker: String, source: String?) {
+        openLibrary()
+        let name = "\(marker)-packing-checklist.md"
+        let card = libraryFile(name, section: "Artifacts", attempts: 30)
+        capture("deliverable-in-library")
+        tap(card)
+        if let source = source {
+            XCTAssertTrue(contains(source).exists, "The source conversation must be shown")
+        }
+        tap(app.buttons["Preview file"])
+        XCTAssertTrue(app.otherElements["QLPreviewControllerView"].waitForExistence(timeout: 60))
+        let text = app.textViews.matching(NSPredicate(format: "label CONTAINS[c] %@", "hike")).firstMatch
+        XCTAssertTrue(text.waitForExistence(timeout: 30), "The previewed checklist must be the generated file")
+        capture("deliverable-preview")
+        app.buttons["museFilePreviewClose"].tap()
+        XCTAssertTrue(app.buttons["Preview file"].waitForExistence(timeout: 15))
+        tap(app.buttons["Close"])
+    }
+
+    func testNormalDeliverableReachesLibrary() {
+        let marker = "deliver-" + String(UUID().uuidString.prefix(6)).lowercased()
+        UserDefaults.standard.set(marker, forKey: "lastDeliverableMarker")
+        relaunch()
+        tap(app.buttons["Open sidebar"], timeout: 40)
+        tap(app.buttons["New side chat"])
+        enterMessage(deliverablePrompt(marker))
+        tap(app.buttons["Send message"])
+        capture("deliverable-requested")
+        verifyDeliverable(marker, source: "\(marker): please make me")
+    }
+
+    // Uses the isolated acceptance profile's main chat, never the user's own.
+    func testExistingMainDeliverableReachesLibrary() {
+        guard let profile = UserDefaults.standard.string(forKey: "lastWelcomeAcceptanceProfile")
+                ?? ProcessInfo.processInfo.environment["MUSE_ACCEPTANCE_PROFILE"] else {
+            XCTFail("Run the real automatic welcome case before this isolated main-chat check")
+            return
+        }
+        XCTAssertNotNil(profile.range(of: "^welcome-[a-z0-9-]{1,60}$", options: .regularExpression))
+        let marker = "main-deliver-" + String(UUID().uuidString.prefix(6)).lowercased()
+        app.terminate()
+        app.launchEnvironment["MUSE_UI_TEST_PROFILE"] = profile
+        app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        defer {
+            app.terminate()
+            app.launchEnvironment.removeValue(forKey: "MUSE_UI_TEST_PROFILE")
+            app.launchArguments = []
+            app.launch()
+        }
+        let input = app.textViews["Message Kit"]
+        XCTAssertTrue(input.waitForExistence(timeout: 60), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["MEMORY SAVED"].waitForExistence(timeout: 60), "Existing main history must be present before the request")
+        tap(input)
+        if !app.keyboards.firstMatch.waitForExistence(timeout: 3) { input.tap() }
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 10))
+        if let draft = input.value as? String, !draft.isEmpty, draft != "Message Kit" {
+            input.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: draft.count))
+        }
+        input.typeText(deliverablePrompt(marker))
+        tap(app.buttons["Send message"])
+        XCTAssertTrue(app.staticTexts["MEMORY SAVED"].waitForExistence(timeout: 60), "Earlier bubbles stay in the same main chat")
+        capture("main-deliverable-requested")
+        verifyDeliverable(marker, source: nil)
+        tap(app.links["Chat"])
+        XCTAssertTrue(app.staticTexts["MEMORY SAVED"].waitForExistence(timeout: 30))
+        capture("main-deliverable-history")
     }
 
     // Quick Look must show the downloaded bytes, not only an empty controller:

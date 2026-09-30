@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { identityInstructions, systemWithIdentity } from "../shared/identity";
+import { toolingInstructions } from "../shared/tooling";
 import {
   agentSnapshot,
   continuationAgent,
@@ -102,6 +103,46 @@ describe("Main-conversation instruction refresh", () => {
       expect(() => refreshedAgentSystem(source, source)).toThrow(
         "history is intact",
       );
+    }
+  });
+  it("refreshes a stale app tools block in place and leaves sessions without one alone", () => {
+    const current = systemWithIdentity(
+      "Custom instructions.\n<open-muse-tools>Old toolbox guide.</open-muse-tools>\nCustom suffix.",
+    );
+    const source = { ...snapshot(), system: current };
+    expect(needsPromptRefresh(session(source), "owner", source.id)).toBe(true);
+    const refreshed = refreshedAgentSystem(source, source);
+    expect(refreshed).toContain(toolingInstructions);
+    expect(refreshed).toContain("/mnt/session/outputs");
+    expect(refreshed).not.toContain("Old toolbox guide.");
+    expect(refreshed).toContain("Custom instructions.");
+    expect(refreshed).toContain("Custom suffix.");
+    expect(refreshed.indexOf(toolingInstructions)).toBeLessThan(
+      refreshed.indexOf("Custom suffix."),
+    );
+    expect(refreshed).toContain(identityInstructions);
+    expect(
+      needsPromptRefresh(
+        session({ ...source, system: refreshed }),
+        "owner",
+        source.id,
+      ),
+    ).toBe(false);
+    const unmanaged = { ...snapshot(), system: systemWithIdentity("Custom.") };
+    expect(needsPromptRefresh(session(unmanaged), "owner", unmanaged.id)).toBe(
+      false,
+    );
+    expect(refreshedAgentSystem(unmanaged, unmanaged)).not.toContain(
+      "<open-muse-tools>",
+    );
+    for (const system of [
+      "Custom <open-muse-tools>unfinished",
+      toolingInstructions + toolingInstructions,
+    ]) {
+      const malformed = { ...snapshot(), system: systemWithIdentity(system) };
+      expect(() =>
+        needsPromptRefresh(session(malformed), "owner", malformed.id),
+      ).toThrow("history is intact");
     }
   });
   it("does not discard session-specific runtime overrides or adopt another version", () => {
