@@ -1,4 +1,10 @@
 import { t } from "../shared/i18n";
+import { SupabaseAuth } from "./supabase-auth";
+import {
+  authToken,
+  supabaseOwner,
+  supabaseSessionSchema,
+} from "../shared/supabase-auth";
 
 class BackgroundRequestError extends Error {}
 import { z } from "zod";
@@ -25,11 +31,27 @@ import {
 const saved = z
   .object({
     origin: z.string(),
-    token: z.string().regex(/^muse_device_[A-Za-z0-9_-]{32,128}$/),
+    token: z.string(),
     owner: z.string().min(1),
     pending: z.string().optional(),
+    account: z
+      .object({
+        origin: z.string(),
+        session: supabaseSessionSchema,
+        refreshPending: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
   })
-  .strict();
+  .strict()
+  .refine((value) =>
+    value.account
+      ? authToken.safeParse(value.token).success &&
+        value.token === value.account.session.accessToken &&
+        value.owner ===
+          supabaseOwner(value.account.origin, value.account.session.userId)
+      : /^muse_device_[A-Za-z0-9_-]{32,128}$/.test(value.token),
+  );
 const scheduleSchema = z.object({
   enabled: z.boolean(),
   timezone: z.string(),
@@ -42,6 +64,12 @@ const statusSchema = z.object({
   owner: z.string().min(1),
   backgroundReady: z.boolean(),
   credentialStorageReady: z.boolean().optional(),
+  account: z
+    .object({
+      provider: z.literal("supabase"),
+      workspaceReady: z.literal(false),
+    })
+    .optional(),
   connection: z
     .object({
       configured: z.boolean(),
@@ -81,6 +109,7 @@ export class BackgroundClient {
     private vault: CredentialStore = backgroundCredentials,
     private database = new LocalDatabase(),
     private fetcher: typeof fetch = fetch,
+    readonly accounts = new SupabaseAuth(),
   ) {
     this.origin = backgroundOrigin(origin);
   }
@@ -92,6 +121,12 @@ export class BackgroundClient {
   }
   pending() {
     return Boolean(this.current?.pending);
+  }
+  accountConfigured() {
+    return this.configured() && this.accounts.configured();
+  }
+  accountConnected() {
+    return Boolean(this.current?.account);
   }
   private exclusive<T>(fn: () => Promise<T>): Promise<T> {
     const result = this.serial.then(fn);
@@ -114,7 +149,12 @@ export class BackgroundClient {
         );
       }
       const parsed = saved.safeParse(value);
-      if (!parsed.success || parsed.data.origin !== this.origin)
+      if (
+        !parsed.success ||
+        parsed.data.origin !== this.origin ||
+        (parsed.data.account &&
+          parsed.data.account.origin !== this.accounts.origin)
+      )
         throw new Error(
           t(
             "The saved background connection does not match this build. Remove it before connecting again.",
@@ -147,7 +187,9 @@ export class BackgroundClient {
       if (!response.ok)
         throw new BackgroundRequestError(
           response.status === 401
-            ? t("This device token was rejected or revoked.")
+            ? token.startsWith("muse_device_")
+              ? t("This device token was rejected or revoked.")
+              : t("The account session was rejected or expired. Sign in again.")
             : response.status === 409
               ? t(
                   "The action conflicts with current server state. Refresh and review the schedule or active run.",
@@ -181,6 +223,118 @@ export class BackgroundClient {
       return status;
     });
   }
+  signInAccount(email: string, password: string) {
+    return this.exclusive(async () => {
+      if (this.current)
+        throw new Error(
+          t(
+            "Disconnect the current background connection before signing in to another Muse account.",
+          ),
+        );
+      if (!this.accountConfigured())
+        throw new Error(
+          t("Muse account login is not configured in this build."),
+        );
+      const session = await this.accounts.signIn(email, password);
+      const status = statusSchema.parse(
+        await this.call("/v1/status", session.accessToken),
+      );
+      if (
+        status.owner !== supabaseOwner(this.accounts.origin, session.userId) ||
+        status.account?.provider !== "supabase"
+      )
+        throw new Error(
+          t("The account identity changed. Disconnect and sign in again."),
+        );
+      const value: Credentials = {
+        origin: this.origin,
+        token: session.accessToken,
+        owner: status.owner,
+        account: { origin: this.accounts.origin, session },
+      };
+      await this.vault.write(JSON.stringify(value));
+      this.current = value;
+      return status;
+    });
+  }
+  signUpAccount(email: string, password: string) {
+    return this.exclusive(async () => {
+      if (this.current)
+        throw new Error(
+          t(
+            "Disconnect the current background connection before signing in to another Muse account.",
+          ),
+        );
+      if (!this.accountConfigured())
+        throw new Error(
+          t("Muse account login is not configured in this build."),
+        );
+      await this.accounts.signUp(email, password);
+    });
+  }
+  renewAccountLogin() {
+    return this.exclusive(async () => {
+      if (typeof navigator === "undefined" || !navigator.locks)
+        throw new Error(
+          t(
+            "This device cannot coordinate login renewal safely. Disconnect and sign in again.",
+          ),
+        );
+      return navigator.locks.request(
+        `muse-account-renew:${this.origin}`,
+        async () => {
+          const c = this.credentials();
+          if (!c.account)
+            throw new Error(t("Sign in to a Muse account first."));
+          const disk = saved.safeParse(JSON.parse(await this.vault.read()));
+          if (
+            !disk.success ||
+            disk.data.owner !== c.owner ||
+            disk.data.token !== c.token ||
+            disk.data.account?.session.refreshToken !==
+              c.account.session.refreshToken
+          )
+            throw new Error(
+              t(
+                "The account connection changed in another window. Disconnect and sign in again.",
+              ),
+            );
+          if (c.account.refreshPending || disk.data.account.refreshPending)
+            throw new Error(
+              t(
+                "The previous login renewal could not be confirmed. Disconnect and sign in again; it was not retried.",
+              ),
+            );
+          const pending: Credentials = {
+            ...c,
+            account: { ...c.account, refreshPending: true },
+          };
+          await this.vault.write(JSON.stringify(pending));
+          this.current = pending;
+          const session = await this.accounts.renew(c.account.session);
+          // The old refresh token is spent. Persist the verified same-user
+          // rotation before any later request can fail and lose it.
+          const next: Credentials = {
+            ...c,
+            token: session.accessToken,
+            account: { origin: c.account.origin, session },
+          };
+          await this.vault.write(JSON.stringify(next));
+          this.current = next;
+          const status = statusSchema.parse(
+            await this.call("/v1/status", session.accessToken),
+          );
+          if (
+            status.owner !== c.owner ||
+            status.account?.provider !== "supabase"
+          )
+            throw new Error(
+              t("The account identity changed. Disconnect and sign in again."),
+            );
+        },
+      );
+    });
+  }
   disconnect() {
     this.abort.abort();
     return this.exclusive(async () => {
@@ -202,6 +356,12 @@ export class BackgroundClient {
   }
   async status(): Promise<BackgroundStatus> {
     const c = this.credentials();
+    if (c.account?.refreshPending)
+      throw new Error(
+        t(
+          "The previous login renewal could not be confirmed. Disconnect and sign in again; it was not retried.",
+        ),
+      );
     const result = statusSchema.parse(await this.call("/v1/status", c.token));
     this.assertCurrent(c);
     if (result.owner !== c.owner)

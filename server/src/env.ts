@@ -3,6 +3,10 @@ export interface Env {
   OWNER_ID: string;
   // Trusted device-token hash -> {ownerId, deviceLabel}. Never client-selected.
   DEVICE_TOKEN_HASHES?: string;
+  // Auth-only trial. These are a fixed provider origin and a public anon key,
+  // never a service-role key. Existing private-device enrollment is separate.
+  SUPABASE_AUTH_URL?: string;
+  SUPABASE_ANON_KEY?: string;
   ALLOWED_ORIGINS?: string;
   BACKGROUND_ENABLED?: string;
   // Worker secret: {"current":"v1","keys":{"v1":"<32-byte base64>"}}.

@@ -11,6 +11,7 @@ import { backgroundClient, type BackgroundClient } from "./background-client";
 import type { Client } from "./api";
 import { Markdown } from "./components";
 import "./background.css";
+import { SupabaseLoginForm } from "./SupabaseLoginForm";
 
 export function BackgroundSettings({
   service = backgroundClient,
@@ -119,7 +120,31 @@ export function BackgroundSettings({
       ) : (
         <>
           <p className="background-origin">{service.origin}</p>
-          {!connected ? (
+          {!connected && service.accountConfigured?.() ? (
+            <SupabaseLoginForm
+              busy={busy}
+              onSignIn={(email, password) =>
+                action(async () => {
+                  const next = await service.signInAccount(email, password);
+                  if (alive.current) {
+                    setStatus(next);
+                    setSchedule(next.schedule);
+                  }
+                  await load();
+                })
+              }
+              onSignUp={(email, password) =>
+                action(async () => {
+                  await service.signUpAccount(email, password);
+                  setNotice(
+                    t(
+                      "Registration submitted. Check your email if verification is required, then sign in. This does not confirm that a new account was created.",
+                    ),
+                  );
+                })
+              }
+            />
+          ) : !connected ? (
             <form
               className="background-form"
               onSubmit={(event) => {
@@ -170,10 +195,32 @@ export function BackgroundSettings({
             <>
               <p className="background-note">
                 {t("Private service account:")}{" "}
-                {status?.owner ?? t("Checking…")}. This connection is
-                independent of the Ark login above. Signing out of Ark does not
-                stop this schedule.
+                {status?.owner ?? t("Checking…")}.{" "}
+                {t(
+                  "This connection is independent of the Ark login above. Signing out of Ark does not stop this schedule.",
+                )}
               </p>
+              {service.accountConnected?.() && (
+                <>
+                  <p className="background-note">
+                    {t(
+                      "Account login trial only. Per-user Ark workspaces are not migrated yet, so credential uploads and background generation stay disabled.",
+                    )}
+                  </p>
+                  <button
+                    className="button secondary"
+                    disabled={busy}
+                    onClick={() =>
+                      void action(async () => {
+                        await service.renewAccountLogin();
+                        await load();
+                      })
+                    }
+                  >
+                    {t("Renew account login")}
+                  </button>
+                </>
+              )}
               {status && !status.backgroundReady && (
                 <p className="background-note">
                   {t(
@@ -181,7 +228,7 @@ export function BackgroundSettings({
                   )}
                 </p>
               )}
-              {client && (
+              {client && !status?.account && (
                 <div className="background-authorization">
                   <h3>{t("Use your current Ark workspace")}</h3>
                   <p className="background-note">
@@ -516,9 +563,13 @@ export function BackgroundSettings({
               {t("Remove this device connection")}
             </button>
             <small>
-              {t(
-                "Removes the local token only. Pause the schedule before disconnecting to stop future automatic runs; revoke this device's token on the server if needed.",
-              )}
+              {service.accountConnected?.()
+                ? t(
+                    "Removes the account session from this device only. It does not sign out other devices or revoke the session at the Auth provider.",
+                  )
+                : t(
+                    "Removes the local token only. Pause the schedule before disconnecting to stop future automatic runs; revoke this device's token on the server if needed.",
+                  )}
             </small>
           </div>
         </>

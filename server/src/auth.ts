@@ -1,4 +1,5 @@
 import { HttpError, type Env } from "./env";
+import { authenticateSupabase, isSupabaseOwner } from "./supabase";
 
 export async function tokenHash(token: string) {
   const bytes = await crypto.subtle.digest(
@@ -37,6 +38,7 @@ export function deviceIdentities(env: Env): Record<string, DeviceIdentity> {
           !Object.hasOwn(identity, "deviceLabel") ||
           typeof identity.ownerId !== "string" ||
           !/^[\w-]{1,128}$/.test(identity.ownerId) ||
+          isSupabaseOwner(identity.ownerId) ||
           typeof identity.deviceLabel !== "string" ||
           !/^[^\r\n]{1,80}$/.test(identity.deviceLabel)
         );
@@ -55,7 +57,21 @@ export function authorizedOwners(env: Env) {
     ),
   ];
 }
-export async function authenticate(request: Request, env: Env) {
+export async function authenticate(
+  request: Request,
+  env: Env,
+  fetcher: typeof fetch = fetch,
+) {
+  const authorization = request.headers.get("Authorization") ?? "";
+  if (
+    !authorization.startsWith("Bearer muse_device_") &&
+    env.SUPABASE_AUTH_URL
+  ) {
+    const bearer = /^Bearer ([A-Za-z0-9_.-]{20,16384})$/.exec(authorization);
+    if (!bearer)
+      throw new HttpError(401, "Sign in to your Muse account again.");
+    return authenticateSupabase(bearer[1], env, fetcher);
+  }
   const hashes = deviceIdentities(env);
   const match = /^Bearer (muse_device_[A-Za-z0-9_-]{32,128})$/.exec(
     request.headers.get("Authorization") ?? "",

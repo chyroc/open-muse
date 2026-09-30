@@ -6,6 +6,7 @@ import { tick } from "./jobs";
 import { ConnectionStore, credentialStorageReady } from "./connection";
 import { backgroundConfigurationSchema } from "../../shared/background-connection";
 import { ArkRemote } from "./ark";
+import { isSupabaseOwner } from "./supabase";
 
 async function body(
   request: Request,
@@ -62,10 +63,12 @@ export async function handle(
     } else if (url.pathname === "/health" && request.method === "GET") {
       response = json({ ok: true, service: "open-muse-server" });
     } else {
-      const owner = await authenticate(request, env);
+      const owner = await authenticate(request, env, fetcher);
+      const accountTrial = isSupabaseOwner(owner);
       const repo = new Repository(env.DB, owner);
       const connections = new ConnectionStore(env, owner);
       const ready = async () => {
+        if (accountTrial) return false;
         try {
           const connection = await connections.resolve();
           return Boolean(connection && backgroundReady(connection.env));
@@ -90,7 +93,10 @@ export async function handle(
           connected: true,
           owner,
           backgroundReady: await ready(),
-          credentialStorageReady: credentialStorageReady(env),
+          credentialStorageReady: !accountTrial && credentialStorageReady(env),
+          ...(accountTrial
+            ? { account: { provider: "supabase", workspaceReady: false } }
+            : {}),
           connection: await connections.status(),
           schedule: await repo.schedule(),
         });
@@ -98,6 +104,11 @@ export async function handle(
         url.pathname === "/v1/connection" &&
         request.method === "PUT"
       ) {
+        if (accountTrial)
+          throw new HttpError(
+            409,
+            "Account login is ready, but per-user Ark workspace migration is not enabled. No credentials were uploaded.",
+          );
         if (!credentialStorageReady(env))
           throw new HttpError(
             503,

@@ -37,6 +37,7 @@ export interface BackgroundStatus {
   owner: string;
   backgroundReady: boolean;
   credentialStorageReady?: boolean;
+  account?: { provider: "supabase"; workspaceReady: false };
   connection?: BackgroundConnectionStatus;
   schedule: BackgroundSchedule;
 }

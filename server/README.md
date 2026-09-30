@@ -32,6 +32,67 @@ label-only device maps are rejected rather than silently sharing one account.
 Never use an Ark API key or Cloudflare API token as a device token.
 Device tokens must start with `muse_device_` and contain a random suffix.
 
+## Supabase Auth trial
+
+The API also accepts end-user access tokens from one explicitly configured
+Supabase Auth provider, including the Volcano-hosted Supabase service. Configure
+`SUPABASE_AUTH_URL` as its public HTTPS origin and `SUPABASE_ANON_KEY` as its anon
+or publishable key. Never configure a service-role key. The Worker verifies each
+request with the provider's read-only `/auth/v1/user` endpoint. Invalid sessions
+are rejected; provider failures return 503 without falling back to another
+identity. No token claims, client metadata, names, or emails select the owner.
+The stable Muse owner is derived from the configured issuer and verified user
+UUID, so different devices retain one identity and different accounts remain
+separate even if they share an Ark key.
+
+This is an authentication-only trial. Supabase users cannot upload Ark
+credentials, enable background generation, or inherit the old private owner's
+data. The status response identifies the account provider and reports
+`workspaceReady: false`. The direct client's existing workspace and memory
+selection has not been migrated to Muse accounts; local Ark login still works
+independently. Do not claim complete account-based native data isolation from
+this login trial. No existing data or private-device bindings are migrated.
+
+Only one configured issuer is accepted. Device-token enrollment remains available
+independently. Public signup policy, provider rate limiting, email verification,
+SMTP, and abuse protection are configured at Supabase. The Worker never needs
+an Auth administrative key, password, provider refresh token, or database
+connection string. CORS and native connectivity require live acceptance.
+
+### Native email login
+
+Configure the app build with `VITE_MUSE_BACKGROUND_URL`,
+`VITE_MUSE_SUPABASE_URL`, and `VITE_MUSE_SUPABASE_ANON_KEY`. These are a public
+API origin, a public Auth origin, and an anon/publishable key; service-role JWTs
+and secret keys are rejected. The exact Auth origin is added to both Apple
+clients' connection policies. Do not put credentials in URLs or tracked files.
+Builds without Auth configuration retain private-device-token enrollment and
+make no Supabase requests.
+
+The optional settings card supports email/password signup and login. Signup
+requires explicit confirmation and does not count as a confirmed login; follow
+the provider's email-verification policy, then sign in. Passwords are sent
+directly to Auth and never saved. Only after the Worker confirms the same user
+is the access/refresh session stored in the existing separate background
+Keychain entry (sessionStorage on web, not supported on Android). No account
+token or password goes into IndexedDB, a URL, logs, or Cloudflare storage.
+
+Login renewal is explicit, not timer-driven. Before the one refresh POST the
+client saves a pending marker; an ambiguous outcome requires disconnecting and
+signing in again, never replaying the potentially rotated refresh token. A
+successful same-user refresh is saved immediately, before the Worker check. Web
+Locks coordinate renewal across windows and a saved-session comparison rejects
+stale windows. Devices without Web Locks must sign in again instead. Disconnect
+removes this app's local session only; it does not revoke all provider sessions
+or delete the account. Account deletion, password reset, OAuth callbacks,
+Apple capabilities, and an end-user workspace migration are not implemented.
+
+Signup failures use one generic message and do not surface provider status
+codes, so the form does not reveal whether an email is registered. Live use
+requires an authorized Supabase workspace, the correct public endpoint and key,
+provider signup/email policy, and native-to-Auth plus Worker-to-Auth
+connectivity. Local builds do not change any cloud settings.
+
 ## Local development
 
 Install root dependencies first, then run from this directory:
