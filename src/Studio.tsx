@@ -166,7 +166,7 @@ export function Studio({
         <span>
           {isReady
             ? "Live Ark connection · cloud operations may be billed"
-            : "Demo mode · you can inspect endpoints; sign in with SSO in Settings before running anything"}
+            : "Sign in with SSO or an API key in Settings to use Ark MA"}
         </span>
         <a href="#/settings">
           Connection settings <ArrowRight size={14} />

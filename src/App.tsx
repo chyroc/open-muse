@@ -22,7 +22,6 @@ import {
   Search,
   Settings2,
   ShieldCheck,
-  Sparkles,
   Unplug,
   X,
 } from "lucide-react";
@@ -126,7 +125,7 @@ export default function App() {
     )
       navigate("/settings");
   }, [connection.baseUrl]);
-  // Do not make anonymous/demo requests before native identity restoration.
+  // Do not make anonymous requests before native identity restoration.
   if (restored !== client)
     return (
       <main className="settings-card" aria-live="polite">
@@ -214,6 +213,11 @@ function Workspace({
       const conf = await client.config();
       if (!alive.current) return;
       setConfig(conf);
+      if (conf.mode !== "ark") {
+        setSessions([]);
+        setLoadError("");
+        return;
+      }
       const result = await client.sessions();
       if (!alive.current) return;
       setSessions(result.data);
@@ -276,7 +280,7 @@ function Workspace({
     action(async () => {
       const text = draft.trim();
       if (!text) return;
-      if (config?.mode === "ark") await client.prepareWorkspace();
+      await client.prepareWorkspace();
       const session = await client.create(
         goalDraft ? goalDraft.title.slice(0, 100) : text.slice(0, 60),
         category,
@@ -470,10 +474,17 @@ function Workspace({
             {config
               ? config.mode === "ark"
                 ? "Ark Managed Agents"
-                : "Demo mode · no model connected"
+                : "Connect to Ark MA"
               : "Waiting to connect"}
           </a>
         </header>
+        {config?.mode === "disconnected" && tab !== "settings" && (
+          <div className="info-note" role="status">
+            <Unplug size={18} />
+            <span>Connect to Ark MA to start a real conversation.</span>
+            <a href="#/settings">Connect with SSO or API Key</a>
+          </div>
+        )}
         {(loadError || actionError) && (
           <div className="error-banner" role="alert">
             <Unplug size={18} />
@@ -506,7 +517,7 @@ function Workspace({
                 busy={busy}
                 category={category}
                 setCategory={setCategory}
-                disabled={!config || Boolean(loadError)}
+                disabled={config?.mode !== "ark" || Boolean(loadError)}
               />
             }
           />
@@ -633,13 +644,6 @@ function Workspace({
               </button>
             </header>
             <div className="conversation-body" ref={conversationBody}>
-              {config?.mode === "demo" && (
-                <div className="demo-notice">
-                  <Sparkles size={14} />
-                  This is a demo conversation. Its content is not
-                  model-generated and no external actions are performed.
-                </div>
-              )}
               {task.error && (
                 <div className="inline-error" role="alert">
                   {task.error}
@@ -776,7 +780,9 @@ function Workspace({
                   category={task.session?.category ?? "general"}
                   compact
                   disabled={
-                    !task.session || task.session.status === "terminated"
+                    config?.mode !== "ark" ||
+                    !task.session ||
+                    task.session.status === "terminated"
                   }
                 />
               )}
@@ -896,7 +902,9 @@ function Settings({
       await next.sessions();
       setSuccess(true);
       setMessage(
-        `Connected in ${conf.mode === "ark" ? "Ark mode" : "demo mode"}.`,
+        conf.mode === "ark"
+          ? "Connected to Ark MA."
+          : "Service connected. Sign in with SSO or an API key to use Ark MA.",
       );
       onConnection(connection);
     } catch (error) {
@@ -931,8 +939,8 @@ function Settings({
           <span className="small-badge">
             {config?.mode === "ark"
               ? "Ark mode"
-              : config?.mode === "demo"
-                ? "Demo mode"
+              : config?.mode === "disconnected"
+                ? "Sign-in required"
                 : "Not connected"}
           </span>
         </div>
@@ -995,8 +1003,8 @@ function Settings({
         </div>
         <p className="settings-description">
           Configure the variables below in the server's <code>.env</code> file,
-          then restart the service. Demo and real sessions are stored separately
-          and are never switched or mixed automatically.
+          then restart the service. Sessions are isolated by account; changing
+          credentials never switches to another account's conversation history.
         </p>
         <pre className="config-example">
           {
@@ -1027,8 +1035,9 @@ function Settings({
           <Unplug size={22} />
           <h3>No connection, no pretend completion</h3>
           <p>
-            Demo mode doesn't call models, send emails, or make payments. Real
-            mode uses only the tools you've configured.
+            Conversations require a real Ark connection. If sign-in expires or a
+            request fails, Muse reports the error instead of generating a
+            simulated reply.
           </p>
         </div>
       </section>

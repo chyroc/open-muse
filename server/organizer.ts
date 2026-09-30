@@ -85,7 +85,7 @@ export function organizerRouter() {
         event_id: z.string().min(1).max(200),
       })
       .parse(req.body);
-    const { store, ark, config } = res.locals.runtime as Runtime;
+    const { store, ark } = res.locals.runtime as Runtime;
     const session = store.get(input.session_id);
     if (!session) throw new ApiError(404, "Source session not found.");
     const existing = store.data.library?.find(
@@ -95,11 +95,7 @@ export function organizerRouter() {
     );
     if (existing) return res.json(existing);
     let event: AgentEvent | undefined;
-    if (config.mode === "demo")
-      event = store.data.events[session.id]?.find(
-        (e) => e.id === input.event_id,
-      );
-    else {
+    {
       const seen = new Set<string>();
       let page: string | undefined;
       do {

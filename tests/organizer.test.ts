@@ -7,14 +7,15 @@ import { createApp } from "../server/app";
 import { loadConfig } from "../server/config";
 import { ArkClient } from "../server/ark";
 import type { AgentEvent, Session } from "../shared/types";
+import { arkFixture } from "./helpers/ark-fixture";
 
 let directory: string;
 let instance: Awaited<ReturnType<typeof createApp>>;
+let fixture: ReturnType<typeof arkFixture>;
 beforeEach(async () => {
   directory = await mkdtemp(join(tmpdir(), "open-muse-organizer-"));
-  instance = await createApp(loadConfig({ MUSE_DATA_DIR: directory }), {
-    demoDelay: 5,
-  });
+  fixture = arkFixture(directory);
+  instance = await createApp(fixture.config, { ark: fixture.ark });
 });
 afterEach(async () => {
   instance.close();
@@ -32,7 +33,7 @@ async function session() {
     .post("/api/sessions")
     .send({ title: "Source material" })
     .expect(201);
-  instance.store.data.events[response.body.id] = [agentEvent];
+  fixture.history[response.body.id] = [agentEvent];
   await instance.store.save();
   return response.body.id as string;
 }
@@ -62,7 +63,7 @@ describe("Goals and library", () => {
       .send({ status: "completed" })
       .expect(200);
     instance.close();
-    instance = await createApp(loadConfig({ MUSE_DATA_DIR: directory }));
+    instance = await createApp(fixture.config, { ark: fixture.ark });
     expect(
       (await request(instance.app).get("/api/goals")).body.data[0],
     ).toMatchObject({ title: "Weekend trip", status: "completed", steps });
@@ -117,14 +118,14 @@ describe("Goals and library", () => {
       .expect(200);
     expect(repeat.body.id).toBe(response.body.id);
     instance.close();
-    instance = await createApp(loadConfig({ MUSE_DATA_DIR: directory }));
+    instance = await createApp(fixture.config, { ark: fixture.ark });
     expect(
       (await request(instance.app).get("/api/library")).body.data,
     ).toHaveLength(1);
   });
   it("cannot save sessions from another space, unknown events, or user input", async () => {
     const id = await session();
-    instance.store.data.events[id].push({
+    fixture.history[id].push({
       id: "user",
       type: "user.message",
       content: [{ type: "text", text: "Input" }],
@@ -160,11 +161,7 @@ describe("Goals and library", () => {
 describe("MA source validation", () => {
   async function arkApp() {
     instance.close();
-    const config = loadConfig({
-      MUSE_DATA_DIR: directory,
-      MUSE_MODE: "ark",
-      ARK_API_KEY: "test-not-a-real-key",
-    });
+    const config = fixture.config;
     const ark = new ArkClient(config);
     instance = await createApp(config, { ark });
     instance.store.data.sessions.push({

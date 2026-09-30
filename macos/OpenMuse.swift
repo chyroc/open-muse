@@ -49,8 +49,8 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         task.executableURL = resources.appendingPathComponent("node")
         task.arguments = [resources.appendingPathComponent("app/server.cjs").path]
         task.currentDirectoryURL = resources.appendingPathComponent("app")
-        // Do not inherit shell credentials such as NODE_OPTIONS or ARK_API_KEY; demo mode by default, switched per user after login.
-        task.environment = ["PATH": "/usr/bin:/bin", "MUSE_MODE": "demo", "HOST": "127.0.0.1", "MUSE_ACCESS_TOKEN": accessToken, "MUSE_DATA_DIR": support.path, "NODE_ENV": "production"]
+        // Do not inherit shell credentials; a real connection requires per-user login.
+        task.environment = ["PATH": "/usr/bin:/bin", "MUSE_MODE": "disconnected", "HOST": "127.0.0.1", "MUSE_ACCESS_TOKEN": accessToken, "MUSE_DATA_DIR": support.path, "NODE_ENV": "production"]
         let pipe = Pipe()
         task.standardOutput = pipe
         task.standardError = FileHandle.nullDevice

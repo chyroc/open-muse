@@ -36,14 +36,16 @@ final class MuseLiveUITests: XCTestCase {
 
     func testRealAPIKeyConversationAndRelaunch() {
         settings()
-        tap(app.switches["API Key"])
-        let key = app.secureTextFields["Ark API Key"]
-        tap(key)
-        key.press(forDuration: 1.2)
-        let paste = app.menuItems["Paste"]
-        tap(paste)
-        tap(app.buttons["Done"])
-        tap(app.buttons["Connect with API Key"])
+        if !contains("Connected with API Key").waitForExistence(timeout: 3) {
+            tap(app.switches["API Key"])
+            let key = app.secureTextFields["Ark API Key"]
+            tap(key)
+            key.press(forDuration: 1.2)
+            let paste = app.menuItems["Paste"]
+            tap(paste)
+            tap(app.buttons["Done"])
+            tap(app.buttons["Connect with API Key"])
+        }
         XCTAssertTrue(contains("Connected with API Key").waitForExistence(timeout: 40), app.debugDescription)
         capture("live-01-api-key-connected")
         tap(app.links["Chat"])
@@ -53,6 +55,7 @@ final class MuseLiveUITests: XCTestCase {
         tap(app.buttons["Send task"])
         XCTAssertTrue(app.buttons["Save"].firstMatch.waitForExistence(timeout: 180), app.debugDescription)
         XCTAssertTrue(app.staticTexts["pine-918 / 42"].exists, app.debugDescription)
+        XCTAssertFalse(contains("Demo content").exists)
         capture("live-02-real-answer")
         let followup = app.textViews["Continue conversation"]
         tap(followup)
@@ -136,81 +139,15 @@ final class MuseUITests: XCTestCase {
         add(attachment)
     }
 
-    func testGoalsChatLibraryAndRelaunch() {
-        XCTAssertTrue(app.links["Chat"].waitForExistence(timeout: 20))
-        capture("01-chat-home")
-        tap(app.links["Inspiration"])
-        XCTAssertTrue(app.staticTexts["Starter ideas"].waitForExistence(timeout: 10))
-        capture("02-ideas")
-        tap(app.links["Goals"])
-        tap(app.buttons["New goal"])
-        let name = "iOS E2E Goal " + String(Int(Date().timeIntervalSince1970))
-        let title = app.textFields["What do you want to accomplish?"]
-        tap(title)
-        title.typeText(name)
-        tap(app.buttons["Create goal"])
-        let step = app.textFields["New step"]
-        tap(step)
-        step.typeText("Confirm travel dates")
-        tap(app.buttons["Add step"])
-        XCTAssertTrue(app.staticTexts["Confirm travel dates"].waitForExistence(timeout: 10))
-        capture("03-goal-detail")
-        tap(app.buttons["Have Muse plan this for me"])
-        tap(app.buttons["Send task"])
-        XCTAssertTrue(app.buttons["Save"].waitForExistence(timeout: 25), app.debugDescription)
-        capture("04-chat-answer")
-        tap(app.buttons["Save"])
-        XCTAssertTrue(app.staticTexts["Saved to Library"].waitForExistence(timeout: 10))
-        tap(app.links["Library"])
-        let saved = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", name)).firstMatch
-        XCTAssertTrue(saved.waitForExistence(timeout: 15), app.debugDescription)
-        capture("05-library")
-        tap(saved)
-        XCTAssertTrue(app.links["View source conversation"].waitForExistence(timeout: 10))
-        capture("06-saved-document")
-        tap(app.buttons["Close"])
-        tap(app.links["Activity"])
-        XCTAssertTrue(app.links.matching(NSPredicate(format: "label CONTAINS %@", name)).firstMatch.waitForExistence(timeout: 10))
-        capture("07-feed")
-        app.terminate()
-        app.launch()
-        tap(app.links["Goals"])
-        tap(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", name)).firstMatch)
-        XCTAssertTrue(app.staticTexts["Confirm travel dates"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["Resume goal conversation"].exists)
-        capture("08-goal-persisted")
-        tap(app.buttons["Pause goal"])
-        XCTAssertTrue(app.buttons["Resume goal"].waitForExistence(timeout: 10))
-        tap(app.buttons["Resume goal"])
-        tap(app.buttons["Mark as completed"])
-        XCTAssertTrue(app.buttons["Reopen"].waitForExistence(timeout: 10))
-        tap(app.buttons["Close"])
-        tap(app.switches.matching(NSPredicate(format: "label BEGINSWITH %@", "Completed")).firstMatch)
-        tap(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", name)).firstMatch)
-        XCTAssertTrue(app.buttons["Reopen"].exists)
-        capture("09-completed-goal")
-    }
-
-    func testApprovalDenyAndAllow() {
-        for decision in ["Deny", "Approve"] {
-            tap(app.links["Chat"])
-            let input = app.textViews["Describe your task"]
-            tap(input)
-            input.typeText("help me write an email and ask for approval")
-            capture(decision == "Deny" ? "10-composer-editing" : "13-composer-editing")
-            tap(app.buttons["Send task"])
-            XCTAssertTrue(app.buttons[decision].waitForExistence(timeout: 20))
-            // Pending approvals replace the composer with an approval hint.
-            XCTAssertFalse(app.buttons["Send task"].exists)
-            capture(decision == "Deny" ? "11-approval-deny" : "14-approval-allow")
-            tap(app.buttons[decision])
-            let expected = decision == "Deny" ? "This action was denied" : "Approval received"
-            XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", expected)).firstMatch.waitForExistence(timeout: 20))
-            XCTAssertFalse(app.buttons["Approve"].exists)
-            capture(decision == "Deny" ? "12-rejected" : "15-approved")
-        }
-        tap(app.buttons["Open sidebar"])
-        tap(app.links.matching(NSPredicate(format: "label CONTAINS %@", "Settings & connections")).firstMatch)
-        capture("16-settings")
+    func testSignedOutRequiresRealConnection() {
+        let connect = app.links["Connect with SSO or API Key"]
+        XCTAssertTrue(connect.waitForExistence(timeout: 20), app.debugDescription)
+        XCTAssertFalse(app.buttons["Send task"].isEnabled)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Demo content")).firstMatch.exists)
+        capture("signed-out-real-connection-required")
+        tap(connect)
+        XCTAssertTrue(app.buttons["Start SSO sign-in"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.switches["API Key"].exists)
+        capture("signed-out-login-options")
     }
 }

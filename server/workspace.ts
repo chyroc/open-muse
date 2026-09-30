@@ -131,7 +131,7 @@ export class Workspaces {
   status(runtime: Runtime): WorkspaceStatus {
     if (runtime.config.mode !== "ark")
       return {
-        state: "demo",
+        state: "disconnected",
         message:
           "After signing in and connecting a project, your personal workspace is prepared automatically.",
       };

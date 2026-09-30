@@ -202,7 +202,7 @@ describe("SSO protocol and isolation", () => {
       (await request(app.app).get("/api/config").set("X-Muse-Session", b.token))
         .body.mode,
     ).toBe("ark");
-    expect((await request(app.app).get("/api/config")).body.mode).toBe("demo");
+    expect((await request(app.app).get("/api/config")).body.mode).toBe("disconnected");
   });
   it("restores login after restart; an invalid session never degrades to default credentials", async () => {
     const { token } = await login();

@@ -80,7 +80,7 @@ export function maRouter(auth: AuthStore) {
     if (runtime.config.mode !== "ark")
       throw new ApiError(
         409,
-        "The workbench requires a real Ark connection. Demo mode does not fabricate MA resources.",
+        "Connect to Ark MA with SSO or an API key before using the workbench.",
       );
     const input = inputSchema.parse(req.body);
     if (op.method !== "GET" && !op.id.startsWith("List") && !input.confirm)

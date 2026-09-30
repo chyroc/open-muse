@@ -226,7 +226,8 @@ export class Client {
   }
   async prepareWorkspace() {
     let status = await this.request<WorkspaceStatus>("/workspace");
-    if (status.state === "ready" || status.state === "demo") return;
+    if (status.state === "ready") return;
+    if (status.state === "disconnected") throw new Error(status.message);
     status = await this.request<WorkspaceStatus>("/workspace/prepare", {
       method: "POST",
       body: "{}",

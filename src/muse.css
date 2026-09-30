@@ -747,11 +747,6 @@
 .muse-shell .markdown a {
   color: #0064d4;
 }
-.muse-shell .demo-notice {
-  background: #eeeef2;
-  color: #707078;
-  font-size: 11px;
-}
 .muse-shell .task-state,
 .muse-shell .stream-status {
   font-size: 11px;

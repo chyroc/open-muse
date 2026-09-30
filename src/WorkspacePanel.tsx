@@ -79,7 +79,7 @@ export function WorkspacePanel({ client }: { client: Client }) {
             ? "Preparing"
             : status?.state === "ready"
               ? "Ready"
-              : status?.state === "demo"
+              : status?.state === "disconnected"
                 ? "Not connected"
                 : "Needs setup"}
         </span>
@@ -92,7 +92,7 @@ export function WorkspacePanel({ client }: { client: Client }) {
           Start something new
         </a>
       ) : (
-        status?.state !== "demo" && (
+        status?.state !== "disconnected" && (
           <button
             className="button secondary"
             disabled={busy || (preparing && !error)}
@@ -113,7 +113,7 @@ export function WorkspacePanel({ client }: { client: Client }) {
           </button>
         )
       )}
-      {status?.state === "demo" && (
+      {status?.state === "disconnected" && (
         <a className="button secondary" href="#/settings">
           Sign in and connect a project
         </a>

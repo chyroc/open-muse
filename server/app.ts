@@ -5,7 +5,6 @@ import path from "node:path";
 import { z } from "zod";
 import { ArkClient, ApiError } from "./ark";
 import type { ServerConfig } from "./config";
-import { Demo } from "./demo";
 import { Store } from "./store";
 import type { AgentEvent } from "../shared/types";
 import { pendingPermissions } from "../shared/types";
@@ -35,7 +34,6 @@ export async function createApp(
   config: ServerConfig,
   options: {
     ark?: ArkClient;
-    demoDelay?: number;
     oauth?: OAuthProvider;
     arkFactory?: (config: ServerConfig) => ArkClient;
   } = {},
@@ -45,7 +43,6 @@ export async function createApp(
   const store = new Store(config.dataDir, config.mode);
   await store.init();
   const ark = options.ark ?? new ArkClient(config);
-  const demo = new Demo(store, options.demoDelay);
   const auth = new AuthStore(config.dataDir, options.oauth);
   await auth.init();
   const runtimes = new Map<string, Promise<Runtime>>();
@@ -111,7 +108,7 @@ export async function createApp(
       throw new Error("ARK identity changed: select another MUSE_DATA_DIR");
     store.data.owner = identity;
     await store.save();
-  } else await demo.init();
+  }
 
   const workspaces = new Workspaces(config.dataDir);
   app.use("/api", (req, res, next) => {
@@ -211,6 +208,24 @@ export async function createApp(
         "Login is not complete; select a project and create an API Key in Settings.",
       );
     res.locals.runtime = await runtimeFor(token);
+    if ((res.locals.runtime as Runtime).config.mode !== "ark") {
+      // Never expose old simulated history or fabricate results while signed out.
+      if (
+        req.method === "GET" &&
+        ["/sessions", "/goals", "/library"].includes(req.path)
+      )
+        return res.json({ data: [] });
+      if (!(
+        req.method === "GET" &&
+        ["/config", "/health", "/workspace", "/ma/capabilities"].includes(
+          req.path,
+        )
+      ))
+        throw new ApiError(
+          401,
+          "Connect to Ark MA with SSO or an API key in Settings before starting a task.",
+        );
+    }
     next();
   });
   app.use("/api/ma", maRouter(auth));
@@ -280,10 +295,6 @@ export async function createApp(
           .default("general"),
       })
       .parse(req.body);
-    if (config.mode === "demo")
-      return res
-        .status(201)
-        .json(await demo.create(input.title, input.category));
     const selection = workspaces.selection(runtime);
     if (!selection || workspaces.status(runtime).state !== "ready") {
       const status = workspaces.status(runtime);
@@ -330,23 +341,10 @@ export async function createApp(
       typeof req.query.page === "string" ? req.query.page : undefined;
     if (page && page.length > 2048)
       throw new ApiError(400, "Pagination parameter is too long.");
-    if (config.mode === "ark") {
-      const result = await ark.events(id, page);
-      return res.json({
-        ...result,
-        data: result.data.map((event) => annotateApproval(store, id, event)),
-      });
-    }
-    if (page && !/^\d+$/.test(page))
-      throw new ApiError(400, "Invalid pagination parameter.");
-    const offset = Number(page ?? 0);
-    const events = store.data.events[id];
+    const result = await ark.events(id, page);
     res.json({
-      data: events
-        .slice(offset, offset + 200)
-        .map((event) => annotateApproval(store, id, event)),
-      next_page:
-        offset + 200 < events.length ? String(offset + 200) : undefined,
+      ...result,
+      data: result.data.map((event) => annotateApproval(store, id, event)),
     });
   });
   const runtimeLocks = new WeakMap<Store, Set<string>>();
@@ -374,7 +372,7 @@ export async function createApp(
       if (input.type === "user.tool_confirmation") {
         // Confirm only the tool the upstream is currently asking for; an arbitrary event id cannot be approved.
         const events: AgentEvent[] = [];
-        if (config.mode === "ark") {
+        {
           let page: string | undefined;
           const seen = new Set<string>();
           do {
@@ -393,7 +391,7 @@ export async function createApp(
                 "Session is too long to safely confirm the operation right now.",
               );
           } while (page);
-        } else events.push(...store.data.events[id]);
+        }
         const key = approvalKey(id, input.tool_use_id);
         const previous = store.data.autoApprovals?.[key];
         if (input.automatic) {
@@ -464,10 +462,7 @@ export async function createApp(
       }
       let result;
       try {
-        result =
-          config.mode === "ark"
-            ? await ark.send(id, event)
-            : await demo.send(id, event);
+        result = await ark.send(id, event);
       } catch (error) {
         if (autoRecord) {
           autoRecord.state = "failed";
@@ -533,47 +528,31 @@ export async function createApp(
         );
       if (res.writableLength > 1_000_000) res.end();
     };
-    let heartbeat: ReturnType<typeof setInterval> | undefined;
     try {
-      if (config.mode === "demo") {
-        demo.emitter.on(id, write);
-        start();
-        heartbeat = setInterval(() => res.write(": heartbeat\n\n"), 15000);
-        await new Promise<void>((resolve) => {
-          if (abort.signal.aborted) resolve();
-          else
-            abort.signal.addEventListener("abort", () => resolve(), {
-              once: true,
-            });
-        });
-      } else {
-        const upstream = await ark.stream(id, abort.signal);
-        if (
-          !upstream.ok ||
-          !upstream.body ||
-          !upstream.headers.get("content-type")?.includes("text/event-stream")
-        ) {
-          await upstream.body?.cancel();
-          throw new ApiError(
-            502,
-            "The Ark event stream connection failed; recovery will use the history.",
-          );
-        }
-        start();
-        const { readSSE } = await import("../shared/sse");
-        for await (const data of readSSE(upstream.body)) {
-          if (data === "[DONE]") break;
-          const event = JSON.parse(data) as AgentEvent;
-          if (event.id && event.type) write(event);
-        }
+      const upstream = await ark.stream(id, abort.signal);
+      if (
+        !upstream.ok ||
+        !upstream.body ||
+        !upstream.headers.get("content-type")?.includes("text/event-stream")
+      ) {
+        await upstream.body?.cancel();
+        throw new ApiError(
+          502,
+          "The Ark event stream connection failed; recovery will use the history.",
+        );
+      }
+      start();
+      const { readSSE } = await import("../shared/sse");
+      for await (const data of readSSE(upstream.body)) {
+        if (data === "[DONE]") break;
+        const event = JSON.parse(data) as AgentEvent;
+        if (event.id && event.type) write(event);
       }
     } catch (error) {
       if (!res.headersSent && !abort.signal.aborted) throw error;
     } finally {
       runtime.streams.delete(abort);
       clearTimeout(lifetime);
-      clearInterval(heartbeat);
-      demo.emitter.off(id, write);
       if (!res.destroyed && (res.headersSent || abort.signal.aborted))
         res.end();
     }
@@ -616,7 +595,6 @@ export async function createApp(
     app,
     store,
     close: () => {
-      demo.close();
       workspaces.close();
     },
   };

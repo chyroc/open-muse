@@ -100,7 +100,7 @@ const data = new Map(
 const decisions = [];
 app.use(express.json());
 app.get("/api/config", (_req, res) =>
-  res.json({ mode: "demo", agentConfigured: true, authRequired: false }),
+  res.json({ mode: "ark", agentConfigured: true, authRequired: false }),
 );
 app.get("/api/sessions", (_req, res) =>
   res.json({ data: [...data.values()].map((v) => v.session) }),

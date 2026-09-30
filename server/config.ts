@@ -18,9 +18,11 @@ export interface ServerConfig {
 }
 
 export function loadConfig(env = process.env): ServerConfig {
-  const mode = env.MUSE_MODE ?? "demo";
-  if (mode !== "demo" && mode !== "ark")
-    throw new Error("MUSE_MODE must be demo or ark");
+  // Old demo configurations become signed-out connections, never simulated agents.
+  const requested = env.MUSE_MODE ?? (env.ARK_API_KEY ? "ark" : "disconnected");
+  const mode = requested === "demo" ? "disconnected" : requested;
+  if (mode !== "disconnected" && mode !== "ark")
+    throw new Error("MUSE_MODE must be disconnected or ark");
   const host = env.HOST ?? "127.0.0.1";
   const accessToken = env.MUSE_ACCESS_TOKEN ?? "";
   if (
@@ -33,7 +35,7 @@ export function loadConfig(env = process.env): ServerConfig {
   }
   if (mode === "ark" && !env.ARK_API_KEY) {
     throw new Error(
-      "ark mode requires ARK_API_KEY (or use SSO from demo mode)",
+      "ark mode requires ARK_API_KEY (or sign in with SSO or an API key in the app)",
     );
   }
   const arkBaseUrl =

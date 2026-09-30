@@ -111,6 +111,22 @@ describe("Mobile API client", () => {
       "https://muse.example/api/workspace/prepare",
     );
   });
+  it("requires sign-in before preparing or creating a conversation", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      Response.json({
+        state: "disconnected",
+        message: "Connect to Ark MA first.",
+      }),
+    );
+    vi.stubGlobal("fetch", fetcher);
+    await expect(
+      new Client({
+        baseUrl: "https://muse.example",
+        token: "",
+      }).prepareWorkspace(),
+    ).rejects.toThrow("Connect to Ark MA first.");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
   it("isolates the SSO token by service URL and never puts it in the URL", async () => {
     const values = new Map<string, string>();
     vi.stubGlobal("sessionStorage", {

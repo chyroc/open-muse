@@ -124,8 +124,15 @@ describe("Event state", () => {
   });
 });
 describe("Server configuration", () => {
-  it("defaults to local demo and never implicitly switches to real mode just because credentials exist", () => {
-    expect(loadConfig({ ARK_API_KEY: "secret" }).mode).toBe("demo");
+  it("requires a real connection and never enables simulated responses", () => {
+    expect(loadConfig({}).mode).toBe("disconnected");
+    expect(loadConfig({ ARK_API_KEY: "secret" }).mode).toBe("ark");
+    expect(loadConfig({ MUSE_MODE: "demo", ARK_API_KEY: "secret" }).mode).toBe(
+      "disconnected",
+    );
+    expect(
+      loadConfig({ MUSE_MODE: "disconnected", ARK_API_KEY: "secret" }).mode,
+    ).toBe("disconnected");
     expect(loadConfig({}).host).toBe("127.0.0.1");
     expect(loadConfig({}).arkBaseUrl).toBe(
       "https://ark.cn-beijing.volces.com/api/v3",

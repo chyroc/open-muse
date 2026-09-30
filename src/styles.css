@@ -1587,19 +1587,6 @@ code {
   scroll-behavior: smooth;
   overscroll-behavior: contain;
 }
-.demo-notice {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  background: #ecefe3;
-  border-radius: 6px;
-  padding: 8px 10px;
-  color: #939e7f;
-  font-size: 9px;
-  margin-bottom: 28px;
-  line-height: 1.6;
-}
 .message {
   font-size: 13px;
   line-height: 1.9;
@@ -2616,11 +2603,6 @@ code {
   }
   .conversation-body {
     padding: 17px 3px 16px;
-  }
-  .demo-notice {
-    font-size: 8px;
-    padding: 8px;
-    margin-bottom: 20px;
   }
   .message {
     font-size: 12px;

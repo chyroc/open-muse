@@ -5,21 +5,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { createApp } from "../server/app";
 import { loadConfig } from "../server/config";
-import { ArkClient } from "../server/ark";
+import { ApiError } from "../server/ark";
 import { readSSE } from "../shared/sse";
 import { Store } from "../server/store";
-import type { AgentEvent } from "../shared/types";
+import { arkFixture } from "./helpers/ark-fixture";
 
 let directory: string;
 let app: Awaited<ReturnType<typeof createApp>>;
+let fixture: ReturnType<typeof arkFixture>;
 beforeEach(async () => {
   directory = await mkdtemp(join(tmpdir(), "open-muse-test-"));
-  app = await createApp(loadConfig({ MUSE_DATA_DIR: directory }), {
-    demoDelay: 15,
-  });
+  fixture = arkFixture(directory);
+  app = await createApp(fixture.config, { ark: fixture.ark });
 });
 afterEach(async () => {
   app.close();
+  vi.restoreAllMocks();
   await rm(directory, { recursive: true, force: true });
 });
 async function create(title = "A test task") {
@@ -29,68 +30,53 @@ async function create(title = "A test task") {
     .expect(201);
   return result.body.id as string;
 }
-describe("Local API", () => {
-  it("the approval requirement in a goal prompt is not misclassified as sending an email", async () => {
-    const id = await create("Goal planning");
-    await request(app.app)
-      .post(`/api/sessions/${id}/events`)
-      .send({
-        type: "user.message",
-        text: "help me plan a trip; ask for approval before any external action",
-      })
-      .expect(200);
-    await vi.waitFor(() => expect(app.store.get(id)?.status).toBe("idle"));
-    expect(
-      app.store.data.events[id].some((e) => e.type === "agent.message"),
-    ).toBe(true);
-    expect(app.store.data.events[id].some((e) => e.name === "send_email")).toBe(
-      false,
-    );
-  });
-  it("full task: create, send, read events, continue the conversation", async () => {
+describe("Real conversation API", () => {
+  it("creates, sends and continues exclusively through the Ark adapter", async () => {
     const id = await create();
-    await request(app.app)
-      .post(`/api/sessions/${id}/events`)
-      .send({ type: "user.message", text: "Hello" })
-      .expect(200);
-    await vi.waitFor(() => expect(app.store.get(id)?.status).toBe("idle"));
+    for (const text of ["Hello", "Continue"])
+      await request(app.app)
+        .post(`/api/sessions/${id}/events`)
+        .send({ type: "user.message", text })
+        .expect(200);
     const result = await request(app.app)
       .get(`/api/sessions/${id}/events`)
       .expect(200);
-    expect(
-      result.body.data.some((e: AgentEvent) => e.type === "agent.message"),
-    ).toBe(true);
-    await request(app.app)
-      .post(`/api/sessions/${id}/events`)
-      .send({ type: "user.message", text: "Continue" })
-      .expect(200);
-    await vi.waitFor(() => expect(app.store.get(id)?.status).toBe("idle"));
-    expect(
-      app.store.data.events[id].filter((e) => e.type === "user.message"),
-    ).toHaveLength(2);
+    expect(result.body.data).toEqual(fixture.history[id]);
+    expect(fixture.ark.create).toHaveBeenCalledOnce();
+    expect(fixture.ark.send).toHaveBeenCalledTimes(2);
+    expect(fixture.ark.send).toHaveBeenLastCalledWith(
+      id,
+      expect.objectContaining({
+        type: "user.message",
+        content: [{ type: "text", text: "Continue" }],
+      }),
+    );
+    expect(app.store.data.events[id]).toBeUndefined();
   });
-  it("persists data so history survives a server rebuild", async () => {
+  it("preserves the session registry across a server restart", async () => {
     const id = await create();
     app.close();
-    app = await createApp(loadConfig({ MUSE_DATA_DIR: directory }));
+    app = await createApp(fixture.config, { ark: fixture.ark });
     expect(
       (await request(app.app).get("/api/sessions").expect(200)).body.data[0].id,
     ).toBe(id);
   });
-  it("only the currently pending tool can be confirmed; duplicate or forged confirmations are rejected", async () => {
-    const id = await create("Approval test");
-    await request(app.app)
-      .post(`/api/sessions/${id}/events`)
-      .send({ type: "user.message", text: "help me send an email" })
-      .expect(200);
-    await vi.waitFor(() =>
-      expect(app.store.data.events[id].at(-1)?.stop_reason?.type).toBe(
-        "requires_action",
-      ),
-    );
-    const tool = app.store.data.events[id].find(
-      (e) => e.type === "agent.tool_use",
-    )!;
+  it("rejects duplicate or forged confirmations using current upstream history", async () => {
+    const id = await create();
+    fixture.history[id] = [
+      {
+        id: "tool",
+        type: "agent.tool_use",
+        name: "send_email",
+        evaluated_permission: "ask",
+        input: {},
+      },
+      {
+        id: "idle",
+        type: "session.status_idle",
+        stop_reason: { type: "requires_action", event_ids: ["tool"] },
+      },
+    ];
     await request(app.app)
       .post(`/api/sessions/${id}/events`)
       .send({
@@ -103,59 +89,50 @@ describe("Local API", () => {
       .post(`/api/sessions/${id}/events`)
       .send({
         type: "user.tool_confirmation",
-        tool_use_id: tool.id,
+        tool_use_id: "tool",
         result: "deny",
       })
       .expect(200);
-    await vi.waitFor(() => expect(app.store.get(id)?.status).toBe("idle"));
-    expect(
-      app.store.data.events[id].some(
-        (e) => e.type === "user.tool_confirmation" && e.result === "deny",
-      ),
-    ).toBe(true);
     await request(app.app)
       .post(`/api/sessions/${id}/events`)
       .send({
         type: "user.tool_confirmation",
-        tool_use_id: tool.id,
+        tool_use_id: "tool",
         result: "allow",
       })
       .expect(409);
+    expect(fixture.ark.send).toHaveBeenCalledOnce();
   });
-  it("stops a demo task so it produces no more results", async () => {
+  it("forwards interruption to Ark", async () => {
     const id = await create();
-    await request(app.app)
-      .post(`/api/sessions/${id}/events`)
-      .send({ type: "user.message", text: "task" })
-      .expect(200);
     await request(app.app)
       .post(`/api/sessions/${id}/events`)
       .send({ type: "user.interrupt" })
       .expect(200);
-    await new Promise((resolve) => setTimeout(resolve, 90));
-    expect(
-      app.store.data.events[id].filter((e) => e.type === "agent.message"),
-    ).toHaveLength(0);
-    expect(app.store.get(id)?.status).toBe("idle");
+    expect(fixture.ark.send).toHaveBeenCalledWith(
+      id,
+      expect.objectContaining({ type: "user.interrupt" }),
+    );
   });
-  it("rejects empty messages, overly long messages, arbitrary upstream events, and nonexistent sessions", async () => {
+  it("rejects invalid messages and unregistered sessions before calling Ark", async () => {
     const id = await create();
     for (const body of [
       { type: "user.message", text: "  " },
       { type: "user.message", text: "x".repeat(16001) },
       { type: "system.message", content: [] },
-    ]) {
+    ])
       await request(app.app)
         .post(`/api/sessions/${id}/events`)
         .send(body)
         .expect(400);
-    }
     await request(app.app)
       .get("/api/sessions/not-created-here/events")
       .expect(404);
     await request(app.app)
-      .get(`/api/sessions/${id}/events?page=NaN`)
+      .get(`/api/sessions/${id}/events?page=${"x".repeat(2049)}`)
       .expect(400);
+    expect(fixture.ark.send).not.toHaveBeenCalled();
+    expect(fixture.ark.events).not.toHaveBeenCalled();
   });
   it("rejects cross-site origins and DNS-rebinding Host headers", async () => {
     await request(app.app)
@@ -171,13 +148,11 @@ describe("Local API", () => {
       .set("Origin", "http://127.0.0.1:4310")
       .expect(204);
   });
-  it("once an app token is set, it protects all session endpoints and config returns no credentials", async () => {
+  it("requires the app access token and never includes credentials in config", async () => {
     app.close();
     app = await createApp(
-      loadConfig({
-        MUSE_DATA_DIR: directory,
-        MUSE_ACCESS_TOKEN: "app-private-secret",
-      }),
+      { ...fixture.config, accessToken: "app-private-secret" },
+      { ark: fixture.ark },
     );
     await request(app.app).get("/api/sessions").expect(401);
     await request(app.app)
@@ -190,15 +165,15 @@ describe("Local API", () => {
       .expect(200);
     const config = await request(app.app).get("/api/config").expect(200);
     expect(config.body).toEqual({
-      mode: "demo",
-      agentConfigured: false,
+      mode: "ark",
+      agentConfigured: true,
       authRequired: true,
     });
-    expect(JSON.stringify(config.body)).not.toContain("secret");
+    expect(config.text).not.toContain("secret");
   });
-  it("event history pagination is not truncated", async () => {
+  it("forwards event pagination without truncation", async () => {
     const id = await create();
-    app.store.data.events[id] = Array.from({ length: 205 }, (_, index) => ({
+    fixture.history[id] = Array.from({ length: 205 }, (_, index) => ({
       id: String(index),
       type: "agent.thinking",
     }));
@@ -211,110 +186,119 @@ describe("Local API", () => {
     expect(first.body.data.length + second.body.data.length).toBe(205);
     expect(second.body.next_page).toBeUndefined();
   });
-  it("real SSE and the history list use the same id for the same event", async () => {
+  it("forwards the same upstream event IDs in SSE and history", async () => {
     const id = await create();
+    const sent = await request(app.app)
+      .post(`/api/sessions/${id}/events`)
+      .send({ type: "user.message", text: "stream test" })
+      .expect(200);
     const server = app.app.listen(0, "127.0.0.1");
     await new Promise<void>((resolve) => server.once("listening", resolve));
-    const port = (server.address() as { port: number }).port;
-    const abort = new AbortController();
     try {
       const response = await fetch(
-        `http://127.0.0.1:${port}/api/sessions/${id}/events/stream`,
-        { signal: abort.signal },
+        `http://127.0.0.1:${(server.address() as { port: number }).port}/api/sessions/${id}/events/stream`,
       );
-      expect(response.headers.get("content-type")).toContain(
-        "text/event-stream",
-      );
-      const stream = readSSE(response.body!);
-      const incoming = stream.next();
-      const sent = await request(app.app)
-        .post(`/api/sessions/${id}/events`)
-        .send({ type: "user.message", text: "stream test" })
-        .expect(200);
-      const received = JSON.parse((await incoming).value as string);
-      expect(received.id).toBe(sent.body.data[0].id);
-      abort.abort();
-      await stream.return(undefined);
+      const incoming = [];
+      for await (const event of readSSE(response.body!))
+        incoming.push(JSON.parse(event));
+      expect(incoming[0].id).toBe(sent.body.data[0].id);
+      expect(incoming).toEqual(fixture.history[id]);
     } finally {
-      abort.abort();
       server.closeAllConnections();
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
   });
-  it("on restart marks unfinished demo tasks as errored rather than permanently running", async () => {
-    const id = await create();
-    app.store.get(id)!.status = "running";
-    await app.store.save();
-    app.close();
-    app = await createApp(loadConfig({ MUSE_DATA_DIR: directory }));
-    expect(app.store.get(id)!.status).toBe("idle");
-    expect(app.store.data.events[id].at(-1)?.stop_reason?.type).toBe(
-      "retries_exhausted",
+  it("reports upstream failures without a simulated response or local replacement session", async () => {
+    vi.mocked(fixture.ark.create).mockRejectedValueOnce(
+      new ApiError(502, "Ark is unavailable."),
     );
+    await request(app.app)
+      .post("/api/sessions")
+      .send({ title: "Failed task" })
+      .expect(502);
+    expect(app.store.data.sessions).toHaveLength(0);
+    const id = await create();
+    vi.mocked(fixture.ark.send).mockRejectedValueOnce(
+      new ApiError(502, "Ark is unavailable."),
+    );
+    await request(app.app)
+      .post(`/api/sessions/${id}/events`)
+      .send({ type: "user.message", text: "Hello" })
+      .expect(502);
+    expect(fixture.history[id]).toEqual([]);
+    expect(app.store.data.events).toEqual({});
   });
-});
-describe("Real-mode boundaries", () => {
-  it("an upstream SSE failure returns 502 instead of ending early as 200", async () => {
-    app.close();
-    const config = loadConfig({
-      MUSE_MODE: "ark",
-      MUSE_DATA_DIR: directory,
-      ARK_API_KEY: "private",
-      ARK_AGENT_ID: "agt-test",
-      ARK_ENVIRONMENT_ID: "env-test",
-    });
-    const ark = new ArkClient(config);
-    vi.spyOn(ark, "create").mockResolvedValue({
-      id: "sesn-stream",
-      title: "Stream test",
-      category: "general",
-      status: "idle",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
-    vi.spyOn(ark, "stream").mockResolvedValue(
+  it("returns 502 for an upstream SSE failure instead of an empty successful stream", async () => {
+    const id = await create();
+    vi.mocked(fixture.ark.stream).mockResolvedValueOnce(
       new Response("private-error", { status: 503 }),
     );
-    app = await createApp(config, { ark });
-    const id = await create();
     const response = await request(app.app)
       .get(`/api/sessions/${id}/events/stream`)
       .expect(502);
     expect(response.body.error).toContain("event stream connection failed");
     expect(response.text).not.toContain("private-error");
   });
-  it("only accesses sessions created by this app and persists the registry", async () => {
-    app.close();
-    const config = loadConfig({
-      MUSE_MODE: "ark",
-      MUSE_DATA_DIR: directory,
-      ARK_API_KEY: "private",
-      ARK_AGENT_ID: "agt-test",
-      ARK_ENVIRONMENT_ID: "env-test",
-    });
-    const ark = new ArkClient(config);
-    vi.spyOn(ark, "create").mockResolvedValue({
-      id: "sesn-test",
-      title: "Task",
-      category: "general",
-      status: "idle",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
-    const get = vi.spyOn(ark, "get");
-    app = await createApp(config, { ark });
+  it("only accesses registered sessions and refuses to reuse another account's registry", async () => {
     await request(app.app).get("/api/sessions/foreign-session").expect(404);
-    expect(get).not.toHaveBeenCalled();
-    expect(await create()).toBe("sesn-test");
+    expect(fixture.ark.get).not.toHaveBeenCalled();
+    const id = await create();
     const store = new Store(directory, "ark");
     await store.init();
-    expect(store.get("sesn-test")).toBeTruthy();
+    expect(store.get(id)).toBeTruthy();
     app.close();
     await expect(
-      createApp({ ...config, arkKey: "another-account" }),
+      createApp({ ...fixture.config, arkKey: "another-account" }),
     ).rejects.toThrow("identity changed");
     await expect(
-      createApp({ ...config, project: "another-project" }),
+      createApp({ ...fixture.config, project: "another-project" }),
     ).rejects.toThrow("identity changed");
+  });
+});
+describe("Signed-out boundaries", () => {
+  it("keeps old demo files untouched and inaccessible, and requires real credentials for all actions", async () => {
+    const legacy = new Store(directory, "demo");
+    legacy.data.sessions.push({
+      id: "demo-old",
+      title: "Old simulated task",
+      category: "general",
+      status: "idle",
+      created_at: "2026-01-01",
+      updated_at: "2026-01-01",
+    });
+    await legacy.save();
+    app.close();
+    app = await createApp(
+      loadConfig({ MUSE_MODE: "demo", MUSE_DATA_DIR: directory }),
+    );
+    expect(
+      (await request(app.app).get("/api/config").expect(200)).body.mode,
+    ).toBe("disconnected");
+    expect(
+      (await request(app.app).get("/api/workspace").expect(200)).body.state,
+    ).toBe("disconnected");
+    for (const path of ["/sessions", "/goals", "/library"])
+      expect(
+        (await request(app.app).get(`/api${path}`).expect(200)).body.data,
+      ).toEqual([]);
+    for (const [path, body] of [
+      ["/sessions", { title: "No simulated task" }],
+      [
+        "/sessions/demo-old/events",
+        { type: "user.message", text: "No simulated reply" },
+      ],
+      ["/goals", { title: "No anonymous goal" }],
+      ["/library", { session_id: "demo-old", event_id: "answer" }],
+      ["/workspace/prepare", {}],
+    ] as const)
+      await request(app.app).post(`/api${path}`).send(body).expect(401);
+    await request(app.app).get("/api/sessions/demo-old/events").expect(401);
+    await request(app.app)
+      .get("/api/sessions/demo-old/events/stream")
+      .expect(401);
+    expect(app.store.data.sessions).toEqual([]);
+    const preserved = new Store(directory, "demo");
+    await preserved.init();
+    expect(preserved.get("demo-old")).toBeTruthy();
   });
 });

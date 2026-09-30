@@ -1,4 +1,4 @@
-export type Mode = "demo" | "ark";
+export type Mode = "disconnected" | "ark";
 export type SessionStatus = "idle" | "running" | "rescheduling" | "terminated";
 export type Category = "general" | "research" | "writing" | "life" | "code";
 export interface Session {
@@ -57,7 +57,7 @@ export interface AppConfig {
   authRequired: boolean;
 }
 export interface WorkspaceStatus {
-  state: "demo" | "idle" | "preparing" | "ready" | "error";
+  state: "disconnected" | "idle" | "preparing" | "ready" | "error";
   message: string;
 }
 

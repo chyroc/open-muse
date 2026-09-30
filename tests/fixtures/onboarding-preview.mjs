@@ -11,7 +11,11 @@ let connected = false;
 let startedAt = 0;
 app.use(express.json());
 app.get("/api/config", (_req, res) =>
-  res.json({ mode: "demo", agentConfigured: connected, authRequired: false }),
+  res.json({
+    mode: connected ? "ark" : "disconnected",
+    agentConfigured: connected,
+    authRequired: false,
+  }),
 );
 app.get("/api/sessions", (_req, res) => res.json({ data: [] }));
 app.get("/api/auth/status", (_req, res) =>
