@@ -151,9 +151,16 @@ describe("Mac appearance preference", () => {
       f.endsWith(".css"),
     )) {
       if (file === "theme.css") continue;
-      expect(banned.test(readFileSync(`macos/ui/${file}`, "utf8")), file).toBe(
+      const css = readFileSync(`macos/ui/${file}`, "utf8");
+      expect(banned.test(css), file).toBe(false);
+      // The white keyword and hard-coded foregrounds break the dark surfaces.
+      expect(/background: *white/.test(css), file).toBe(false);
+      expect(/color: *#(9d3023|805a15|913e2c|a13b2b)/.test(css), file).toBe(
         false,
       );
+      // Only the token file may define tokens: redefining one elsewhere can
+      // self-reference it and silently invalidate the theme.
+      expect(/^\s+--[a-z0-9-]+:/m.test(css), file).toBe(false);
     }
   });
   it("syncs the window chrome natively and both windows together", () => {

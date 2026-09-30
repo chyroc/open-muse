@@ -91,6 +91,12 @@ as the avatar and the identity-file cards, are brand art and stay fixed in both
 appearances. The reference's own dark rendering has not been observed, so
 matching its dark screens is unverified; only its token values are used.
 
+Only that file defines tokens. Scrims, glass pills, code blocks inside bubbles,
+banner foregrounds and the primary action pair are tokens too, because a
+hard-coded light value there stays light on a dark surface and hides its own
+label. A stylesheet that redefines a token can shadow or self-reference it and
+invalidate the theme, so the tests reject both.
+
 ## Desktop Library
 
 Library has a 240-point category sidebar, search, grid/list layouts, pinning,

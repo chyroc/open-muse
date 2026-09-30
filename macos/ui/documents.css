@@ -112,7 +112,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  background: white;
+  background: var(--surface);
 }
 .document-toolbar {
   height: 58px;
@@ -255,7 +255,7 @@
 }
 .document-error {
   background: var(--danger-soft);
-  color: #913e2c;
+  color: var(--danger-text);
   border-radius: 12px;
   padding: 15px;
   margin-top: 20px;

@@ -271,7 +271,7 @@
 .goal-intro-dialog > header .icon-button {
   width: 28px;
   height: 28px;
-  background: white;
+  background: var(--surface);
   box-shadow: 0 3px 12px #0001;
 }
 .goal-intro-dialog::backdrop {
@@ -381,7 +381,7 @@
 .goal-timeline li > svg {
   color: var(--muted);
   flex-shrink: 0;
-  background: white;
+  background: var(--surface);
   z-index: 1;
 }
 .goal-timeline li:not(:last-child)::before {

@@ -1,13 +1,9 @@
 :root {
   font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
   color: var(--text);
-  background: var(--surface);
+  background: var(--bg);
   font-size: 14px;
   font-synthesis: none;
-  --line: var(--line);
-  --muted: var(--muted);
-  --surface: var(--surface-2);
-  --blue: var(--blue);
 }
 * {
   box-sizing: border-box;
@@ -168,7 +164,11 @@ h3 {
   padding: 9px 12px;
   z-index: 3;
   pointer-events: none;
-  background: linear-gradient(#fdfdfdf5, #fdfdfdbb, transparent);
+  background: linear-gradient(
+    var(--scrim-strong),
+    var(--scrim-soft),
+    transparent
+  );
 }
 .chat-toolbar > * {
   pointer-events: auto;
@@ -184,7 +184,7 @@ h3 {
   font-weight: 500;
 }
 .glass-pill {
-  background: #ffffffeb;
+  background: var(--glass);
   box-shadow:
     0 2px 8px #0000000a,
     0 8px 25px #00000005;
@@ -204,7 +204,7 @@ h3 {
   position: absolute;
   right: 14px;
   top: 53px;
-  background: white;
+  background: var(--surface);
   border: 1px solid var(--line);
   box-shadow: 0 8px 30px #0002;
   padding: 6px;
@@ -268,7 +268,7 @@ h3 {
   margin-bottom: 8px;
 }
 .message-bubble pre {
-  background: #ffffff70;
+  background: var(--code);
   border-radius: 9px;
   padding: 12px;
   overflow: auto;
@@ -626,8 +626,8 @@ h3 {
 .error-banner {
   margin: 0 16px 10px;
   background: var(--danger-soft);
-  border: 1px solid #ffd1c9;
-  color: #9d3023;
+  border: 1px solid var(--danger-border);
+  color: var(--danger-text);
   border-radius: 12px;
   padding: 10px 12px;
   display: flex;
@@ -641,8 +641,8 @@ h3 {
 }
 .approval-banner {
   align-self: center;
-  background: #fff1da;
-  color: #805a15;
+  background: var(--warning-soft);
+  color: var(--warning-text);
   border-radius: 16px;
   padding: 7px 12px;
   display: flex;
@@ -788,7 +788,7 @@ h3 {
   border-radius: 20px;
 }
 .auth-methods button[aria-pressed="true"] {
-  background: white;
+  background: var(--surface);
   box-shadow: 0 1px 6px #0001;
 }
 .auth-steps {
@@ -808,7 +808,7 @@ h3 {
   border: 1px solid var(--line-strong);
   border-radius: 10px;
   padding: 10px 12px;
-  background: white;
+  background: var(--surface);
 }
 .auth-consent-note,
 .auth-help {
@@ -826,14 +826,14 @@ h3 {
   background: var(--fill-hover);
 }
 .button.primary {
-  background: var(--text);
-  color: white;
+  background: var(--primary-bg);
+  color: var(--primary-text);
 }
 .button.primary:hover {
-  background: var(--text-2);
+  background: var(--primary-bg-hover);
 }
 .error-text {
-  color: #a13b2b;
+  color: var(--danger-text);
   font-size: 13px;
   line-height: 1.5;
 }

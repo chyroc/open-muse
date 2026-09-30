@@ -175,7 +175,7 @@
   padding: 20px;
   border: 1px solid var(--bubble);
   border-radius: 30px;
-  background: white;
+  background: var(--surface);
   box-shadow: 0 2px 8px #00000005;
 }
 .feed-prompt-card h2 {
