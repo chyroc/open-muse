@@ -536,6 +536,53 @@ describe("Muse accounts end to end", () => {
       expect(upstream.fetcher.mock.calls.length).toBe(after);
     });
 
+    it("applies a key removed on another device within one check interval", async () => {
+      const d = await ready("kim@example.com", 100);
+      const other = device(
+        "",
+        { read: 60_000, write: 10_000, interval: 60_000 },
+        now,
+      );
+      await other.client.restore();
+      await other.signIn("kim@example.com");
+      await other.client.auth("logout", { confirm: true });
+      // Inside the read window the running device has not heard yet: this is
+      // the documented bound, not an immediate revocation.
+      const calls = upstream.fetcher.mock.calls.length;
+      await d.client.companionIdentity();
+      expect(upstream.fetcher.mock.calls.length).toBeGreaterThan(calls);
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      expect(d.client.signedIn()).toBe(false);
+      const after = upstream.fetcher.mock.calls.length;
+      await expect(d.client.prepareWorkspace()).rejects.toThrow();
+      expect(upstream.fetcher.mock.calls.length).toBe(after);
+    });
+
+    it("closes an open stream when the account service becomes unreachable", async () => {
+      const d = await ready("liam@example.com", 50);
+      const stream = d.client.stream(
+        "session-live",
+        new AbortController().signal,
+        () => {},
+        () => {},
+      );
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      serviceDown = true;
+      try {
+        await expect(
+          Promise.race([
+            stream.then(
+              () => "closed",
+              () => "closed",
+            ),
+            new Promise((resolve) => setTimeout(() => resolve("open"), 1_000)),
+          ]),
+        ).resolves.toBe("closed");
+      } finally {
+        serviceDown = false;
+      }
+    });
+
     it("closes an open event stream once the session ends", async () => {
       const d = await ready("ivan@example.com", 50);
       const stream = d.client.stream(

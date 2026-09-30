@@ -312,9 +312,22 @@ export class Client {
       if (owner) {
         // Long-lived streams and idle windows are re-checked as well; a
         // failed check resets the runtime, which aborts its requests.
+        // Each tick checks with the service regardless of the request window,
+        // so a change known only there stops open streams and idle runtimes
+        // within one interval. An unreachable service also stops them.
         const timer = setInterval(() => {
-          if (this.stale(owner, revision)) this.reset();
-          else void this.verifyAccount(false).catch(() => {});
+          if (this.stale(owner, revision)) return this.reset();
+          if (this.verifying) return;
+          this.verifying = this.syncAccount()
+            .then(() => {
+              if (this.stale(owner, revision)) this.reset();
+            })
+            .catch(() => {
+              if (this.runtime?.abort === abort) this.reset();
+            })
+            .finally(() => {
+              this.verifying = undefined;
+            });
         }, this.accountCheck.interval);
         abort.signal.addEventListener("abort", () => clearInterval(timer));
       }

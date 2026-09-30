@@ -144,6 +144,18 @@ endpoint. Allowing background work sends only the workspace resource IDs. The
 app re-reads the key when it returns to the foreground (and when the Mac main
 window is focused) to pick up changes from other devices.
 
+A running account build checks its session and key revision with the service
+before Ark requests: at most 60 seconds after the last successful check for
+reads and 10 seconds for writes, and every 30 seconds regardless of requests.
+A change this device already knows (signed out, session rejected here, renewal
+unconfirmed) stops Ark requests immediately. A change known only to the service
+or the Auth provider (session revoked elsewhere, key removed or replaced on
+another device) therefore takes effect on a running device within about 30
+seconds, or 10 seconds for writes; it is not instant. If the service cannot be
+reached, the next check fails closed: open streams and the runtime stop, and no
+Ark request is sent until a check succeeds. These bounds were verified against
+protocol doubles of the Auth provider, not a live Supabase project.
+
 Signup failures use one generic message and do not surface provider status
 codes, so the form does not reveal whether an email is registered. Live use
 requires an authorized Supabase workspace, the correct public endpoint and key,
