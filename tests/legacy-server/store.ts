@@ -1,6 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import type { AgentEvent, Session, Goal, LibraryItem } from "../shared/types";
+import type { AgentEvent, Session, Goal, LibraryItem } from "../../shared/types";
 
 interface Data {
   sessions: Session[];

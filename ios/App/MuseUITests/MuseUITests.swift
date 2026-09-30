@@ -9,7 +9,6 @@ final class MuseLiveUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app.launchEnvironment["MUSE_UI_TESTING"] = "1"
-        app.launchEnvironment["MUSE_UI_TEST_ENDPOINT"] = "http://127.0.0.1:4313"
         app.launch()
     }
 
@@ -123,7 +122,7 @@ final class MuseUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app.launchEnvironment["MUSE_UI_TESTING"] = "1"
-        app.launchEnvironment["MUSE_UI_TEST_ENDPOINT"] = "http://127.0.0.1:4312"
+        app.launchEnvironment["MUSE_UI_TEST_SIGNED_OUT"] = "1"
         app.launch()
     }
 
@@ -148,6 +147,8 @@ final class MuseUITests: XCTestCase {
         tap(connect)
         XCTAssertTrue(app.buttons["Start SSO sign-in"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.switches["API Key"].exists)
+        XCTAssertFalse(app.staticTexts["Service connection"].exists)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Advanced setup")).firstMatch.exists)
         capture("signed-out-login-options")
     }
 }

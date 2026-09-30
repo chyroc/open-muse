@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { Mode } from "../shared/types";
+import type { Mode } from "../../shared/types";
 
 export interface ServerConfig {
   mode: Mode;

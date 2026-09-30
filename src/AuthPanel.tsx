@@ -123,9 +123,8 @@ export function AuthPanel({
               onSubmit={(event) => {
                 event.preventDefault();
                 void run(async () => {
-                  let result: { sessionToken: string };
                   try {
-                    result = await client.auth("api-key", {
+                    await client.auth("api-key", {
                       apiKey: apiKey.trim(),
                       project: keyProject.trim(),
                       confirm: true,
@@ -133,7 +132,6 @@ export function AuthPanel({
                   } finally {
                     setAPIKey("");
                   }
-                  await client.setSSOToken(result.sessionToken);
                   await statusAndProjects();
                   onChanged();
                 });
@@ -167,11 +165,11 @@ export function AuthPanel({
                 />
               </label>
               <p className="auth-consent-note">
-                The key is submitted only to this Open Muse service and stored
-                encrypted without being sent back. It is verified when you
-                connect; the assistant and runtime are created automatically on
-                first use, and cloud calls may be billed. Control-plane
-                endpoints that require STS still need SSO sign-in.
+                This device connects directly to Volcano Ark. Native apps store
+                credentials in system-protected storage; the web app keeps them
+                only for this browser session. The assistant and runtime are
+                created automatically on first use; cloud calls may be billed.
+                Control-plane operations requiring STS still need SSO sign-in.
               </p>
               <button
                 className="button primary"
@@ -184,8 +182,9 @@ export function AuthPanel({
             <>
               <p className="settings-description">
                 Sign in on the Volcano website, then paste the authorization
-                code shown on the page back here. STS, refresh tokens, and the
-                API Key are kept only on the server and never sent to the app.
+                code shown on the page back here. This device exchanges the code
+                directly with Volcano using PKCE. Credentials stay on this
+                device; no Open Muse backend is involved.
               </p>
               {!login ? (
                 <button
@@ -236,15 +235,12 @@ export function AuthPanel({
                     disabled={busy || !code.trim()}
                     onClick={() =>
                       void run(async () => {
-                        const result = await client.auth<{
-                          sessionToken: string;
-                        }>("complete", {
+                        await client.auth("complete", {
                           transaction: login.transaction,
                           code,
                         });
                         setCode("");
                         setLogin(undefined);
-                        await client.setSSOToken(result.sessionToken);
                         await statusAndProjects();
                       })
                     }
@@ -345,7 +341,7 @@ export function AuthPanel({
           )}
         </div>
       )}
-      {(status?.loggedIn || client.ssoToken()) && (
+      {(status?.loggedIn || client.signedIn()) && (
         <div className="logout-row">
           <button
             className="button secondary"
@@ -353,7 +349,6 @@ export function AuthPanel({
             onClick={() =>
               void run(async () => {
                 await client.auth("logout", {});
-                await client.setSSOToken("");
                 onChanged();
               })
             }
@@ -362,7 +357,7 @@ export function AuthPanel({
             Sign out of this login
           </button>
           <small>
-            Signing out removes the server-side sign-in credentials but does not
+            Signing out removes this device's sign-in credentials but does not
             revoke the cloud API Key. You can revoke it in the Ark console.
             Switch sign-in methods by signing out first.
           </small>

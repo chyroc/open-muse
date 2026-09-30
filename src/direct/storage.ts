@@ -1,0 +1,135 @@
+import { Capacitor, registerPlugin } from "@capacitor/core";
+
+export interface CredentialStore {
+  read(): Promise<string>;
+  write(value: string): Promise<void>;
+}
+const android = registerPlugin<{
+  read(): Promise<{ value: string }>;
+  write(input: { value: string }): Promise<void>;
+}>("MuseCredentials");
+const credentialKey = "muse.direct.credentials.v1";
+export const credentials: CredentialStore = {
+  async read() {
+    return vault("read") as Promise<string>;
+  },
+  async write(value) {
+    await vault("write", value);
+  },
+};
+async function vault(
+  operation: "read" | "write",
+  value = "",
+): Promise<unknown> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const bridge = (
+      globalThis as unknown as {
+        webkit?: {
+          messageHandlers?: {
+            museCredentials?: { postMessage(input: object): Promise<unknown> };
+          };
+        };
+      }
+    ).webkit?.messageHandlers?.museCredentials;
+    let request: Promise<unknown>;
+    if (bridge) request = bridge.postMessage({ operation, value });
+    else if (Capacitor.getPlatform() === "android")
+      request =
+        operation === "read"
+          ? android.read().then((r) => r.value)
+          : android.write({ value });
+    else if (Capacitor.isNativePlatform())
+      throw new Error("Missing secure storage bridge");
+    else {
+      // Web credentials never go to localStorage, IndexedDB, caches, or a server.
+      if (operation === "read")
+        return sessionStorage.getItem(credentialKey) ?? "";
+      if (value) sessionStorage.setItem(credentialKey, value);
+      else sessionStorage.removeItem(credentialKey);
+      return;
+    }
+    return await Promise.race([
+      request,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error("Secure storage timeout")),
+          5000,
+        );
+      }),
+    ]);
+  } catch {
+    throw new Error(
+      "Couldn't access secure storage. Unlock your device and retry; your login has not been changed.",
+    );
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Non-secret records only. Read-modify-write operations use one IndexedDB
+// transaction, preventing lost updates between tabs or concurrent requests.
+export class LocalDatabase {
+  private database?: Promise<IDBDatabase>;
+  constructor(private name = "open-muse-direct-v1") {}
+  private open() {
+    return (this.database ??= new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open(this.name, 1);
+      request.onupgradeneeded = () =>
+        request.result.createObjectStore("records");
+      request.onsuccess = () => {
+        request.result.onversionchange = () => request.result.close();
+        resolve(request.result);
+      };
+      request.onerror = () => {
+        this.database = undefined;
+        reject(
+          new Error(
+            "Local storage is unavailable; no cloud changes were made.",
+          ),
+        );
+      };
+    }));
+  }
+  async get<T>(key: string): Promise<T | undefined> {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const request = db.transaction("records").objectStore("records").get(key);
+      request.onsuccess = () => resolve(request.result as T | undefined);
+      request.onerror = () => reject(request.error);
+    });
+  }
+  async update<T>(
+    key: string,
+    transform: (value: T | undefined) => T,
+  ): Promise<T> {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("records", "readwrite");
+      const store = tx.objectStore("records");
+      const read = store.get(key);
+      let result: T;
+      let failure: unknown;
+      read.onsuccess = () => {
+        try {
+          result = transform(read.result as T | undefined);
+          store.put(result, key);
+        } catch (error) {
+          failure = error;
+          tx.abort();
+        }
+      };
+      tx.oncomplete = () => resolve(result);
+      tx.onabort = tx.onerror = () =>
+        reject(
+          failure ??
+            new Error(
+              "Couldn't save local data. Retry after checking device storage.",
+            ),
+        );
+    });
+  }
+  set<T>(key: string, value: T) {
+    return this.update<T>(key, () => value);
+  }
+}

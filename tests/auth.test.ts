@@ -4,15 +4,15 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { createHash } from "node:crypto";
-import { createApp } from "../server/app";
-import { loadConfig } from "../server/config";
+import { createApp } from "./legacy-server/app";
+import { loadConfig } from "./legacy-server/config";
 import {
   beginLogin,
   extractCode,
   OAuthProvider,
   type Credentials,
-} from "../server/oauth";
-import { ArkClient } from "../server/ark";
+} from "./legacy-server/oauth";
+import { ArkClient } from "./legacy-server/ark";
 
 let dir: string;
 let app: Awaited<ReturnType<typeof createApp>>;

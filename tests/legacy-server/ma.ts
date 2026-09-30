@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { operations, type MAOperation } from "../shared/ma";
+import { operations, type MAOperation } from "../../shared/ma";
 import { ApiError, ArkClient } from "./ark";
 import type { AuthStore } from "./auth";
 import { isSSOCredentials, type LoginCredentials } from "./oauth";
@@ -174,8 +174,8 @@ export function maRouter(auth: AuthStore) {
     // tenant authorization is always determined by the current upstream credentials.
     if (["CreateSession", "GetSession", "ListSessions"].includes(op.id)) {
       const payload = result as {
-        data?: import("../shared/types").Session[];
-      } & import("../shared/types").Session;
+        data?: import("../../shared/types").Session[];
+      } & import("../../shared/types").Session;
       for (const session of payload.data ?? [payload])
         if (session.id) {
           const old = runtime.store.get(session.id);

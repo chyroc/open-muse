@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { vi } from "vitest";
-import { ArkClient } from "../../server/ark";
-import { loadConfig } from "../../server/config";
+import { ArkClient } from "../legacy-server/ark";
+import { loadConfig } from "../legacy-server/config";
 import type { AgentEvent, Session } from "../../shared/types";
 
 // Test-only upstream double. Production never imports this module.

@@ -12,9 +12,7 @@ export function WorkspacePanel({ client }: { client: Client }) {
     let timer: ReturnType<typeof setTimeout>;
     const read = async () => {
       try {
-        const value = await client.request<WorkspaceStatus>("/workspace", {
-          signal: abort.signal,
-        });
+        const value = await client.workspaceStatus();
         if (!abort.signal.aborted) {
           setStatus(value);
           setError("");
@@ -38,15 +36,9 @@ export function WorkspacePanel({ client }: { client: Client }) {
     setError("");
     try {
       setStatus(
-        await client.request<WorkspaceStatus>(
-          !status || error ? "/workspace" : "/workspace/prepare",
-          !status || error
-            ? {}
-            : {
-                method: "POST",
-                body: "{}",
-              },
-        ),
+        await (!status || error
+          ? client.workspaceStatus()
+          : client.startWorkspace()),
       );
     } catch (e) {
       setError((e as Error).message);

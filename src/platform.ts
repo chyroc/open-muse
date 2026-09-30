@@ -1,6 +1,7 @@
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 import { Share } from "@capacitor/share";
+import { uuid } from "../shared/crypto";
 export const nativeMobile = () => Capacitor.isNativePlatform();
 export async function openAuthorization(url: string) {
   if (new URL(url).origin !== "https://signin.volcengine.com")
@@ -21,7 +22,7 @@ export async function exportText(
     };
   };
   if (desktop.webkit?.messageHandlers?.museExport) {
-    const id = crypto.randomUUID();
+    const id = uuid();
     const promise = new Promise<string>((resolve, reject) => {
       const listener = (event: Event) => {
         const result = (event as CustomEvent).detail;

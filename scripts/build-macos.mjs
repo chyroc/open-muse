@@ -1,14 +1,16 @@
 import { execFileSync } from "node:child_process";
-import { mkdir, copyFile, cp } from "node:fs/promises";
+import { mkdir, copyFile, cp, mkdtemp, rename } from "node:fs/promises";
 import path from "node:path";
-import { build } from "esbuild";
 import sharp from "sharp";
 const root = path.resolve(import.meta.dirname, "..");
-const app = path.join(root, ".build/macos/Open Muse.app");
+const output = path.join(root, ".build/macos");
+await mkdir(output, { recursive: true });
+const staging = await mkdtemp(path.join(output, "direct-build-"));
+const app = path.join(staging, "Open Muse.app");
 const contents = path.join(app, "Contents");
 const resources = path.join(contents, "Resources");
 await mkdir(path.join(contents, "MacOS"), { recursive: true });
-await mkdir(path.join(resources, "app"), { recursive: true });
+await mkdir(resources, { recursive: true });
 execFileSync(
   "xcrun",
   [
@@ -33,18 +35,7 @@ await copyFile(
   path.join(root, "macos/Info.plist"),
   path.join(contents, "Info.plist"),
 );
-await copyFile(process.execPath, path.join(resources, "node"));
-await build({
-  entryPoints: [path.join(root, "server/native.ts")],
-  outfile: path.join(resources, "app/server.cjs"),
-  bundle: true,
-  platform: "node",
-  format: "cjs",
-  target: "node22",
-  external: ["fsevents"],
-  logLevel: "warning",
-});
-await cp(path.join(root, "dist"), path.join(resources, "app/dist"), {
+await cp(path.join(root, "dist"), path.join(resources, "web"), {
   recursive: true,
 });
 const iconset = path.join(root, ".build/macos/AppIcon.iconset");
@@ -66,10 +57,12 @@ execFileSync(
   ["-c", "icns", iconset, "-o", path.join(resources, "AppIcon.icns")],
   { stdio: "inherit" },
 );
-execFileSync(
-  "codesign",
-  ["--force", "--sign", "-", path.join(resources, "node")],
-  { stdio: "inherit" },
-);
 execFileSync("codesign", ["--force", "--sign", "-", app], { stdio: "inherit" });
-console.log(`Built ${app}`);
+const destination = path.join(output, "Open Muse.app");
+try {
+  await rename(destination, path.join(staging, "Previous Open Muse.app"));
+} catch (error) {
+  if (error.code !== "ENOENT") throw error;
+}
+await rename(app, destination);
+console.log(`Built ${destination}`);

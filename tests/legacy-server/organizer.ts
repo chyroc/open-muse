@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { ApiError } from "./ark";
 import type { Runtime } from "./ma";
-import { eventText, type AgentEvent, type Goal } from "../shared/types";
+import { eventText, type AgentEvent, type Goal } from "../../shared/types";
 
 const title = z.string().trim().min(1).max(160);
 const goalInput = z.object({

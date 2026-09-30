@@ -1,4 +1,4 @@
-// Embedded in the native bundle and written only inside the cloud sandbox.
+// Bundled with each client and written only inside the cloud sandbox.
 export const chromeVersion = "154.0.8037.57";
 // SHA-256 of the archives downloaded directly from the official release URLs.
 export const chromeChecksums = {

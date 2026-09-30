@@ -8,7 +8,6 @@ import {
   ArrowRight,
   Check,
   ChevronRight,
-  CircleHelp,
   Compass,
   ExternalLink,
   House,
@@ -17,7 +16,6 @@ import {
   LoaderCircle,
   MessageCircle,
   Plus,
-  Radio,
   RefreshCw,
   Search,
   Settings2,
@@ -25,13 +23,7 @@ import {
   Unplug,
   X,
 } from "lucide-react";
-import {
-  Client,
-  savedConnection,
-  saveConnection,
-  validateEndpoint,
-  type Connection,
-} from "./api";
+import { Client } from "./api";
 import { useTask } from "./useTask";
 import { categories, templates } from "./content";
 import {
@@ -54,9 +46,8 @@ import type {
 import { eventText, pendingPermissions, taskState } from "../shared/types";
 import { canAutoApprove } from "../shared/approval-policy";
 import { AuthPanel } from "./AuthPanel";
-import { WorkspacePanel } from "./WorkspacePanel";
 import { Studio } from "./Studio";
-import { nativeMobile, exportText } from "./platform";
+import { exportText } from "./platform";
 import {
   ChatWelcome,
   FeedPage,
@@ -96,9 +87,8 @@ const statusNames = {
 };
 
 export default function App() {
-  const [connection, setConnection] = useState(savedConnection);
   const [revision, setRevision] = useState(0);
-  const client = useMemo(() => new Client(connection), [connection]);
+  const client = useMemo(() => new Client(), []);
   const [restored, setRestored] = useState<Client>();
   const [restoreError, setRestoreError] = useState("");
   const [restoreAttempt, setRestoreAttempt] = useState(0);
@@ -106,7 +96,7 @@ export default function App() {
     let active = true;
     setRestoreError("");
     void client
-      .restoreSSOToken()
+      .restore()
       .then(() => {
         if (active) setRestored(client);
       })
@@ -117,14 +107,6 @@ export default function App() {
       active = false;
     };
   }, [client, restoreAttempt]);
-  useEffect(() => {
-    if (
-      nativeMobile() &&
-      !connection.baseUrl &&
-      (!location.hash || location.hash === "#/")
-    )
-      navigate("/settings");
-  }, [connection.baseUrl]);
   // Do not make anonymous requests before native identity restoration.
   if (restored !== client)
     return (
@@ -144,9 +126,7 @@ export default function App() {
     <Workspace
       key={revision}
       client={client}
-      onConnection={(next) => {
-        saveConnection(next);
-        setConnection(next);
+      onConnection={() => {
         setRevision((value) => value + 1);
         navigate("/settings");
       }}
@@ -159,7 +139,7 @@ function Workspace({
   onConnection,
 }: {
   client: Client;
-  onConnection: (connection: Connection) => void;
+  onConnection: () => void;
 }) {
   const [route, setRoute] = useState(location.hash.slice(1) || "/");
   const activeId = route.startsWith("/task/") ? route.slice(6) : undefined;
@@ -797,11 +777,7 @@ function Workspace({
           <Studio client={client} config={config} />
         )}
         {tab === "settings" && !activeId && (
-          <Settings
-            client={client}
-            config={config}
-            onConnection={onConnection}
-          />
+          <Settings client={client} onConnection={onConnection} />
         )}
       </main>
       <nav className="mobile-nav" aria-label="Mobile navigation">
@@ -871,48 +847,11 @@ function Loading() {
 
 function Settings({
   client,
-  config,
   onConnection,
 }: {
   client: Client;
-  config?: AppConfig;
-  onConnection: (connection: Connection) => void;
+  onConnection: () => void;
 }) {
-  const [endpoint, setEndpoint] = useState(client.connection.baseUrl);
-  const [token, setToken] = useState(client.connection.token);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
-  const [success, setSuccess] = useState(false);
-  async function connect() {
-    if (busy) return;
-    setBusy(true);
-    setMessage("");
-    setSuccess(false);
-    try {
-      const connection = {
-        baseUrl: validateEndpoint(endpoint),
-        token: token.trim(),
-      };
-      if (nativeMobile() && !connection.baseUrl)
-        throw new Error(
-          "The iOS app needs an Open Muse service URL; use HTTPS on a real device, or http://127.0.0.1:4311 in the simulator.",
-        );
-      const next = new Client(connection);
-      const conf = await next.config();
-      await next.sessions();
-      setSuccess(true);
-      setMessage(
-        conf.mode === "ark"
-          ? "Connected to Ark MA."
-          : "Service connected. Sign in with SSO or an API key to use Ark MA.",
-      );
-      onConnection(connection);
-    } catch (error) {
-      setMessage((error as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
   return (
     <div className="page-content settings-page page-in">
       <div className="page-title">
@@ -920,106 +859,7 @@ function Settings({
         <h1>Settings</h1>
         <p>Pick an Ark project and leave the rest of the setup to Muse.</p>
       </div>
-      <AuthPanel
-        client={client}
-        onChanged={() => onConnection(client.connection)}
-      />
-      {config?.mode === "ark" && !client.ssoToken() && (
-        <WorkspacePanel client={client} />
-      )}
-      <section className="settings-card">
-        <div className="settings-card-heading">
-          <div className="settings-symbol">
-            <Radio size={21} />
-          </div>
-          <div>
-            <h2>Service connection</h2>
-            <p>The mobile app connects to Ark through your server.</p>
-          </div>
-          <span className="small-badge">
-            {config?.mode === "ark"
-              ? "Ark mode"
-              : config?.mode === "disconnected"
-                ? "Sign-in required"
-                : "Not connected"}
-          </span>
-        </div>
-        <label className="field">
-          Service URL
-          <input
-            type="url"
-            autoCapitalize="none"
-            spellCheck={false}
-            value={endpoint}
-            placeholder="Leave blank to use this site; on mobile enter an HTTPS URL"
-            onChange={(event) => setEndpoint(event.target.value)}
-          />
-          <small>
-            Enter the Open Muse service root URL, not an Ark API URL.
-          </small>
-        </label>
-        <label className="field">
-          App access token
-          <input
-            type="password"
-            autoComplete="off"
-            value={token}
-            placeholder="Matches the server's MUSE_ACCESS_TOKEN"
-            onChange={(event) => setToken(event.target.value)}
-          />
-          <small>
-            The token stays only in this client session. Don't enter an Ark API
-            Key here.
-          </small>
-        </label>
-        {message && (
-          <p className={success ? "success-text" : "error-text"} role="status">
-            {message}
-          </p>
-        )}
-        <button
-          className="button primary"
-          disabled={busy}
-          onClick={() => void connect()}
-        >
-          {busy ? (
-            <LoaderCircle size={16} className="spin" />
-          ) : (
-            <RefreshCw size={16} />
-          )}
-          Verify and connect
-        </button>
-      </section>
-      <details className="settings-card advanced-connection">
-        <summary>Advanced setup · server-side API Key</summary>
-        <div className="settings-card-heading">
-          <div className="settings-symbol">
-            <ShieldCheck size={21} />
-          </div>
-          <div>
-            <h2>Ark Managed Agents</h2>
-            <p>The API Key always stays on the server.</p>
-          </div>
-        </div>
-        <p className="settings-description">
-          Configure the variables below in the server's <code>.env</code> file,
-          then restart the service. Sessions are isolated by account; changing
-          credentials never switches to another account's conversation history.
-        </p>
-        <pre className="config-example">
-          {
-            "MUSE_MODE=ark\nARK_BASE_URL=https://ark.cn-beijing.volces.com/api/v3\nARK_API_KEY=your-server-side-secret"
-          }
-        </pre>
-        <div className="info-note">
-          <CircleHelp size={17} />
-          <span>
-            The assistant and runtime are created automatically. The endpoint
-            and credentials must belong to the same environment; don't mix
-            production and test credentials.
-          </span>
-        </div>
-      </details>
+      <AuthPanel client={client} onChanged={onConnection} />
       <section className="privacy-grid">
         <div>
           <ShieldCheck size={22} />

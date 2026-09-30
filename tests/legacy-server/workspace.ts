@@ -5,7 +5,7 @@ import { DatabaseSync } from "node:sqlite";
 import { ApiError } from "./ark";
 import { isSSOCredentials } from "./oauth";
 import type { Runtime } from "./ma";
-import type { WorkspaceStatus } from "../shared/types";
+import type { WorkspaceStatus } from "../../shared/types";
 import {
   environmentWithTools,
   systemWithTools,

@@ -6,13 +6,13 @@ import { z } from "zod";
 import { ArkClient, ApiError } from "./ark";
 import type { ServerConfig } from "./config";
 import { Store } from "./store";
-import type { AgentEvent } from "../shared/types";
-import { pendingPermissions } from "../shared/types";
+import type { AgentEvent } from "../../shared/types";
+import { pendingPermissions } from "../../shared/types";
 import { AuthStore } from "./auth";
 import { OAuthProvider, isSSOCredentials } from "./oauth";
 import { maRouter, type Runtime } from "./ma";
 import { Workspaces } from "./workspace";
-import { canAutoApprove } from "../shared/approval-policy";
+import { canAutoApprove } from "../../shared/approval-policy";
 import { annotateApproval, approvalKey } from "./approvals";
 import { organizerRouter } from "./organizer";
 
@@ -542,7 +542,7 @@ export async function createApp(
         );
       }
       start();
-      const { readSSE } = await import("../shared/sse");
+      const { readSSE } = await import("../../shared/sse");
       for await (const data of readSSE(upstream.body)) {
         if (data === "[DONE]") break;
         const event = JSON.parse(data) as AgentEvent;

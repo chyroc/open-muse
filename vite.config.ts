@@ -7,6 +7,20 @@ export default defineConfig({
     react(),
     {
       name: "muse-offline-shell",
+      transformIndexHtml(html, context) {
+        if (context.server) return html;
+        return [
+          {
+            tag: "meta",
+            attrs: {
+              "http-equiv": "Content-Security-Policy",
+              content:
+                "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://ark.cn-beijing.volces.com https://signin.volcengine.com https://open.volcengineapi.com https://iam.volcengineapi.com; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'",
+            },
+            injectTo: "head-prepend",
+          },
+        ];
+      },
       generateBundle(_options, bundle) {
         const assets = Object.keys(bundle).filter((name) =>
           /\.(js|css|html)$/.test(name),
@@ -44,7 +58,6 @@ self.addEventListener('fetch', event => {
   server: {
     port: 4310,
     strictPort: true,
-    proxy: { "/api": "http://127.0.0.1:4311" },
     watch: {
       ignored: [
         "**/ios/**",

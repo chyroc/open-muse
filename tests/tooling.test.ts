@@ -11,13 +11,13 @@ import {
   toolingInstructions,
   toolingRevision,
   toolingSetup,
-} from "../server/tooling";
+} from "./legacy-server/tooling";
 import {
   browserDriver,
   chromeVersion,
   chromeChecksums,
   chromeDownload,
-} from "../server/browser-tooling";
+} from "./legacy-server/browser-tooling";
 
 describe("Managed environment toolbox", () => {
   it("keeps networking, storage, secrets references and custom packages unchanged", () => {

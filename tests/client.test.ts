@@ -1,227 +1,607 @@
+import "fake-indexeddb/auto";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { Client, validateEndpoint } from "../src/api";
+import { Signer } from "@volcengine/openapi";
+import { Client } from "../src/api";
+import {
+  credentials,
+  LocalDatabase,
+  type CredentialStore,
+} from "../src/direct/storage";
+import { ARK_BASE_URL, directFetch } from "../src/direct/transport";
+import { signAction } from "../shared/signing";
+import { beginLogin, extractCode, OAuthProvider } from "../shared/oauth";
+import { digest, uuid } from "../shared/crypto";
+import { operations } from "../shared/ma";
+import { buildRequest } from "../shared/ma-request";
+import type { AgentEvent } from "../shared/types";
+
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
 });
-describe("Mobile API client", () => {
-  function nativeFixture() {
-    const temporary = new Map<string, string>();
-    const secure = new Map<string, string>();
-    vi.stubGlobal("sessionStorage", {
-      getItem: (key: string) => temporary.get(key),
-      setItem: (key: string, value: string) => temporary.set(key, value),
-      removeItem: (key: string) => temporary.delete(key),
-    });
-    const postMessage = vi.fn(
-      async (input: {
-        operation: string;
-        endpoint: string;
-        token?: string;
-      }) => {
-        if (input.operation === "read") return secure.get(input.endpoint) ?? "";
-        if (input.token) secure.set(input.endpoint, input.token);
-        else secure.delete(input.endpoint);
-        return true;
-      },
+const key = "test-only-direct-key-123456789";
+function vaultFixture() {
+  let saved = "";
+  const vault: CredentialStore = {
+    read: vi.fn(async () => saved),
+    write: vi.fn(async (value) => {
+      saved = value;
+    }),
+  };
+  return vault;
+}
+function fixture() {
+  const vault = vaultFixture();
+  const db = new LocalDatabase(`test-${uuid()}`);
+  const resources: Record<string, Record<string, unknown>[]> = {
+    agents: [],
+    environments: [],
+    sessions: [],
+  };
+  const events: AgentEvent[] = [];
+  const fetcher = vi.fn<typeof fetch>(async (input, init = {}) => {
+    const url = new URL(String(input));
+    expect(url.origin).toBe("https://ark.cn-beijing.volces.com");
+    expect(new Headers(init.headers).get("Authorization")).toMatch(
+      /^Bearer test-/,
     );
-    vi.stubGlobal("window", {
-      webkit: { messageHandlers: { museMobileSession: { postMessage } } },
-    });
-    return { temporary, secure, postMessage };
-  }
-  it("restores the iOS session from secure storage and isolates it by service URL", async () => {
-    const { temporary, secure, postMessage } = nativeFixture();
-    const a = new Client({ baseUrl: "https://a.example", token: "" });
-    const b = new Client({ baseUrl: "https://b.example", token: "" });
-    await a.setSSOToken("app-session-only");
-    expect(secure.get("https://a.example")).toBe("app-session-only");
-    temporary.clear();
-    await b.restoreSSOToken();
-    expect(b.ssoToken()).toBe("");
-    await a.restoreSSOToken();
-    expect(a.ssoToken()).toBe("app-session-only");
-    await a.setSSOToken("");
-    temporary.clear();
-    await a.restoreSSOToken();
-    expect(a.ssoToken()).toBe("");
-    expect(postMessage).toHaveBeenCalledWith({
-      operation: "write",
-      endpoint: "https://a.example",
-      token: "app-session-only",
-    });
-  });
-  it("a secure-storage failure neither pretends the login was saved nor clears the existing session", async () => {
-    const { temporary, postMessage } = nativeFixture();
-    temporary.set("muse.sso:https://a.example", "previous-session");
-    postMessage.mockRejectedValue(new Error("locked"));
-    const client = new Client({ baseUrl: "https://a.example", token: "" });
-    await expect(client.restoreSSOToken()).rejects.toThrow("secure storage");
-    await expect(client.setSSOToken("new-session")).rejects.toThrow(
-      "secure storage",
-    );
-    expect(client.ssoToken()).toBe("previous-session");
-  });
-  it("can retry when secure storage never responds instead of staying forever on the launch screen", async () => {
-    vi.useFakeTimers();
-    const { postMessage } = nativeFixture();
-    postMessage.mockImplementation(() => new Promise<never>(() => {}));
-    const pending = expect(
-      new Client({ baseUrl: "https://a.example", token: "" }).restoreSSOToken(),
-    ).rejects.toThrow("secure storage");
-    await vi.advanceTimersByTimeAsync(5000);
-    await pending;
-  });
-  it("same-origin login on Mac still uses the native desktop session bridge", async () => {
-    nativeFixture();
-    const postMessage = vi.fn();
-    vi.stubGlobal("window", {
-      webkit: { messageHandlers: { museSession: { postMessage } } },
-    });
-    vi.stubGlobal("location", { origin: "http://127.0.0.1:4311" });
-    await new Client({ baseUrl: "", token: "" }).setSSOToken("desktop-session");
-    expect(postMessage).toHaveBeenCalledWith("desktop-session");
-  });
-  it("does not send duplicate prepare requests once the workspace is ready", async () => {
-    const fetcher = vi
-      .fn()
-      .mockResolvedValue(Response.json({ state: "ready", message: "ready" }));
-    vi.stubGlobal("fetch", fetcher);
-    await new Client({
-      baseUrl: "https://muse.example",
-      token: "",
-    }).prepareWorkspace();
-    expect(fetcher).toHaveBeenCalledTimes(1);
-    expect(fetcher.mock.calls[0][0]).toBe("https://muse.example/api/workspace");
-  });
-  it("automatic prepare sends only the action and never requires the client to pass an agent or environment id", async () => {
-    const fetcher = vi
-      .fn()
-      .mockResolvedValueOnce(Response.json({ state: "idle", message: "idle" }))
-      .mockResolvedValueOnce(
-        Response.json({ state: "ready", message: "ready" }),
+    const path = url.pathname.slice("/api/v3".length);
+    if (path === "/models")
+      return Response.json({
+        data: [
+          {
+            id: "model-tools",
+            task_type: ["TextGeneration"],
+            features: { tools: { function_calling: true } },
+          },
+        ],
+      });
+    if (path.endsWith("/events/stream"))
+      return new Response(
+        'data: {"id":"live","type":"agent.message"}\n\ndata: [DONE]\n\n',
+        { headers: { "Content-Type": "text/event-stream" } },
       );
-    vi.stubGlobal("fetch", fetcher);
-    await new Client({
-      baseUrl: "https://muse.example",
-      token: "",
-    }).prepareWorkspace();
-    expect(fetcher.mock.calls[1][1].body).toBe("{}");
-    expect(fetcher.mock.calls[1][0]).toBe(
-      "https://muse.example/api/workspace/prepare",
+    if (path.endsWith("/events")) {
+      if (init.method === "POST") {
+        const incoming = JSON.parse(String(init.body)).events;
+        events.push(...incoming);
+        return Response.json({ data: incoming });
+      }
+      return Response.json({ data: events });
+    }
+    const [, group, id] = path.split("/");
+    if (!resources[group]) return Response.json({ data: [] });
+    if (init.method === "POST") {
+      const body = JSON.parse(String(init.body));
+      if (id) {
+        Object.assign(
+          resources[group].find((r) => r.id === id)!,
+          body,
+        );
+        return Response.json({ ok: true });
+      }
+      const resource = {
+        ...body,
+        id: `${group}-${resources[group].length + 1}`,
+        version: 1,
+        status: "idle",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      resources[group].push(resource);
+      return Response.json(resource);
+    }
+    if (id)
+      return resources[group].some((r) => r.id === id)
+        ? Response.json(resources[group].find((r) => r.id === id))
+        : Response.json({}, { status: 404 });
+    return Response.json({ data: resources[group] });
+  });
+  const client = new Client({ vault, database: db, fetcher });
+  const login = () =>
+    client.auth("api-key", { apiKey: key, project: "", confirm: true });
+  return { client, vault, db, resources, events, fetcher, login };
+}
+function pending(): AgentEvent[] {
+  return [
+    {
+      id: "tool",
+      type: "agent.tool_use",
+      name: "web_fetch",
+      evaluated_permission: "ask",
+      session_thread_id: "thread",
+    },
+    {
+      id: "idle",
+      type: "session.status_idle",
+      stop_reason: { type: "requires_action", event_ids: ["tool"] },
+    },
+  ];
+}
+describe("Direct MA client", () => {
+  it.each(
+    operations.filter(
+      (op) =>
+        op.transport === "rest" &&
+        !["UploadFile", "CreateSkill", "StreamSessionEvents"].includes(op.id),
+    ),
+  )("calls $id directly using the catalog method and fields", async (op) => {
+    const f = fixture();
+    await f.login();
+    f.fetcher.mockImplementation(async () => Response.json({ data: [] }));
+    const params = Object.fromEntries(
+      op.fields
+        .filter((field) => field.in === "path")
+        .map((field) => [field.name, "resource-123"]),
+    );
+    const body = Object.fromEntries(
+      op.fields
+        .filter((field) => field.in === "body" && field.required)
+        .map((field) => [
+          field.name,
+          field.type === "array" ? [] : field.type === "integer" ? 1 : "test",
+        ]),
+    );
+    const query = op.fields.some(
+      (field) => field.name === "page" && field.in === "query",
+    )
+      ? { page: "opaque+/=" }
+      : {};
+    const input = { params, body, query, confirm: true };
+    await f.client.ma(op.id, input);
+    const [url, request] = f.fetcher.mock.calls.at(-1)!;
+    expect(url).toBe(ARK_BASE_URL + buildRequest(op, input));
+    expect(request?.method).toBe(op.method);
+    expect(request?.body).toBe(
+      op.method === "POST" ? JSON.stringify(body) : undefined,
     );
   });
-  it("requires sign-in before preparing or creating a conversation", async () => {
-    const fetcher = vi.fn().mockResolvedValue(
-      Response.json({
-        state: "disconnected",
-        message: "Connect to Ark MA first.",
-      }),
+  it("has no backend dependency while signed out", async () => {
+    const f = fixture();
+    await f.client.restore();
+    expect((await f.client.config()).mode).toBe("disconnected");
+    expect((await f.client.sessions()).data).toEqual([]);
+    expect((await f.client.goals()).data).toEqual([]);
+    expect((await f.client.library()).data).toEqual([]);
+    await expect(f.client.prepareWorkspace()).rejects.toThrow(
+      "Connect to Ark MA",
     );
-    vi.stubGlobal("fetch", fetcher);
     await expect(
-      new Client({
-        baseUrl: "https://muse.example",
-        token: "",
-      }).prepareWorkspace(),
-    ).rejects.toThrow("Connect to Ark MA first.");
-    expect(fetcher).toHaveBeenCalledTimes(1);
+      f.client.send("session", { type: "user.message", text: "hello" }),
+    ).rejects.toThrow("Connect to Ark MA");
+    expect(f.fetcher).not.toHaveBeenCalled();
   });
-  it("isolates the SSO token by service URL and never puts it in the URL", async () => {
-    const values = new Map<string, string>();
-    vi.stubGlobal("sessionStorage", {
-      getItem: (key: string) => values.get(key),
-      setItem: (key: string, value: string) => values.set(key, value),
-      removeItem: (key: string) => values.delete(key),
+  it("verifies keys directly and restores them without app session tokens", async () => {
+    const f = fixture();
+    await f.login();
+    expect(f.fetcher.mock.calls[0][0]).toBe(`${ARK_BASE_URL}/agents?limit=1`);
+    const next = new Client({
+      vault: f.vault,
+      database: f.db,
+      fetcher: f.fetcher,
     });
-    vi.stubGlobal("location", { origin: "https://local.example" });
-    const a = new Client({ baseUrl: "https://a.example", token: "" });
-    const b = new Client({ baseUrl: "https://b.example", token: "" });
-    await a.setSSOToken("session-secret");
-    expect(b.ssoToken()).toBe("");
-    const fetcher = vi
-      .fn()
-      .mockImplementation(async () => Response.json({ data: [] }));
-    vi.stubGlobal("fetch", fetcher);
-    await a.sessions();
-    await b.sessions();
-    expect(fetcher.mock.calls[0][1].headers["X-Muse-Session"]).toBe(
-      "session-secret",
-    );
-    expect(fetcher.mock.calls[1][1].headers["X-Muse-Session"]).toBeUndefined();
-    expect(fetcher.mock.calls[0][0]).not.toContain("session-secret");
-    await a.setSSOToken("");
-    expect(a.ssoToken()).toBe("");
+    await next.restore();
+    expect(await next.auth("status")).toMatchObject({
+      ready: true,
+      method: "api_key",
+    });
+    await next.auth("logout", {});
+    expect(await f.vault.read()).toBe("");
   });
-  it("only allows HTTPS remote URLs and local development URLs", () => {
-    expect(validateEndpoint("")).toBe("");
-    expect(validateEndpoint("https://muse.example/")).toBe(
-      "https://muse.example",
+  it("does not save invalid keys or hide upstream failures", async () => {
+    const f = fixture();
+    f.fetcher.mockResolvedValueOnce(
+      Response.json(
+        { error: { code: "AuthenticationError" } },
+        { status: 401 },
+      ),
     );
-    expect(validateEndpoint("http://127.0.0.1:4311")).toBe(
-      "http://127.0.0.1:4311",
-    );
-    for (const url of [
-      "http://remote.example",
-      "https://muse.example/api",
-      "https://user:pass@muse.example",
-      "https://muse.example?token=secret",
-    ])
-      expect(() => validateEndpoint(url)).toThrow();
+    await expect(f.login()).rejects.toThrow("HTTP 401");
+    expect(await f.vault.read()).toBe("");
+    expect(f.client.signedIn()).toBe(false);
   });
-  it("collects history via pagination with the token only in the header", async () => {
-    const fetcher = vi
-      .fn()
+  it("rejects switching identities without signing out", async () => {
+    const f = fixture();
+    await f.login();
+    await expect(f.login()).rejects.toThrow("Sign out");
+  });
+  it("does not claim login success when secure storage fails", async () => {
+    const f = fixture();
+    vi.mocked(f.vault.write).mockRejectedValue(new Error("locked"));
+    await expect(f.login()).rejects.toThrow("locked");
+    expect(f.client.signedIn()).toBe(false);
+  });
+  it("creates and reuses automatic workspaces with Chrome/CDP/Lark and always_allow", async () => {
+    const f = fixture();
+    await f.login();
+    await f.client.prepareWorkspace();
+    expect(await f.client.workspaceStatus()).toMatchObject({ state: "ready" });
+    expect(f.resources.agents[0]).toMatchObject({
+      tools: [
+        { default_config: { permission_policy: { type: "always_allow" } } },
+      ],
+    });
+    expect(JSON.stringify(f.resources.environments[0])).toContain("Chrome");
+    expect(JSON.stringify(f.resources.agents[0])).toContain("CDP");
+    expect(
+      f.fetcher.mock.calls.some(([url]) => String(url).includes("/models")),
+    ).toBe(false);
+    await f.client.prepareWorkspace();
+    expect(f.resources.agents).toHaveLength(1);
+    expect(f.resources.environments).toHaveLength(1);
+  });
+  it("recovers owned resources on another device without creating duplicates", async () => {
+    const f = fixture();
+    await f.login();
+    await f.client.prepareWorkspace();
+    const next = new Client({
+      vault: f.vault,
+      database: new LocalDatabase(`other-${uuid()}`),
+      fetcher: f.fetcher,
+    });
+    await next.restore();
+    await next.prepareWorkspace();
+    expect(f.resources.agents).toHaveLength(1);
+    expect(f.resources.environments).toHaveLength(1);
+  });
+  it("does not adopt a similarly named foreign resource", async () => {
+    const f = fixture();
+    f.resources.environments.push({
+      id: "foreign",
+      name: "open-muse-environment",
+      metadata: { open_muse_workspace: "someone-else" },
+    });
+    await f.login();
+    await f.client.prepareWorkspace();
+    expect(f.resources.environments).toHaveLength(2);
+  });
+  it("records uncertain creation before sending and never blindly retries", async () => {
+    const f = fixture();
+    await f.login();
+    const base = f.fetcher.getMockImplementation()!;
+    f.fetcher.mockImplementation(async (url, init) => {
+      if (String(url).endsWith("/environments") && init?.method === "POST")
+        throw new Error("lost response");
+      return base(url, init);
+    });
+    await expect(f.client.prepareWorkspace()).rejects.toThrow("lost response");
+    await expect(f.client.prepareWorkspace()).rejects.toThrow("unconfirmed");
+    expect(
+      f.fetcher.mock.calls.filter(
+        ([url, init]) =>
+          String(url).endsWith("/environments") && init?.method === "POST",
+      ),
+    ).toHaveLength(1);
+  });
+  it("persists real replies locally, preserves context history and isolates account data", async () => {
+    const f = fixture();
+    await f.login();
+    await f.client.prepareWorkspace();
+    const session = await f.client.create("A real task", "research");
+    await f.client.send(session.id, { type: "user.message", text: "hello" });
+    f.events.push({
+      id: "reply",
+      type: "agent.message",
+      content: [{ type: "text", text: "42" }],
+    });
+    const saved = await f.client.saveReply(session.id, "reply");
+    expect(saved.text).toBe("42");
+    expect(await f.client.events(session.id)).toHaveLength(2);
+    expect((await f.client.sessions()).data[0].category).toBe("research");
+    await Promise.all([
+      f.client.saveReply(session.id, "reply"),
+      f.client.saveReply(session.id, "reply"),
+    ]);
+    expect((await f.client.library()).data).toHaveLength(1);
+    const goal = await f.client.createGoal("Plan", "Details");
+    await f.client.updateGoal(goal.id, {
+      status: "completed",
+      session_id: session.id,
+    });
+    expect((await f.client.goals()).data[0].status).toBe("completed");
+    await f.client.auth("logout", {});
+    await f.client.auth("api-key", {
+      apiKey: "test-other-account-key-123456789",
+      confirm: true,
+    });
+    expect((await f.client.library()).data).toHaveLength(0);
+    expect((await f.client.goals()).data).toHaveLength(0);
+    await f.client.auth("logout", {});
+    await f.login();
+    expect((await f.client.library()).data).toHaveLength(1);
+  });
+  it("allows concurrent local updates without losing goals", async () => {
+    const f = fixture();
+    await f.login();
+    await Promise.all(
+      Array.from({ length: 10 }, (_, i) =>
+        f.client.createGoal(`Goal ${i}`, ""),
+      ),
+    );
+    expect((await f.client.goals()).data).toHaveLength(10);
+  });
+  it("only auto-approves pending safe reads and preserves a local audit marker", async () => {
+    const f = fixture();
+    await f.login();
+    f.events.push(...pending());
+    const body = {
+      type: "user.tool_confirmation",
+      tool_use_id: "tool",
+      result: "allow",
+      automatic: true,
+    };
+    const result = await f.client.send("session", body);
+    expect(result.data[0]).toMatchObject({
+      session_thread_id: "thread",
+      approval_source: "automatic",
+    });
+    const sent = JSON.parse(
+      String(
+        f.fetcher.mock.calls.find(([, init]) => init?.method === "POST")![1]
+          ?.body,
+      ),
+    );
+    expect(sent.events[0].approval_source).toBeUndefined();
+    await f.client.send("session", body);
+    expect(
+      f.fetcher.mock.calls.filter(([, init]) => init?.method === "POST"),
+    ).toHaveLength(1);
+  });
+  it("does not auto-approve unsafe tools or overwrite an upstream denial", async () => {
+    const f = fixture();
+    await f.login();
+    f.events.push(...pending());
+    f.events[0].name = "bash";
+    const body = {
+      type: "user.tool_confirmation",
+      tool_use_id: "tool",
+      result: "allow",
+      automatic: true,
+    };
+    await expect(f.client.send("session", body)).rejects.toThrow(
+      "manual approval",
+    );
+    f.events.push({
+      id: "denial",
+      type: "user.tool_confirmation",
+      tool_use_id: "tool",
+      result: "deny",
+    });
+    expect((await f.client.send("session", body)).data[0].result).toBe("deny");
+    expect(
+      f.fetcher.mock.calls.filter(([, init]) => init?.method === "POST"),
+    ).toHaveLength(0);
+  });
+  it("does not repeat an uncertain auto-approval after relaunch", async () => {
+    const f = fixture();
+    await f.login();
+    f.events.push(...pending());
+    const base = f.fetcher.getMockImplementation()!;
+    f.fetcher.mockImplementation((url, init) =>
+      init?.method === "POST"
+        ? Promise.reject(new Error("lost"))
+        : base(url, init),
+    );
+    const body = {
+      type: "user.tool_confirmation",
+      tool_use_id: "tool",
+      result: "allow",
+      automatic: true,
+    };
+    await expect(f.client.send("session", body)).rejects.toThrow("lost");
+    const next = new Client({
+      vault: f.vault,
+      database: f.db,
+      fetcher: f.fetcher,
+    });
+    await next.restore();
+    await expect(next.send("session", body)).rejects.toThrow("unconfirmed");
+    expect(
+      f.fetcher.mock.calls.filter(([, init]) => init?.method === "POST"),
+    ).toHaveLength(1);
+  });
+  it("reads streaming events directly from Ark", async () => {
+    const f = fixture();
+    await f.login();
+    const events: AgentEvent[] = [];
+    const connected = vi.fn();
+    await f.client.stream(
+      "session",
+      new AbortController().signal,
+      (e) => events.push(e),
+      connected,
+    );
+    expect(connected).toHaveBeenCalledOnce();
+    expect(events[0].id).toBe("live");
+    expect(f.fetcher.mock.calls.at(-1)![0]).toBe(
+      `${ARK_BASE_URL}/sessions/session/events/stream`,
+    );
+  });
+  it("paginates directly and rejects repeated cursors", async () => {
+    const f = fixture();
+    await f.login();
+    f.fetcher
       .mockResolvedValueOnce(
         Response.json({
-          data: [{ id: "1", type: "user.message" }],
+          data: [{ id: "1", type: "agent.message" }],
           next_page: "opaque+/=",
         }),
       )
       .mockResolvedValueOnce(
         Response.json({ data: [{ id: "2", type: "agent.message" }] }),
       );
-    vi.stubGlobal("fetch", fetcher);
-    const result = await new Client({
-      baseUrl: "https://muse.example",
-      token: "private",
-    }).events("session");
-    expect(result).toHaveLength(2);
-    expect(fetcher.mock.calls[1][0]).toContain("page=opaque%2B%2F%3D");
-    expect(fetcher.mock.calls[0][0]).not.toContain("private");
-    expect(fetcher.mock.calls[0][1].headers.Authorization).toBe(
-      "Bearer private",
+    expect(await f.client.events("session")).toHaveLength(2);
+    expect(f.fetcher.mock.calls.at(-1)![0]).toContain("page=opaque%2B%2F%3D");
+    f.fetcher.mockImplementation(async () =>
+      Response.json({ data: [], next_page: "repeat" }),
     );
+    await expect(f.client.events("session")).rejects.toThrow("pagination");
   });
-  it("stops when a duplicate pagination cursor is found instead of requesting forever", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi
-        .fn()
-        .mockImplementation(async () =>
-          Response.json({ data: [], next_page: "same" }),
-        ),
+  it("keeps failures real without manufacturing assistant replies", async () => {
+    const f = fixture();
+    await f.login();
+    f.fetcher.mockResolvedValue(Response.json({}, { status: 500 }));
+    await expect(
+      f.client.send("session", { type: "user.message", text: "hello" }),
+    ).rejects.toThrow("HTTP 500");
+    expect(f.events).toEqual([]);
+  });
+  it("retains operation validation and control-plane authorization requirements", async () => {
+    const f = fixture();
+    await f.login();
+    await expect(f.client.ma("Unregistered", {})).rejects.toThrow(
+      "Unregistered",
     );
     await expect(
-      new Client({ baseUrl: "", token: "" }).events("session"),
-    ).rejects.toThrow("paging through history");
+      f.client.ma("DeleteAgent", { params: { agent_id: "agent" } }),
+    ).rejects.toThrow("Confirm");
+    const top = operations.find(
+      (o) => o.transport === "top" && o.id.startsWith("List"),
+    )!;
+    await expect(f.client.ma(top.id)).rejects.toThrow("SSO");
+    expect(await f.client.ma("ListAgents")).toEqual({ data: [] });
   });
-  it("keeps the timeout guard even when an external abort signal is present", async () => {
-    vi.useFakeTimers();
-    vi.stubGlobal(
-      "fetch",
-      (_url: string, init: RequestInit) =>
-        new Promise((_resolve, reject) =>
-          init.signal!.addEventListener("abort", () =>
-            reject(new Error("aborted")),
-          ),
-        ),
+  it("uploads files directly as multipart, never through an app server", async () => {
+    const f = fixture();
+    await f.login();
+    await f.client.ma("UploadFile", {
+      body: { purpose: "user_data" },
+      file: { name: "hello.txt", base64: btoa("hello") },
+      confirm: true,
+    });
+    const [, init] = f.fetcher.mock.calls.at(-1)!;
+    expect(init?.body).toBeInstanceOf(FormData);
+    expect(new Headers(init?.headers).get("Content-Type")).toBeNull();
+  });
+});
+
+describe("Direct credentials, signing and origin boundaries", () => {
+  it.each([false, true])("matches the official V4 signer (IAM=%s)", (iam) => {
+    const c = {
+      accessKeyId: "test-ak",
+      secretKey: "test-sk",
+      sessionToken: "test-sts",
+    };
+    const host = iam ? "iam.volcengineapi.com" : "open.volcengineapi.com";
+    const params = { Action: "ListProjects", Version: "2021-08-01" };
+    const body = JSON.stringify({ Limit: 100 });
+    const request = {
+      region: iam ? "cn-north-1" : "cn-beijing",
+      method: "POST",
+      pathname: "/",
+      params,
+      headers: { Host: host, "Content-Type": "application/json" } as Record<
+        string,
+        string
+      >,
+      body,
+    };
+    const date = new Date("2026-09-30T00:00:00Z");
+    new Signer(request, iam ? "iam" : "ark").addAuthorization(c, date);
+    const signed = signAction(c, host, params, body, iam, date);
+    expect(signed.authorization).toBe(request.headers.Authorization);
+    expect(signed.host).toBeUndefined();
+  });
+  it("uses local PKCE state, rejects mismatches, and accepts bare authorization codes", () => {
+    const a = beginLogin();
+    const b = beginLogin();
+    expect(a.state).not.toBe(b.state);
+    expect(a.verifier).not.toBe(b.verifier);
+    expect(new URL(a.url).searchParams.get("code_challenge_method")).toBe(
+      "S256",
     );
-    const client = new Client({ baseUrl: "", token: "" });
-    const request = expect(
-      client.session("session", new AbortController().signal),
-    ).rejects.toThrow("Request timed out");
-    await vi.advanceTimersByTimeAsync(35000);
-    await request;
+    expect(extractCode("bare-code", a.state)).toBe("bare-code");
+    expect(() => extractCode(`code=secret&state=${b.state}`, a.state)).toThrow(
+      "state mismatch",
+    );
+  });
+  it("exchanges SSO codes directly without a client secret or a backend", async () => {
+    const fetcher = vi.fn<typeof fetch>(async () =>
+      Response.json({
+        access_token: JSON.stringify({
+          access_key_id: "ak",
+          secret_access_key: "sk",
+          session_token: "sts",
+        }),
+        refresh_token: "refresh",
+      }),
+    );
+    const c = await new OAuthProvider(fetcher).exchange(
+      "authorization-code",
+      "verifier",
+    );
+    expect(c.accessKeyId).toBe("ak");
+    expect(fetcher.mock.calls[0][0]).toBe(
+      "https://signin.volcengine.com/authorize/oauth/token",
+    );
+    expect(String(fetcher.mock.calls[0][1]?.body)).not.toContain(
+      "client_secret",
+    );
+  });
+  it("keeps browser secrets only in session storage", async () => {
+    const memory = new Map<string, string>();
+    vi.stubGlobal("sessionStorage", {
+      getItem: (key: string) => memory.get(key),
+      setItem: (key: string, value: string) => memory.set(key, value),
+      removeItem: (key: string) => memory.delete(key),
+    });
+    const local = { setItem: vi.fn() };
+    vi.stubGlobal("localStorage", local);
+    await credentials.write("test-secret");
+    expect(await credentials.read()).toBe("test-secret");
+    expect(local.setItem).not.toHaveBeenCalled();
+    await credentials.write("");
+    expect(await credentials.read()).toBe("");
+  });
+  it("uses native secure storage with an acknowledged write and fails closed", async () => {
+    const postMessage = vi.fn(async ({ operation }: { operation: string }) =>
+      operation === "read" ? "saved" : true,
+    );
+    vi.stubGlobal("webkit", {
+      messageHandlers: { museCredentials: { postMessage } },
+    });
+    expect(await credentials.read()).toBe("saved");
+    await credentials.write("new");
+    expect(postMessage).toHaveBeenLastCalledWith({
+      operation: "write",
+      value: "new",
+    });
+    postMessage.mockRejectedValue(new Error("locked"));
+    await expect(credentials.read()).rejects.toThrow("secure storage");
+  });
+  it("times out a stalled native credential bridge", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("webkit", {
+      messageHandlers: {
+        museCredentials: { postMessage: () => new Promise(() => {}) },
+      },
+    });
+    const pending = expect(credentials.read()).rejects.toThrow(
+      "secure storage",
+    );
+    await vi.advanceTimersByTimeAsync(5000);
+    await pending;
+  });
+  it("never sends credentials to a proxy, redirect, localhost, or arbitrary host", async () => {
+    const fetcher = vi.fn().mockResolvedValue(Response.json({}));
+    vi.stubGlobal("fetch", fetcher);
+    for (const url of [
+      "http://127.0.0.1:4311/api/sessions",
+      "https://muse.example/api",
+      "https://evil.example",
+    ])
+      await expect(directFetch(url)).rejects.toThrow("allowed Volcano");
+    await directFetch(`${ARK_BASE_URL}/models`);
+    expect(fetcher).toHaveBeenCalledOnce();
+    expect(fetcher.mock.calls[0][1]).toMatchObject({
+      credentials: "omit",
+      cache: "no-store",
+      redirect: "error",
+    });
+  });
+  it("keeps workspace identity compatible with the prior mapping without storing raw keys", () => {
+    const hash = digest(JSON.stringify([ARK_BASE_URL, key, ""]));
+    expect(hash).toHaveLength(64);
+    expect(hash).not.toContain(key);
   });
 });

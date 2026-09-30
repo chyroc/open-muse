@@ -2,18 +2,18 @@ import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, ArkClient } from "../server/ark";
-import { loadConfig } from "../server/config";
-import { Store } from "../server/store";
-import { chooseModel, Workspaces, workspaceKey } from "../server/workspace";
-import type { Runtime } from "../server/ma";
+import { ApiError, ArkClient } from "./legacy-server/ark";
+import { loadConfig } from "./legacy-server/config";
+import { Store } from "./legacy-server/store";
+import { chooseModel, Workspaces, workspaceKey } from "./legacy-server/workspace";
+import type { Runtime } from "./legacy-server/ma";
 import request from "supertest";
-import { createApp } from "../server/app";
+import { createApp } from "./legacy-server/app";
 import {
   environmentWithTools,
   systemWithTools,
   type EnvironmentConfig,
-} from "../server/tooling";
+} from "./legacy-server/tooling";
 
 let dir: string;
 let workspaces: Workspaces;

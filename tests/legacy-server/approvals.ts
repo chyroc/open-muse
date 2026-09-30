@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { AgentEvent } from "../shared/types";
+import type { AgentEvent } from "../../shared/types";
 import type { Store } from "./store";
 
 export function approvalKey(sessionId: string, toolId: string) {

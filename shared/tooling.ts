@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { digest } from "./crypto";
 import { browserDriver, chromeDownload } from "./browser-tooling";
 
 // Only used to recognize package entries from the earlier managed setup.
@@ -219,18 +219,16 @@ cat /opt/open-muse/status.json
   .replace("__CHROME_DOWNLOAD__", chromeDownload)
   .replace("__APT_TOOLS__", aptTools.map((name) => `'${name}'`).join(" "));
 
-export const toolingRevision = createHash("sha256")
-  .update(
-    JSON.stringify({
-      aptTools,
-      installer,
-      toolingCheck,
-      browserDriver,
-      larkSkillIndex,
-      larkBootstrap,
-    }),
-  )
-  .digest("hex");
+export const toolingRevision = digest(
+  JSON.stringify({
+    aptTools,
+    installer,
+    toolingCheck,
+    browserDriver,
+    larkSkillIndex,
+    larkBootstrap,
+  }),
+);
 const setupBegin = "# BEGIN OPEN MUSE TOOLING";
 const setupEnd = "# END OPEN MUSE TOOLING";
 export const toolingSetup =

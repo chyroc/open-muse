@@ -1,3 +1,4 @@
+import { uuid } from "../shared/crypto";
 import {
   useCallback,
   useEffect,
@@ -501,8 +502,9 @@ export function GoalsPage({
         </div>
       )}
       <p className="page-note">
-        Goals and steps are saved in the current service space. Execution starts
-        from a conversation and never runs on an automatic schedule.
+        Goals and steps are saved on this device for the current Ark connection.
+        Execution starts from a conversation and never runs on an automatic
+        schedule.
       </p>
       {create && (
         <Sheet
@@ -606,7 +608,7 @@ export function GoalsPage({
                   steps: [
                     ...current.steps,
                     {
-                      id: crypto.randomUUID(),
+                      id: uuid(),
                       title: step.trim(),
                       done: false,
                     },

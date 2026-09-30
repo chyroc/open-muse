@@ -11,6 +11,5 @@
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
 <key>NSHighResolutionCapable</key><true/>
-<key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
 <key>NSHumanReadableCopyright</key><string>Open Muse · Independent Managed Agents client</string>
 </dict></plist>

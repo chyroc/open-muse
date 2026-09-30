@@ -1,287 +1,377 @@
-import type {
-  AgentEvent,
-  AppConfig,
-  Category,
-  Page,
-  Session,
-  WorkspaceStatus,
-  Goal,
-  LibraryItem,
-} from "../shared/types";
+import { z } from "zod";
+import { ArkClient, ApiError } from "../shared/ark";
+import { digest, uuid } from "../shared/crypto";
 import { readSSE } from "../shared/sse";
+import { boundedSignal } from "../shared/abort";
+import { canAutoApprove } from "../shared/approval-policy";
+import {
+  eventText,
+  pendingPermissions,
+  type AgentEvent,
+  type AppConfig,
+  type Category,
+  type Goal,
+  type LibraryItem,
+  type Page,
+  type Session,
+  type WorkspaceStatus,
+} from "../shared/types";
+import { DirectAuth } from "./direct/auth";
+import { LocalDatabase, type CredentialStore } from "./direct/storage";
+import { ARK_BASE_URL, directFetch } from "./direct/transport";
+import { DirectWorkspace } from "./direct/workspace";
+import { executeOperation } from "./direct/operations";
 
-export interface Connection {
-  baseUrl: string;
-  token: string;
-}
-export function savedConnection(): Connection {
-  return {
-    baseUrl: localStorage.getItem("muse.endpoint") ?? "",
-    token: sessionStorage.getItem("muse.access") ?? "",
-  };
-}
-export function saveConnection(connection: Connection) {
-  localStorage.setItem("muse.endpoint", connection.baseUrl);
-  sessionStorage.setItem("muse.access", connection.token);
-}
-export function validateEndpoint(input: string) {
-  if (!input.trim()) return "";
-  const url = new URL(input.trim());
-  if (
-    url.username ||
-    url.password ||
-    url.search ||
-    url.hash ||
-    url.pathname !== "/"
-  )
-    throw new Error(
-      "Enter the service root URL, without any path, credentials, or query parameters.",
-    );
-  if (
-    url.protocol !== "https:" &&
-    !(
-      url.protocol === "http:" &&
-      ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
-    )
+const titleInput = z.string().trim().min(1).max(160);
+const messageInput = z.discriminatedUnion("type", [
+  z
+    .object({
+      type: z.literal("user.message"),
+      text: z.string().trim().min(1).max(16000),
+    })
+    .strict(),
+  z.object({ type: z.literal("user.interrupt") }).strict(),
+  z
+    .object({
+      type: z.literal("user.tool_confirmation"),
+      tool_use_id: z.string().min(1).max(200),
+      result: z.enum(["allow", "deny"]),
+      automatic: z.literal(true).optional(),
+    })
+    .strict(),
+]);
+type Approval = {
+  state: "sending" | "failed" | "confirmed";
+  event: AgentEvent;
+};
+type Runtime = {
+  key: string;
+  ark: ArkClient;
+  workspace: DirectWorkspace;
+  abort: AbortController;
+};
+const validId = (id: string) => {
+  if (!/^[\w-]{1,200}$/.test(id))
+    throw new ApiError(400, "Invalid resource ID.");
+  return encodeURIComponent(id);
+};
+
+// This client is the application runtime on every platform. Its only network
+// dependencies are public Volcano APIs; goals, saved replies and mappings are local.
+export class Client {
+  readonly identity: DirectAuth;
+  private db: LocalDatabase;
+  private fetcher: typeof fetch;
+  private runtime?: Runtime;
+  private sends = new Set<string>();
+  constructor(
+    options: {
+      vault?: CredentialStore;
+      database?: LocalDatabase;
+      fetcher?: typeof fetch;
+    } = {},
   ) {
-    throw new Error(
-      "Remote services must use HTTPS; only local development addresses allow HTTP.",
-    );
+    this.db = options.database ?? new LocalDatabase();
+    this.fetcher = options.fetcher ?? directFetch;
+    this.identity = new DirectAuth(options.vault, this.fetcher);
   }
-  return url.origin;
-}
-
-function mobileSessionBridge() {
-  if (typeof window === "undefined") return undefined;
-  return (
-    window as unknown as {
-      webkit?: {
-        messageHandlers?: {
-          museMobileSession?: {
-            postMessage: (value: {
-              operation: "read" | "write";
-              endpoint: string;
-              token?: string;
-            }) => Promise<unknown>;
-          };
-        };
+  restore() {
+    return this.identity.restore();
+  }
+  signedIn() {
+    return Boolean(this.identity.value);
+  }
+  async auth<T = unknown>(path: string, body?: object): Promise<T> {
+    let result: unknown;
+    try {
+      result = await this.identity.execute(path, body);
+    } catch (error) {
+      if (error instanceof z.ZodError)
+        throw new ApiError(
+          400,
+          "Check the API key, project name, and authorization code format.",
+        );
+      throw error;
+    }
+    if (path === "logout") {
+      this.runtime?.abort.abort();
+      this.runtime?.workspace.cancel();
+      this.runtime = undefined;
+    }
+    return result as T;
+  }
+  private context() {
+    const c = this.identity.value;
+    if (!c?.apiKey)
+      throw new ApiError(
+        401,
+        "Connect to Ark MA with SSO or an API key in Settings first.",
+      );
+    const key = digest(
+      JSON.stringify([ARK_BASE_URL, c.apiKey, c.project ?? ""]),
+    );
+    if (this.runtime?.key !== key) {
+      this.runtime?.abort.abort();
+      this.runtime?.workspace.cancel();
+      const abort = new AbortController();
+      const ark = new ArkClient(
+        {
+          arkBaseUrl: ARK_BASE_URL,
+          arkKey: c.apiKey,
+          project: c.project ?? "",
+        },
+        this.fetcher,
+        abort.signal,
+      );
+      this.runtime = {
+        key,
+        ark,
+        abort,
+        workspace: new DirectWorkspace(key, ark, this.db),
       };
     }
-  ).webkit?.messageHandlers?.museMobileSession;
-}
-
-async function nativeSessionRequest(input: {
-  operation: "read" | "write";
-  endpoint: string;
-  token?: string;
-}) {
-  const bridge = mobileSessionBridge();
-  if (!bridge || !input.endpoint) return undefined;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      bridge.postMessage(input),
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error("timeout")), 5000);
-      }),
-    ]);
-  } catch {
-    throw new Error(
-      "Couldn't access iOS secure storage. Unlock your device and try again; your sign-in state has not been restored or saved.",
-    );
-  } finally {
-    clearTimeout(timer);
+    return this.runtime;
   }
-}
-
-export class Client {
-  constructor(public connection: Connection) {}
-  private headers(json = false) {
-    const sso = this.ssoToken();
+  async config(): Promise<AppConfig> {
     return {
-      ...(json ? { "Content-Type": "application/json" } : {}),
-      ...(this.connection.token
-        ? { Authorization: `Bearer ${this.connection.token}` }
-        : {}),
-      ...(sso ? { "X-Muse-Session": sso } : {}),
+      mode: this.identity.value?.apiKey ? "ark" : "disconnected",
+      authRequired: false,
+      agentConfigured: (await this.workspaceStatus()).state === "ready",
     };
   }
-  private sessionKey() {
-    return `muse.sso:${this.connection.baseUrl || location.origin}`;
-  }
-  ssoToken() {
-    return typeof sessionStorage === "undefined"
-      ? ""
-      : (sessionStorage.getItem(this.sessionKey()) ?? "");
-  }
-  async restoreSSOToken() {
-    const token = await nativeSessionRequest({
-      operation: "read",
-      endpoint: this.connection.baseUrl,
-    });
-    if (typeof token === "string") {
-      if (token) sessionStorage.setItem(this.sessionKey(), token);
-      else sessionStorage.removeItem(this.sessionKey());
-    }
-  }
-  async setSSOToken(token: string) {
-    await nativeSessionRequest({
-      operation: "write",
-      endpoint: this.connection.baseUrl,
-      token,
-    });
-    if (token) sessionStorage.setItem(this.sessionKey(), token);
-    else sessionStorage.removeItem(this.sessionKey());
-    if (!this.connection.baseUrl && typeof window !== "undefined") {
-      const native = window as unknown as {
-        webkit?: {
-          messageHandlers?: {
-            museSession?: { postMessage: (value: string) => void };
-          };
-        };
+  async workspaceStatus(): Promise<WorkspaceStatus> {
+    if (!this.identity.value?.apiKey)
+      return {
+        state: "disconnected",
+        message:
+          "Sign in and connect an Ark project to prepare your workspace.",
       };
-      native.webkit?.messageHandlers?.museSession?.postMessage(token);
-    }
+    return this.context().workspace.status();
   }
-  auth<T>(path: string, body?: object) {
-    return this.request<T>(
-      `/auth/${path}`,
-      body ? { method: "POST", body: JSON.stringify(body) } : {},
-    );
-  }
-  ma<T = Record<string, unknown>>(operation: string, input: object = {}) {
-    return this.request<T>(`/ma/execute/${encodeURIComponent(operation)}`, {
-      method: "POST",
-      body: JSON.stringify(input),
-    });
-  }
-  async request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const timeout = boundedSignal(init.signal, 35_000);
-    let response: Response | undefined;
-    try {
-      response = await fetch(`${this.connection.baseUrl}/api${path}`, {
-        ...init,
-        headers: this.headers(Boolean(init.body)),
-        signal: timeout.signal,
-      });
-      let data: unknown;
-      try {
-        data = await response.json();
-      } catch {
-        throw new Error(
-          "The service returned no valid data. Check the service URL.",
-        );
-      }
-      if (!response.ok)
-        throw new Error(
-          (data as { error?: string }).error ??
-            `Request failed (${response.status}).`,
-        );
-      return data as T;
-    } catch (error) {
-      if (init.signal?.aborted) throw error;
-      if (timeout.signal.aborted)
-        throw new Error(
-          "Request timed out. Refresh the history first to confirm whether it went through.",
-        );
-      if (response) throw error;
-      throw new Error(
-        "Couldn't reach the service. Check your network and the service URL in Settings.",
-      );
-    } finally {
-      timeout.dispose();
-    }
-  }
-  config() {
-    return this.request<AppConfig>("/config");
-  }
-  goals() {
-    return this.request<Page<Goal>>("/goals");
-  }
-  createGoal(title: string, description: string) {
-    return this.request<Goal>("/goals", {
-      method: "POST",
-      body: JSON.stringify({ title, description }),
-    });
-  }
-  updateGoal(
-    id: string,
-    input: Partial<
-      Pick<Goal, "title" | "description" | "status" | "steps" | "session_id">
-    >,
-  ) {
-    return this.request<Goal>(`/goals/${encodeURIComponent(id)}`, {
-      method: "POST",
-      body: JSON.stringify(input),
-    });
-  }
-  library() {
-    return this.request<Page<LibraryItem>>("/library");
-  }
-  saveReply(session_id: string, event_id: string) {
-    return this.request<LibraryItem>("/library", {
-      method: "POST",
-      body: JSON.stringify({ session_id, event_id }),
-    });
+  startWorkspace() {
+    return this.context().workspace.start();
   }
   async prepareWorkspace() {
-    let status = await this.request<WorkspaceStatus>("/workspace");
-    if (status.state === "ready") return;
-    if (status.state === "disconnected") throw new Error(status.message);
-    status = await this.request<WorkspaceStatus>("/workspace/prepare", {
-      method: "POST",
-      body: "{}",
-    });
-    const deadline = Date.now() + 180_000;
-    while (status.state === "preparing" && Date.now() < deadline) {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      status = await this.request<WorkspaceStatus>("/workspace");
-    }
-    if (status.state !== "ready")
-      throw new Error(
-        status.state === "preparing"
-          ? "The workspace is still preparing. Check the progress in Settings; no task has been created yet."
-          : status.message,
-      );
+    const { workspace } = this.context();
+    if ((await workspace.status()).state === "ready") return;
+    await workspace.start();
+    await workspace.wait();
   }
-  sessions() {
-    return this.request<Page<Session>>("/sessions");
-  }
-  session(id: string, signal?: AbortSignal) {
-    return this.request<Session>(`/sessions/${encodeURIComponent(id)}`, {
-      signal,
-    });
-  }
-  create(title: string, category: Category) {
-    return this.request<Session>("/sessions", {
-      method: "POST",
-      body: JSON.stringify({ title, category }),
-    });
-  }
-  send(id: string, body: object, signal?: AbortSignal) {
-    return this.request<Page<AgentEvent>>(
-      `/sessions/${encodeURIComponent(id)}/events`,
-      { method: "POST", body: JSON.stringify(body), signal },
-    );
-  }
-  async events(id: string, signal?: AbortSignal) {
-    const data: AgentEvent[] = [];
+  private async collect<T>(
+    ark: ArkClient,
+    path: string,
+    signal?: AbortSignal,
+  ): Promise<T[]> {
+    const data: T[] = [];
     const seen = new Set<string>();
     let page = "";
     do {
-      const result = await this.request<Page<AgentEvent>>(
-        `/sessions/${encodeURIComponent(id)}/events${page ? `?page=${encodeURIComponent(page)}` : ""}`,
+      const result = await ark.request<Page<T>>(
+        `${path}${page ? `&page=${encodeURIComponent(page)}` : ""}`,
         { signal },
       );
+      if (!Array.isArray(result.data))
+        throw new ApiError(502, "Ark returned an invalid list response.");
       data.push(...result.data);
       page = result.next_page ?? "";
       if (page && (seen.has(page) || seen.size >= 100))
-        throw new Error(
-          "Something went wrong paging through history. Please try again shortly.",
+        throw new ApiError(
+          502,
+          "History pagination repeated or exceeded the safety limit. No writes were retried.",
         );
       seen.add(page);
     } while (page);
     return data;
+  }
+  private async remember(runtime: Runtime, rows: Session[]) {
+    const saved = await this.db.update<Record<string, Session>>(
+      `${runtime.key}:sessions`,
+      (existing) => {
+        const result = existing ?? {};
+        for (const row of rows)
+          if (row.id)
+            result[row.id] = {
+              ...row,
+              title: row.title || "Untitled task",
+              category: row.category ?? result[row.id]?.category ?? "general",
+            };
+        return result;
+      },
+    );
+    return rows.map((row) => saved[row.id]);
+  }
+  async sessions(): Promise<Page<Session>> {
+    if (!this.identity.value?.apiKey) return { data: [] };
+    const r = this.context();
+    const rows = await this.collect<Session>(
+      r.ark,
+      "/sessions?limit=100&order=desc",
+    );
+    return { data: await this.remember(r, rows) };
+  }
+  async session(id: string, signal?: AbortSignal) {
+    const r = this.context();
+    const row = await r.ark.request<Session>(`/sessions/${validId(id)}`, {
+      signal,
+    });
+    return (await this.remember(r, [row]))[0];
+  }
+  async create(title: string, category: Category) {
+    const input = z
+      .object({
+        title: titleInput.max(100),
+        category: z.enum(["general", "research", "writing", "life", "code"]),
+      })
+      .parse({ title, category });
+    const r = this.context();
+    const selection = await r.workspace.selection();
+    await r.workspace.syncPolicy();
+    const row = await r.ark.create(input.title, input.category, selection);
+    await this.remember(r, [row]);
+    return row;
+  }
+  private approvalKey(r: Runtime, id: string, tool: string) {
+    return `${r.key}:approval:${digest(`${id}\0${tool}`)}`;
+  }
+  private async annotate(
+    r: Runtime,
+    id: string,
+    event: AgentEvent,
+  ): Promise<AgentEvent> {
+    const { approval_source: _ignored, ...original } = event;
+    if (event.type !== "user.tool_confirmation" || !event.tool_use_id)
+      return original;
+    const record = await this.db.get<Approval>(
+      this.approvalKey(r, id, event.tool_use_id),
+    );
+    return record?.event.id === event.id && event.result === "allow"
+      ? { ...original, approval_source: "automatic" }
+      : original;
+  }
+  async events(id: string, signal?: AbortSignal) {
+    const r = this.context();
+    const rows = await this.collect<AgentEvent>(
+      r.ark,
+      `/sessions/${validId(id)}/events?order=asc&limit=200`,
+      signal,
+    );
+    return Promise.all(rows.map((event) => this.annotate(r, id, event)));
+  }
+  async send(
+    id: string,
+    body: object,
+    signal?: AbortSignal,
+  ): Promise<Page<AgentEvent>> {
+    const input = messageInput.parse(body);
+    const r = this.context();
+    validId(id);
+    const lock = `${r.key}:${id}`;
+    if (this.sends.has(lock))
+      throw new ApiError(
+        409,
+        "The previous operation is still being submitted.",
+      );
+    this.sends.add(lock);
+    let autoKey: string | undefined;
+    let autoRecord: Approval | undefined;
+    try {
+      let event: Partial<AgentEvent> = {
+        id: `evt-${uuid()}`,
+        type: input.type,
+      };
+      if (input.type === "user.message")
+        event.content = [{ type: "text", text: input.text }];
+      if (input.type === "user.tool_confirmation") {
+        const history = await this.collect<AgentEvent>(
+          r.ark,
+          `/sessions/${validId(id)}/events?order=asc&limit=200`,
+          signal,
+        );
+        const key = this.approvalKey(r, id, input.tool_use_id);
+        const previous = await this.db.get<Approval>(key);
+        if (input.automatic) {
+          if (input.result !== "allow")
+            throw new ApiError(
+              400,
+              "Automatic confirmation can only allow safe reads.",
+            );
+          const confirmed = history.find(
+            (e) =>
+              e.type === "user.tool_confirmation" &&
+              e.tool_use_id === input.tool_use_id,
+          );
+          if (confirmed)
+            return { data: [await this.annotate(r, id, confirmed)] };
+          if (previous?.state === "confirmed")
+            return { data: [await this.annotate(r, id, previous.event)] };
+        } else if (previous?.state === "confirmed")
+          throw new ApiError(409, "Already auto-approved; refresh history.");
+        const tool = pendingPermissions(history).find(
+          (e) => e.id === input.tool_use_id,
+        );
+        if (!tool)
+          throw new ApiError(
+            409,
+            "The tool is no longer pending; refresh history.",
+          );
+        if (input.automatic && !canAutoApprove(tool))
+          throw new ApiError(403, "This tool requires manual approval.");
+        event = {
+          ...event,
+          tool_use_id: tool.id,
+          result: input.result,
+          session_thread_id: tool.session_thread_id,
+        };
+        if (input.automatic) {
+          autoRecord = {
+            state: "sending",
+            event: {
+              ...event,
+              id: event.id!,
+              type: event.type!,
+              created_at: new Date().toISOString(),
+            },
+          };
+          await this.db.update<Approval>(key, (old) => {
+            if (old)
+              throw new ApiError(
+                409,
+                "An auto-approval is unconfirmed. Refresh history and handle it manually.",
+              );
+            return autoRecord!;
+          });
+          autoKey = key;
+        }
+      }
+      const result = await r.ark.request<Page<AgentEvent>>(
+        `/sessions/${validId(id)}/events`,
+        { method: "POST", body: JSON.stringify({ events: [event] }), signal },
+      );
+      const rows = Array.isArray(result.data) ? result.data : [];
+      if (autoKey && autoRecord) {
+        autoRecord.state = "confirmed";
+        autoRecord.event =
+          rows.find(
+            (e) =>
+              e.type === "user.tool_confirmation" &&
+              e.tool_use_id === event.tool_use_id &&
+              e.result === "allow",
+          ) ?? autoRecord.event;
+        await this.db.set(autoKey, autoRecord);
+        if (!rows.some((e) => e.id === autoRecord!.event.id))
+          rows.push(autoRecord.event);
+      }
+      return {
+        ...result,
+        data: await Promise.all(rows.map((e) => this.annotate(r, id, e))),
+      };
+    } catch (error) {
+      if (autoKey && autoRecord && autoRecord.state !== "confirmed")
+        await this.db.set(autoKey, { ...autoRecord, state: "failed" });
+      throw error;
+    } finally {
+      this.sends.delete(lock);
+    }
   }
   async stream(
     id: string,
@@ -289,45 +379,160 @@ export class Client {
     onEvent: (event: AgentEvent) => void,
     onConnected: () => void,
   ) {
-    const timeout = boundedSignal(signal, 75_000);
+    const r = this.context();
+    const bound = boundedSignal([signal, r.abort.signal], 75_000);
     try {
-      const response = await fetch(
-        `${this.connection.baseUrl}/api/sessions/${encodeURIComponent(id)}/events/stream`,
-        { signal: timeout.signal, headers: this.headers() },
-      );
+      const response = await r.ark.stream(validId(id), bound.signal);
       if (
         !response.ok ||
         !response.body ||
         !response.headers.get("content-type")?.includes("text/event-stream")
-      )
-        throw new Error("The event stream is temporarily disconnected");
+      ) {
+        await response.body?.cancel();
+        throw new Error(
+          "The Ark event stream is disconnected; history will be refreshed.",
+        );
+      }
       onConnected();
       for await (const data of readSSE(response.body)) {
         if (data === "[DONE]") return;
         const event = JSON.parse(data) as AgentEvent;
-        if (event.id && event.type) onEvent(event);
+        if (event.id && event.type) onEvent(await this.annotate(r, id, event));
       }
     } finally {
-      timeout.dispose();
+      bound.dispose();
     }
   }
-}
-
-// iOS 15 WebView cannot rely on the newer AbortSignal.timeout / any.
-function boundedSignal(
-  parent: AbortSignal | null | undefined,
-  milliseconds: number,
-) {
-  const controller = new AbortController();
-  const abort = () => controller.abort();
-  if (parent?.aborted) abort();
-  else parent?.addEventListener("abort", abort, { once: true });
-  const timer = setTimeout(abort, milliseconds);
-  return {
-    signal: controller.signal,
-    dispose() {
-      clearTimeout(timer);
-      parent?.removeEventListener("abort", abort);
-    },
-  };
+  async goals(): Promise<Page<Goal>> {
+    if (!this.identity.value?.apiKey) return { data: [] };
+    return {
+      data: (
+        (await this.db.get<Goal[]>(`${this.context().key}:goals`)) ?? []
+      ).sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
+    };
+  }
+  async createGoal(title: string, description: string) {
+    const r = this.context();
+    const input = z
+      .object({ title: titleInput, description: z.string().trim().max(8000) })
+      .parse({ title, description });
+    const now = new Date().toISOString();
+    const goal: Goal = {
+      ...input,
+      id: uuid(),
+      status: "active",
+      steps: [],
+      created_at: now,
+      updated_at: now,
+    };
+    await this.db.update<Goal[]>(`${r.key}:goals`, (rows) => [
+      goal,
+      ...(rows ?? []),
+    ]);
+    return goal;
+  }
+  async updateGoal(
+    id: string,
+    body: Partial<
+      Pick<Goal, "title" | "description" | "status" | "steps" | "session_id">
+    >,
+  ) {
+    const r = this.context();
+    const input = z
+      .object({
+        title: titleInput.optional(),
+        description: z.string().trim().max(8000).optional(),
+        status: z.enum(["active", "paused", "completed"]).optional(),
+        session_id: z.string().min(1).max(200).optional(),
+        steps: z
+          .array(
+            z.object({
+              id: z.string().min(1).max(80),
+              title: titleInput,
+              done: z.boolean(),
+            }),
+          )
+          .max(40)
+          .optional(),
+      })
+      .strict()
+      .parse(body);
+    if (
+      input.steps &&
+      new Set(input.steps.map((s) => s.id)).size !== input.steps.length
+    )
+      throw new ApiError(400, "Duplicate step IDs.");
+    if (input.session_id) await r.ark.get(validId(input.session_id));
+    const rows = await this.db.update<Goal[]>(`${r.key}:goals`, (rows) => {
+      const goal = rows?.find((g) => g.id === id);
+      if (!goal) throw new ApiError(404, "Goal not found.");
+      Object.assign(goal, input, { updated_at: new Date().toISOString() });
+      return rows!;
+    });
+    return rows.find((g) => g.id === id)!;
+  }
+  async library(): Promise<Page<LibraryItem>> {
+    if (!this.identity.value?.apiKey) return { data: [] };
+    return {
+      data: (
+        (await this.db.get<LibraryItem[]>(`${this.context().key}:library`)) ??
+        []
+      ).sort((a, b) => b.created_at.localeCompare(a.created_at)),
+    };
+  }
+  async saveReply(session_id: string, event_id: string) {
+    const r = this.context();
+    const session = await r.ark.get(validId(session_id));
+    const history = await this.collect<AgentEvent>(
+      r.ark,
+      `/sessions/${validId(session_id)}/events?order=asc&limit=200`,
+    );
+    const event = history.find((e) => e.id === event_id);
+    if (event?.type !== "agent.message" || !eventText(event).trim())
+      throw new ApiError(
+        404,
+        "No savable assistant reply was found in Ark history.",
+      );
+    const rows = await this.db.update<LibraryItem[]>(
+      `${r.key}:library`,
+      (old) => {
+        const rows = old ?? [];
+        if (
+          !rows.some(
+            (item) =>
+              item.session_id === session_id && item.event_id === event_id,
+          )
+        )
+          rows.unshift({
+            id: uuid(),
+            title: session.title || "Untitled task",
+            text: eventText(event),
+            session_id,
+            event_id,
+            created_at: new Date().toISOString(),
+          });
+        return rows;
+      },
+    );
+    return rows.find(
+      (item) => item.session_id === session_id && item.event_id === event_id,
+    )!;
+  }
+  async ma<T = Record<string, unknown>>(
+    operation: string,
+    input: object = {},
+  ): Promise<T> {
+    const r = this.context();
+    const result = await executeOperation(
+      r.ark,
+      this.identity,
+      operation,
+      input,
+    );
+    if (["CreateSession", "GetSession", "ListSessions"].includes(operation)) {
+      const payload = result as Session & { data?: Session[] };
+      await this.remember(r, payload.data ?? [payload]);
+    }
+    return result as T;
+  }
 }

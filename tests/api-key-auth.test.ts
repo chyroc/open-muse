@@ -3,9 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
-import { createApp } from "../server/app";
-import { loadConfig, type ServerConfig } from "../server/config";
-import { ApiError, ArkClient } from "../server/ark";
+import { createApp } from "./legacy-server/app";
+import { loadConfig, type ServerConfig } from "./legacy-server/config";
+import { ApiError, ArkClient } from "./legacy-server/ark";
 import { operations } from "../shared/ma";
 
 const key = "test-only-api-key-not-a-real-secret";

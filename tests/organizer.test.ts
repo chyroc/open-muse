@@ -3,9 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
-import { createApp } from "../server/app";
-import { loadConfig } from "../server/config";
-import { ArkClient } from "../server/ark";
+import { createApp } from "./legacy-server/app";
+import { loadConfig } from "./legacy-server/config";
+import { ArkClient } from "./legacy-server/ark";
 import type { AgentEvent, Session } from "../shared/types";
 import { arkFixture } from "./helpers/ark-fixture";
 

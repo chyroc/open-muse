@@ -3,11 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
-import { createApp } from "../server/app";
-import { loadConfig } from "../server/config";
-import { ApiError } from "../server/ark";
+import { createApp } from "./legacy-server/app";
+import { loadConfig } from "./legacy-server/config";
+import { ApiError } from "./legacy-server/ark";
 import { readSSE } from "../shared/sse";
-import { Store } from "../server/store";
+import { Store } from "./legacy-server/store";
 import { arkFixture } from "./helpers/ark-fixture";
 
 let directory: string;

@@ -6,8 +6,8 @@ import {
   taskState,
   type AgentEvent,
 } from "../shared/types";
-import { loadConfig } from "../server/config";
-import { ArkClient } from "../server/ark";
+import { loadConfig } from "./legacy-server/config";
+import { ArkClient } from "./legacy-server/ark";
 
 function event(
   id: string,

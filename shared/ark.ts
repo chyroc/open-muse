@@ -1,5 +1,12 @@
 import type { AgentEvent, Category, Page, Session } from "../shared/types";
-import type { ServerConfig } from "./config";
+import { boundedSignal } from "./abort";
+export interface ArkConfig {
+  arkBaseUrl: string;
+  arkKey: string;
+  project: string;
+  agentId?: string;
+  environmentId?: string;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -12,8 +19,9 @@ export class ApiError extends Error {
 
 export class ArkClient {
   constructor(
-    private config: ServerConfig,
+    private config: ArkConfig,
     private fetcher: typeof fetch = fetch,
+    private lifecycle?: AbortSignal,
   ) {}
   private headers(init?: HeadersInit) {
     const headers = new Headers(init);
@@ -26,23 +34,28 @@ export class ArkClient {
     if (!(init.body instanceof FormData) && !headers.has("Content-Type"))
       headers.set("Content-Type", "application/json");
     headers.set("Accept", "application/json");
-    const response = await this.fetcher(`${this.config.arkBaseUrl}${path}`, {
-      ...init,
-      signal: init.signal ?? AbortSignal.timeout(30_000),
-      redirect: "error",
-      headers,
-    });
-    if (!response.ok) {
-      const diagnostic = await errorDiagnostic(response, this.config.arkKey);
-      throw new ApiError(
-        [400, 401, 403, 404, 409, 413, 429].includes(response.status)
-          ? response.status
-          : 502,
-        `Ark request failed (HTTP ${response.status}${diagnostic ? `; ${diagnostic}` : ""}). Check the server configuration or try again later.`,
-      );
+    const bound = boundedSignal([init.signal, this.lifecycle], 30_000);
+    try {
+      const response = await this.fetcher(`${this.config.arkBaseUrl}${path}`, {
+        ...init,
+        signal: bound.signal,
+        redirect: "error",
+        headers,
+      });
+      if (!response.ok) {
+        const diagnostic = await errorDiagnostic(response, this.config.arkKey);
+        throw new ApiError(
+          [400, 401, 403, 404, 409, 413, 429].includes(response.status)
+            ? response.status
+            : 502,
+          `Ark request failed (HTTP ${response.status}${diagnostic ? `; ${diagnostic}` : ""}). Check your Ark connection or try again later.`,
+        );
+      }
+      if (response.status === 204) return { ok: true } as T;
+      return (await response.json()) as T;
+    } finally {
+      bound.dispose();
     }
-    if (response.status === 204) return { ok: true } as T;
-    return response.json() as Promise<T>;
   }
   async create(
     title: string,
