@@ -31,7 +31,7 @@ Mac-specific build. No iOS or Android build is needed.
 - Closing the window keeps the app running; clicking its Dock icon restores it.
 
 This is an incremental desktop implementation, not a verified one-to-one clone.
-Ideas, goals, library, attachments, dictation, desktop
+Goals, library, attachments, dictation, desktop
 automation, and proactive scheduling still need their Mac-specific implementation
 and acceptance checks. The UI identifies unfinished surfaces. No mock replies are
 included in the app. Real cloud verification requires an authorized connection.
@@ -78,3 +78,40 @@ Move up/down/to-top stay within an edition. Delete asks for confirmation and off
 Undo; the source MA conversation is never deleted. Likes and generated posts use
 the shared client's local index. These presentation changes do not sync between
 devices. No stock posts are shipped.
+
+## Desktop ideas
+
+Ideas uses a 768-point reading column, four featured list rows, category sections,
+and a desktop preview with a blue action button. The preview shows the description,
+personal relevance, sources, and MA-generated "What's included" / "How it works"
+details. Optional deliverables can be deselected; essential ones remain included.
+Older shared-client ideas remain visible without invented preview details.
+
+Opening a row or the feedback menu only reads. "Let's do it" explicitly starts a
+main-chat request and reveals chat alongside Ideas. The request asks MA to clarify
+missing information and preserve approval for consequential actions. A confirmed
+request becomes "Open conversation"; it is not presented as an installed artifact.
+Failed or unconfirmed requests remain inspectable, and preparing requests can be
+continued explicitly. Exact request text (including a unique correlation ID) is
+reconciled against cloud history after a lost response; unconfirmed sends are not
+repeated after refresh or restart.
+
+"More like this" saves a preference. "Not interested" dismisses the row, offers
+Undo, and allows a preset reason or a custom note of up to 600 characters. Notes
+participate in native unsaved-close protection and block navigation/account changes
+until closed. Feedback, dismissals, preview metadata, and activation records are
+account/project-scoped on this Mac. Preferences are supplied to subsequent Mac MA
+generation; they do not synchronize to other devices or modify source cloud events.
+
+The Mac-only generator reuses the shared client's workspace, personal memory,
+history, goals, direct MA transport and the existing resumable generation state
+machine. It validates a Mac preview extension before indexing content. Invalid
+responses leave earlier ideas unchanged. Generation is explicit; automatic idea
+delivery, reference artwork, and installation of scheduled tasks/apps are not yet
+implemented. Test fixtures are excluded from the production entry point.
+
+Automated checks cover preview selection, feedback, account isolation, generation
+validation, split chat, and lost-create/send recovery. Native acceptance covers the
+connected empty state and read-only split-chat navigation. Populated rendering and
+write behavior are tested with isolated fixtures, not claimed as real-cloud
+end-to-end acceptance.

@@ -100,11 +100,13 @@ export function Modal({
   children,
   onClose,
   wide = false,
+  className = "",
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
   wide?: boolean;
+  className?: string;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const close = useRef(onClose);
@@ -120,7 +122,7 @@ export function Modal({
   return (
     <dialog
       ref={dialog}
-      className={`desktop-dialog ${wide ? "wide" : ""}`}
+      className={`desktop-dialog ${wide ? "wide" : ""} ${className}`}
       onCancel={(event) => {
         event.preventDefault();
         close.current();

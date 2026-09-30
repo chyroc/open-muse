@@ -32,6 +32,9 @@ import type {
 } from "../../shared/identity";
 import { StatusPanel, type StatusTab } from "./StatusPanel";
 import { FeedPage } from "./FeedPage";
+const IdeasPage = lazy(() =>
+  import("./IdeasPage").then((module) => ({ default: module.IdeasPage })),
+);
 import {
   discussionPrompt,
   type InspirationItem,
@@ -78,6 +81,8 @@ export function DesktopApp({ client }: { client: Client }) {
     feedEditorOpen.current = open;
   }, []);
   const [connectionEpoch, setConnectionEpoch] = useState(0);
+  const connectionVersion = useRef(connectionEpoch);
+  connectionVersion.current = connectionEpoch;
   const [splitChat, setSplitChat] = useState(false);
   const [quotedPost, setQuotedPost] = useState<InspirationItem>();
   const activeDocument = useRef<IdentityDocument | undefined>(undefined);
@@ -100,12 +105,13 @@ export function DesktopApp({ client }: { client: Client }) {
   const scroll = useRef<HTMLDivElement>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
   const alive = useRef(true);
+  const inspirationPage = route.page === "feed" || route.page === "ideas";
   const id =
     route.page === "chat" && !route.newSide
       ? route.conversation
         ? currentConversation(index, route.conversation)
         : index.mainId
-      : route.page === "feed" && splitChat
+      : inspirationPage && splitChat
         ? index.mainId
         : undefined;
   const draftKey = id ?? (route.newSide ? "new-side" : "main");
@@ -242,9 +248,8 @@ export function DesktopApp({ client }: { client: Client }) {
     input.style.height = `${Math.min(input.scrollHeight, 150)}px`;
   }, [draft]);
   useEffect(() => {
-    if (route.page === "feed" && splitChat && quotedPost)
-      composer.current?.focus();
-  }, [route.page, splitChat, quotedPost]);
+    if (inspirationPage && splitChat && quotedPost) composer.current?.focus();
+  }, [inspirationPage, splitChat, quotedPost]);
 
   async function action(fn: () => Promise<void>) {
     if (busyRef.current) return;
@@ -289,8 +294,7 @@ export function DesktopApp({ client }: { client: Client }) {
         setIndex(await client.conversationIndex());
         // Keep an unconfirmed message with its exact conversation, even across route changes.
         setDrafts((old) => ({ ...old, [draftKey]: "", [target!]: text }));
-        if (route.page !== "feed")
-          navigate(route.newSide ? `/chat/${target}` : "/");
+        if (!inspirationPage) navigate(route.newSide ? `/chat/${target}` : "/");
       }
       await client.send(target, {
         type: "user.message",
@@ -469,11 +473,43 @@ export function DesktopApp({ client }: { client: Client }) {
           />
         </main>
       )}
+      {route.page === "ideas" && !document && (
+        <main className="workspace">
+          <Suspense fallback={<Empty title="Opening ideas…" />}>
+            <IdeasPage
+              key={connectionEpoch}
+              client={client}
+              split={splitChat}
+              onToggleChat={() => setSplitChat((value) => !value)}
+              onEditorChange={onFeedEditorChange}
+              onConnect={() => setSettings(true)}
+              onOpenChat={(id) => navigate(`/chat/${id}`)}
+              onMainChat={async (id) => {
+                const conversations = await client.conversationIndex();
+                if (
+                  !alive.current ||
+                  connectionVersion.current !== connectionEpoch
+                )
+                  return;
+                setIndex(conversations);
+                setQuotedPost(undefined);
+                if (
+                  currentConversation(conversations, id) ===
+                  conversations.mainId
+                )
+                  setSplitChat(true);
+                else navigate(`/chat/${id}`);
+                await reload();
+              }}
+            />
+          </Suspense>
+        </main>
+      )}
       <main
-        className={`workspace ${route.page === "feed" ? "feed-split-chat" : ""}`}
-        hidden={Boolean(document) || (route.page === "feed" && !splitChat)}
+        className={`workspace ${inspirationPage ? "feed-split-chat" : ""}`}
+        hidden={Boolean(document) || (inspirationPage && !splitChat)}
       >
-        {route.page === "chat" || (route.page === "feed" && splitChat) ? (
+        {route.page === "chat" || (inspirationPage && splitChat) ? (
           <>
             <header className="chat-toolbar">
               <button
@@ -486,7 +522,7 @@ export function DesktopApp({ client }: { client: Client }) {
                 {chatTitle}
               </button>
               <div className="toolbar-spacer" />
-              {route.page === "feed" && (
+              {inspirationPage && (
                 <button
                   className="glass-pill"
                   aria-label="Close side-by-side chat"
@@ -515,7 +551,7 @@ export function DesktopApp({ client }: { client: Client }) {
                   </button>
                   <button
                     onClick={() => {
-                      if (route.page === "feed") navigate("/");
+                      if (inspirationPage) navigate("/");
                       setStatusOpen(true);
                       setMenu(false);
                     }}
@@ -664,7 +700,7 @@ export function DesktopApp({ client }: { client: Client }) {
               <button
                 className="approval-banner"
                 onClick={() => {
-                  if (route.page === "feed") navigate("/");
+                  if (inspirationPage) navigate("/");
                   setStatusOpen(true);
                   setStatusTab("approvals");
                 }}
