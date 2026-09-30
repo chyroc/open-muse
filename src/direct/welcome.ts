@@ -1,3 +1,4 @@
+import { t } from "../../shared/i18n";
 import { ApiError } from "../../shared/ark";
 import { uuid } from "../../shared/crypto";
 import { welcomePrompt } from "../../shared/welcome";
@@ -66,7 +67,7 @@ export class DirectWelcome {
         if (old?.phase !== "rejected")
           throw new ApiError(
             409,
-            "Welcome state changed. Refresh before continuing.",
+            t("Welcome state changed. Refresh before continuing."),
           );
         return { phase: "preparing", language };
       });
@@ -114,7 +115,7 @@ export class DirectWelcome {
       if (old?.phase !== "preparing")
         throw new ApiError(
           409,
-          "Another view is starting this conversation. Refresh its history.",
+          t("Another view is starting this conversation. Refresh its history."),
         );
       return record;
     });
@@ -133,7 +134,9 @@ export class DirectWelcome {
       if ((await this.state())?.phase !== "confirmed")
         throw new ApiError(
           502,
-          "The welcome request is unconfirmed. Refresh history; it will not be sent again.",
+          t(
+            "The welcome request is unconfirmed. Refresh history; it will not be sent again.",
+          ),
         );
       return (await this.state())!;
     } catch (error) {

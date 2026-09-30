@@ -1,0 +1,122 @@
+import { describe, expect, it } from "vitest";
+import { identityInstructions, systemWithIdentity } from "../shared/identity";
+import {
+  agentSnapshot,
+  canonicalJson,
+  needsPromptRefresh,
+  refreshedAgentSystem,
+  type AgentSnapshot,
+} from "../shared/session-refresh";
+import type { Session } from "../shared/types";
+
+const snapshot = (): AgentSnapshot => ({
+  id: "agent-test",
+  version: 3,
+  system:
+    "Custom instructions.\n<open-muse-identity>Previous app rules.</open-muse-identity>\nCustom suffix.",
+  metadata: { open_muse_workspace: "owner" },
+  model: { id: "test-model" },
+  tools: [{ type: "test-toolset", config: { a: 1, b: 2 } }],
+});
+const session = (agent: unknown): Session & { agent: unknown } => ({
+  id: "session-test",
+  title: "Test conversation",
+  status: "idle",
+  created_at: "2026-01-01T00:00:00Z",
+  updated_at: "2026-01-01T00:00:00Z",
+  category: "general",
+  agent,
+});
+
+describe("Main-conversation instruction refresh", () => {
+  it("detects stale app-owned snapshots but reuses current instructions", () => {
+    const old = snapshot();
+    expect(needsPromptRefresh(session(old), "owner", old.id)).toBe(true);
+    old.system = systemWithIdentity("Custom instructions.");
+    expect(needsPromptRefresh(session(old), "owner", old.id)).toBe(false);
+  });
+  it("never adopts a foreign, mismatched or incomplete snapshot", () => {
+    expect(needsPromptRefresh(session(snapshot()), "other", "agent-test")).toBe(
+      false,
+    );
+    expect(needsPromptRefresh(session(snapshot()), "owner", "other")).toBe(
+      false,
+    );
+    for (const invalid of [
+      "agent-test",
+      undefined,
+      { ...snapshot(), version: 0 },
+      { ...snapshot(), system: undefined },
+    ]) {
+      expect(agentSnapshot(session(invalid))).toBeUndefined();
+      expect(needsPromptRefresh(session(invalid), "owner", "agent-test")).toBe(
+        false,
+      );
+    }
+  });
+  it("preserves session custom text and pinned model/tool configuration", () => {
+    const source = snapshot();
+    const base = { ...source, system: "A different base Agent system prompt." };
+    const refreshed = refreshedAgentSystem(source, base);
+    expect(refreshed).toContain("Custom instructions.");
+    expect(refreshed).toContain("Custom suffix.");
+    expect(refreshed).toContain(identityInstructions);
+    expect(refreshed).not.toContain("Previous app rules.");
+    expect(source.system).toContain("Previous app rules.");
+    expect(refreshedAgentSystem({ ...source, system: refreshed }, base)).toBe(
+      refreshed,
+    );
+  });
+  it("adds app rules to a known owned legacy snapshot without erasing custom text", () => {
+    const source = { ...snapshot(), system: "Legacy custom instructions." };
+    expect(needsPromptRefresh(session(source), "owner", source.id)).toBe(true);
+    expect(refreshedAgentSystem(source, source)).toContain(
+      "Legacy custom instructions.",
+    );
+  });
+  it("refuses malformed or ambiguous app blocks", () => {
+    for (const system of [
+      "Custom <open-muse-identity>unfinished",
+      "</open-muse-identity> before <open-muse-identity>",
+      identityInstructions + identityInstructions,
+      identityInstructions + "</open-muse-identity>",
+    ]) {
+      const source = { ...snapshot(), system };
+      expect(() =>
+        needsPromptRefresh(session(source), "owner", source.id),
+      ).toThrow("No replacement");
+      expect(() => refreshedAgentSystem(source, source)).toThrow(
+        "No replacement",
+      );
+    }
+  });
+  it("does not discard session-specific runtime overrides or adopt another version", () => {
+    const source = snapshot();
+    for (const field of [
+      "model",
+      "tools",
+      "mcp_servers",
+      "skills",
+      "multiagent",
+    ] as const) {
+      expect(() =>
+        refreshedAgentSystem(source, { ...source, [field]: { changed: true } }),
+      ).toThrow("No replacement");
+    }
+    expect(() =>
+      refreshedAgentSystem(source, { ...source, version: 4 }),
+    ).toThrow("No replacement");
+    expect(() =>
+      refreshedAgentSystem(source, { ...source, id: "other" }),
+    ).toThrow("No replacement");
+  });
+  it("ignores JSON object order but retains event order and all values", () => {
+    const a = [{ id: "tool", input: { a: 1, b: 2 } }, { id: "reply" }];
+    const b = [{ input: { b: 2, a: 1 }, id: "tool" }, { id: "reply" }];
+    expect(canonicalJson(a)).toBe(canonicalJson(b));
+    expect(canonicalJson(a)).not.toBe(canonicalJson([...b].reverse()));
+    expect(canonicalJson(a)).not.toBe(
+      canonicalJson([{ ...a[0], input: { a: 1, b: 3 } }, a[1]]),
+    );
+  });
+});

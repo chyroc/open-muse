@@ -1,3 +1,4 @@
+import { formatLocale, systemLanguage, t } from "../shared/i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Archive,
@@ -93,13 +94,13 @@ export default function App() {
     return (
       <main className="restore-screen" aria-live="polite">
         <CompanionAvatar />
-        <p>{restoreError || "Restoring connection…"}</p>
+        <p>{restoreError || t("Restoring connection…")}</p>
         {restoreError && (
           <button
             className="button primary"
             onClick={() => setRestoreAttempt((value) => value + 1)}
           >
-            Retry
+            {t("Retry")}
           </button>
         )}
       </main>
@@ -255,7 +256,7 @@ function Workspace({
     setWelcomeBusy(true);
     setWelcomeError("");
     try {
-      const value = await client.startWelcome(navigator.language, retry);
+      const value = await client.startWelcome(systemLanguage(), retry);
       if (alive.current) setWelcome(value);
     } catch (error) {
       if (alive.current) {
@@ -344,7 +345,9 @@ function Workspace({
       if (alive.current)
         setActionError(
           (error as Error).message +
-            " If submission is unconfirmed, refresh history before trying again.",
+            t(
+              "If submission is unconfirmed, refresh history before trying again.",
+            ),
         );
     } finally {
       busyRef.current = false;
@@ -370,7 +373,9 @@ function Workspace({
       if (!sessionId || sessionId === index.mainId) {
         const session = await client.openConversation(
           isSideDraft ? "side" : "main",
-          isSideDraft ? (goalDraft?.title ?? text).slice(0, 60) : "Main chat",
+          isSideDraft
+            ? (goalDraft?.title ?? text).slice(0, 60)
+            : t("Main chat"),
           category,
         );
         if (!alive.current) return;
@@ -441,7 +446,7 @@ function Workspace({
   }
   async function exportConversation() {
     const text =
-      `# ${index.entries[activeId ?? ""]?.title ?? task.session?.title ?? "Main chat"}\n\n` +
+      `# ${index.entries[activeId ?? ""]?.title ?? task.session?.title ?? t("Main chat")}\n\n` +
       events
         .filter(
           (event) =>
@@ -450,7 +455,7 @@ function Workspace({
         )
         .map(
           (event) =>
-            `## ${event.type === "user.message" ? "Me" : companion.name}\n\n${eventText(event)}`,
+            `## ${event.type === "user.message" ? t("Me") : companion.name}\n\n${eventText(event)}`,
         )
         .join("\n\n");
     try {
@@ -460,20 +465,20 @@ function Workspace({
     }
   }
   const sideTitle = isSideDraft
-    ? "New side chat"
+    ? t("New side chat")
     : taskRoute && activeId !== index.mainId
       ? (index.entries[taskRoute]?.title ?? task.session?.title)
       : undefined;
   const status =
     config?.mode !== "ark"
-      ? "Not connected"
+      ? t("Not connected")
       : state === "running"
-        ? "Replying"
+        ? t("Replying")
         : permissions.length
-          ? "Waiting for approval"
+          ? t("Waiting for approval")
           : task.error || loadError
-            ? "Connection interrupted"
-            : "Connected";
+            ? t("Connection interrupted")
+            : t("Connected");
   const messageEvents = events.filter(
     (event) =>
       ["user.message", "agent.message"].includes(event.type) &&
@@ -498,7 +503,7 @@ function Workspace({
                   ? setGoalOptions(true)
                   : setPanel("actions")
             }
-            moreLabel={tab === "goals" ? "Goals options" : undefined}
+            moreLabel={tab === "goals" ? t("Goals options") : undefined}
             feed={tab === "feed"}
             showSidebar={isChat}
             showMore={tab !== "discover"}
@@ -507,10 +512,14 @@ function Workspace({
           />
         ) : (
           <header className="utility-header">
-            <a className="glass-button" href="#/" aria-label="Back to chat">
+            <a
+              className="glass-button"
+              href="#/"
+              aria-label={t("Back to chat")}
+            >
               <ArrowLeft size={22} />
             </a>
-            <strong>{tab === "settings" ? "Settings" : "MA Studio"}</strong>
+            <strong>{tab === "settings" ? t("Settings") : "MA Studio"}</strong>
             <span />
           </header>
         )}
@@ -518,14 +527,14 @@ function Workspace({
           {config?.mode === "disconnected" && tab !== "settings" && (
             <a className="connect-notice" href="#/settings">
               <Unplug size={16} />
-              <span>Connect with SSO or API Key to start chatting</span>
+              <span>{t("Connect with SSO or API Key to start chatting")}</span>
             </a>
           )}
           {(loadError || actionError) && (
             <div className="error-banner" role="alert">
               <span>{actionError || loadError}</span>
               <button
-                aria-label="Refresh history"
+                aria-label={t("Refresh history")}
                 onClick={() => {
                   setActionError("");
                   void reload();
@@ -560,13 +569,15 @@ function Workspace({
               {task.error && (
                 <div className="inline-error" role="alert">
                   {task.error}
-                  <button onClick={() => void task.refresh()}>Retry</button>
+                  <button onClick={() => void task.refresh()}>
+                    {t("Retry")}
+                  </button>
                 </div>
               )}
               {loading || task.loading ? (
                 <div className="chat-loading" role="status">
                   <LoaderCircle size={22} className="spin" />
-                  <span>Loading conversation…</span>
+                  <span>{t("Loading conversation…")}</span>
                 </div>
               ) : (
                 !messageEvents.length &&
@@ -577,12 +588,14 @@ function Workspace({
                   ["confirmed", "skipped"].includes(welcome.phase)) && (
                   <div className="main-chat-empty">
                     <h1>
-                      {isSideDraft ? "Start a side chat" : "Your main chat"}
+                      {isSideDraft
+                        ? t("Start a side chat")
+                        : t("Your main chat")}
                     </h1>
                     <p>
                       {isSideDraft
-                        ? "A little space for a new topic."
-                        : "One conversation you can always come back to."}
+                        ? t("A little space for a new topic.")
+                        : t("One conversation you can always come back to.")}
                     </p>
                   </div>
                 )
@@ -604,7 +617,7 @@ function Workspace({
                   >
                     {showTime && (
                       <time className="chat-time" dateTime={date}>
-                        {new Date(timestamp).toLocaleString(undefined, {
+                        {new Date(timestamp).toLocaleString(formatLocale(), {
                           month: "short",
                           day: "numeric",
                           hour: "2-digit",
@@ -618,7 +631,9 @@ function Workspace({
                           event.welcome_reply ||
                           isWelcomeReply(events, event.id)
                         }
-                        label={`Reply options ${position + 1}`}
+                        label={t("Reply options {number}", {
+                          number: position + 1,
+                        })}
                         onOptions={() => setSelectedMessage(event)}
                         text={eventText(event)}
                         reply={event.choice_reply}
@@ -647,7 +662,9 @@ function Workspace({
                       />
                     ) : (
                       <MessageBubble
-                        label={`Message options ${position + 1}`}
+                        label={t("Message options {number}", {
+                          number: position + 1,
+                        })}
                         onOptions={() => setSelectedMessage(event)}
                       >
                         <Markdown text={eventText(event)} />
@@ -661,10 +678,11 @@ function Workspace({
                 task.autoApprovalFailures.includes(event.id),
               ) && (
                 <div className="inline-error" role="alert">
-                  Automatic approval did not finish. Refresh history before
-                  handling it manually.
+                  {t(
+                    "Automatic approval did not finish. Refresh history before handling it manually.",
+                  )}
                   <button onClick={() => void task.refresh()}>
-                    Refresh history
+                    {t("Refresh history")}
                   </button>
                 </div>
               )}
@@ -680,7 +698,7 @@ function Workspace({
                 <div
                   className="chat-typing"
                   role="status"
-                  aria-label={`${companion.name} is replying`}
+                  aria-label={t("{name} is replying", { name: companion.name })}
                 >
                   <i />
                   <i />
@@ -689,8 +707,9 @@ function Workspace({
               )}
               {state === "error" && (
                 <div className="inline-error">
-                  This response could not finish. Check the execution log before
-                  continuing.
+                  {t(
+                    "This response could not finish. Check the execution log before continuing.",
+                  )}
                 </div>
               )}
             </div>
@@ -711,7 +730,7 @@ function Workspace({
                   <span>{goalDraft.title}</span>
                   <button
                     className="icon-button"
-                    aria-label="Unlink goal"
+                    aria-label={t("Unlink goal")}
                     onClick={() => setGoalDraft(undefined)}
                   >
                     <X size={16} />
@@ -733,8 +752,13 @@ function Workspace({
                     <ShieldCheck size={15} />
                   )}
                   {automaticCount
-                    ? "Approving web reads…"
-                    : `${permissions.length} action${permissions.length === 1 ? "" : "s"} need approval`}
+                    ? t("Approving web reads…")
+                    : t(
+                        permissions.length === 1
+                          ? "{count} action needs approval"
+                          : "{count} actions need approval",
+                        { count: permissions.length },
+                      )}
                 </button>
               )}
               <ChatComposer
@@ -827,7 +851,7 @@ function Workspace({
           </div>
         )}
       </main>
-      <nav className="glass-tab-bar" aria-label="Main navigation">
+      <nav className="glass-tab-bar" aria-label={t("Main navigation")}>
         {primaryNavigation.map((item) => (
           <a
             key={item.id}
@@ -880,12 +904,12 @@ function Workspace({
               }
             >
               <Archive size={22} />
-              Archive side chat
+              {t("Archive side chat")}
             </button>
           )}
           <a href="#/settings" onClick={() => setPanel(undefined)}>
             <Settings2 size={22} />
-            Settings
+            {t("Settings")}
           </a>
         </ChatActions>
       )}
@@ -909,7 +933,10 @@ function Workspace({
         />
       )}
       {selectedMessage && (
-        <Sheet title="Message" onClose={() => setSelectedMessage(undefined)}>
+        <Sheet
+          title={t("Message")}
+          onClose={() => setSelectedMessage(undefined)}
+        >
           <div className="chat-action-list">
             <button
               onClick={() =>
@@ -918,12 +945,12 @@ function Workspace({
                     eventText(selectedMessage),
                   );
                   setSelectedMessage(undefined);
-                  setToast("Copied");
+                  setToast(t("Copied"));
                 })
               }
             >
               <Copy size={21} />
-              Copy text
+              {t("Copy text")}
             </button>
             {selectedMessage.type === "agent.message" && activeId && (
               <button
@@ -935,12 +962,12 @@ function Workspace({
                       selectedMessage.source_event_id ?? selectedMessage.id,
                     );
                     setSelectedMessage(undefined);
-                    setToast("Saved to Library");
+                    setToast(t("Saved to Library"));
                   })
                 }
               >
                 <Bookmark size={21} />
-                Save reply
+                {t("Save reply")}
               </button>
             )}
           </div>
@@ -972,19 +999,20 @@ function Settings({
       <section className="privacy-grid">
         <div>
           <ShieldCheck size={22} />
-          <h3>Every step is visible</h3>
+          <h3>{t("Every step is visible")}</h3>
           <p>
-            Tools run directly by default and may send data to external
-            services, change files, or incur charges. Upstream denials still
-            apply. Execution records stay in the conversation.
+            {t(
+              "Tools run directly by default and may send data to external services, change files, or incur charges. Upstream denials still apply. Execution records stay in the conversation.",
+            )}
           </p>
         </div>
         <div>
           <Unplug size={22} />
-          <h3>A real connection</h3>
+          <h3>{t("A real connection")}</h3>
           <p>
-            If sign-in expires or a request fails, Muse reports the error
-            instead of generating simulated replies.
+            {t(
+              "If sign-in expires or a request fails, Muse reports the error instead of generating simulated replies.",
+            )}
           </p>
         </div>
       </section>

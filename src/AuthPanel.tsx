@@ -1,3 +1,4 @@
+import { t } from "../shared/i18n";
 import { useEffect, useRef, useState } from "react";
 import { ExternalLink, KeyRound, LoaderCircle, LogOut } from "lucide-react";
 import type { Client } from "./api";
@@ -66,18 +67,19 @@ function ArkAuthPanel({
           <KeyRound size={21} />
         </div>
         <div>
-          <h2>Connect to Ark MA</h2>
+          <h2>{t("Connect to Ark MA")}</h2>
           <p>
-            Connect an Ark project and your personal assistant is set up
-            automatically
+            {t(
+              "Connect an Ark project and your personal assistant is set up automatically",
+            )}
           </p>
         </div>
         <span className="small-badge">
           {status?.ready
-            ? "Connected"
+            ? t("Connected")
             : status?.loggedIn
-              ? "Choose a project"
-              : "Not signed in"}
+              ? t("Choose a project")
+              : t("Not signed in")}
         </span>
       </div>
       {error && (
@@ -90,7 +92,7 @@ function ArkAuthPanel({
           <div
             className="auth-methods"
             role="group"
-            aria-label="Sign-in method"
+            aria-label={t("Sign-in method")}
           >
             <button
               type="button"
@@ -151,41 +153,38 @@ function ArkAuthPanel({
                   maxLength={1024}
                   value={apiKey}
                   onChange={(event) => setAPIKey(event.target.value)}
-                  placeholder="Paste an existing Ark API Key"
+                  placeholder={t("Paste an existing Ark API Key")}
                 />
               </label>
               <label className="field">
-                Project name (optional)
+                {t("Project name (optional)")}
                 <input
                   autoComplete="off"
                   autoCapitalize="none"
                   maxLength={128}
                   value={keyProject}
                   onChange={(event) => setKeyProject(event.target.value)}
-                  placeholder="Leave blank to use the key's own project"
+                  placeholder={t("Leave blank to use the key's own project")}
                 />
               </label>
               <p className="auth-consent-note">
-                This device connects directly to Volcano Ark. Native apps store
-                credentials in system-protected storage; the web app keeps them
-                only for this browser session. The assistant and runtime are
-                created automatically on first use; cloud calls may be billed.
-                Control-plane operations requiring STS still need SSO sign-in.
+                {t(
+                  "This device connects directly to Volcano Ark. Native apps store credentials in system-protected storage; the web app keeps them only for this browser session. The assistant and runtime are created automatically on first use; cloud calls may be billed. Control-plane operations requiring STS still need SSO sign-in.",
+                )}
               </p>
               <button
                 className="button primary"
                 disabled={busy || !apiKey.trim()}
               >
-                Connect with API Key
+                {t("Connect with API Key")}
               </button>
             </form>
           ) : (
             <>
               <p className="settings-description">
-                Sign in on the Volcano website, then paste the authorization
-                code shown on the page back here. This device exchanges the code
-                directly with Volcano using PKCE. Credentials stay on this
-                device; no Open Muse backend is involved.
+                {t(
+                  "Sign in on the Volcano website, then paste the authorization code shown on the page back here. This device exchanges the code directly with Volcano using PKCE. Credentials stay on this device; no Open Muse backend is involved.",
+                )}
               </p>
               {!login ? (
                 <button
@@ -197,7 +196,7 @@ function ArkAuthPanel({
                     })
                   }
                 >
-                  Start SSO sign-in
+                  {t("Start SSO sign-in")}
                 </button>
               ) : (
                 <div className="auth-steps">
@@ -215,21 +214,24 @@ function ArkAuthPanel({
                       }
                     }}
                   >
-                    1. Authorize on Volcano <ExternalLink size={16} />
+                    {t("1. Authorize on Volcano")} <ExternalLink size={16} />
                   </a>
                   <label className="field">
-                    2. Paste the authorization code
+                    {t("2. Paste the authorization code")}
                     <input
                       type="password"
                       autoComplete="off"
                       value={code}
                       onChange={(e) => setCode(e.target.value)}
-                      placeholder="Authorization code, encoded callback, or full callback URL"
+                      placeholder={t(
+                        "Authorization code, encoded callback, or full callback URL",
+                      )}
                     />
                   </label>
                   <small>
-                    The authorization link is valid for 10 minutes. Don't share
-                    the code with anyone.
+                    {t(
+                      "The authorization link is valid for 10 minutes. Don't share the code with anyone.",
+                    )}
                   </small>
                   <button
                     className="button secondary"
@@ -246,7 +248,7 @@ function ArkAuthPanel({
                       })
                     }
                   >
-                    Verify authorization code
+                    {t("Verify authorization code")}
                   </button>
                   <button
                     className="text-button"
@@ -256,7 +258,7 @@ function ArkAuthPanel({
                       setCode("");
                     }}
                   >
-                    Start over
+                    {t("Start over")}
                   </button>
                 </div>
               )}
@@ -267,10 +269,10 @@ function ArkAuthPanel({
       {status?.loggedIn && !status.ready && (
         <div className="auth-steps">
           <label className="field project-field">
-            Project
+            {t("Project")}
             <div className="project-select-wrap">
               <select
-                aria-label="Select a project"
+                aria-label={t("Select a project")}
                 disabled={busy || Boolean(status.apiKeyId)}
                 value={project}
                 onChange={(e) => setProject(e.target.value)}
@@ -287,16 +289,13 @@ function ArkAuthPanel({
               disabled={busy}
               onClick={() => void run(statusAndProjects)}
             >
-              Reload projects
+              {t("Reload projects")}
             </button>
           )}
           <p className="auth-consent-note">
-            Once connected, Muse creates a dedicated key in this project and
-            automatically sets up the assistant and cloud runtime. The key can
-            access all Ark resources in the project with no source-IP
-            restriction; cloud calls may be billed. The cloud environment can
-            reach the public internet, and tools run directly by default, which
-            may cause external writes or deletions.
+            {t(
+              "Once connected, Muse creates a dedicated key in this project and automatically sets up the assistant and cloud runtime. The key can access all Ark resources in the project with no source-IP restriction; cloud calls may be billed. The cloud environment can reach the public internet, and tools run directly by default, which may cause external writes or deletions.",
+            )}
           </p>
           <button
             className="button primary"
@@ -313,8 +312,8 @@ function ArkAuthPanel({
             }
           >
             {status.apiKeyId
-              ? "Continue connecting"
-              : "Connect project and get started"}
+              ? t("Continue connecting")
+              : t("Connect project and get started")}
           </button>
         </div>
       )}
@@ -322,21 +321,21 @@ function ArkAuthPanel({
         <div className="auth-connected">
           <p>
             {status.method === "api_key"
-              ? "Connected with API Key"
-              : "Connected with SSO"}{" "}
+              ? t("Connected with API Key")
+              : t("Connected with SSO")}{" "}
             ·{" "}
             {status.project ? (
               <>
-                Project <strong>{status.project}</strong>
+                {t("Project")} <strong>{status.project}</strong>
               </>
             ) : (
-              "The key's own project"
+              t("The key's own project")
             )}
           </p>
           <WorkspacePanel client={client} />
           {status.apiKeyId && (
             <details className="auth-key-details">
-              <summary>Key details</summary>
+              <summary>{t("Key details")}</summary>
               <p className="muted">API Key ID: {status.apiKeyId}</p>
             </details>
           )}
@@ -355,19 +354,19 @@ function ArkAuthPanel({
             }
           >
             <LogOut size={15} />
-            Sign out of this login
+            {t("Sign out of this login")}
           </button>
           <small>
-            Signing out removes this device's sign-in credentials but does not
-            revoke the cloud API Key. You can revoke it in the Ark console.
-            Switch sign-in methods by signing out first.
+            {t(
+              "Signing out removes this device's sign-in credentials but does not revoke the cloud API Key. You can revoke it in the Ark console. Switch sign-in methods by signing out first.",
+            )}
           </small>
         </div>
       )}
       {busy && (
         <p className="muted" role="status">
-          <LoaderCircle className="spin" size={15} /> Working, please don't
-          submit again…
+          <LoaderCircle className="spin" size={15} />{" "}
+          {t("Working, please don't submit again…")}
         </p>
       )}
     </section>

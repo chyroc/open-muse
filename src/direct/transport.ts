@@ -1,3 +1,4 @@
+import { t } from "../../shared/i18n";
 export const ARK_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3";
 const origins = new Set([
   "https://ark.cn-beijing.volces.com",
@@ -17,7 +18,7 @@ export const directFetch: typeof fetch = async (input, init = {}) => {
         : input.url,
   );
   if (!origins.has(url.origin) || url.username || url.password)
-    throw new Error("This is not an allowed Volcano API endpoint.");
+    throw new Error(t("This is not an allowed Volcano API endpoint."));
   try {
     return await fetch(input, {
       ...init,
@@ -28,7 +29,9 @@ export const directFetch: typeof fetch = async (input, init = {}) => {
   } catch (error) {
     if (init.signal?.aborted) throw error;
     throw new Error(
-      "Couldn't reach Volcano directly. Check your network; the endpoint must allow this app's origin (CORS). No request is retried automatically.",
+      t(
+        "Couldn't reach Volcano directly. Check your network; the endpoint must allow this app's origin (CORS). No request is retried automatically.",
+      ),
     );
   }
 };

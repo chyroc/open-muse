@@ -1,3 +1,4 @@
+import { t } from "../../shared/i18n";
 import { useEffect, useRef, useState } from "react";
 import { Editor } from "@tiptap/core";
 import {
@@ -24,12 +25,15 @@ import { Modal } from "./Chrome";
 import { editorExtensions, sourceOnly } from "./markdown";
 
 const descriptions = {
-  "SOUL.md":
+  "SOUL.md": t(
     "This file shapes your assistant's values, personality, and habits. You can edit it; the assistant also uses it as a guide in each conversation.",
-  "MEMORY.md":
+  ),
+  "MEMORY.md": t(
     "This file holds the facts, preferences, and commitments your assistant remembers. Editing it changes durable memory, not the text of earlier conversations.",
-  "IDENTITY.md":
+  ),
+  "IDENTITY.md": t(
     "This file stores the assistant's name. The current MA identity format is a JSON object with a name property. Other persona details belong in SOUL.md.",
+  ),
 };
 
 export function DocumentEditor({
@@ -91,7 +95,7 @@ export function DocumentEditor({
         attributes: {
           class: "rich-document",
           role: "textbox",
-          "aria-label": `Edit ${initial.name}`,
+          "aria-label": t("Edit {name}", { name: initial.name }),
           "aria-multiline": "true",
           spellcheck: "true",
         },
@@ -164,7 +168,7 @@ export function DocumentEditor({
       const saved = identity.documents[initial.name];
       setBaseline(saved);
       setContent(saved.content);
-      setSaveStatus("Saved and verified");
+      setSaveStatus(t("Saved and verified"));
       onSaved(identity);
       // Reflect server canonicalization without introducing a new edit.
       editor.current?.commands.setContent(saved.content, {
@@ -228,25 +232,25 @@ export function DocumentEditor({
     redraw((value) => value + 1);
   };
   const tools = [
-    { label: "Bold", Icon: Bold, command: "bold" },
-    { label: "Italic", Icon: Italic, command: "italic" },
-    { label: "Heading 1", Icon: Heading1, command: 1 },
-    { label: "Heading 2", Icon: Heading2, command: 2 },
-    { label: "Heading 3", Icon: Heading3, command: 3 },
-    { label: "Bullet list", Icon: List, command: "bullet" },
-    { label: "Numbered list", Icon: ListOrdered, command: "ordered" },
+    { label: t("Bold"), Icon: Bold, command: "bold" },
+    { label: t("Italic"), Icon: Italic, command: "italic" },
+    { label: t("Heading 1"), Icon: Heading1, command: 1 },
+    { label: t("Heading 2"), Icon: Heading2, command: 2 },
+    { label: t("Heading 3"), Icon: Heading3, command: 3 },
+    { label: t("Bullet list"), Icon: List, command: "bullet" },
+    { label: t("Numbered list"), Icon: ListOrdered, command: "ordered" },
   ] as const;
 
   return (
     <section
       className="document-workspace"
-      aria-label={`${initial.name} editor`}
+      aria-label={t("{name} editor", { name: initial.name })}
     >
       <header className="document-toolbar">
         <button
           className="icon-button"
-          title="Return to chat"
-          aria-label="Return to chat"
+          title={t("Return to chat")}
+          aria-label={t("Return to chat")}
           disabled={saving}
           onClick={() => {
             if (dirty) setCloseRequested(true);
@@ -259,7 +263,7 @@ export function DocumentEditor({
         <div
           className="format-tools"
           role="toolbar"
-          aria-label="Text formatting"
+          aria-label={t("Text formatting")}
         >
           {tools.map(({ label, Icon, command }) => (
             <button
@@ -278,8 +282,8 @@ export function DocumentEditor({
         <div className="document-actions">
           <button
             className="icon-button"
-            aria-label="View Markdown source"
-            title="View Markdown source"
+            aria-label={t("View Markdown source")}
+            title={t("View Markdown source")}
             aria-pressed={source}
             disabled={saving || sourceOnly(content, initial.name)}
             onClick={() => setSource((value) => !value)}
@@ -288,8 +292,8 @@ export function DocumentEditor({
           </button>
           <button
             className="icon-button"
-            aria-label="Review latest cloud version"
-            title="Review latest cloud version"
+            aria-label={t("Review latest cloud version")}
+            title={t("Review latest cloud version")}
             disabled={saving || loading || !connected}
             onClick={() => void inspectLatest()}
           >
@@ -298,17 +302,17 @@ export function DocumentEditor({
           {dirty && (
             <button
               className="pill-button document-save"
-              aria-label="Save document"
+              aria-label={t("Save document")}
               disabled={saving || !connected}
               onClick={() => void save()}
             >
               <Save size={15} />
-              {saving ? "Saving…" : "Save"}
+              {saving ? t("Saving…") : t("Save")}
             </button>
           )}
           <button
             className="icon-button"
-            aria-label="Close document"
+            aria-label={t("Close document")}
             disabled={saving}
             onClick={close}
           >
@@ -319,20 +323,21 @@ export function DocumentEditor({
       <div className="document-scroll">
         <div className="document-paper">
           <blockquote className="document-description">
-            <strong>About this file. </strong>
+            <strong>{t("About this file.")} </strong>
             {descriptions[initial.name]}{" "}
-            <em>This note is not part of the file.</em>
+            <em>{t("This note is not part of the file.")}</em>
           </blockquote>
           {!connected && (
             <p className="document-notice">
-              Not connected. You can inspect the template; connect in Settings
-              before saving.
+              {t(
+                "Not connected. You can inspect the template; connect in Settings before saving.",
+              )}
             </p>
           )}
           {source ? (
             <textarea
               className="document-source"
-              aria-label={`Edit ${initial.name}`}
+              aria-label={t("Edit {name}", { name: initial.name })}
               spellCheck={false}
               disabled={saving}
               value={content}
@@ -349,42 +354,48 @@ export function DocumentEditor({
             <div role="alert" className="document-error">
               <p>{error}</p>
               <p>
-                Your draft is still here. Review the latest cloud version before
-                trying again.
+                {t(
+                  "Your draft is still here. Review the latest cloud version before trying again.",
+                )}
               </p>
               <button
                 className="pill-button"
                 disabled={loading}
                 onClick={() => void inspectLatest()}
               >
-                Review latest version
+                {t("Review latest version")}
               </button>
             </div>
           )}
           <p role="status" className="document-save-status">
             {saving
-              ? "Saving and verifying in MA…"
+              ? t("Saving and verifying in MA…")
               : dirty
-                ? "Unsaved changes · ⌘S to save"
+                ? t("Unsaved changes · ⌘S to save")
                 : saveStatus}
           </p>
         </div>
       </div>
       {closeRequested && (
-        <Modal title="Unsaved changes" onClose={() => setCloseRequested(false)}>
+        <Modal
+          title={t("Unsaved changes")}
+          onClose={() => setCloseRequested(false)}
+        >
           <p>
-            Keep editing, or close without saving your changes to {initial.name}
-            ?
+            {t(
+              "Keep editing, or close without saving your changes to {name}.",
+              { name: initial.name },
+            )}
           </p>
           <div className="document-confirm-actions">
             <button
               className="pill-button"
               onClick={() => setCloseRequested(false)}
             >
-              Keep editing
+              {t("Keep editing")}
             </button>
             <button className="pill-button" onClick={onClose}>
-              Discard draft
+              {t("Discard draft")}
             </button>
             <button
               className="button primary"
@@ -394,20 +405,22 @@ export function DocumentEditor({
                 void save();
               }}
             >
-              Save and keep open
+              {t("Save and keep open")}
             </button>
           </div>
         </Modal>
       )}
       {latest && (
         <Modal
-          title="Latest cloud version"
+          title={t("Latest cloud version")}
           wide
           onClose={() => setLatest(undefined)}
         >
           <p>
-            Your draft has not been changed. This is the latest saved copy of{" "}
-            {initial.name}.
+            {t(
+              "Your draft has not been changed. This is the latest saved copy of {name}.",
+              { name: initial.name },
+            )}
           </p>
           <div className="latest-document">
             <MarkdownView text={latest.documents[initial.name].content} />
@@ -417,10 +430,10 @@ export function DocumentEditor({
               className="pill-button"
               onClick={() => setLatest(undefined)}
             >
-              Keep my draft
+              {t("Keep my draft")}
             </button>
             <button className="button primary" onClick={useLatest}>
-              Replace draft with latest
+              {t("Replace draft with latest")}
             </button>
           </div>
         </Modal>

@@ -65,6 +65,7 @@ export class ArkClient {
       environment_id: string;
       memory_store_id?: string;
       system?: string;
+      agent_version?: number;
     },
   ): Promise<Session> {
     if (
@@ -84,6 +85,9 @@ export class ArkClient {
                 type: "agent_with_overrides",
                 id: selection.agent,
                 system: selection.system,
+                ...(selection.agent_version !== undefined
+                  ? { version: selection.agent_version }
+                  : {}),
               }
             : (selection?.agent ?? this.config.agentId),
         environment_id: selection?.environment_id ?? this.config.environmentId,

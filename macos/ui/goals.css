@@ -1,0 +1,453 @@
+.desktop-goals {
+  position: relative;
+  height: 100%;
+  overflow-y: auto;
+  padding: 32px 64px 40px;
+  scrollbar-gutter: stable;
+}
+.goals-column {
+  max-width: 768px;
+  margin: 0 auto;
+}
+.goals-heading {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.goals-heading h1 {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 650;
+  letter-spacing: -1.1px;
+}
+.goals-description {
+  margin: 0 0 24px;
+  padding-bottom: 24px;
+  font-size: 20px;
+  line-height: 1.4;
+}
+.goals-split-toggle {
+  position: absolute;
+  top: 16px;
+  left: 20px;
+  color: #777;
+}
+.goals-create h2,
+.goals-list h2 {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+.goals-create {
+  margin-top: 8px;
+}
+.goal-category {
+  width: calc(100% + 16px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  margin: 0 -8px;
+  padding: 12px 8px;
+  border-radius: 12px;
+  text-align: left;
+  font-size: 16px;
+}
+.goal-category > svg {
+  color: #6d6d72;
+}
+.goal-category > span {
+  flex: 1;
+}
+.goal-category > svg:last-child {
+  color: #9b9b9f;
+}
+.goals-list {
+  margin: 8px 0 32px;
+}
+.goals-list h2 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.goals-dot {
+  width: 8px;
+  height: 8px;
+  background: #0671e3;
+  border-radius: 50%;
+}
+.desktop-goal-row {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 8px;
+  margin: 0 -8px;
+  border-radius: 12px;
+}
+.desktop-goal-row:hover {
+  background: #f2f2f3;
+}
+.goal-check {
+  flex: 0 0 24px;
+  height: 24px;
+  padding: 0;
+  color: #86868a;
+  border-radius: 5px;
+}
+.completed .goal-check {
+  color: #0671e3;
+}
+.goal-row-open {
+  min-width: 0;
+  flex: 1;
+  text-align: left;
+  padding: 0;
+}
+.goal-row-open:hover:not(:disabled) {
+  background: transparent;
+}
+.goal-row-open strong {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+.goal-row-open span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 21px;
+  color: #757579;
+}
+.completed .goal-row-open strong {
+  color: #888;
+  text-decoration: line-through;
+}
+.goal-expand {
+  position: absolute;
+  left: -24px;
+  top: 12px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: #777;
+}
+.goal-options,
+.goals-header-options {
+  position: relative;
+  flex-shrink: 0;
+}
+.goal-options {
+  opacity: 0;
+}
+.desktop-goal-row:hover .goal-options,
+.goal-options:focus-within,
+.goal-options[open],
+.goal-detail-actions .goal-options {
+  opacity: 1;
+}
+.goal-options summary,
+.goals-header-options summary {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  list-style: none;
+  color: #777;
+}
+.goal-options summary::-webkit-details-marker,
+.goals-header-options summary::-webkit-details-marker {
+  display: none;
+}
+.goal-options summary:hover,
+.goals-header-options summary:hover {
+  background: #e8e8ec;
+}
+.goal-menu {
+  position: absolute;
+  right: 0;
+  top: 32px;
+  z-index: 15;
+  width: 224px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 6px 28px #0002;
+}
+.goal-menu button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 9px;
+  border-radius: 8px;
+  text-align: left;
+}
+.goal-menu p {
+  margin: 6px 9px 2px;
+  color: #858589;
+  font-size: 12px;
+}
+.goal-menu hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 4px;
+}
+.goal-menu .danger,
+.goal-delete-dialog .danger {
+  color: #ba3434;
+}
+.goals-show-more {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+  color: #747479;
+}
+.goals-footer {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 40px;
+  color: #929297;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.goals-footer span {
+  max-width: 520px;
+  padding-top: 7px;
+}
+.goal-pending {
+  margin-top: 24px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+.goal-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 8px 20px;
+  border-radius: 24px;
+  background: #065cc5;
+  color: white;
+  font-weight: 600;
+}
+.goal-primary:hover:not(:disabled) {
+  background: #0752ae;
+}
+.goal-intro-dialog {
+  width: 420px;
+  border-radius: 32px;
+  padding: 24px;
+}
+.desktop-dialog.goal-intro-dialog > header {
+  padding: 0;
+  border: 0;
+  position: static;
+  background: transparent;
+  margin-bottom: 20px;
+}
+.goal-intro-dialog .dialog-body {
+  padding: 0;
+}
+.goal-intro-dialog h2 {
+  font-size: 17px;
+  font-weight: 600;
+}
+.goal-intro-dialog > header .icon-button {
+  width: 28px;
+  height: 28px;
+  background: white;
+  box-shadow: 0 3px 12px #0001;
+}
+.goal-intro-dialog::backdrop {
+  background: #0001;
+  backdrop-filter: none;
+}
+.goal-intro-dialog .dialog-body > p {
+  margin: 0 0 16px;
+  color: #737378;
+  font-size: 16px;
+  line-height: 1.4;
+}
+.goal-intro-dialog .goal-primary {
+  width: 100%;
+}
+.goal-detail-dialog,
+.goal-completed-dialog {
+  width: 600px;
+  border-radius: 28px;
+  padding: 24px;
+}
+.desktop-dialog.goal-detail-dialog > header,
+.desktop-dialog.goal-completed-dialog > header,
+.desktop-dialog.goal-rename-dialog > header {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  margin-bottom: 20px;
+}
+.goal-detail-dialog .dialog-body,
+.goal-completed-dialog .dialog-body,
+.goal-rename-dialog .dialog-body {
+  padding: 0;
+}
+.goal-detail-dialog > header h2 {
+  padding-right: 32px;
+  overflow-wrap: anywhere;
+}
+.goal-detail-dialog .dialog-body {
+  position: relative;
+}
+.goal-detail-actions {
+  position: absolute;
+  top: -6px;
+  right: 0;
+}
+.goal-state {
+  display: inline-block;
+  font-size: 12px;
+  color: #0671e3;
+  margin-bottom: 16px;
+}
+.goal-state.completed {
+  color: #488a63;
+}
+.goal-state.paused {
+  color: #977823;
+}
+.goal-parent {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #777;
+  font-size: 13px;
+  padding: 0;
+  margin-bottom: 8px;
+}
+.goal-detail-dialog .markdown {
+  font-size: 15px;
+  line-height: 1.5;
+}
+.goal-detail-dialog h3 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 24px 0 12px;
+}
+.goal-plan label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  line-height: 1.4;
+}
+.goal-plan input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: #0671e3;
+  margin: 1px 0 0;
+}
+.goal-plan .done {
+  color: #888;
+  text-decoration: line-through;
+}
+.goal-timeline ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.goal-timeline li {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 0 0 20px;
+}
+.goal-timeline li > svg {
+  color: #8a8a90;
+  flex-shrink: 0;
+  background: white;
+  z-index: 1;
+}
+.goal-timeline li:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  top: 18px;
+  bottom: 0;
+  left: 8px;
+  width: 1px;
+  background: var(--line);
+}
+.goal-timeline strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+}
+.goal-timeline time,
+.goal-timeline small {
+  display: block;
+  color: #929297;
+  font-size: 12px;
+  margin-top: 4px;
+}
+.goal-talk {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  margin-top: 20px;
+}
+.goal-sync-note {
+  color: #929297;
+  font-size: 12px;
+  margin: 12px 0 0;
+  line-height: 1.4;
+}
+.goal-rename-dialog {
+  width: 420px;
+  border-radius: 28px;
+}
+.goal-rename-dialog label {
+  display: block;
+  color: #777;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.goal-rename-dialog input {
+  width: 100%;
+  border: 1px solid #ddd;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 16px;
+}
+.goal-rename-dialog form > footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
+}
+@media (max-width: 1050px) {
+  .desktop-goals {
+    padding-left: 48px;
+    padding-right: 36px;
+  }
+}

@@ -1,3 +1,4 @@
+import { t } from "../../shared/i18n";
 import { z } from "zod";
 import { ApiError, type ArkClient } from "../../shared/ark";
 import { digest, uuid } from "../../shared/crypto";
@@ -29,7 +30,7 @@ const profileInput = z
   .strict();
 const validId = (id: string) => {
   if (!/^[\w-]{1,200}$/.test(id))
-    throw new ApiError(502, "Invalid memory resource ID.");
+    throw new ApiError(502, t("Invalid memory resource ID."));
   return id;
 };
 // MA normalizes leading/trailing whitespace in the read response.
@@ -69,13 +70,16 @@ export class DirectIdentity {
         `${path}${page ? `&page=${encodeURIComponent(page)}` : ""}`,
       );
       if (!Array.isArray(result.data))
-        throw new ApiError(502, "Invalid memory list. No changes were made.");
+        throw new ApiError(
+          502,
+          t("Invalid memory list. No changes were made."),
+        );
       rows.push(...result.data);
       page = result.next_page ?? "";
       if (page && (seen.has(page) || seen.size >= 100))
         throw new ApiError(
           502,
-          "Memory pagination did not finish. No changes were made.",
+          t("Memory pagination did not finish. No changes were made."),
         );
       seen.add(page);
     } while (page);
@@ -90,12 +94,16 @@ export class DirectIdentity {
       if (store.id !== mapping.store_id)
         throw new ApiError(
           502,
-          "The personal memory store response did not match the requested resource.",
+          t(
+            "The personal memory store response did not match the requested resource.",
+          ),
         );
       if (store.metadata?.open_muse_identity !== this.owner)
         throw new ApiError(
           409,
-          "The personal memory store is not owned by this connection. No changes were made.",
+          t(
+            "The personal memory store is not owned by this connection. No changes were made.",
+          ),
         );
       return validId(store.id);
     }
@@ -106,7 +114,9 @@ export class DirectIdentity {
     if (owned.length > 1)
       throw new ApiError(
         409,
-        "Multiple personal memory stores were found. No store was selected or changed.",
+        t(
+          "Multiple personal memory stores were found. No store was selected or changed.",
+        ),
       );
     if (owned[0]) {
       const id = validId(owned[0].id);
@@ -119,7 +129,9 @@ export class DirectIdentity {
       if (old?.pending || old?.store_id)
         throw new ApiError(
           409,
-          "Memory setup is unconfirmed or running in another window. Refresh before trying again.",
+          t(
+            "Memory setup is unconfirmed or running in another window. Refresh before trying again.",
+          ),
         );
       return { pending: token };
     });
@@ -159,14 +171,19 @@ export class DirectIdentity {
     if (hits.length > 1)
       throw new ApiError(
         409,
-        `Multiple ${name} documents were found. No changes were made.`,
+        t("Multiple {name} documents were found. No changes were made.", {
+          name,
+        }),
       );
     if (!hits[0]) return;
     const memory = await this.ark.request<Memory>(
       `${this.path(store)}/${validId(hits[0].id)}`,
     );
     if (typeof memory.content !== "string")
-      throw new ApiError(502, `Could not read ${name}. No changes were made.`);
+      throw new ApiError(
+        502,
+        t("Could not read {name}. No changes were made.", { name }),
+      );
     const content = canonicalDocument(memory.content);
     const pending = await this.db.get<Write | null>(this.writeKey(store, name));
     if (pending?.content === content)
@@ -204,12 +221,16 @@ export class DirectIdentity {
     if (await this.db.get<Write | null>(this.writeKey(store, "GOALS.md")))
       throw new ApiError(
         409,
-        "The previous goal change is unconfirmed. Refresh goals before trying again.",
+        t(
+          "The previous goal change is unconfirmed. Refresh goals before trying again.",
+        ),
       );
     if ((current?.revision ?? digest(emptyGoalsDocument)) !== revision)
       throw new ApiError(
         409,
-        "Your goals changed. Refresh and review the latest progress before saving.",
+        t(
+          "Your goals changed. Refresh and review the latest progress before saving.",
+        ),
       );
     if (!current || current.content !== content)
       await this.write(store, "GOALS.md", content, current);
@@ -237,12 +258,16 @@ export class DirectIdentity {
     if (await this.db.get<Write | null>(this.writeKey(store, "FEED.md")))
       throw new ApiError(
         409,
-        "The previous feed-instructions write is unconfirmed. Reload to check its result before saving again.",
+        t(
+          "The previous feed-instructions write is unconfirmed. Reload to check its result before saving again.",
+        ),
       );
     if ((current?.revision ?? digest(defaultFeedInstructions)) !== revision)
       throw new ApiError(
         409,
-        "Feed instructions changed since you opened them. Your draft is preserved; reload and review before saving.",
+        t(
+          "Feed instructions changed since you opened them. Your draft is preserved; reload and review before saving.",
+        ),
       );
     if (!current || current.content !== content)
       await this.write(store, "FEED.md", content, current);
@@ -263,8 +288,9 @@ export class DirectIdentity {
         JSON.parse(result.documents["IDENTITY.md"].content),
       ).name;
     } catch {
-      result.warning =
-        "The saved name is invalid. Edit your identity to repair it; the original document is preserved.";
+      result.warning = t(
+        "The saved name is invalid. Edit your identity to repair it; the original document is preserved.",
+      );
     }
     return result;
   }
@@ -279,13 +305,15 @@ export class DirectIdentity {
     const store = await this.ensure();
     for (const file of [...archive.chunks, archive.manifest]) {
       if (!/^history\/[a-f0-9]{64}\/(HISTORY|part-\d{4,})\.md$/.test(file.name))
-        throw new ApiError(400, "Invalid conversation archive path.");
+        throw new ApiError(400, t("Invalid conversation archive path."));
       const content = canonicalDocument(file.content);
       const existing = await this.document(store, file.name);
       if (existing && existing.content !== content)
         throw new ApiError(
           409,
-          "The conversation archive changed unexpectedly. No history was overwritten.",
+          t(
+            "The conversation archive changed unexpectedly. No history was overwritten.",
+          ),
         );
       if (!existing) await this.write(store, file.name, content);
     }
@@ -318,7 +346,7 @@ export class DirectIdentity {
           2,
         );
       } catch {
-        throw new ApiError(400, "Enter a name between 1 and 40 characters.");
+        throw new ApiError(400, t("Enter a name between 1 and 40 characters."));
       }
     }
     const store = await this.ensure();
@@ -326,12 +354,16 @@ export class DirectIdentity {
     if (await this.db.get<Write | null>(this.writeKey(store, name)))
       throw new ApiError(
         409,
-        "The previous memory write is unconfirmed. Reload the document to check its result; it has not been submitted twice.",
+        t(
+          "The previous memory write is unconfirmed. Reload the document to check its result; it has not been submitted twice.",
+        ),
       );
     if (current.revision !== revision)
       throw new ApiError(
         409,
-        "This document changed since you opened it. Your draft is preserved; reload and review the latest version before saving.",
+        t(
+          "This document changed since you opened it. Your draft is preserved; reload and review the latest version before saving.",
+        ),
       );
     if (current.content !== content)
       await this.write(store, name, content, current);
@@ -349,7 +381,9 @@ export class DirectIdentity {
       if (old)
         throw new ApiError(
           409,
-          "The previous memory write is unconfirmed. Reload the document to check its result; it has not been submitted twice.",
+          t(
+            "The previous memory write is unconfirmed. Reload the document to check its result; it has not been submitted twice.",
+          ),
         );
       return { token, content, before: current?.revision ?? "" };
     });
@@ -369,7 +403,9 @@ export class DirectIdentity {
       if (verified?.content !== content)
         throw new ApiError(
           409,
-          "The saved document could not be verified. Reload before trying again.",
+          t(
+            "The saved document could not be verified. Reload before trying again.",
+          ),
         );
     } catch (error) {
       if (!accepted && definitelyRejected(error))

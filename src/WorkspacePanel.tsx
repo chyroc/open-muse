@@ -1,3 +1,4 @@
+import { t } from "../shared/i18n";
 import { useEffect, useState } from "react";
 import { Check, LoaderCircle, RefreshCw } from "lucide-react";
 import type { Client } from "./api";
@@ -47,7 +48,7 @@ export function WorkspacePanel({ client }: { client: Client }) {
     }
   }
   return (
-    <section className="workspace-card" aria-label="Personal workspace">
+    <section className="workspace-card" aria-label={t("Personal workspace")}>
       <div className="workspace-heading">
         {preparing ? (
           <LoaderCircle className="spin" size={20} />
@@ -55,33 +56,34 @@ export function WorkspacePanel({ client }: { client: Client }) {
           <Check size={20} />
         )}
         <div>
-          <h3>Personal workspace</h3>
+          <h3>{t("Personal workspace")}</h3>
           <p>
-            The assistant and runtime are managed automatically by Muse, no
-            manual setup needed.
+            {t(
+              "The assistant and runtime are managed automatically by Muse, no manual setup needed.",
+            )}
           </p>
           <p>
-            The cloud environment can access the public internet; tools in new
-            tasks run directly by default and may cause external writes,
-            deletions, or charges.
+            {t(
+              "The cloud environment can access the public internet; tools in new tasks run directly by default and may cause external writes, deletions, or charges.",
+            )}
           </p>
         </div>
         <span className="small-badge">
           {preparing
-            ? "Preparing"
+            ? t("Preparing")
             : status?.state === "ready"
-              ? "Ready"
+              ? t("Ready")
               : status?.state === "disconnected"
-                ? "Not connected"
-                : "Needs setup"}
+                ? t("Not connected")
+                : t("Needs setup")}
         </span>
       </div>
       <p role="status">
-        {error || status?.message || "Reading workspace status…"}
+        {error || status?.message || t("Reading workspace status…")}
       </p>
       {status?.state === "ready" ? (
         <a className="button primary" href="#/">
-          Start something new
+          {t("Start something new")}
         </a>
       ) : (
         status?.state !== "disconnected" && (
@@ -96,18 +98,18 @@ export function WorkspacePanel({ client }: { client: Client }) {
               <RefreshCw size={16} />
             )}
             {error
-              ? "Read status again"
+              ? t("Read status again")
               : preparing
-                ? "Setting up automatically…"
+                ? t("Setting up automatically…")
                 : status?.state === "error"
-                  ? "Continue setup"
-                  : "Set up workspace"}
+                  ? t("Continue setup")
+                  : t("Set up workspace")}
           </button>
         )
       )}
       {status?.state === "disconnected" && (
         <a className="button secondary" href="#/settings">
-          Sign in and connect a project
+          {t("Sign in and connect a project")}
         </a>
       )}
     </section>

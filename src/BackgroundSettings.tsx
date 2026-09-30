@@ -1,3 +1,4 @@
+import { formatLocale, t } from "../shared/i18n";
 import { useEffect, useRef, useState } from "react";
 import { Clock3, RefreshCw, ShieldCheck } from "lucide-react";
 import type {
@@ -91,29 +92,29 @@ export function BackgroundSettings({
   return (
     <section
       className="settings-card background-panel"
-      aria-label="Background Feed"
+      aria-label={t("Background Feed")}
     >
       <div className="settings-card-heading">
         <div className="settings-symbol">
           <Clock3 size={21} />
         </div>
         <div>
-          <h2>While you're away</h2>
-          <p>A daily Feed, prepared without keeping either app open</p>
+          <h2>{t("While you're away")}</h2>
+          <p>{t("A daily Feed, prepared without keeping either app open")}</p>
         </div>
         <span className="small-badge">
           {connected
             ? status?.schedule.enabled
-              ? "Scheduled"
-              : "Connected"
-            : "Optional"}
+              ? t("Scheduled")
+              : t("Connected")
+            : t("Optional")}
         </span>
       </div>
       {!service.configured() ? (
         <p className="background-note">
-          This build has no background service configured. Direct Ark
-          conversations still work. Set the public API origin when building the
-          app to enable this connection.
+          {t(
+            "This build has no background service configured. Direct Ark conversations still work. Set the public API origin when building the app to enable this connection.",
+          )}
         </p>
       ) : (
         <>
@@ -138,7 +139,7 @@ export function BackgroundSettings({
               }}
             >
               <label className="field">
-                Device token
+                {t("Device token")}
                 <input
                   type="password"
                   value={token}
@@ -153,45 +154,48 @@ export function BackgroundSettings({
                 />
               </label>
               <p className="background-note">
-                <ShieldCheck size={16} /> Use a private Muse device token, never
-                an Ark key or Cloudflare token. The token stays in this app's
-                separate Keychain entry.
+                <ShieldCheck size={16} />{" "}
+                {t(
+                  "Use a private Muse device token, never an Ark key or Cloudflare token. The token stays in this app's separate Keychain entry.",
+                )}
               </p>
               <button
                 className="button primary"
                 disabled={busy || !token.trim()}
               >
-                Connect background service
+                {t("Connect background service")}
               </button>
             </form>
           ) : (
             <>
               <p className="background-note">
-                Private service account: {status?.owner ?? "Checking…"}. This
-                connection is independent of the Ark login above. Signing out of
-                Ark does not stop this schedule.
+                {t("Private service account:")}{" "}
+                {status?.owner ?? t("Checking…")}. This connection is
+                independent of the Ark login above. Signing out of Ark does not
+                stop this schedule.
               </p>
               {status && !status.backgroundReady && (
                 <p className="background-note">
-                  The server is connected, but background MA access is disabled
-                  or not configured. No generation can start yet.
+                  {t(
+                    "The server is connected, but background MA access is disabled or not configured. No generation can start yet.",
+                  )}
                 </p>
               )}
               {client && (
                 <div className="background-authorization">
-                  <h3>{"Use your current Ark workspace"}</h3>
+                  <h3>{t("Use your current Ark workspace")}</h3>
                   <p className="background-note">
-                    {
-                      "No second key or agent to configure. Sync the API key, project, agent version, environment, and memory-store IDs from this app. SSO and refresh credentials stay on-device. The service stores the configuration encrypted and decrypts it to call Ark while you are away. Its administrators remain trusted; this is not end-to-end encryption."
-                    }
+                    {t(
+                      "No second key or agent to configure. Sync the API key, project, agent version, environment, and memory-store IDs from this app. SSO and refresh credentials stay on-device. The service stores the configuration encrypted and decrypts it to call Ark while you are away. Its administrators remain trusted; this is not end-to-end encryption.",
+                    )}
                   </p>
                   <p className="background-note" role="status">
                     {status?.connection?.configured
-                      ? `Configuration uploaded${status.connection.updatedAt ? ` · ${new Date(status.connection.updatedAt).toLocaleString()}` : ""}`
-                      : "No app configuration uploaded."}
+                      ? `${t("Configuration uploaded")}${status.connection.updatedAt ? ` · ${new Date(status.connection.updatedAt).toLocaleString(formatLocale())}` : ""}`
+                      : t("No app configuration uploaded.")}
                     {status &&
                       !status.credentialStorageReady &&
-                      "Encrypted storage is not available yet."}
+                      t("Encrypted storage is not available yet.")}
                   </p>
                   <label className="background-consent">
                     <input
@@ -206,9 +210,9 @@ export function BackgroundSettings({
                         setUploadConsent(event.target.checked)
                       }
                     />
-                    {
-                      "I authorize uploading this app's current Ark configuration to this private service for background Feed generation. Personal context will be read from Ark. Cloud calls may be billed."
-                    }
+                    {t(
+                      "I authorize uploading this app's current Ark configuration to this private service for background Feed generation. Personal context will be read from Ark. Cloud calls may be billed.",
+                    )}
                   </label>
                   <div className="background-actions">
                     <button
@@ -228,12 +232,14 @@ export function BackgroundSettings({
                           setConsent(false);
                           await load();
                           setNotice(
-                            "Current Ark configuration synced. A changed connection pauses the schedule; review it before enabling. Generation remains subject to the server's safety checks.",
+                            t(
+                              "Current Ark configuration synced. A changed connection pauses the schedule; review it before enabling. Generation remains subject to the server's safety checks.",
+                            ),
                           );
                         })
                       }
                     >
-                      {"Sync current Ark configuration"}
+                      {t("Sync current Ark configuration")}
                     </button>
                   </div>
                   {status?.connection?.configured && (
@@ -247,9 +253,9 @@ export function BackgroundSettings({
                             setRemoveConsent(event.target.checked)
                           }
                         />
-                        {
-                          "Remove the uploaded configuration and pause future runs. Already submitted MA work will not be cancelled."
-                        }
+                        {t(
+                          "Remove the uploaded configuration and pause future runs. Already submitted MA work will not be cancelled.",
+                        )}
                       </label>
                       <button
                         className="button secondary"
@@ -264,12 +270,14 @@ export function BackgroundSettings({
                             setConsent(false);
                             await load();
                             setNotice(
-                              "Uploaded access removed and the schedule paused. Existing MA work may still run; the original Ark key remains valid until revoked in Ark. Older encrypted backups may remain.",
+                              t(
+                                "Uploaded access removed and the schedule paused. Existing MA work may still run; the original Ark key remains valid until revoked in Ark. Older encrypted backups may remain.",
+                              ),
                             );
                           })
                         }
                       >
-                        {"Remove uploaded Ark access"}
+                        {t("Remove uploaded Ark access")}
                       </button>
                     </>
                   )}
@@ -289,8 +297,12 @@ export function BackgroundSettings({
                       await load();
                       setNotice(
                         saved.enabled
-                          ? "Daily schedule saved. MA calls may incur charges."
-                          : "Future scheduled runs are paused. Existing runs are not cancelled.",
+                          ? t(
+                              "Daily schedule saved. MA calls may incur charges.",
+                            )
+                          : t(
+                              "Future scheduled runs are paused. Existing runs are not cancelled.",
+                            ),
                       );
                     });
                   }}
@@ -304,11 +316,11 @@ export function BackgroundSettings({
                       }
                       onChange={(e) => change({ enabled: e.target.checked })}
                     />
-                    Prepare a daily Feed
+                    {t("Prepare a daily Feed")}
                   </label>
                   <div className="background-time">
                     <label className="field">
-                      Local time
+                      {t("Local time")}
                       <input
                         type="time"
                         value={schedule.local_time}
@@ -318,7 +330,7 @@ export function BackgroundSettings({
                       />
                     </label>
                     <label className="field">
-                      Timezone
+                      {t("Timezone")}
                       <input
                         value={schedule.timezone}
                         disabled={busy}
@@ -336,9 +348,9 @@ export function BackgroundSettings({
                         onChange={(e) => setConsent(e.target.checked)}
                         disabled={busy}
                       />
-                      I authorize unattended generation using this private
-                      service's configured Ark account. Cloud calls may be
-                      billed.
+                      {t(
+                        "I authorize unattended generation using this private service's configured Ark account. Cloud calls may be billed.",
+                      )}
                     </label>
                   )}
                   <div className="background-actions">
@@ -348,7 +360,7 @@ export function BackgroundSettings({
                         busy || !dirty || (schedule.enabled && !consent)
                       }
                     >
-                      Save schedule
+                      {t("Save schedule")}
                     </button>
                     {dirty && (
                       <button
@@ -362,15 +374,17 @@ export function BackgroundSettings({
                           if (status) setSchedule(status.schedule);
                         }}
                       >
-                        Discard changes
+                        {t("Discard changes")}
                       </button>
                     )}
                   </div>
                   {status?.schedule.next_run_at && (
                     <small>
-                      Next due:{" "}
-                      {new Date(status.schedule.next_run_at).toLocaleString()}.
-                      Checked approximately every five minutes.
+                      {t("Next due:")}{" "}
+                      {new Date(status.schedule.next_run_at).toLocaleString(
+                        formatLocale(),
+                      )}
+                      . Checked approximately every five minutes.
                     </small>
                   )}
                 </form>
@@ -385,34 +399,45 @@ export function BackgroundSettings({
                       await load();
                       setNotice(
                         run.phase === "queued"
-                          ? "The run is queued. You can close the app; the server will continue."
-                          : `The generation request is confirmed: ${run.phase.replaceAll("_", " ")}. See recent runs for details.`,
+                          ? t(
+                              "The run is queued. You can close the app; the server will continue.",
+                            )
+                          : t(
+                              "The generation request is confirmed: {phase}. See recent runs for details.",
+                              { phase: t(run.phase.replaceAll("_", " ")) },
+                            ),
                       );
                     })
                   }
                 >
                   {service.pending()
-                    ? "Check previous generation request"
-                    : "Generate once · may incur charges"}
+                    ? t("Check previous generation request")
+                    : t("Generate once · may incur charges")}
                 </button>
                 <button
                   className="button secondary"
                   disabled={busy}
                   onClick={() => void action(load)}
                 >
-                  <RefreshCw size={15} /> Refresh
+                  <RefreshCw size={15} /> {t("Refresh")}
                 </button>
               </div>
               {runs.length > 0 && (
                 <details className="background-runs">
-                  <summary>Recent runs</summary>
+                  <summary>{t("Recent runs")}</summary>
                   {runs.map((run) => (
                     <div key={run.id} className="background-run">
-                      <strong>{run.phase.replaceAll("_", " ")}</strong>
-                      <time>{new Date(run.created_at).toLocaleString()}</time>
+                      <strong>{t(run.phase.replaceAll("_", " "))}</strong>
+                      <time>
+                        {new Date(run.created_at).toLocaleString(
+                          formatLocale(),
+                        )}
+                      </time>
                       {run.error && <p>{run.error}</p>}
                       {run.session_id && (
-                        <small>MA session: {run.session_id}</small>
+                        <small>
+                          {t("MA session:")} {run.session_id}
+                        </small>
                       )}
                       {run.phase === "needs_attention" && (
                         <button
@@ -425,7 +450,7 @@ export function BackgroundSettings({
                             })
                           }
                         >
-                          Resume checks after review
+                          {t("Resume checks after review")}
                         </button>
                       )}
                     </div>
@@ -434,12 +459,13 @@ export function BackgroundSettings({
               )}
               <div
                 className="background-feed"
-                aria-label="Background Feed results"
+                aria-label={t("Background Feed results")}
               >
-                <h3>Prepared for you</h3>
+                <h3>{t("Prepared for you")}</h3>
                 <p className="background-note">
-                  Personalized ideas from your cloud memory, not live news.
-                  Cached posts remain on this device.
+                  {t(
+                    "Personalized ideas from your cloud memory, not live news. Cached posts remain on this device.",
+                  )}
                 </p>
                 {posts.length ? (
                   posts.map((post) => (
@@ -449,19 +475,20 @@ export function BackgroundSettings({
                       <Markdown text={post.body} />
                       <small>{post.reason}</small>
                       <details>
-                        <summary>Source</summary>
+                        <summary>{t("Source")}</summary>
                         <p>
-                          MA session: {post.session_id}
+                          {t("MA session:")} {post.session_id}
                           <br />
-                          Event: {post.event_id}
+                          {t("Event:")} {post.event_id}
                         </p>
                       </details>
                     </article>
                   ))
                 ) : (
                   <p className="background-note">
-                    No background posts yet. Results appear here after a
-                    confirmed generation.
+                    {t(
+                      "No background posts yet. Results appear here after a confirmed generation.",
+                    )}
                   </p>
                 )}
               </div>
@@ -486,19 +513,19 @@ export function BackgroundSettings({
                 })
               }
             >
-              Remove this device connection
+              {t("Remove this device connection")}
             </button>
             <small>
-              Removes the local token only. Pause the schedule before
-              disconnecting to stop future automatic runs; revoke this device's
-              token on the server if needed.
+              {t(
+                "Removes the local token only. Pause the schedule before disconnecting to stop future automatic runs; revoke this device's token on the server if needed.",
+              )}
             </small>
           </div>
         </>
       )}
       {busy && (
         <p className="background-note" role="status">
-          Checking the background service…
+          {t("Checking the background service…")}
         </p>
       )}
       {notice && (

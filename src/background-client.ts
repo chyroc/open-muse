@@ -1,3 +1,6 @@
+import { t } from "../shared/i18n";
+
+class BackgroundRequestError extends Error {}
 import { z } from "zod";
 import { backgroundOrigin } from "../shared/background-origin";
 import { digest, uuid } from "../shared/crypto";
@@ -105,13 +108,17 @@ export class BackgroundClient {
         value = JSON.parse(raw);
       } catch {
         throw new Error(
-          "The saved background connection is invalid. Remove it before connecting again.",
+          t(
+            "The saved background connection is invalid. Remove it before connecting again.",
+          ),
         );
       }
       const parsed = saved.safeParse(value);
       if (!parsed.success || parsed.data.origin !== this.origin)
         throw new Error(
-          "The saved background connection does not match this build. Remove it before connecting again.",
+          t(
+            "The saved background connection does not match this build. Remove it before connecting again.",
+          ),
         );
       this.current = parsed.data;
     });
@@ -122,7 +129,7 @@ export class BackgroundClient {
     init: RequestInit = {},
   ): Promise<unknown> {
     if (!this.origin || !path.startsWith("/v1/"))
-      throw new Error("Background service is not configured.");
+      throw new Error(t("Background service is not configured."));
     const bound = boundedSignal([this.abort.signal, init.signal], 30000);
     try {
       const response = await this.fetcher(this.origin + path, {
@@ -138,24 +145,24 @@ export class BackgroundClient {
         },
       });
       if (!response.ok)
-        throw new Error(
+        throw new BackgroundRequestError(
           response.status === 401
-            ? "This device token was rejected or revoked."
+            ? t("This device token was rejected or revoked.")
             : response.status === 409
-              ? "The action conflicts with current server state. Refresh and review the schedule or active run."
-              : `Background service request failed (HTTP ${response.status}).`,
+              ? t(
+                  "The action conflicts with current server state. Refresh and review the schedule or active run.",
+                )
+              : t("Background service request failed (HTTP {status}).", {
+                  status: response.status,
+                }),
         );
       return await response.json();
     } catch (e) {
-      if (
-        (e instanceof Error &&
-          e.message.startsWith("Background service request failed")) ||
-        (e instanceof Error &&
-          /^(This device token|The action conflicts)/.test(e.message))
-      )
-        throw e;
+      if (e instanceof BackgroundRequestError) throw e;
       throw new Error(
-        "Could not confirm the background request. Refresh to check its result; no request was retried automatically.",
+        t(
+          "Could not confirm the background request. Refresh to check its result; no request was retried automatically.",
+        ),
       );
     } finally {
       bound.dispose();
@@ -165,7 +172,7 @@ export class BackgroundClient {
     return this.exclusive(async () => {
       if (!/^muse_device_[A-Za-z0-9_-]{32,128}$/.test(token))
         throw new Error(
-          "Enter a Muse device token, not an Ark or Cloudflare key.",
+          t("Enter a Muse device token, not an Ark or Cloudflare key."),
         );
       const status = statusSchema.parse(await this.call("/v1/status", token));
       const value = { origin: this.origin, token, owner: status.owner };
@@ -184,13 +191,13 @@ export class BackgroundClient {
   }
   private credentials() {
     if (!this.current)
-      throw new Error("Connect to the background service first.");
+      throw new Error(t("Connect to the background service first."));
     return this.current;
   }
   private assertCurrent(c: Credentials) {
     if (c !== this.current)
       throw new Error(
-        "The background connection changed; refresh before continuing.",
+        t("The background connection changed; refresh before continuing."),
       );
   }
   async status(): Promise<BackgroundStatus> {
@@ -199,7 +206,9 @@ export class BackgroundClient {
     this.assertCurrent(c);
     if (result.owner !== c.owner)
       throw new Error(
-        "The service owner changed. Disconnect and verify the deployment before reconnecting.",
+        t(
+          "The service owner changed. Disconnect and verify the deployment before reconnecting.",
+        ),
       );
     return result;
   }
@@ -226,14 +235,16 @@ export class BackgroundClient {
         c = this.credentials();
       if (!status.credentialStorageReady || !status.connection)
         throw new Error(
-          "Encrypted credential storage is not available on this service.",
+          t("Encrypted credential storage is not available on this service."),
         );
       const value = backgroundConfigurationSchema.safeParse(
         await source.backgroundConfiguration(true),
       );
       if (!value.success)
         throw new Error(
-          "The current Ark workspace is incomplete. Refresh it before syncing.",
+          t(
+            "The current Ark workspace is incomplete. Refresh it before syncing.",
+          ),
         );
       this.assertCurrent(c);
       const result = await this.call("/v1/connection", c.token, {
@@ -259,7 +270,9 @@ export class BackgroundClient {
       const status = await this.status(),
         c = this.credentials();
       if (!status.connection)
-        throw new Error("Refresh the service before removing uploaded access.");
+        throw new Error(
+          t("Refresh the service before removing uploaded access."),
+        );
       const result = await this.call("/v1/connection", c.token, {
         method: "DELETE",
         body: JSON.stringify({
@@ -304,7 +317,8 @@ export class BackgroundClient {
   }
   recheck(id: string) {
     return this.exclusive(async () => {
-      if (!/^[\w-]{1,80}$/.test(id)) throw new Error("Invalid run reference.");
+      if (!/^[\w-]{1,80}$/.test(id))
+        throw new Error(t("Invalid run reference."));
       await this.status();
       const c = this.credentials();
       await this.call(`/v1/runs/${id}/recheck`, c.token, {
@@ -346,7 +360,7 @@ export class BackgroundClient {
           data.cursor < cache.cursor ||
           (data.hasMore && data.cursor === cache.cursor)
         )
-          throw new Error("Invalid background Feed cursor.");
+          throw new Error(t("Invalid background Feed cursor."));
         const items = data.items.map((raw) => {
           const { id, sequence, session_id, event_id, created_at, ...content } =
             raw;
@@ -360,7 +374,7 @@ export class BackgroundClient {
             })
             .parse({ id, sequence, session_id, event_id, created_at });
           if (meta.sequence <= cache.cursor || meta.sequence > data.cursor)
-            throw new Error("Invalid Feed ordering.");
+            throw new Error(t("Invalid Feed ordering."));
           return {
             ...parseInspiration(JSON.stringify({ items: [content] }))[0],
             ...meta,

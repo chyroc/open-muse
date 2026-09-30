@@ -38,6 +38,11 @@ describe("Mac workspace navigation", () => {
       conversation: "s-123",
     });
     expect(parseRoute("#/ideas")).toEqual({ page: "ideas" });
+    expect(parseRoute("#/goals/goal-123")).toEqual({
+      page: "goals",
+      goal: "goal-123",
+    });
+    expect(parseRoute("#/goals/../../private")).toEqual({ page: "chat" });
     expect(parseRoute("#/chat/../../secrets")).toEqual({ page: "chat" });
   });
   it("sends on Return, preserving Shift-Return and IME composition", () => {

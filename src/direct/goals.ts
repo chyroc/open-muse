@@ -1,3 +1,4 @@
+import { t } from "../../shared/i18n";
 import { ApiError } from "../../shared/ark";
 import { digest } from "../../shared/crypto";
 import { parseGoals, serializeGoals } from "../../shared/goals";
@@ -103,7 +104,7 @@ export class DirectGoals {
   private async createOnce(goal: Goal) {
     const state = await this.read();
     if (state.data.some((entry) => entry.id === goal.id))
-      throw new ApiError(409, "Goal already exists.");
+      throw new ApiError(409, t("Goal already exists."));
     await this.save(state, [goal, ...state.data]);
     return goal;
   }
@@ -119,10 +120,12 @@ export class DirectGoals {
     if (revision !== undefined && revision !== state.revision)
       throw new ApiError(
         409,
-        "Your goals changed. Refresh and review the latest progress before saving.",
+        t(
+          "Your goals changed. Refresh and review the latest progress before saving.",
+        ),
       );
     const index = state.data.findIndex((goal) => goal.id === id);
-    if (index < 0) throw new ApiError(404, "Goal not found.");
+    if (index < 0) throw new ApiError(404, t("Goal not found."));
     const updated = {
       ...state.data[index],
       ...patch,

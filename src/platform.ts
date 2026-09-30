@@ -1,3 +1,4 @@
+import { t } from "../shared/i18n";
 import { Capacitor } from "@capacitor/core";
 import { Browser } from "@capacitor/browser";
 import { Share } from "@capacitor/share";
@@ -5,7 +6,7 @@ import { uuid } from "../shared/crypto";
 export const nativeMobile = () => Capacitor.isNativePlatform();
 export async function openAuthorization(url: string) {
   if (new URL(url).origin !== "https://signin.volcengine.com")
-    throw new Error("The authorization site is incorrect.");
+    throw new Error(t("The authorization site is incorrect."));
   if (nativeMobile()) await Browser.open({ url });
   else window.open(url, "_blank", "noopener,noreferrer");
 }
@@ -28,9 +29,10 @@ export async function exportText(
         const result = (event as CustomEvent).detail;
         if (result.id !== id) return;
         window.removeEventListener("muse-export-result", listener);
-        if (result.success) resolve("Conversation saved");
-        else if (result.cancelled) resolve("Export canceled");
-        else reject(new Error("Save failed. Please check file permissions."));
+        if (result.success) resolve(t("Conversation saved"));
+        else if (result.cancelled) resolve(t("Export canceled"));
+        else
+          reject(new Error(t("Save failed. Please check file permissions.")));
       };
       window.addEventListener("muse-export-result", listener);
     });
@@ -45,11 +47,11 @@ export async function exportText(
     const result = await Share.share({
       title: name,
       text: content,
-      dialogTitle: "Export conversation",
+      dialogTitle: t("Export conversation"),
     });
     return result.activityType
-      ? "Handed off to the selected app"
-      : "Share sheet closed";
+      ? t("Handed off to the selected app")
+      : t("Share sheet closed");
   }
   const url = URL.createObjectURL(
     new Blob([content], { type: "text/markdown;charset=utf-8" }),
@@ -59,5 +61,5 @@ export async function exportText(
   link.download = name;
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  return "Markdown download started";
+  return t("Markdown download started");
 }

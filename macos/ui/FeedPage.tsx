@@ -1,3 +1,4 @@
+import { t } from "../../shared/i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDown,
@@ -81,7 +82,9 @@ export function FeedPost({
         <header>
           <h3>{item.title}</h3>
           <details className="feed-post-options" ref={menu}>
-            <summary aria-label={`Options for ${item.title}`}>
+            <summary
+              aria-label={t("Options for {title}", { title: item.title })}
+            >
               <MoreHorizontal size={18} />
             </summary>
             <div className="feed-post-menu">
@@ -91,7 +94,7 @@ export function FeedPost({
                   onClick={() => choose(() => onMove("up"))}
                 >
                   <ArrowUp size={16} />
-                  Move up
+                  {t("Move up")}
                 </button>
               )}
               {!last && (
@@ -100,7 +103,7 @@ export function FeedPost({
                   onClick={() => choose(() => onMove("down"))}
                 >
                   <ArrowDown size={16} />
-                  Move down
+                  {t("Move down")}
                 </button>
               )}
               {!first && (
@@ -109,23 +112,23 @@ export function FeedPost({
                   onClick={() => choose(() => onMove("top"))}
                 >
                   <ArrowUpToLine size={16} />
-                  Move to top
+                  {t("Move to top")}
                 </button>
               )}
               <button onClick={() => choose(() => setWhy(true))}>
                 <Info size={16} />
-                Why I created this
+                {t("Why I created this")}
               </button>
               <button disabled={busy} onClick={() => choose(onDelete)}>
                 <Trash2 size={16} />
-                Delete
+                {t("Delete")}
               </button>
             </div>
           </details>
         </header>
         <Markdown text={item.body} />
         {item.sources.length > 0 && (
-          <ul className="feed-sources" aria-label="Sources">
+          <ul className="feed-sources" aria-label={t("Sources")}>
             {item.sources.map((source) => (
               <li key={source.url}>
                 <a href={source.url} target="_blank" rel="noopener noreferrer">
@@ -139,7 +142,7 @@ export function FeedPost({
           <button
             className={`feed-love ${item.liked ? "loved" : ""}`}
             disabled={busy}
-            aria-label={item.liked ? "Remove love" : "Love"}
+            aria-label={item.liked ? t("Remove love") : t("Love")}
             aria-pressed={item.liked}
             onClick={onLove}
           >
@@ -151,12 +154,15 @@ export function FeedPost({
           </button>
           <button disabled={busy} onClick={onDiscuss}>
             <MessageCircle size={23} strokeWidth={1.6} />
-            Discuss
+            {t("Discuss")}
           </button>
         </footer>
       </div>
       {why && (
-        <Modal title="Why I created this post" onClose={() => setWhy(false)}>
+        <Modal
+          title={t("Why I created this post")}
+          onClose={() => setWhy(false)}
+        >
           <p className="feed-reason">{item.reason}</p>
         </Modal>
       )}
@@ -277,11 +283,11 @@ export function FeedPage({
   const editions = feedEditions(data?.items ?? [], presentation);
   const hasPosts = Boolean(editions.length);
   return (
-    <section className="desktop-feed" aria-label="Feed">
+    <section className="desktop-feed" aria-label={t("Feed")}>
       <button
         className="feed-split-toggle icon-button"
         aria-label={
-          split ? "Close side-by-side chat" : "Open side-by-side chat"
+          split ? t("Close side-by-side chat") : t("Open side-by-side chat")
         }
         aria-pressed={split}
         onClick={onToggleChat}
@@ -290,10 +296,10 @@ export function FeedPage({
       </button>
       <div className="feed-column">
         <header className="feed-heading">
-          <h1>Feed</h1>
+          <h1>{t("Feed")}</h1>
           <button
             className="feed-settings"
-            aria-label="Edit feed instructions"
+            aria-label={t("Edit feed instructions")}
             disabled={!data}
             onClick={() => setEditing(true)}
           >
@@ -304,38 +310,39 @@ export function FeedPage({
           <div className="feed-error" role="alert">
             {error}
             <button disabled={busy} onClick={() => void refresh()}>
-              Refresh
+              {t("Refresh")}
             </button>
           </div>
         )}
         {loading && (
           <p className="feed-status" role="status">
-            Loading your feed…
+            {t("Loading your feed…")}
           </p>
         )}
         {!loading && data && !hasPosts && (
           <>
-            <Empty title="Your personal feed">
+            <Empty title={t("Your personal feed")}>
               <p>
-                Useful discoveries and thoughtful updates, shaped by your
-                conversations, interests, and goals.
+                {t(
+                  "Useful discoveries and thoughtful updates, shaped by your conversations, interests, and goals.",
+                )}
               </p>
             </Empty>
             <aside className="feed-prompt-card">
-              <h2>Your feed prompt</h2>
+              <h2>{t("Your feed prompt")}</h2>
               <p>{data.instructions.content}</p>
               <footer>
                 <button
                   className="pill-button"
                   onClick={() => setEditing(true)}
                 >
-                  Edit
+                  {t("Edit")}
                 </button>
               </footer>
             </aside>
           </>
         )}
-        <div aria-label="Feed editions">
+        <div aria-label={t("Feed editions")}>
           {editions.map((edition) => (
             <section
               className="feed-edition"
@@ -371,7 +378,7 @@ export function FeedPage({
         </div>
         {removed && (
           <div className="feed-undo" role="status">
-            Post removed from this Mac.
+            {t("Post removed from this Mac.")}
             <button
               disabled={busy}
               onClick={() =>
@@ -384,7 +391,7 @@ export function FeedPage({
                 })
               }
             >
-              Undo
+              {t("Undo")}
             </button>
           </div>
         )}
@@ -401,10 +408,10 @@ export function FeedPage({
         {pending && (
           <p className="feed-status" role="status">
             {run?.phase === "creating" || run?.phase === "sending"
-              ? "Checking submission…"
+              ? t("Checking submission…")
               : resumable
-                ? "Ready to continue generation"
-                : "Finding something worth sharing…"}
+                ? t("Ready to continue generation")
+                : t("Finding something worth sharing…")}
           </p>
         )}
         {run?.session_id && (pending || run.error) && (
@@ -412,7 +419,7 @@ export function FeedPage({
             className="feed-text-button"
             onClick={() => onOpenChat(run.session_id!)}
           >
-            View generation conversation
+            {t("View generation conversation")}
           </button>
         )}
         {!loading && (
@@ -427,24 +434,25 @@ export function FeedPage({
               }
             >
               {busy
-                ? "Working…"
+                ? t("Working…")
                 : !client.signedIn()
-                  ? "Connect to MA"
+                  ? t("Connect to MA")
                   : resumable
-                    ? "Continue generation"
-                    : "Generate"}
+                    ? t("Continue generation")
+                    : t("Generate")}
             </button>
             <button
               className="icon-button"
-              aria-label="Refresh feed"
+              aria-label={t("Refresh feed")}
               disabled={busy}
               onClick={() => void refresh()}
             >
               <RefreshCw size={17} />
             </button>
             <p>
-              Generated with MA when you ask. Automatic background editions are
-              not connected yet.
+              {t(
+                "Generated with MA when you ask. Automatic background editions are not connected yet.",
+              )}
             </p>
           </footer>
         )}
@@ -461,14 +469,16 @@ export function FeedPage({
       )}
       {deleting && (
         <Modal
-          title="Delete this post?"
+          title={t("Delete this post?")}
           onClose={() => {
             if (!busy) setDeleting(undefined);
           }}
         >
           <p>
-            Remove “{deleting.title}” from this Mac’s feed? The original MA
-            conversation stays unchanged. You can undo this removal.
+            {t(
+              "Remove “{title}” from this Mac’s feed? The original MA conversation stays unchanged. You can undo this removal.",
+              { title: deleting.title },
+            )}
           </p>
           <div className="feed-dialog-actions">
             <button
@@ -476,7 +486,7 @@ export function FeedPage({
               disabled={busy}
               onClick={() => setDeleting(undefined)}
             >
-              Cancel
+              {t("Cancel")}
             </button>
             <button
               className="pill-button"
@@ -493,7 +503,7 @@ export function FeedPage({
                 })
               }
             >
-              Delete post
+              {t("Delete post")}
             </button>
           </div>
         </Modal>

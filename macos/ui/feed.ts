@@ -1,3 +1,4 @@
+import { formatLocale, t } from "../../shared/i18n";
 import type { Client } from "../../src/api";
 import { digest } from "../../shared/crypto";
 import type { InspirationItem } from "../../shared/inspiration";
@@ -51,8 +52,8 @@ export function feedEditions(
         key,
         label:
           key === "undated"
-            ? "Earlier posts"
-            : `${date.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })} ${period}`,
+            ? t("Earlier posts")
+            : `${date.toLocaleDateString(formatLocale(), { weekday: "long", month: "short", day: "numeric" })} ${t(period)}`,
         items: [],
       };
       groups.set(key, group);

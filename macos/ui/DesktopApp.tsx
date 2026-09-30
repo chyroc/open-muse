@@ -1,3 +1,4 @@
+import { t } from "../../shared/i18n";
 import {
   lazy,
   Suspense,
@@ -35,6 +36,11 @@ import { FeedPage } from "./FeedPage";
 const IdeasPage = lazy(() =>
   import("./IdeasPage").then((module) => ({ default: module.IdeasPage })),
 );
+const GoalsPage = lazy(() =>
+  import("./GoalsPage").then((module) => ({ default: module.GoalsPage })),
+);
+import { MacGoals } from "./goals";
+import { WorkspaceBoundary } from "./WorkspaceBoundary";
 import {
   discussionPrompt,
   type InspirationItem,
@@ -85,6 +91,15 @@ export function DesktopApp({ client }: { client: Client }) {
   connectionVersion.current = connectionEpoch;
   const [splitChat, setSplitChat] = useState(false);
   const [quotedPost, setQuotedPost] = useState<InspirationItem>();
+  const [goalConversation, setGoalConversation] = useState<string>();
+  const [goalLabels, setGoalLabels] = useState<Record<string, string>>({});
+  const [goalDrafts, setGoalDrafts] = useState<Record<string, boolean>>({});
+  const [goalDraftReplacement, setGoalDraftReplacement] = useState<{
+    key: string;
+    text: string;
+  }>();
+  const routePage = useRef(route.page);
+  routePage.current = route.page;
   const activeDocument = useRef<IdentityDocument | undefined>(undefined);
   const acceptedHash = useRef(location.hash);
   activeDocument.current = document;
@@ -105,14 +120,17 @@ export function DesktopApp({ client }: { client: Client }) {
   const scroll = useRef<HTMLDivElement>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
   const alive = useRef(true);
-  const inspirationPage = route.page === "feed" || route.page === "ideas";
+  const inspirationPage =
+    route.page === "feed" || route.page === "ideas" || route.page === "goals";
   const id =
     route.page === "chat" && !route.newSide
       ? route.conversation
         ? currentConversation(index, route.conversation)
         : index.mainId
       : inspirationPage && splitChat
-        ? index.mainId
+        ? route.page === "goals" && goalConversation
+          ? currentConversation(index, goalConversation)
+          : index.mainId
         : undefined;
   const draftKey = id ?? (route.newSide ? "new-side" : "main");
   const draft = drafts[draftKey] ?? "";
@@ -141,13 +159,21 @@ export function DesktopApp({ client }: { client: Client }) {
         setIdentity(defaultIdentity());
         return;
       }
-      const [remote, conversations, identity] = await Promise.all([
+      const epoch = connectionVersion.current;
+      const [remote, conversations, identity, labels] = await Promise.all([
         client.sessions(),
         client.conversationIndex(),
         client.companionIdentity(),
+        new MacGoals(client).labels(),
       ]);
-      if (!alive.current) return;
-      setSessions(remote.data);
+      if (!alive.current || connectionVersion.current !== epoch) return;
+      setGoalLabels(labels);
+      setSessions(
+        remote.data.map((session) => ({
+          ...session,
+          title: labels[session.id] ?? session.title,
+        })),
+      );
       setIndex(conversations);
       setIdentity(identity);
       setError("");
@@ -161,7 +187,9 @@ export function DesktopApp({ client }: { client: Client }) {
   function navigate(path: string) {
     if (activeDocument.current || feedEditorOpen.current) {
       setNotice(
-        "Close the document before leaving this workspace. Your draft is preserved.",
+        t(
+          "Close the document before leaving this workspace. Your draft is preserved.",
+        ),
       );
       return;
     }
@@ -189,7 +217,9 @@ export function DesktopApp({ client }: { client: Client }) {
       const action = (event as CustomEvent<string>).detail;
       if (activeDocument.current || feedEditorOpen.current) {
         setNotice(
-          "Close the document before switching workspaces or accounts. Your draft is preserved.",
+          t(
+            "Close the document before switching workspaces or accounts. Your draft is preserved.",
+          ),
         );
         return;
       }
@@ -250,6 +280,12 @@ export function DesktopApp({ client }: { client: Client }) {
   useEffect(() => {
     if (inspirationPage && splitChat && quotedPost) composer.current?.focus();
   }, [inspirationPage, splitChat, quotedPost]);
+  useEffect(() => {
+    if (route.page === "goals" && splitChat) composer.current?.focus();
+  }, [route.page, splitChat, goalConversation, draft]);
+  useEffect(() => {
+    if (route.page !== "goals") setGoalConversation(undefined);
+  }, [route.page]);
 
   async function action(fn: () => Promise<void>) {
     if (busyRef.current) return;
@@ -279,16 +315,26 @@ export function DesktopApp({ client }: { client: Client }) {
       : text;
     if (message.length > 16000) {
       setError(
-        "This message and its quoted post exceed the message limit. Shorten your message or remove the quote.",
+        t(
+          "This message and its quoted post exceed the message limit. Shorten your message or remove the quote.",
+        ),
       );
       return;
     }
     await action(async () => {
+      const epoch = connectionVersion.current;
+      if (goalDrafts[draftKey]) {
+        await client.prepareGoals();
+        if (connectionVersion.current !== epoch)
+          throw new Error(
+            t("The connection changed. Your message was not sent."),
+          );
+      }
       let target = id;
       if (!target || target === index.mainId) {
         const session = await client.openConversation(
           route.newSide ? "side" : "main",
-          route.newSide ? text.slice(0, 60) : "Main chat",
+          route.newSide ? text.slice(0, 60) : t("Main chat"),
         );
         target = session.id;
         setIndex(await client.conversationIndex());
@@ -302,6 +348,7 @@ export function DesktopApp({ client }: { client: Client }) {
       });
       if (quote) setQuotedPost(undefined);
       setDrafts((old) => ({ ...old, [target!]: "" }));
+      setGoalDrafts((old) => ({ ...old, [draftKey]: false, [target!]: false }));
       setAway(false);
       await task.refresh();
       await reload();
@@ -332,10 +379,13 @@ export function DesktopApp({ client }: { client: Client }) {
   };
   const messages = chatMessages(events);
   const chatTitle = route.newSide
-    ? "New side chat"
+    ? t("New side chat")
     : id && id !== index.mainId
-      ? (index.entries[id]?.title ?? task.session?.title ?? "Side chat")
-      : "Chat";
+      ? (index.entries[id]?.title ??
+        goalLabels[id] ??
+        task.session?.title ??
+        t("Side chat"))
+      : t("Chat");
 
   return (
     <div className="desktop-shell">
@@ -349,7 +399,9 @@ export function DesktopApp({ client }: { client: Client }) {
         onSettings={() =>
           document || feedEditorOpen.current
             ? setNotice(
-                "Close the document before switching accounts. Your draft is preserved.",
+                t(
+                  "Close the document before switching accounts. Your draft is preserved.",
+                ),
               )
             : setSettings(true)
         }
@@ -361,13 +413,13 @@ export function DesktopApp({ client }: { client: Client }) {
         }}
       />
       {drawer && !document && (
-        <aside className="chat-drawer" aria-label="Side chats">
+        <aside className="chat-drawer" aria-label={t("Side chats")}>
           <header>
             <label className="search-field">
               <Search size={16} />
               <input
-                aria-label="Search side chats"
-                placeholder="Search"
+                aria-label={t("Search side chats")}
+                placeholder={t("Search")}
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
               />
@@ -384,7 +436,7 @@ export function DesktopApp({ client }: { client: Client }) {
               setDrawer(false);
             }}
           >
-            <MessageCircle size={17} /> Main chat
+            <MessageCircle size={17} /> {t("Main chat")}
           </button>
           <div className="side-chat-list">
             {chats.map((session) => (
@@ -400,16 +452,17 @@ export function DesktopApp({ client }: { client: Client }) {
               <Empty
                 title={
                   query
-                    ? "No matching chats"
+                    ? t("No matching chats")
                     : archived
-                      ? "No archived chats"
-                      : "Start a side chat"
+                      ? t("No archived chats")
+                      : t("Start a side chat")
                 }
                 icon={<MessagesSquare size={29} strokeWidth={1.4} />}
               >
                 <p>
-                  Side chats are an optional way to organize conversations by
-                  topic.
+                  {t(
+                    "Side chats are an optional way to organize conversations by topic.",
+                  )}
                 </p>
                 <button
                   className="pill-button"
@@ -418,7 +471,7 @@ export function DesktopApp({ client }: { client: Client }) {
                     setDrawer(false);
                   }}
                 >
-                  New side chat
+                  {t("New side chat")}
                 </button>
               </Empty>
             )}
@@ -430,7 +483,7 @@ export function DesktopApp({ client }: { client: Client }) {
               setDrawer(false);
             }}
           >
-            <Plus size={17} /> New side chat
+            <Plus size={17} /> {t("New side chat")}
           </button>
         </aside>
       )}
@@ -438,7 +491,7 @@ export function DesktopApp({ client }: { client: Client }) {
         <Suspense
           fallback={
             <main className="workspace">
-              <Empty title="Opening document…" />
+              <Empty title={t("Opening document…")} />
             </main>
           }
         >
@@ -475,7 +528,7 @@ export function DesktopApp({ client }: { client: Client }) {
       )}
       {route.page === "ideas" && !document && (
         <main className="workspace">
-          <Suspense fallback={<Empty title="Opening ideas…" />}>
+          <Suspense fallback={<Empty title={t("Opening ideas…")} />}>
             <IdeasPage
               key={connectionEpoch}
               client={client}
@@ -505,6 +558,59 @@ export function DesktopApp({ client }: { client: Client }) {
           </Suspense>
         </main>
       )}
+      {route.page === "goals" && !document && (
+        <main className="workspace">
+          <WorkspaceBoundary key={connectionEpoch}>
+            <Suspense fallback={<Empty title={t("Opening goals…")} />}>
+              <GoalsPage
+                key={connectionEpoch}
+                client={client}
+                selectedId={route.goal}
+                onSelect={(id) => navigate(id ? `/goals/${id}` : "/goals")}
+                split={splitChat}
+                onToggleChat={() => setSplitChat((value) => !value)}
+                onEditorChange={onFeedEditorChange}
+                onConnect={() => setSettings(true)}
+                onOpenChat={(id) => navigate(`/chat/${id}`)}
+                onConversation={async (id) => {
+                  const [conversations, labels] = await Promise.all([
+                    client.conversationIndex(),
+                    new MacGoals(client).labels(),
+                  ]);
+                  if (
+                    !alive.current ||
+                    connectionVersion.current !== connectionEpoch ||
+                    routePage.current !== "goals"
+                  )
+                    throw new Error(
+                      t(
+                        "The workspace changed. Reopen Goals to continue the saved conversation.",
+                      ),
+                    );
+                  setIndex(conversations);
+                  setGoalLabels(labels);
+                  setGoalConversation(id);
+                  setQuotedPost(undefined);
+                  setSplitChat(true);
+                  await reload();
+                }}
+                onDraft={(text) => {
+                  const key = index.mainId ?? "main";
+                  setGoalConversation(undefined);
+                  setQuotedPost(undefined);
+                  setSplitChat(true);
+                  if (drafts[key]?.trim() && drafts[key] !== text)
+                    setGoalDraftReplacement({ key, text });
+                  else {
+                    setDrafts((old) => ({ ...old, [key]: text }));
+                    setGoalDrafts((old) => ({ ...old, [key]: true }));
+                  }
+                }}
+              />
+            </Suspense>
+          </WorkspaceBoundary>
+        </main>
+      )}
       <main
         className={`workspace ${inspirationPage ? "feed-split-chat" : ""}`}
         hidden={Boolean(document) || (inspirationPage && !splitChat)}
@@ -514,7 +620,7 @@ export function DesktopApp({ client }: { client: Client }) {
             <header className="chat-toolbar">
               <button
                 className="glass-pill"
-                aria-label="Open chats and side chats"
+                aria-label={t("Open chats and side chats")}
                 aria-expanded={drawer}
                 onClick={() => setDrawer((value) => !value)}
               >
@@ -525,7 +631,7 @@ export function DesktopApp({ client }: { client: Client }) {
               {inspirationPage && (
                 <button
                   className="glass-pill"
-                  aria-label="Close side-by-side chat"
+                  aria-label={t("Close side-by-side chat")}
                   onClick={() => setSplitChat(false)}
                 >
                   <X size={18} />
@@ -533,7 +639,7 @@ export function DesktopApp({ client }: { client: Client }) {
               )}
               <button
                 className="glass-pill"
-                aria-label="Conversation options"
+                aria-label={t("Conversation options")}
                 aria-expanded={menu}
                 onClick={() => setMenu((value) => !value)}
               >
@@ -547,16 +653,19 @@ export function DesktopApp({ client }: { client: Client }) {
                       setMenu(false);
                     }}
                   >
-                    New side chat
+                    {t("New side chat")}
                   </button>
                   <button
                     onClick={() => {
-                      if (inspirationPage) navigate("/");
+                      if (inspirationPage)
+                        navigate(
+                          id && id !== index.mainId ? `/chat/${id}` : "/",
+                        );
                       setStatusOpen(true);
                       setMenu(false);
                     }}
                   >
-                    Assistant status
+                    {t("Assistant status")}
                   </button>
                   {id && id !== index.mainId && (
                     <button
@@ -573,8 +682,10 @@ export function DesktopApp({ client }: { client: Client }) {
                         })
                       }
                     >
-                      {index.entries[id]?.archived ? "Unarchive" : "Archive"}{" "}
-                      side chat
+                      {index.entries[id]?.archived
+                        ? t("Unarchive")
+                        : t("Archive")}{" "}
+                      {t("side chat")}
                     </button>
                   )}
                 </div>
@@ -584,7 +695,7 @@ export function DesktopApp({ client }: { client: Client }) {
               className="chat-scroll"
               ref={scroll}
               role="log"
-              aria-label="Chat messages"
+              aria-label={t("Chat messages")}
               aria-busy={task.loading}
               onScroll={() => {
                 const element = scroll.current;
@@ -600,27 +711,29 @@ export function DesktopApp({ client }: { client: Client }) {
               {!messages.length && !task.loading && (
                 <Empty
                   title={
-                    route.newSide ? "Start a side chat" : `Hello, I'm ${name}`
+                    route.newSide
+                      ? t("Start a side chat")
+                      : t("Hello, I'm {name}", { name })
                   }
                 >
                   <p>
                     {ready
-                      ? "What's on your mind?"
-                      : "Connect to Ark MA to start your conversation."}
+                      ? t("What's on your mind?")
+                      : t("Connect to Ark MA to start your conversation.")}
                   </p>
                   {!ready && (
                     <button
                       className="pill-button"
                       onClick={() => setSettings(true)}
                     >
-                      Connect to Ark MA
+                      {t("Connect to Ark MA")}
                     </button>
                   )}
                 </Empty>
               )}
               {task.loading && !messages.length && (
                 <p className="subtle loading-label">
-                  Loading your conversation…
+                  {t("Loading your conversation…")}
                 </p>
               )}
               <div className="message-stack">
@@ -634,20 +747,20 @@ export function DesktopApp({ client }: { client: Client }) {
                     </div>
                     <div className="message-actions">
                       <button
-                        aria-label="Copy message"
+                        aria-label={t("Copy message")}
                         onClick={() =>
                           void action(async () => {
                             await navigator.clipboard.writeText(
                               eventText(event),
                             );
-                            setNotice("Message copied");
+                            setNotice(t("Message copied"));
                           })
                         }
                       >
                         <Copy size={14} />
                       </button>
                       <button
-                        aria-label="Reply to message"
+                        aria-label={t("Reply to message")}
                         onClick={() => {
                           setDrafts((old) => ({
                             ...old,
@@ -660,7 +773,7 @@ export function DesktopApp({ client }: { client: Client }) {
                       </button>
                       {event.type === "agent.message" && (
                         <button
-                          aria-label="Save reply to library"
+                          aria-label={t("Save reply to library")}
                           disabled={busy}
                           onClick={() =>
                             void action(async () => {
@@ -668,7 +781,7 @@ export function DesktopApp({ client }: { client: Client }) {
                                 event.source_session_id ?? id!,
                                 event.source_event_id ?? event.id,
                               );
-                              setNotice("Saved to Library");
+                              setNotice(t("Saved to Library"));
                             })
                           }
                         >
@@ -682,15 +795,15 @@ export function DesktopApp({ client }: { client: Client }) {
               {running && (
                 <p className="thinking" role="status">
                   {approvals.length
-                    ? "Waiting for your approval"
-                    : `${name} is working…`}
+                    ? t("Waiting for your approval")
+                    : t("{name} is working…", { name })}
                 </p>
               )}
             </div>
             {away && (
               <button
                 className="jump-latest"
-                aria-label="Jump to latest message"
+                aria-label={t("Jump to latest message")}
                 onClick={() => setAway(false)}
               >
                 <ArrowDown size={18} />
@@ -700,14 +813,19 @@ export function DesktopApp({ client }: { client: Client }) {
               <button
                 className="approval-banner"
                 onClick={() => {
-                  if (inspirationPage) navigate("/");
+                  if (inspirationPage)
+                    navigate(id && id !== index.mainId ? `/chat/${id}` : "/");
                   setStatusOpen(true);
                   setStatusTab("approvals");
                 }}
               >
                 <ShieldCheck size={17} />
-                {approvals.length} approval{approvals.length === 1 ? "" : "s"}{" "}
-                needed
+                {t(
+                  approvals.length === 1
+                    ? "{count} approval needed"
+                    : "{count} approvals needed",
+                  { count: approvals.length },
+                )}
               </button>
             )}
             {quotedPost && !route.newSide && (!id || id === index.mainId) && (
@@ -716,7 +834,7 @@ export function DesktopApp({ client }: { client: Client }) {
                 <span>{quotedPost.title}</span>
                 <button
                   className="icon-button"
-                  aria-label="Remove quoted post"
+                  aria-label={t("Remove quoted post")}
                   onClick={() => setQuotedPost(undefined)}
                 >
                   <X size={15} />
@@ -733,10 +851,12 @@ export function DesktopApp({ client }: { client: Client }) {
               <button
                 type="button"
                 className="icon-button"
-                aria-label="Attach files"
+                aria-label={t("Attach files")}
                 onClick={() =>
                   setNotice(
-                    "File attachments are not connected in this desktop build yet.",
+                    t(
+                      "File attachments are not connected in this desktop build yet.",
+                    ),
                   )
                 }
               >
@@ -747,8 +867,8 @@ export function DesktopApp({ client }: { client: Client }) {
                 rows={1}
                 value={draft}
                 maxLength={16000}
-                aria-label={`Message ${name}`}
-                placeholder="Message"
+                aria-label={t("Message {name}", { name })}
+                placeholder={t("Message")}
                 onChange={(event) =>
                   setDrafts((old) => ({
                     ...old,
@@ -770,10 +890,12 @@ export function DesktopApp({ client }: { client: Client }) {
               <button
                 type="button"
                 className="icon-button"
-                aria-label="Dictate a message"
+                aria-label={t("Dictate a message")}
                 onClick={() =>
                   setNotice(
-                    "Use macOS Dictation from the Edit menu. Built-in voice input is not connected yet.",
+                    t(
+                      "Use macOS Dictation from the Edit menu. Built-in voice input is not connected yet.",
+                    ),
                   )
                 }
               >
@@ -783,7 +905,7 @@ export function DesktopApp({ client }: { client: Client }) {
                 <button
                   type="button"
                   className="send-button"
-                  aria-label="Stop response"
+                  aria-label={t("Stop response")}
                   disabled={busy}
                   onClick={() =>
                     void action(async () => {
@@ -799,7 +921,7 @@ export function DesktopApp({ client }: { client: Client }) {
               ) : (
                 <button
                   className="send-button"
-                  aria-label="Send"
+                  aria-label={t("Send")}
                   disabled={busy || !draft.trim()}
                 >
                   <ArrowUp size={21} />
@@ -812,13 +934,14 @@ export function DesktopApp({ client }: { client: Client }) {
             <header>
               <h1>{route.page[0].toUpperCase() + route.page.slice(1)}</h1>
             </header>
-            <Empty title="Desktop view in progress">
+            <Empty title={t("Desktop view in progress")}>
               <p>
-                This Mac-specific view has not been implemented yet. No sample
-                or simulated content is shown.
+                {t(
+                  "This Mac-specific view has not been implemented yet. No sample or simulated content is shown.",
+                )}
               </p>
               <button className="pill-button" onClick={() => goPage("chat")}>
-                Back to chat
+                {t("Back to chat")}
               </button>
             </Empty>
           </section>
@@ -828,7 +951,7 @@ export function DesktopApp({ client }: { client: Client }) {
             <span>{error || task.error}</span>
             <button
               className="icon-button"
-              aria-label="Refresh history"
+              aria-label={t("Refresh history")}
               onClick={() => {
                 void reload();
                 void task.refresh();
@@ -844,14 +967,14 @@ export function DesktopApp({ client }: { client: Client }) {
           identity={identity}
           status={
             !ready
-              ? "Not connected"
+              ? t("Not connected")
               : running
-                ? "Working"
+                ? t("Working")
                 : task.connected
-                  ? "Connected"
+                  ? t("Connected")
                   : id
-                    ? "Reconnecting…"
-                    : "Ready"
+                    ? t("Reconnecting…")
+                    : t("Ready")
           }
           tab={statusTab}
           onTab={setStatusTab}
@@ -864,13 +987,17 @@ export function DesktopApp({ client }: { client: Client }) {
         />
       )}
       {settings && (
-        <Modal title="Settings" wide onClose={() => setSettings(false)}>
+        <Modal title={t("Settings")} wide onClose={() => setSettings(false)}>
           <AuthPanel
             client={client}
             onChanged={() => {
               void reload();
               setDrafts({});
               setQuotedPost(undefined);
+              setGoalConversation(undefined);
+              setGoalLabels({});
+              setGoalDrafts({});
+              setGoalDraftReplacement(undefined);
               setConnectionEpoch((value) => value + 1);
             }}
           />
@@ -878,7 +1005,7 @@ export function DesktopApp({ client }: { client: Client }) {
       )}
       {search && (
         <Modal
-          title="Search"
+          title={t("Search")}
           onClose={() => {
             setSearch(false);
             setQuery("");
@@ -888,8 +1015,8 @@ export function DesktopApp({ client }: { client: Client }) {
             <Search size={20} />
             <input
               autoFocus
-              placeholder="Search chats"
-              aria-label="Search all chats"
+              placeholder={t("Search chats")}
+              aria-label={t("Search all chats")}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -910,8 +1037,41 @@ export function DesktopApp({ client }: { client: Client }) {
                 </button>
               ))}
             {!sessions.length && (
-              <p className="subtle">{loading ? "Loading…" : "No chats yet"}</p>
+              <p className="subtle">
+                {loading ? t("Loading…") : t("No chats yet")}
+              </p>
             )}
+          </div>
+        </Modal>
+      )}
+      {goalDraftReplacement && (
+        <Modal
+          title={t("Replace the composer draft?")}
+          onClose={() => setGoalDraftReplacement(undefined)}
+        >
+          <p>
+            {t(
+              "Your existing message has not been sent. Replace it with the goal prompt?",
+            )}
+          </p>
+          <div className="feed-dialog-actions">
+            <button
+              className="pill-button"
+              onClick={() => setGoalDraftReplacement(undefined)}
+            >
+              {t("Keep my draft")}
+            </button>
+            <button
+              className="pill-button"
+              onClick={() => {
+                const { key, text } = goalDraftReplacement;
+                setDrafts((old) => ({ ...old, [key]: text }));
+                setGoalDrafts((old) => ({ ...old, [key]: true }));
+                setGoalDraftReplacement(undefined);
+              }}
+            >
+              {t("Replace draft")}
+            </button>
           </div>
         </Modal>
       )}
@@ -920,7 +1080,7 @@ export function DesktopApp({ client }: { client: Client }) {
           {notice}
           <button
             className="icon-button"
-            aria-label="Dismiss notification"
+            aria-label={t("Dismiss notification")}
             onClick={() => setNotice("")}
           >
             <X size={16} />

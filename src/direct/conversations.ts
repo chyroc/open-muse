@@ -1,3 +1,4 @@
+import { t } from "../../shared/i18n";
 import { ApiError } from "../../shared/ark";
 import { uuid } from "../../shared/crypto";
 import type { Category, Session } from "../../shared/types";
@@ -42,7 +43,7 @@ export function currentConversation(index: ConversationIndex, id: string) {
     if (seen.has(id))
       throw new ApiError(
         409,
-        "Conversation links are inconsistent. No messages were sent.",
+        t("Conversation links are inconsistent. No messages were sent."),
       );
     seen.add(id);
     id = index.entries[id].continuedBy!;
@@ -79,7 +80,7 @@ export class Conversations {
   async archive(session: Session, archived: boolean) {
     return this.update((index) => {
       if (session.id === index.mainId || index.entries[session.id]?.continuedBy)
-        throw new ApiError(409, "The main chat cannot be archived.");
+        throw new ApiError(409, t("The main chat cannot be archived."));
       index.entries[session.id] = {
         title: index.entries[session.id]?.title ?? session.title,
         kind: "side",
@@ -94,17 +95,23 @@ export class Conversations {
       if (current.entries[id]?.continuedBy || current.mainId !== id)
         throw new ApiError(
           409,
-          "This chat has continued. Refresh before sending; no message was submitted to the older conversation.",
+          t(
+            "This chat has continued. Refresh before sending; no message was submitted to the older conversation.",
+          ),
         );
       if (current.pending?.previous === id)
         throw new ApiError(
           409,
-          "Your main conversation is being prepared. Resume it before sending.",
+          t(
+            "Your main conversation is being prepared. Resume it before sending.",
+          ),
         );
       if (current.sending)
         throw new ApiError(
           409,
-          "A main-chat message is unconfirmed or still being sent. Refresh history before submitting another.",
+          t(
+            "A main-chat message is unconfirmed or still being sent. Refresh history before submitting another.",
+          ),
         );
       current.sending = { session: id, event };
     });
@@ -135,7 +142,9 @@ export class Conversations {
       if (kind !== "main")
         throw new ApiError(
           409,
-          "The main conversation update is unfinished. Return to the main chat and resume it first.",
+          t(
+            "The main conversation update is unfinished. Return to the main chat and resume it first.",
+          ),
         );
       return this.resumeContinuation(index.pending);
     }
@@ -154,7 +163,9 @@ export class Conversations {
           if (current.pending || current.sending || current.mainId !== main.id)
             throw new ApiError(
               409,
-              "Another operation is updating this conversation. Refresh to continue.",
+              t(
+                "Another operation is updating this conversation. Refresh to continue.",
+              ),
             );
           current.pending = pending;
         });
@@ -163,7 +174,9 @@ export class Conversations {
       if (main.status === "terminated")
         throw new ApiError(
           409,
-          "The main chat has ended. Open a side chat to continue; its history is preserved.",
+          t(
+            "The main chat has ended. Open a side chat to continue; its history is preserved.",
+          ),
         );
       return { ...main, title: index.entries[main.id]?.title ?? "Main chat" };
     }
@@ -176,7 +189,9 @@ export class Conversations {
       if (matches.length !== 1)
         throw new ApiError(
           409,
-          "A conversation creation is unconfirmed. Refresh history and try again later; no duplicate was created.",
+          t(
+            "A conversation creation is unconfirmed. Refresh history and try again later; no duplicate was created.",
+          ),
         );
       const recovered = await this.finish(pending, matches[0]);
       if (
@@ -186,7 +201,9 @@ export class Conversations {
       )
         throw new ApiError(
           409,
-          "The previous conversation was recovered. Open it from the sidebar before starting another.",
+          t(
+            "The previous conversation was recovered. Open it from the sidebar before starting another.",
+          ),
         );
       return recovered;
     }
@@ -201,7 +218,9 @@ export class Conversations {
       if (current.pending || (kind === "main" && current.mainId))
         throw new ApiError(
           409,
-          "Another window is opening this conversation. Refresh to continue.",
+          t(
+            "Another window is opening this conversation. Refresh to continue.",
+          ),
         );
       current.pending = pending;
     });
@@ -211,7 +230,9 @@ export class Conversations {
       if (!session.id || !/^[\w-]{1,200}$/.test(session.id))
         throw new ApiError(
           502,
-          "The conversation creation result is unconfirmed. Refresh history before retrying.",
+          t(
+            "The conversation creation result is unconfirmed. Refresh history before retrying.",
+          ),
         );
     } catch (error) {
       if (
@@ -234,7 +255,9 @@ export class Conversations {
       if (matches.length !== 1)
         throw new ApiError(
           409,
-          "The main conversation update is unconfirmed. Refresh before trying again; no duplicate was created.",
+          t(
+            "The main conversation update is unconfirmed. Refresh before trying again; no duplicate was created.",
+          ),
         );
       return this.finish(pending, matches[0]);
     }
@@ -249,7 +272,9 @@ export class Conversations {
       )
         throw new ApiError(
           409,
-          "Another window is continuing this chat. Refresh history before sending.",
+          t(
+            "Another window is continuing this chat. Refresh history before sending.",
+          ),
         );
       index.pending.phase = "creating";
     });
@@ -263,7 +288,9 @@ export class Conversations {
       )
         throw new ApiError(
           502,
-          "The continuation result is unconfirmed. Refresh before trying again.",
+          t(
+            "The continuation result is unconfirmed. Refresh before trying again.",
+          ),
         );
     } catch (error) {
       if (
@@ -287,13 +314,15 @@ export class Conversations {
         if (index.entries[session.id]) return;
         throw new ApiError(
           409,
-          "Conversation state changed. Refresh history before continuing.",
+          t("Conversation state changed. Refresh history before continuing."),
         );
       }
       if (pending.previous && index.mainId !== pending.previous)
         throw new ApiError(
           409,
-          "The main conversation changed during continuation. Its history has not been replaced.",
+          t(
+            "The main conversation changed during continuation. Its history has not been replaced.",
+          ),
         );
       const previousIds = pending.previous
         ? [

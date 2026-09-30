@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Goal } from "./types";
+import { t } from "./i18n";
 
 export const goalCategories = [
   { id: "health", label: "Health", topic: "health" },
@@ -80,18 +81,30 @@ export function serializeGoals(goals: Goal[]) {
 }
 export function goalStarter(category: GoalCategory, parent?: Goal) {
   if (parent)
-    return `I want to add a subgoal to “${parent.title}”. Help me clarify what to work toward before saving it.`;
+    return t(
+      "I want to add a subgoal to “{title}”. Help me clarify what to work toward before saving it.",
+      { title: parent.title },
+    );
   const topic = goalCategories.find((item) => item.id === category)!.topic;
-  return `I want to start ${topic ? `a ${topic} goal` : "a goal"}. Help me clarify what I want to achieve before saving a plan.`;
+  return topic
+    ? t(
+        "I want to start a {topic} goal. Help me clarify what I want to achieve before saving a plan.",
+        { topic: t(topic) },
+      )
+    : t(
+        "I want to start a goal. Help me clarify what I want to achieve before saving a plan.",
+      );
 }
 export function goalPrompt(goal: Goal) {
   return [
-    `Please help me work toward this goal: ${goal.title}`,
+    t("Please help me work toward this goal: {title}", { title: goal.title }),
     goal.description,
     goal.steps.length
-      ? `Existing steps (preserve completion status):\n${goal.steps.map((s) => `- [${s.done ? "x" : " "}] ${s.title}`).join("\n")}`
+      ? `${t("Existing steps (preserve completion status):")}\n${goal.steps.map((s) => `- [${s.done ? "x" : " "}] ${s.title}`).join("\n")}`
       : "",
-    "Read the latest goal record in personal memory. Ask a focused question if something important is missing. Update progress only from what I actually report, and read back any saved changes. For external actions, ask for approval first.",
+    t(
+      "Read the latest goal record in personal memory. Ask a focused question if something important is missing. Update progress only from what I actually report, and read back any saved changes. For external actions, ask for approval first.",
+    ),
   ]
     .filter(Boolean)
     .join("\n\n");

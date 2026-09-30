@@ -3,6 +3,18 @@ import WebKit
 import Security
 import UniformTypeIdentifiers
 
+// Match the web UI's supported-language selection without changing system state.
+private func localized(_ english: String) -> String {
+    let language = Locale.preferredLanguages.first {
+        let base = $0.lowercased().split(whereSeparator: { $0 == "-" || $0 == "_" }).first
+        return base == "zh" || base == "en"
+    } ?? "en"
+    let name = language.lowercased().hasPrefix("zh") ? "zh-Hans" : "en"
+    guard let path = Bundle.main.path(forResource: name, ofType: "lproj"),
+          let bundle = Bundle(path: path) else { return english }
+    return bundle.localizedString(forKey: english, value: english, table: nil)
+}
+
 // Serve bundled assets through WebKit, not a socket or a background process.
 private final class BundleAssets: NSObject, WKURLSchemeHandler {
     func webView(_ webView: WKWebView, start urlSchemeTask: WKURLSchemeTask) {
@@ -52,6 +64,13 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museCredentials")
         configuration.userContentController.add(self, name: "museExport")
         configuration.userContentController.addUserScript(WKUserScript(source: "window.__OPEN_MUSE_DESKTOP__ = true;", injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        if let data = try? JSONSerialization.data(withJSONObject: Locale.preferredLanguages),
+           let languages = String(data: data, encoding: .utf8) {
+            configuration.userContentController.addUserScript(WKUserScript(
+                source: "window.__OPEN_MUSE_LANGUAGES__ = \(languages);",
+                injectionTime: .atDocumentStart, forMainFrameOnly: true
+            ))
+        }
         webView = WKWebView(frame: window.contentView!.bounds, configuration: configuration)
         webView.autoresizingMask = [.width, .height]
         webView.navigationDelegate = self
@@ -92,7 +111,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             let status = SecItemCopyMatching(lookup as CFDictionary, &result)
             if status == errSecItemNotFound { replyHandler("", nil); return }
             guard status == errSecSuccess, let data = result as? Data, let value = String(data: data, encoding: .utf8)
-            else { replyHandler(nil, "Cannot restore secure credentials"); return }
+            else { replyHandler(nil, localized("Cannot restore secure credentials")); return }
             replyHandler(value, nil)
         } else if body["operation"] == "write", let value = body["value"], value.utf8.count <= 65536 {
             var status: OSStatus
@@ -104,7 +123,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
                 status = SecItemUpdate(query as CFDictionary, values as CFDictionary)
                 if status == errSecItemNotFound { status = SecItemAdd(query.merging(values) { _, new in new } as CFDictionary, nil) }
             }
-            replyHandler(status == errSecSuccess ? true : nil, status == errSecSuccess ? nil : "Cannot save secure credentials")
+            replyHandler(status == errSecSuccess ? true : nil, status == errSecSuccess ? nil : localized("Cannot save secure credentials"))
         } else { replyHandler(nil, "Invalid credential operation") }
     }
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -141,35 +160,35 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         let menu = NSMenu()
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "About Open Muse", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: localized("About Open Muse"), action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
-        let settings = appMenu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        let settings = appMenu.addItem(withTitle: localized("Settings…"), action: #selector(openSettings), keyEquivalent: ",")
         settings.target = self
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Hide Open Muse", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
-        appMenu.addItem(withTitle: "Quit Open Muse", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: localized("Hide Open Muse"), action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        appMenu.addItem(withTitle: localized("Quit Open Muse"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu; menu.addItem(appItem)
-        let fileItem = NSMenuItem(title: "File", action: nil, keyEquivalent: "")
-        let fileMenu = NSMenu(title: "File")
-        let newChat = fileMenu.addItem(withTitle: "New Side Chat", action: #selector(newSideChat), keyEquivalent: "n")
+        let fileItem = NSMenuItem(title: localized("File"), action: nil, keyEquivalent: "")
+        let fileMenu = NSMenu(title: localized("File"))
+        let newChat = fileMenu.addItem(withTitle: localized("New Side Chat"), action: #selector(newSideChat), keyEquivalent: "n")
         newChat.target = self
-        fileMenu.addItem(withTitle: "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        fileMenu.addItem(withTitle: localized("Close Window"), action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
         fileItem.submenu = fileMenu; menu.addItem(fileItem)
-        let editItem = NSMenuItem(title: "Edit", action: nil, keyEquivalent: "")
-        let editMenu = NSMenu(title: "Edit")
-        for (title, selector, key) in [("Undo", "undo:", "z"), ("Cut", "cut:", "x"), ("Copy", "copy:", "c"), ("Paste", "paste:", "v"), ("Select All", "selectAll:", "a")] { editMenu.addItem(withTitle: title, action: Selector(selector), keyEquivalent: key) }
+        let editItem = NSMenuItem(title: localized("Edit"), action: nil, keyEquivalent: "")
+        let editMenu = NSMenu(title: localized("Edit"))
+        for (title, selector, key) in [("Undo", "undo:", "z"), ("Cut", "cut:", "x"), ("Copy", "copy:", "c"), ("Paste", "paste:", "v"), ("Select All", "selectAll:", "a")] { editMenu.addItem(withTitle: localized(title), action: Selector(selector), keyEquivalent: key) }
         editItem.submenu = editMenu; menu.addItem(editItem)
-        let viewItem = NSMenuItem(title: "View", action: nil, keyEquivalent: "")
-        let viewMenu = NSMenu(title: "View")
-        let search = viewMenu.addItem(withTitle: "Search", action: #selector(openSearch), keyEquivalent: "k")
+        let viewItem = NSMenuItem(title: localized("View"), action: nil, keyEquivalent: "")
+        let viewMenu = NSMenu(title: localized("View"))
+        let search = viewMenu.addItem(withTitle: localized("Search"), action: #selector(openSearch), keyEquivalent: "k")
         search.target = self
-        let mainChat = viewMenu.addItem(withTitle: "Main Chat", action: #selector(openMainChat), keyEquivalent: "1")
+        let mainChat = viewMenu.addItem(withTitle: localized("Main Chat"), action: #selector(openMainChat), keyEquivalent: "1")
         mainChat.target = self
         viewItem.submenu = viewMenu; menu.addItem(viewItem)
-        let windowItem = NSMenuItem(title: "Window", action: nil, keyEquivalent: "")
-        let windowMenu = NSMenu(title: "Window")
-        windowMenu.addItem(withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
-        windowMenu.addItem(withTitle: "Zoom", action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
+        let windowItem = NSMenuItem(title: localized("Window"), action: nil, keyEquivalent: "")
+        let windowMenu = NSMenu(title: localized("Window"))
+        windowMenu.addItem(withTitle: localized("Minimize"), action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+        windowMenu.addItem(withTitle: localized("Zoom"), action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
         windowItem.submenu = windowMenu; menu.addItem(windowItem)
         NSApplication.shared.windowsMenu = windowMenu
         NSApplication.shared.mainMenu = menu
@@ -194,19 +213,19 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             self.discardPromptOpen = true
             let alert = NSAlert()
             if state["saving"] == true {
-                alert.messageText = "The document is still being saved."
-                alert.informativeText = "Wait for MA to confirm the result before closing the workspace."
-                alert.addButton(withTitle: "Keep Open")
+                alert.messageText = localized("The document is still being saved.")
+                alert.informativeText = localized("Wait for MA to confirm the result before closing the workspace.")
+                alert.addButton(withTitle: localized("Keep Open"))
                 alert.beginSheetModal(for: self.window) { _ in
                     self.discardPromptOpen = false
                     completion(false)
                 }
                 return
             }
-            alert.messageText = "This document has unsaved changes."
-            alert.informativeText = "Keep editing to save your work, or discard the draft. The saved cloud document will not be changed."
-            alert.addButton(withTitle: "Keep Editing")
-            alert.addButton(withTitle: "Discard Draft")
+            alert.messageText = localized("This document has unsaved changes.")
+            alert.informativeText = localized("Keep editing to save your work, or discard the draft. The saved cloud document will not be changed.")
+            alert.addButton(withTitle: localized("Keep Editing"))
+            alert.addButton(withTitle: localized("Discard Draft"))
             alert.beginSheetModal(for: self.window) { response in
                 self.discardPromptOpen = false
                 guard response == .alertSecondButtonReturn else { completion(false); return }

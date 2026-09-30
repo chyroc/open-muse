@@ -1,3 +1,4 @@
+import { t } from "../shared/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowUpRight,
@@ -38,12 +39,14 @@ export function InspirationPost({
         {item.emoji || "✦"}
       </span>
       <div className="post-content">
-        <h2 aria-label={`Feed post: ${item.title}`}>{item.title}</h2>
+        <h2 aria-label={t("Feed post: {title}", { title: item.title })}>
+          {item.title}
+        </h2>
         <Markdown text={item.body} />
         <Sources item={item} />
         <footer className="post-actions">
           <button
-            aria-label={item.liked ? "Unlike post" : "Like post"}
+            aria-label={item.liked ? t("Unlike post") : t("Like post")}
             aria-pressed={item.liked}
             disabled={busy}
             onClick={onLike}
@@ -52,10 +55,10 @@ export function InspirationPost({
           </button>
           <button className="post-discuss" onClick={onDiscuss}>
             <MessageCircle size={19} />
-            Discuss
+            {t("Discuss")}
           </button>
           <button
-            aria-label="Post information"
+            aria-label={t("Post information")}
             aria-expanded={info}
             onClick={() => setInfo(!info)}
           >
@@ -64,10 +67,10 @@ export function InspirationPost({
         </footer>
         {info && (
           <aside className="post-information">
-            <strong>Why this post</strong>
+            <strong>{t("Why this post")}</strong>
             <p>{item.reason}</p>
             <a href={`#/task/${item.session_id}`}>
-              View generation conversation <ArrowUpRight size={14} />
+              {t("View generation conversation")} <ArrowUpRight size={14} />
             </a>
           </aside>
         )}
@@ -86,7 +89,7 @@ export function InspirationIdea({
   return (
     <button
       className="personal-idea"
-      aria-label={`View idea: ${item.title}`}
+      aria-label={t("View idea: {title}", { title: item.title })}
       onClick={onOpen}
     >
       <strong>{item.title}</strong>
@@ -98,7 +101,7 @@ export function InspirationIdea({
 
 function Sources({ item }: { item: InspirationItem }) {
   return item.sources.length ? (
-    <ul className="post-sources" aria-label="Sources">
+    <ul className="post-sources" aria-label={t("Sources")}>
       {item.sources.map((source) => (
         <li key={source.url}>
           <a href={source.url} target="_blank" rel="noopener noreferrer">
@@ -142,11 +145,11 @@ export function InspirationPage({
     .reverse()
     .find((event) => event.type === "agent.tool_use")?.name;
   const latestActivity = latestTool?.startsWith("memory_")
-    ? "Reading personal memory"
+    ? t("Reading personal memory")
     : latestTool === "web_search"
-      ? "Searching the web"
+      ? t("Searching the web")
       : latestTool === "web_fetch"
-        ? "Reading a web page"
+        ? t("Reading a web page")
         : undefined;
   const refresh = useCallback(async () => {
     if (refreshing.current) return;
@@ -210,7 +213,7 @@ export function InspirationPage({
     }
   }
   const items = data?.items.filter((item) => item.kind === kind) ?? [];
-  const title = kind === "feed" ? "Feed" : "Ideas";
+  const title = kind === "feed" ? t("Feed") : t("Ideas");
   return (
     <section className={`muse-page inspiration-page ${kind}`}>
       <PageHeader
@@ -218,7 +221,9 @@ export function InspirationPage({
         action={
           <button
             className="inspiration-refresh"
-            aria-label={`Refresh ${title.toLowerCase()}`}
+            aria-label={
+              kind === "feed" ? t("Refresh feed") : t("Refresh ideas")
+            }
             disabled={loading || busy}
             onClick={() => void refresh()}
           >
@@ -234,15 +239,16 @@ export function InspirationPage({
       {loading && (
         <p className="inspiration-status" role="status">
           <LoaderCircle size={19} className="spin" />
-          Loading…
+          {t("Loading…")}
         </p>
       )}
       {kind === "feed" && data && !data.instructionsDismissed && (
         <aside className="feed-instructions-card">
-          <h2>Prompt instructions</h2>
+          <h2>{t("Prompt instructions")}</h2>
           <p>
-            Your feed is shaped by these instructions. Changes apply to future
-            posts.
+            {t(
+              "Your feed is shaped by these instructions. Changes apply to future posts.",
+            )}
           </p>
           <div>{data.instructions.content}</div>
           <footer>
@@ -250,7 +256,7 @@ export function InspirationPage({
               disabled={!client.signedIn()}
               onClick={() => setEditing(true)}
             >
-              Edit
+              {t("Edit")}
             </button>
             <button
               disabled={!client.signedIn() || busy}
@@ -258,7 +264,7 @@ export function InspirationPage({
                 void action(() => client.dismissFeedInstructions())
               }
             >
-              Got it
+              {t("Got it")}
             </button>
           </footer>
         </aside>
@@ -297,16 +303,20 @@ export function InspirationPage({
             <Lightbulb size={28} strokeWidth={1.5} />
             <h2>
               {kind === "feed"
-                ? "A feed that gets to know you"
-                : "A little inspiration, just for you"}
+                ? t("A feed that gets to know you")
+                : t("A little inspiration, just for you")}
             </h2>
             <p>
               {kind === "feed"
-                ? "Discover useful things shaped by your conversations, interests, and goals."
-                : "Explore things Muse can help with, shaped by what matters to you."}
+                ? t(
+                    "Discover useful things shaped by your conversations, interests, and goals.",
+                  )
+                : t(
+                    "Explore things Muse can help with, shaped by what matters to you.",
+                  )}
             </p>
             {!client.signedIn() && (
-              <a href="#/settings">Connect to MA to get started</a>
+              <a href="#/settings">{t("Connect to MA to get started")}</a>
             )}
           </div>
         )
@@ -321,15 +331,19 @@ export function InspirationPage({
           <LoaderCircle size={17} className="spin" />
           <span>
             {run.phase === "creating" || run.phase === "sending"
-              ? "Checking submission…"
+              ? t("Checking submission…")
               : resumable
-                ? "Ready to continue generation"
-                : `Finding ${kind === "feed" ? "something worth sharing" : "ideas for you"}…`}
+                ? t("Ready to continue generation")
+                : kind === "feed"
+                  ? t("Finding something worth sharing…")
+                  : t("Finding ideas for you…")}
           </span>
         </div>
       )}
       {pending && latestActivity && (
-        <p className="inspiration-latest">Latest activity: {latestActivity}</p>
+        <p className="inspiration-latest">
+          {t("Latest activity:")} {latestActivity}
+        </p>
       )}
       <div className="inspiration-bottom">
         <button
@@ -348,17 +362,20 @@ export function InspirationPage({
             <RefreshCw size={17} />
           )}
           {resumable
-            ? "Continue generation"
+            ? t("Continue generation")
             : kind === "feed"
-              ? "Find new posts"
-              : "Find new ideas"}
+              ? t("Find new posts")
+              : t("Find new ideas")}
         </button>
         {run?.session_id && (
-          <a href={`#/task/${run.session_id}`}>View generation conversation</a>
+          <a href={`#/task/${run.session_id}`}>
+            {t("View generation conversation")}
+          </a>
         )}
         <p>
-          Generated with MA when you ask. Posts, likes, and discussion links
-          stay on this device. Background delivery is not enabled.
+          {t(
+            "Generated with MA when you ask. Posts, likes, and discussion links stay on this device. Background delivery is not enabled.",
+          )}
         </p>
       </div>
       {kind === "feed" && data && (editing || editInstructions) && (
@@ -375,7 +392,7 @@ export function InspirationPage({
         />
       )}
       {detail && (
-        <Sheet title="Idea" onClose={() => setDetail(undefined)}>
+        <Sheet title={t("Idea")} onClose={() => setDetail(undefined)}>
           <div className="idea-detail">
             <small>{detail.category}</small>
             <h2>{detail.title}</h2>
@@ -390,7 +407,7 @@ export function InspirationPage({
               }}
             >
               <MessageCircle size={20} />
-              Talk about this
+              {t("Talk about this")}
             </button>
           </div>
         </Sheet>
@@ -456,7 +473,7 @@ function FeedInstructionsEditor({
     <dialog
       ref={ref}
       className="feed-instructions-editor"
-      aria-label="Feed instructions"
+      aria-label={t("Feed instructions")}
       onCancel={(e) => {
         e.preventDefault();
         if (!busy) onClose();
@@ -465,35 +482,35 @@ function FeedInstructionsEditor({
       <header>
         <button
           className="glass-button"
-          aria-label="Close feed instructions"
+          aria-label={t("Close feed instructions")}
           disabled={busy}
           onClick={onClose}
         >
           <X size={21} />
         </button>
-        <strong>Feed instructions</strong>
+        <strong>{t("Feed instructions")}</strong>
         <button
           className="instructions-save"
           disabled={busy || !client.signedIn() || !draft.trim()}
           onClick={() => void save()}
         >
-          {busy ? "Saving…" : "Save"}
+          {busy ? t("Saving…") : t("Save")}
         </button>
       </header>
       <p>
         <SlidersHorizontal size={18} />
-        What would you like to see in your feed?
+        {t("What would you like to see in your feed?")}
       </p>
       {error && (
         <div className="inline-error" role="alert">
           {error}
           <button disabled={busy} onClick={() => void reload()}>
-            Discard draft and reload saved version
+            {t("Discard draft and reload saved version")}
           </button>
         </div>
       )}
       <textarea
-        aria-label="Feed instructions text"
+        aria-label={t("Feed instructions text")}
         value={draft}
         maxLength={4000}
         disabled={busy || !client.signedIn()}
@@ -501,8 +518,10 @@ function FeedInstructionsEditor({
       />
       <footer>
         {client.signedIn()
-          ? "Save instructions to your personal MA memory. Changes shape future posts, not existing ones."
-          : "Connect to MA in Settings to save your own feed instructions."}
+          ? t(
+              "Save instructions to your personal MA memory. Changes shape future posts, not existing ones.",
+            )
+          : t("Connect to MA in Settings to save your own feed instructions.")}
       </footer>
     </dialog>
   );

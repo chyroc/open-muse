@@ -1,3 +1,4 @@
+import { t } from "../shared/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Building2,
@@ -37,14 +38,15 @@ export function GoalCategories({
   onChoose: (category: GoalCategory) => void;
 }) {
   return (
-    <section className="goal-create-section" aria-label="Create a goal">
+    <section className="goal-create-section" aria-label={t("Create a goal")}>
       <h2>
         <Plus size={25} strokeWidth={1.6} />
-        Create a goal
+        {t("Create a goal")}
       </h2>
       <p>
-        Choose a category and tell me what you want to achieve. We’ll build a
-        personal plan and refine it as you go.
+        {t(
+          "Choose a category and tell me what you want to achieve. We’ll build a personal plan and refine it as you go.",
+        )}
       </p>
       <div className="goal-categories">
         {goalCategories.map((category) => {
@@ -53,10 +55,10 @@ export function GoalCategories({
             <button
               key={category.id}
               onClick={() => onChoose(category.id)}
-              aria-label={`Create a ${category.topic || "new"} goal`}
+              aria-label={t(`Create a ${category.topic || "new"} goal`)}
             >
               <Icon size={25} strokeWidth={1.7} />
-              <span>{category.label}</span>
+              <span>{t(category.label)}</span>
               <Plus size={23} strokeWidth={1.6} />
             </button>
           );
@@ -79,7 +81,7 @@ export function GoalRow({
   return (
     <button
       className="tracked-goal-row"
-      aria-label={`Open goal: ${goal.title}`}
+      aria-label={t("Open goal: {title}", { title: goal.title })}
       onClick={onOpen}
     >
       {goal.status === "completed" ? (
@@ -92,8 +94,8 @@ export function GoalRow({
         {subtitle && (
           <small>
             {goal.status === "paused"
-              ? "Paused"
-              : goal.description || "Open your plan"}
+              ? t("Paused")
+              : goal.description || t("Open your plan")}
           </small>
         )}
       </span>
@@ -194,19 +196,19 @@ export function GoalsPage({
     <div className="inline-error" role="alert">
       <p>{error}</p>
       <button disabled={busy} onClick={() => void reload()}>
-        Refresh goals
+        {t("Refresh goals")}
       </button>
     </div>
   ) : null;
   return (
     <section className="muse-page goals-page">
-      <PageHeader title="Goals" />
-      <section className="goal-tracking" aria-label="Tracking">
-        <h2>Tracking</h2>
+      <PageHeader title={t("Goals")} />
+      <section className="goal-tracking" aria-label={t("Tracking")}>
+        <h2>{t("Tracking")}</h2>
         {loading ? (
           <p className="goal-loading" role="status">
             <LoaderCircle size={20} className="spin" />
-            Loading goals…
+            {t("Loading goals…")}
           </p>
         ) : error && !goals.length ? null : activeGoals.length ? (
           <div>
@@ -226,25 +228,35 @@ export function GoalsPage({
               ))}
           </div>
         ) : (
-          <p>Nothing is being tracked yet</p>
+          <p>{t("Nothing is being tracked yet")}</p>
         )}
         {!current && errors}
       </section>
       <GoalCategories onChoose={setCategory} />
       {category && (
         <Sheet
-          title={`Create ${category === "custom" ? "a goal" : `a ${goalCategories.find((item) => item.id === category)!.topic} goal`}`}
+          title={
+            category === "custom"
+              ? t("Create a goal")
+              : t("Create a {category} goal", {
+                  category: t(
+                    goalCategories.find((item) => item.id === category)!.topic,
+                  ),
+                })
+          }
           onClose={() => setCategory(undefined)}
         >
           <div className="goal-chat-intro">
             <MessageCircle size={35} strokeWidth={1.4} />
             <p>
-              First, we’ll work out your goal together in chat. I’ll ask a few
-              questions to understand what you’re after.
+              {t(
+                "First, we’ll work out your goal together in chat. I’ll ask a few questions to understand what you’re after.",
+              )}
             </p>
             <p>
-              Once you agree on a plan, it appears here so we can keep track of
-              your progress.
+              {t(
+                "Once you agree on a plan, it appears here so we can keep track of your progress.",
+              )}
             </p>
             {client.signedIn() ? (
               <button
@@ -254,22 +266,23 @@ export function GoalsPage({
                   setCategory(undefined);
                 }}
               >
-                Continue in chat
+                {t("Continue in chat")}
               </button>
             ) : (
               <a className="goal-continue" href="#/settings">
-                Connect to start a goal
+                {t("Connect to start a goal")}
               </a>
             )}
             <small>
-              Opening chat prepares a draft. Nothing is sent until you press
-              Send.
+              {t(
+                "Opening chat prepares a draft. Nothing is sent until you press Send.",
+              )}
             </small>
           </div>
         </Sheet>
       )}
       {optionsOpen && (
-        <Sheet title="Goals options" onClose={onOptionsClose}>
+        <Sheet title={t("Goals options")} onClose={onOptionsClose}>
           <div className="chat-action-list">
             <button
               onClick={() => {
@@ -277,7 +290,7 @@ export function GoalsPage({
                 setCompleted(true);
               }}
             >
-              Completed goals
+              {t("Completed goals")}
               <ChevronRight size={19} />
             </button>
             <button
@@ -286,7 +299,7 @@ export function GoalsPage({
                 onOptionsClose();
               }}
             >
-              {subtitles ? "Hide subtitles" : "Show subtitles"}
+              {subtitles ? t("Hide subtitles") : t("Show subtitles")}
             </button>
             <button
               onClick={() => {
@@ -295,13 +308,13 @@ export function GoalsPage({
               }}
             >
               <RefreshCw size={20} />
-              Refresh goals
+              {t("Refresh goals")}
             </button>
           </div>
         </Sheet>
       )}
       {completed && !current && (
-        <Sheet title="Completed goals" onClose={() => setCompleted(false)}>
+        <Sheet title={t("Completed goals")} onClose={() => setCompleted(false)}>
           <div className="completed-goals">
             {goals.some((goal) => goal.status === "completed") ? (
               goals
@@ -315,7 +328,7 @@ export function GoalsPage({
                   />
                 ))
             ) : (
-              <p>No completed goals yet.</p>
+              <p>{t("No completed goals yet.")}</p>
             )}
           </div>
         </Sheet>
@@ -344,15 +357,15 @@ export function GoalsPage({
             )}
             <span className="goal-state">
               {current.status === "completed"
-                ? "Completed"
+                ? t("Completed")
                 : current.status === "paused"
-                  ? "Paused"
-                  : "Active"}
+                  ? t("Paused")
+                  : t("Active")}
             </span>
             {current.description && <Markdown text={current.description} />}
             {current.steps.length > 0 && (
-              <section className="goal-plan" aria-label="Plan steps">
-                <h3>Plan</h3>
+              <section className="goal-plan" aria-label={t("Plan steps")}>
+                <h3>{t("Plan")}</h3>
                 {current.steps.map((step) => (
                   <label key={step.id}>
                     <input
@@ -377,7 +390,7 @@ export function GoalsPage({
               </section>
             )}
             <section className="goal-subgoals">
-              <h3>Subgoals</h3>
+              <h3>{t("Subgoals")}</h3>
               {goals
                 .filter((goal) => goal.parent_id === current.id)
                 .map((goal) => (
@@ -389,7 +402,7 @@ export function GoalsPage({
                   />
                 ))}
               {!goals.some((goal) => goal.parent_id === current.id) && (
-                <p>No subgoals yet.</p>
+                <p>{t("No subgoals yet.")}</p>
               )}
               <button
                 disabled={busy}
@@ -399,7 +412,7 @@ export function GoalsPage({
                 }}
               >
                 <Plus size={19} />
-                Add a subgoal
+                {t("Add a subgoal")}
               </button>
             </section>
             {errors}
@@ -412,7 +425,7 @@ export function GoalsPage({
               }}
             >
               <MessageCircle size={20} />
-              Talk about this goal
+              {t("Talk about this goal")}
             </button>
             <button
               className="goal-detail-action"
@@ -422,11 +435,11 @@ export function GoalsPage({
                 setRename(current.title);
               }}
             >
-              Rename goal
+              {t("Rename goal")}
             </button>
             {rename !== undefined && (
               <Sheet
-                title="Rename goal"
+                title={t("Rename goal")}
                 onClose={() => {
                   if (!busy) setRename(undefined);
                 }}
@@ -443,9 +456,9 @@ export function GoalsPage({
                   }}
                 >
                   <label>
-                    Goal name
+                    {t("Goal name")}
                     <input
-                      aria-label="Goal name"
+                      aria-label={t("Goal name")}
                       value={rename}
                       maxLength={160}
                       disabled={busy}
@@ -453,13 +466,15 @@ export function GoalsPage({
                     />
                   </label>
                   {errors}
-                  <button disabled={busy || !rename.trim()}>Save name</button>
+                  <button disabled={busy || !rename.trim()}>
+                    {t("Save name")}
+                  </button>
                   <button
                     type="button"
                     disabled={busy}
                     onClick={() => setRename(undefined)}
                   >
-                    Cancel
+                    {t("Cancel")}
                   </button>
                 </form>
               </Sheet>
@@ -475,10 +490,10 @@ export function GoalsPage({
               }
             >
               {busy
-                ? "Saving…"
+                ? t("Saving…")
                 : current.status === "completed"
-                  ? "Mark as active"
-                  : "Mark as completed"}
+                  ? t("Mark as active")
+                  : t("Mark as completed")}
             </button>
             {current.status === "paused" && (
               <button
@@ -486,12 +501,13 @@ export function GoalsPage({
                 disabled={busy}
                 onClick={() => void update(current, { status: "active" })}
               >
-                Resume goal
+                {t("Resume goal")}
               </button>
             )}
             <p className="goal-sync-note">
-              Plans and reported progress are saved in personal MA memory.
-              Changes do not stop running tools or create scheduled check-ins.
+              {t(
+                "Plans and reported progress are saved in personal MA memory. Changes do not stop running tools or create scheduled check-ins.",
+              )}
             </p>
           </div>
         </Sheet>

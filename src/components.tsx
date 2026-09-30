@@ -1,3 +1,4 @@
+import { formatLocale, t } from "../shared/i18n";
 import {
   ArrowUp,
   CheckCheck,
@@ -106,11 +107,13 @@ export function Composer({
   return (
     <form className={`composer ${compact ? "compact" : ""}`} onSubmit={submit}>
       <textarea
-        aria-label={compact ? "Continue conversation" : "Describe your task"}
+        aria-label={
+          compact ? t("Continue conversation") : t("Describe your task")
+        }
         placeholder={
           compact
-            ? "Add a thought, or keep the conversation going…"
-            : "What do you want Muse to handle?"
+            ? t("Add a thought, or keep the conversation going…")
+            : t("What do you want Muse to handle?")
         }
         value={value}
         maxLength={16000}
@@ -133,7 +136,7 @@ export function Composer({
             <label className="category-select">
               <CategoryIcon category={category} size={15} />
               <select
-                aria-label="Task type"
+                aria-label={t("Task type")}
                 value={category}
                 onChange={(event) =>
                   setCategory(event.target.value as Category)
@@ -150,7 +153,7 @@ export function Composer({
           ) : (
             <span className="composer-hint">
               <ShieldCheck size={14} />
-              Tools run directly with cloud permissions
+              {t("Tools run directly with cloud permissions")}
             </span>
           )}
         </div>
@@ -160,7 +163,7 @@ export function Composer({
             <button
               className="send-button stop"
               type="button"
-              aria-label="Stop task"
+              aria-label={t("Stop task")}
               disabled={busy}
               onClick={onStop}
             >
@@ -174,7 +177,7 @@ export function Composer({
             <button
               className="send-button"
               type="submit"
-              aria-label="Send task"
+              aria-label={t("Send task")}
               disabled={busy || disabled || !value.trim()}
             >
               {busy ? (
@@ -207,7 +210,7 @@ export function Markdown({ text }: { text: string }) {
               target="_blank"
               rel="noopener noreferrer"
             >
-              View image: {alt || "image"}
+              {t("View image:")} {alt || t("image")}
             </a>
           ),
         }}
@@ -230,16 +233,16 @@ export function Activity({
     (event) => !["agent.message", "user.message"].includes(event.type),
   );
   const names: Record<string, string> = {
-    "agent.thinking": "Thinking and planning",
-    "session.status_running": "Started execution",
-    "session.status_idle": "Finished this run",
-    "session.status_rescheduled": "Waiting to be rescheduled",
-    "session.status_terminated": "Session terminated",
-    "user.interrupt": "Stop requested",
-    "user.tool_confirmation": "Action confirmation submitted",
-    "agent.tool_result": "Tool returned result",
-    "agent.mcp_tool_result": "Tool returned result",
-    "session.error": "Execution error",
+    "agent.thinking": t("Thinking and planning"),
+    "session.status_running": t("Started execution"),
+    "session.status_idle": t("Finished this run"),
+    "session.status_rescheduled": t("Waiting to be rescheduled"),
+    "session.status_terminated": t("Session terminated"),
+    "user.interrupt": t("Stop requested"),
+    "user.tool_confirmation": t("Action confirmation submitted"),
+    "agent.tool_result": t("Tool returned result"),
+    "agent.mcp_tool_result": t("Tool returned result"),
+    "session.error": t("Execution error"),
   };
   if (!actions.length) return null;
   return (
@@ -254,8 +257,10 @@ export function Activity({
         ) : (
           <CheckCheck size={16} />
         )}
-        <span>{running ? "Muse is processing" : "View execution log"}</span>
-        <small>{actions.length} events</small>
+        <span>
+          {running ? t("Muse is processing") : t("View execution log")}
+        </span>
+        <small>{t("{count} events", { count: actions.length })}</small>
         <ChevronDown size={16} className={expanded ? "rotated" : ""} />
       </button>
       {expanded && (
@@ -266,9 +271,9 @@ export function Activity({
               <div>
                 <strong>
                   {event.approval_source === "automatic"
-                    ? "Web tool auto-approved"
+                    ? t("Web tool auto-approved")
                     : event.name
-                      ? `Called ${event.name}`
+                      ? t("Called {name}", { name: event.name })
                       : (names[event.type] ?? event.type)}
                 </strong>
                 <time>
@@ -291,7 +296,7 @@ export function Activity({
 }
 export function formatTime(time?: string) {
   return time && !Number.isNaN(Date.parse(time))
-    ? new Date(time).toLocaleTimeString("en-US", {
+    ? new Date(time).toLocaleTimeString(formatLocale(), {
         hour: "2-digit",
         minute: "2-digit",
       })
@@ -300,6 +305,9 @@ export function formatTime(time?: string) {
 export function dateLabel(time: string) {
   const date = new Date(time);
   return date.toDateString() === new Date().toDateString()
-    ? `Today ${formatTime(time)}`
-    : date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    ? t("Today {time}", { time: formatTime(time) })
+    : date.toLocaleDateString(formatLocale(), {
+        month: "short",
+        day: "numeric",
+      });
 }

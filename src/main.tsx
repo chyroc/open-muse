@@ -5,6 +5,9 @@ import { Capacitor } from "@capacitor/core";
 import "./styles.css";
 import "./muse.css";
 import "./chat.css";
+import { initializeLanguage } from "../shared/i18n";
+
+initializeLanguage();
 
 const desktop = Boolean(
   (window as unknown as { __OPEN_MUSE_DESKTOP__?: boolean })

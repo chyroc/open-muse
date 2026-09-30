@@ -1,3 +1,4 @@
+import { t } from "../shared/i18n";
 import {
   Check,
   ChevronDown,
@@ -95,34 +96,43 @@ export function PermissionCard({
         </span>
         <div className="permission-heading-copy">
           <h3 id={`${id}-title`}>
-            {preview ? "Allow web search?" : "Allow this tool to run?"}
+            {preview ? t("Allow web search?") : t("Allow this tool to run?")}
           </h3>
-          <code>{event.name || "Unnamed tool"}</code>
+          <code>{event.name || t("Unnamed tool")}</code>
         </div>
         <span className="permission-status" role="status">
-          {busy ? "Submitting" : "Pending approval"}
+          {busy ? t("Submitting") : t("Pending approval")}
         </span>
       </header>
       <p className="permission-description">
         {preview
-          ? "The following search queries will be sent to the search service to find information on the web."
-          : "Please review the full parameters and their impact. Muse will only continue after you confirm."}
+          ? t(
+              "The following search queries will be sent to the search service to find information on the web.",
+            )
+          : t(
+              "Please review the full parameters and their impact. Muse will only continue after you confirm.",
+            )}
       </p>
       {preview && (
         <div className="permission-search">
           <div className="permission-search-label">
             <span>
-              Searching <b>{preview.queries.length} items</b>
+              {t("Searching")}{" "}
+              <b>{t("{count} items", { count: preview.queries.length })}</b>
             </span>
             {preview.maxResults !== undefined && (
-              <span>Max results {preview.maxResults}</span>
+              <span>
+                {t("Max results")} {preview.maxResults}
+              </span>
             )}
           </div>
           {queryList(preview.queries.slice(0, 3))}
           {preview.queries.length > 3 && (
             <details className="permission-more">
               <summary>
-                View the other {preview.queries.length - 3} searches
+                {t("View the other {count} searches", {
+                  count: preview.queries.length - 3,
+                })}
                 <ChevronDown size={14} aria-hidden="true" />
               </summary>
               {queryList(preview.queries.slice(3), 3)}
@@ -135,19 +145,21 @@ export function PermissionCard({
           <ChevronDown size={14} aria-hidden="true" />
           <span>
             {preview?.extra
-              ? "Full parameters · includes additional options, please review"
-              : "View full parameters"}
+              ? t(
+                  "Full parameters · includes additional options, please review",
+                )
+              : t("View full parameters")}
           </span>
           <span className="permission-format">JSON</span>
         </summary>
-        <pre tabIndex={0} aria-label="Full tool parameters">
+        <pre tabIndex={0} aria-label={t("Full tool parameters")}>
           {JSON.stringify(event.input ?? {}, null, 2)}
         </pre>
       </details>
       <footer className="permission-footer">
         <span className="permission-scope">
           <ShieldCheck size={14} aria-hidden="true" />
-          Authorize this call only
+          {t("Authorize this call only")}
         </span>
         <div className="permission-actions">
           <button
@@ -161,7 +173,7 @@ export function PermissionCard({
             ) : (
               <X size={16} aria-hidden="true" />
             )}
-            {busy && decision === "deny" ? "Denying…" : "Deny"}
+            {busy && decision === "deny" ? t("Denying…") : t("Deny")}
           </button>
           <button
             type="button"
@@ -174,7 +186,7 @@ export function PermissionCard({
             ) : (
               <Check size={16} aria-hidden="true" />
             )}
-            {busy && decision === "allow" ? "Allowing…" : "Approve"}
+            {busy && decision === "allow" ? t("Allowing…") : t("Approve")}
           </button>
         </div>
       </footer>

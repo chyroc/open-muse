@@ -1,3 +1,4 @@
+import { t } from "../../shared/i18n";
 import { useEffect, useRef, type ReactNode } from "react";
 import {
   Archive,
@@ -44,18 +45,18 @@ export function Rail({
   onStatus: () => void;
 }) {
   const items = [
-    { id: "chat", label: "Chat", Icon: MessageCircle },
-    { id: "feed", label: "Feed", Icon: BookOpen },
-    { id: "ideas", label: "Ideas", Icon: Lightbulb },
-    { id: "goals", label: "Goals", Icon: CheckSquare },
-    { id: "library", label: "Library", Icon: Shapes },
+    { id: "chat", label: t("Chat"), Icon: MessageCircle },
+    { id: "feed", label: t("Feed"), Icon: BookOpen },
+    { id: "ideas", label: t("Ideas"), Icon: Lightbulb },
+    { id: "goals", label: t("Goals"), Icon: CheckSquare },
+    { id: "library", label: t("Library"), Icon: Shapes },
   ] as const;
   return (
-    <nav className="rail" aria-label="Main navigation">
+    <nav className="rail" aria-label={t("Main navigation")}>
       <div className="window-drag-space" />
       <button
         className="rail-avatar"
-        aria-label="Assistant status"
+        aria-label={t("Assistant status")}
         onClick={onStatus}
       >
         <Avatar />
@@ -73,8 +74,8 @@ export function Rail({
             </button>
             {i === 0 && (
               <button
-                title="Search (⌘K)"
-                aria-label="Search"
+                title={t("Search (⌘K)")}
+                aria-label={t("Search")}
                 onClick={onSearch}
               >
                 <Search size={25} strokeWidth={1.7} />
@@ -85,8 +86,8 @@ export function Rail({
       </div>
       <button
         className="rail-settings"
-        title="Settings (⌘,)"
-        aria-label="Settings"
+        title={t("Settings (⌘,)")}
+        aria-label={t("Settings")}
         onClick={onSettings}
       >
         <Menu size={25} strokeWidth={1.5} />
@@ -135,7 +136,7 @@ export function Modal({
         <h2>{title}</h2>
         <button
           className="icon-button"
-          aria-label={`Close ${title}`}
+          aria-label={t("Close {title}", { title })}
           onClick={onClose}
         >
           <X size={20} />
@@ -174,9 +175,11 @@ export function ArchiveToggle({
   return (
     <button
       className="icon-button"
-      title={archived ? "Show active side chats" : "Show archived side chats"}
+      title={
+        archived ? t("Show active side chats") : t("Show archived side chats")
+      }
       aria-label={
-        archived ? "Show active side chats" : "Show archived side chats"
+        archived ? t("Show active side chats") : t("Show archived side chats")
       }
       aria-pressed={archived}
       onClick={onChange}

@@ -1,3 +1,4 @@
+import { t } from "../../shared/i18n";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 
 export interface CredentialStore {
@@ -48,14 +49,14 @@ async function vault(
       });
     else if (Capacitor.getPlatform() === "android") {
       if (namespace === "background")
-        throw new Error("Background service is not supported on Android.");
+        throw new Error(t("Background service is not supported on Android."));
       else
         request =
           operation === "read"
             ? android.read().then((r) => r.value)
             : android.write({ value });
     } else if (Capacitor.isNativePlatform())
-      throw new Error("Missing secure storage bridge");
+      throw new Error(t("Missing secure storage bridge"));
     else {
       // Web credentials never go to localStorage, IndexedDB, caches, or a server.
       const key =
@@ -71,14 +72,16 @@ async function vault(
       request,
       new Promise<never>((_, reject) => {
         timer = setTimeout(
-          () => reject(new Error("Secure storage timeout")),
+          () => reject(new Error(t("Secure storage timeout"))),
           5000,
         );
       }),
     ]);
   } catch {
     throw new Error(
-      "Couldn't access secure storage. Unlock your device and retry; your login has not been changed.",
+      t(
+        "Couldn't access secure storage. Unlock your device and retry; your login has not been changed.",
+      ),
     );
   } finally {
     clearTimeout(timer);
@@ -103,7 +106,7 @@ export class LocalDatabase {
         this.database = undefined;
         reject(
           new Error(
-            "Local storage is unavailable; no cloud changes were made.",
+            t("Local storage is unavailable; no cloud changes were made."),
           ),
         );
       };
@@ -142,7 +145,9 @@ export class LocalDatabase {
         reject(
           failure ??
             new Error(
-              "Couldn't save local data. Retry after checking device storage.",
+              t(
+                "Couldn't save local data. Retry after checking device storage.",
+              ),
             ),
         );
     });

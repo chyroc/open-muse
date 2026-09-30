@@ -2,7 +2,12 @@ import { eventText, type AgentEvent, type Session } from "../../shared/types";
 import type { ConversationIndex } from "../../src/direct/conversations";
 
 export type Page = "chat" | "feed" | "ideas" | "goals" | "library";
-export type Route = { page: Page; conversation?: string; newSide?: boolean };
+export type Route = {
+  page: Page;
+  conversation?: string;
+  newSide?: boolean;
+  goal?: string;
+};
 
 export function chatMessages(events: AgentEvent[]) {
   return events.filter(
@@ -21,6 +26,8 @@ export function parseRoute(hash: string): Route {
   if (path === "/new") return { page: "chat", newSide: true };
   const match = /^\/chat\/([\w-]{1,200})$/.exec(path);
   if (match) return { page: "chat", conversation: match[1] };
+  const goal = /^\/goals\/([\w-]{1,80})$/.exec(path);
+  if (goal) return { page: "goals", goal: goal[1] };
   if (["/feed", "/ideas", "/goals", "/library"].includes(path))
     return { page: path.slice(1) as Page };
   return { page: "chat" };

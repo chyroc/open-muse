@@ -14,6 +14,8 @@ import { digest, uuid } from "../shared/crypto";
 import { operations } from "../shared/ma";
 import { buildRequest } from "../shared/ma-request";
 import type { AgentEvent } from "../shared/types";
+import { identityInstructions } from "../shared/identity";
+import { canonicalJson } from "../shared/session-refresh";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -119,6 +121,16 @@ function fixture() {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
+      if (group === "sessions") {
+        const ref = body.agent;
+        const agent = resources.agents.find(
+          (row) => row.id === (typeof ref === "string" ? ref : ref.id),
+        );
+        resource.agent = structuredClone({
+          ...agent,
+          ...(typeof ref === "object" ? ref : {}),
+        });
+      }
       resources[group].push(resource);
       return Response.json(resource);
     }
@@ -396,6 +408,114 @@ describe("Direct MA client", () => {
     await expect(f.client.generateInspiration("ideas")).rejects.toThrow(
       "Connect to Ark MA",
     );
+  });
+  it("refreshes a stale memory-enabled main once, pins its original version and preserves custom session instructions", async () => {
+    const f = fixture();
+    await f.login();
+    const old = await f.client.openConversation("main");
+    const side = await f.client.openConversation("side", "Separate topic");
+    const source = f.resources.sessions[0].agent as Record<string, unknown>;
+    source.system =
+      "Custom prefix.\n<open-muse-identity>Old capability rules.</open-muse-identity>\nCustom suffix.";
+    f.events.push({
+      id: "u-before",
+      type: "user.message",
+      content: [{ type: "text", text: "Preserved source turn" }],
+    });
+    const before = structuredClone(source);
+    const writes = f.fetcher.mock.calls.length;
+    const next = await f.client.openConversation("main");
+    const ref = f.resources.sessions[2].agent as Record<string, unknown>;
+    expect(next.id).not.toBe(old.id);
+    expect(ref.version).toBe(before.version);
+    expect(ref.system).toContain(identityInstructions);
+    expect(ref.system).toContain("Custom prefix.");
+    expect(ref.system).toContain("Custom suffix.");
+    expect(ref.system).not.toContain("Old capability rules.");
+    expect(source).toEqual(before);
+    expect(
+      (await f.client.conversationIndex()).entries[next.id].previousIds,
+    ).toEqual([old.id]);
+    expect(f.resources.sessions[1].id).toBe(side.id);
+    expect(
+      f.fetcher.mock.calls
+        .slice(writes)
+        .some(([url]) => String(url).endsWith("/agents/agents-1?version=1")),
+    ).toBe(true);
+    expect(
+      f.fetcher.mock.calls.filter(
+        ([url, init]) =>
+          String(url).endsWith("/sessions") && init?.method === "POST",
+      ),
+    ).toHaveLength(3);
+    expect((await f.client.openConversation("main")).id).toBe(next.id);
+    const restored = new Client({
+      vault: f.vault,
+      database: f.db,
+      fetcher: f.fetcher,
+    });
+    await restored.restore();
+    expect((await restored.openConversation("main")).id).toBe(next.id);
+    expect(f.resources.sessions).toHaveLength(3);
+    f.sessionEvents.set(next.id, []);
+    expect((await restored.events(next.id))[0].source_session_id).toBe(old.id);
+  });
+  it("does not refresh an active or foreign memory-enabled main snapshot", async () => {
+    for (const foreign of [false, true]) {
+      const f = fixture();
+      await f.login();
+      const old = await f.client.openConversation("main");
+      const source = f.resources.sessions[0].agent as Record<string, unknown>;
+      source.system = "Old instructions.";
+      if (foreign) source.metadata = { open_muse_workspace: "someone-else" };
+      else f.resources.sessions[0].status = "running";
+      expect((await f.client.openConversation("main")).id).toBe(old.id);
+      expect(f.resources.sessions).toHaveLength(1);
+    }
+  });
+  it("refuses a rollover that would lose custom runtime overrides, credentials or resource mounts", async () => {
+    for (const kind of ["tools", "file", "vault"] as const) {
+      const f = fixture();
+      await f.login();
+      const old = await f.client.openConversation("main");
+      const source = f.resources.sessions[0].agent as Record<string, unknown>;
+      source.system = "Old instructions.";
+      if (kind === "tools") source.tools = [{ type: "custom-session-toolset" }];
+      if (kind === "file")
+        (f.resources.sessions[0].resources as unknown[]).push({
+          type: "file",
+          file_id: "file-test",
+        });
+      if (kind === "vault") f.resources.sessions[0].vault_ids = ["vault-test"];
+      const before = canonicalJson(f.resources.sessions[0]);
+      await expect(f.client.openConversation("main")).rejects.toThrow(
+        "No replacement",
+      );
+      expect((await f.client.conversationIndex()).mainId).toBe(old.id);
+      expect(f.resources.sessions).toHaveLength(1);
+      expect(canonicalJson(f.resources.sessions[0])).toBe(before);
+    }
+  });
+  it("does not mistake tool-input key serialization order for changed source history", async () => {
+    const f = fixture();
+    await f.login();
+    await f.client.openConversation("main");
+    (f.resources.sessions[0].agent as Record<string, unknown>).system =
+      "Old instructions.";
+    f.events.push({
+      id: "tool-old",
+      type: "agent.tool_use",
+      input: { a: 1, b: 2 },
+    });
+    const handler = f.fetcher.getMockImplementation()!;
+    f.fetcher.mockImplementation(async (input, init) => {
+      const result = await handler(input, init);
+      if (init?.method === "POST" && String(input).endsWith("/memories"))
+        f.events[0].input = { b: 2, a: 1 };
+      return result;
+    });
+    await f.client.openConversation("main");
+    expect(f.resources.sessions).toHaveLength(2);
   });
   it("continues a legacy main chat with memory, a scoped history archive and source-preserving UI events", async () => {
     const f = fixture();

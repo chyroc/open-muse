@@ -1,3 +1,4 @@
+import { t } from "../shared/i18n";
 import { Check } from "lucide-react";
 import { parseChoiceMessage, type ChoiceReply } from "../shared/chat-choices";
 import { Markdown } from "./components";
@@ -40,7 +41,7 @@ export function ChoiceMessage({
                 <button
                   key={option.id}
                   type="button"
-                  aria-label={`Choose ${option.label}`}
+                  aria-label={t("Choose {label}", { label: option.label })}
                   aria-pressed={selected}
                   className={
                     selected
@@ -64,13 +65,14 @@ export function ChoiceMessage({
           </div>
           {reply && ["sending", "unconfirmed"].includes(reply.state) && (
             <small role="status">
-              Selection awaiting confirmation. Refresh history to check; it will
-              not be sent again.
+              {t(
+                "Selection awaiting confirmation. Refresh history to check; it will not be sent again.",
+              )}
             </small>
           )}
           {reply?.state === "rejected" && (
             <small role="status">
-              Your selection was not accepted. You can choose again.
+              {t("Your selection was not accepted. You can choose again.")}
             </small>
           )}
         </section>
@@ -78,13 +80,14 @@ export function ChoiceMessage({
       {message.after && <Markdown text={message.after} />}
       {(message.invalid || (message.pending && !streaming)) && (
         <p className="choice-unavailable">
-          This question could not be displayed. You can reply in the message
-          field.
+          {t(
+            "This question could not be displayed. You can reply in the message field.",
+          )}
         </p>
       )}
       {message.pending && streaming && (
         <span className="choice-unavailable" role="status">
-          Preparing a question…
+          {t("Preparing a question…")}
         </span>
       )}
     </>

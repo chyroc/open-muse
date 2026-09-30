@@ -68,6 +68,13 @@ await copyFile(
   path.join(root, "macos/Info.plist"),
   path.join(contents, "Info.plist"),
 );
+for (const language of ["en", "zh-Hans"]) {
+  await cp(
+    path.join(root, "macos", `${language}.lproj`),
+    path.join(resources, `${language}.lproj`),
+    { recursive: true },
+  );
+}
 await cp(path.join(root, ".build/macos-ui"), path.join(resources, "web"), {
   recursive: true,
 });

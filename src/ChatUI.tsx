@@ -1,3 +1,4 @@
+import { t } from "../shared/i18n";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Archive,
@@ -129,7 +130,7 @@ export function ChatHeader({
       {showSidebar && (
         <button
           className="glass-button header-left"
-          aria-label="Open sidebar"
+          aria-label={t("Open sidebar")}
           onClick={onSidebar}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
@@ -144,7 +145,7 @@ export function ChatHeader({
       )}
       <button
         className="companion-status"
-        aria-label={`${name} status: ${status}`}
+        aria-label={t("{name} status: {status}", { name, status: t(status) })}
         onClick={onStatus}
       >
         <CompanionAvatar />
@@ -155,7 +156,7 @@ export function ChatHeader({
           className="glass-button header-right"
           aria-label={
             moreLabel ??
-            (feed ? "Edit feed instructions" : "Conversation options")
+            (feed ? t("Edit feed instructions") : t("Conversation options"))
           }
           onClick={onMore}
         >
@@ -204,9 +205,9 @@ export function ChatComposer({
     <>
       {dictationHint && (
         <div className="dictation-hint" role="status">
-          Use your keyboard’s microphone to dictate.
+          {t("Use your keyboard’s microphone to dictate.")}
           <button
-            aria-label="Dismiss dictation hint"
+            aria-label={t("Dismiss dictation hint")}
             onClick={() => setDictationHint(false)}
           >
             <X size={16} />
@@ -223,7 +224,7 @@ export function ChatComposer({
         <button
           type="button"
           className="composer-action"
-          aria-label="Chat actions"
+          aria-label={t("Chat actions")}
           onClick={onActions}
         >
           <Plus size={24} strokeWidth={1.5} />
@@ -231,8 +232,8 @@ export function ChatComposer({
         <textarea
           ref={input}
           rows={1}
-          aria-label={`Message ${name}`}
-          placeholder="Message"
+          aria-label={t("Message {name}", { name })}
+          placeholder={t("Message")}
           maxLength={16000}
           value={value}
           onChange={(event) => setValue(event.target.value)}
@@ -251,7 +252,7 @@ export function ChatComposer({
           <button
             className="composer-action composer-send"
             type="button"
-            aria-label="Stop response"
+            aria-label={t("Stop response")}
             disabled={busy}
             onClick={onStop}
           >
@@ -261,7 +262,7 @@ export function ChatComposer({
           <button
             className="composer-action composer-send"
             type="submit"
-            aria-label="Send message"
+            aria-label={t("Send message")}
             disabled={busy || disabled || !value.trim()}
           >
             {busy ? (
@@ -274,7 +275,7 @@ export function ChatComposer({
           <button
             type="button"
             className="composer-action dictation-button"
-            aria-label="Keyboard dictation"
+            aria-label={t("Keyboard dictation")}
             onClick={() => {
               setDictationHint(true);
               input.current?.focus();
@@ -337,7 +338,7 @@ export function ConversationSidebar({
     <dialog
       ref={dialog}
       className="conversation-sidebar"
-      aria-label="Conversations"
+      aria-label={t("Conversations")}
       onCancel={(e) => {
         e.preventDefault();
         onClose();
@@ -347,7 +348,7 @@ export function ConversationSidebar({
         <strong>{name}</strong>
         <button
           className="glass-button"
-          aria-label="Close sidebar"
+          aria-label={t("Close sidebar")}
           onClick={onClose}
         >
           <ArrowRight size={24} strokeWidth={1.5} />
@@ -358,12 +359,14 @@ export function ConversationSidebar({
         href="#/"
         onClick={onClose}
       >
-        Main chat
+        {t("Main chat")}
       </a>
       <div className="side-chat-section">
-        <h2>{archived ? "Archived side chats" : "Side chats"}</h2>
+        <h2>{archived ? t("Archived side chats") : t("Side chats")}</h2>
         <button
-          aria-label={archived ? "Show side chats" : "Show archived chats"}
+          aria-label={
+            archived ? t("Show side chats") : t("Show archived chats")
+          }
           aria-pressed={archived}
           onClick={() => setArchived(!archived)}
         >
@@ -386,12 +389,12 @@ export function ConversationSidebar({
                 <MessageCircle size={19} />
                 <span>{index.entries[session.id]?.title ?? session.title}</span>
                 {["running", "rescheduling"].includes(session.status) && (
-                  <i aria-label="Running" />
+                  <i aria-label={t("Running")} />
                 )}
               </a>
               <button
                 disabled={busy}
-                aria-label={`${archived ? "Restore" : "Archive"} ${index.entries[session.id]?.title ?? session.title}`}
+                aria-label={`${archived ? t("Restore") : t("Archive")} ${index.entries[session.id]?.title ?? session.title}`}
                 onClick={() => onArchive(session.id, !archived)}
               >
                 {archived ? <ArrowLeft size={17} /> : <Archive size={17} />}
@@ -403,17 +406,19 @@ export function ConversationSidebar({
             <MessagesSquare size={29} strokeWidth={1.6} />
             <h2>
               {query
-                ? "No matching chats"
+                ? t("No matching chats")
                 : archived
-                  ? "No archived chats"
-                  : "Start a side chat"}
+                  ? t("No archived chats")
+                  : t("Start a side chat")}
             </h2>
             <p>
               {query
-                ? "Try another search."
+                ? t("Try another search.")
                 : archived
-                  ? "Archived chats stay available here."
-                  : "Side chats are an optional way to organize conversations by topic."}
+                  ? t("Archived chats stay available here.")
+                  : t(
+                      "Side chats are an optional way to organize conversations by topic.",
+                    )}
             </p>
           </div>
         )}
@@ -422,7 +427,7 @@ export function ConversationSidebar({
         <a
           href="#/settings"
           className="glass-button"
-          aria-label="Settings"
+          aria-label={t("Settings")}
           onClick={onClose}
         >
           <Settings size={24} strokeWidth={1.5} />
@@ -431,15 +436,15 @@ export function ConversationSidebar({
           <Search size={20} />
           <input
             ref={search}
-            aria-label="Search conversations"
-            placeholder="Search"
+            aria-label={t("Search conversations")}
+            placeholder={t("Search")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
         </label>
         <button
           className="glass-button"
-          aria-label="New side chat"
+          aria-label={t("New side chat")}
           disabled={busy}
           onClick={() => {
             onNew();
@@ -467,7 +472,7 @@ export function ChatActions({
   children?: ReactNode;
 }) {
   return (
-    <Sheet title="Conversation" onClose={onClose}>
+    <Sheet title={t("Conversation")} onClose={onClose}>
       <div className="chat-action-list">
         <button
           onClick={() => {
@@ -476,7 +481,7 @@ export function ChatActions({
           }}
         >
           <SquarePen size={22} />
-          New side chat
+          {t("New side chat")}
         </button>
         <button
           disabled={!canExport}
@@ -486,7 +491,7 @@ export function ChatActions({
           }}
         >
           <ArrowDownToLine size={22} />
-          Export conversation
+          {t("Export conversation")}
         </button>
         {children}
       </div>
@@ -498,7 +503,7 @@ export function ScrollToLatest({ onClick }: { onClick: () => void }) {
   return (
     <button
       className="scroll-to-latest"
-      aria-label="Scroll to latest message"
+      aria-label={t("Scroll to latest message")}
       onClick={onClick}
     >
       <ChevronDown size={18} />

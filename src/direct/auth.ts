@@ -1,3 +1,4 @@
+import { t } from "../../shared/i18n";
 import { z } from "zod";
 import { ArkClient, ApiError } from "../../shared/ark";
 import {
@@ -64,7 +65,9 @@ export class DirectAuth {
     const parsed = stored.safeParse(JSON.parse(raw));
     if (!parsed.success)
       throw new Error(
-        "Saved login is invalid. Clear this app's credentials and sign in again.",
+        t(
+          "Saved login is invalid. Clear this app's credentials and sign in again.",
+        ),
       );
     this.value = parsed.data;
   }
@@ -86,7 +89,7 @@ export class DirectAuth {
     if (!this.value || !isSSOCredentials(this.value))
       throw new ApiError(
         401,
-        "This control-plane operation requires SSO sign-in.",
+        t("This control-plane operation requires SSO sign-in."),
       );
     return this.value;
   }
@@ -104,7 +107,7 @@ export class DirectAuth {
     if (this.busy)
       throw new ApiError(
         409,
-        "A sign-in operation is already in progress. Please wait.",
+        t("A sign-in operation is already in progress. Please wait."),
       );
     this.busy = true;
     try {
@@ -141,7 +144,7 @@ export class DirectAuth {
         )
           throw new ApiError(
             409,
-            "Sign out before switching to another project.",
+            t("Sign out before switching to another project."),
           );
         try {
           if (c.apiKey) return { ready: true, project };
@@ -150,10 +153,12 @@ export class DirectAuth {
             if (c.keyCreationPending)
               throw new ApiError(
                 409,
-                "The previous key creation is unconfirmed. Check the Ark console; sign out and connect with the existing key instead of creating another one.",
+                t(
+                  "The previous key creation is unconfirmed. Check the Ark console; sign out and connect with the existing key instead of creating another one.",
+                ),
               );
             if (!(await this.provider.projects(c)).includes(project))
-              throw new ApiError(403, "No access to the selected project.");
+              throw new ApiError(403, t("No access to the selected project."));
             c.project = project;
             c.keyCreationPending = true;
             await this.save(c);
@@ -166,7 +171,10 @@ export class DirectAuth {
         }
       }
       if (this.value)
-        throw new ApiError(409, "Sign out before connecting another account.");
+        throw new ApiError(
+          409,
+          t("Sign out before connecting another account."),
+        );
       if (path === "api-key") {
         const input = z
           .object({
@@ -222,14 +230,14 @@ export class DirectAuth {
         )
           throw new ApiError(
             400,
-            "The authorization transaction expired. Start sign-in again.",
+            t("The authorization transaction expired. Start sign-in again."),
           );
         const code = extractCode(input.code, pending.state);
         this.pending = undefined;
         await this.save(await this.provider.exchange(code, pending.verifier));
         return { loggedIn: true };
       }
-      throw new ApiError(404, "Unknown sign-in operation.");
+      throw new ApiError(404, t("Unknown sign-in operation."));
     });
   }
 }

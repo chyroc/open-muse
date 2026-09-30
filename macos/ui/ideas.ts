@@ -1,3 +1,4 @@
+import { t } from "../../shared/i18n";
 import { z } from "zod";
 import type { Client } from "../../src/api";
 import { DirectInspiration } from "../../src/direct/inspiration";
@@ -89,7 +90,7 @@ function owner(client: Client) {
 // source cloud event stays unchanged; only the generation reader normalizes it.
 export function parseMacIdeas(raw: string) {
   if (raw.length > 65000)
-    throw new Error("The generated response is too large.");
+    throw new Error(t("The generated response is too large."));
   const parsed = JSON.parse(
     raw.trim().replace(/^```(?:json)?\s*\n([\s\S]*?)\n```$/, "$1"),
   );
@@ -114,7 +115,7 @@ export function ideaSections(
   const featured = available.slice(0, 4);
   const groups = new Map<string, InspirationItem[]>();
   for (const item of available.slice(4)) {
-    const category = item.category || "More ideas";
+    const category = item.category || t("More ideas");
     groups.set(category, [...(groups.get(category) ?? []), item]);
   }
   return {
@@ -193,7 +194,9 @@ export class MacIdeas {
           });
           if (prompt.length > 16000)
             throw new Error(
-              "Your idea context is too large. No generation request was sent.",
+              t(
+                "Your idea context is too large. No generation request was sent.",
+              ),
             );
           return prompt;
         },
@@ -253,13 +256,15 @@ export class MacIdeas {
   private assertConnection() {
     if (!this.client.signedIn() || owner(this.client) !== this.identity)
       throw new Error(
-        "The connection changed. Reopen Ideas before continuing; no new request was sent.",
+        t(
+          "The connection changed. Reopen Ideas before continuing; no new request was sent.",
+        ),
       );
   }
   private assertScope() {
     if (owner(this.client) !== this.identity)
       throw new Error(
-        "The connection changed. Reopen Ideas to use the current account.",
+        t("The connection changed. Reopen Ideas to use the current account."),
       );
   }
   private async presentation() {
@@ -336,7 +341,7 @@ export class MacIdeas {
   async feedback(id: string, direction: "up" | "down", reason?: string) {
     this.assertScope();
     if (reason && reason.trim().length > 600)
-      throw new Error("Feedback must be 600 characters or fewer.");
+      throw new Error(t("Feedback must be 600 characters or fewer."));
     await this.update((state) => {
       state.feedback[id] = {
         direction,
@@ -364,7 +369,9 @@ export class MacIdeas {
     }
     if (existing?.phase === "sending")
       throw new Error(
-        "This idea's submission is unconfirmed. Refresh history; it will not be sent again.",
+        t(
+          "This idea's submission is unconfirmed. Refresh history; it will not be sent again.",
+        ),
       );
     const detail =
       presentation.details[
@@ -375,7 +382,7 @@ export class MacIdeas {
         (activity) => !activity.selectable || selected.includes(activity.id),
       ) ?? [];
     if (detail?.included.length && !included.length)
-      throw new Error("Choose at least one included item.");
+      throw new Error(t("Choose at least one included item."));
     const token = existing?.phase === "preparing" ? existing.token : uuid();
     const text =
       existing?.phase === "preparing"
@@ -386,7 +393,7 @@ export class MacIdeas {
           ].join("\n\n");
     if (text.length > 16000)
       throw new Error(
-        "This idea is too large to send. No conversation was created.",
+        t("This idea is too large to send. No conversation was created."),
       );
     if (!existing || existing.phase === "failed")
       await this.update((state) => {
@@ -395,7 +402,7 @@ export class MacIdeas {
           state.activations[item.id].phase !== "failed"
         )
           throw new Error(
-            "Another window is starting this idea. Refresh to continue.",
+            t("Another window is starting this idea. Refresh to continue."),
           );
         state.activations[item.id] = {
           token,
@@ -412,13 +419,17 @@ export class MacIdeas {
       this.assertConnection();
       if (["running", "attention"].includes(taskState(events, session.status)))
         throw new Error(
-          "Your assistant is still working. Finish or stop the current task before starting this idea.",
+          t(
+            "Your assistant is still working. Finish or stop the current task before starting this idea.",
+          ),
         );
       const index = await this.client.conversationIndex();
       this.assertConnection();
       if (index.sending)
         throw new Error(
-          "A main-chat message is still unconfirmed. Refresh its history before starting this idea.",
+          t(
+            "A main-chat message is still unconfirmed. Refresh its history before starting this idea.",
+          ),
         );
       await onSession(session.id);
       this.assertConnection();
@@ -426,7 +437,7 @@ export class MacIdeas {
         const current = state.activations[item.id];
         if (current?.token !== token || current.phase !== "preparing")
           throw new Error(
-            "Another window submitted this idea. Refresh to see it.",
+            t("Another window submitted this idea. Refresh to see it."),
           );
         current.session = session.id;
         current.phase = "sending";

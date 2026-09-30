@@ -1,3 +1,4 @@
+import { t } from "../../shared/i18n";
 import { useEffect, useRef, useState } from "react";
 import type { Client } from "../../src/api";
 import type { InspirationSnapshot } from "../../shared/inspiration";
@@ -92,10 +93,11 @@ export function FeedInstructions({
     if (!guard.current) dirty ? setConfirmClose(true) : onClose();
   };
   return (
-    <Modal title="Feed instructions" onClose={close}>
+    <Modal title={t("Feed instructions")} onClose={close}>
       <p>
-        Your feed is powered by the instructions below. Any edits you make will
-        apply to future feed posts.
+        {t(
+          "Your feed is powered by the instructions below. Any edits you make will apply to future feed posts.",
+        )}
       </p>
       <form
         className="feed-instructions-form"
@@ -104,7 +106,9 @@ export function FeedInstructions({
           void save();
         }}
       >
-        <label htmlFor="feed-instructions">What should your feed cover?</label>
+        <label htmlFor="feed-instructions">
+          {t("What should your feed cover?")}
+        </label>
         <textarea
           id="feed-instructions"
           autoFocus
@@ -112,20 +116,20 @@ export function FeedInstructions({
           maxLength={4000}
           value={draft}
           disabled={busy || !client.signedIn()}
-          placeholder="Add instructions…"
+          placeholder={t("Add instructions…")}
           onChange={(event) => setDraft(event.target.value)}
         />
         {error && (
           <div className="feed-error" role="alert">
             {error}
             <button type="button" disabled={busy} onClick={() => void review()}>
-              Review cloud version
+              {t("Review cloud version")}
             </button>
           </div>
         )}
         {remote && (
           <aside className="feed-cloud-copy">
-            <h3>Latest cloud version</h3>
+            <h3>{t("Latest cloud version")}</h3>
             <p>{remote.content}</p>
             <button
               type="button"
@@ -137,10 +141,10 @@ export function FeedInstructions({
                 setError("");
               }}
             >
-              Replace draft with this version
+              {t("Replace draft with this version")}
             </button>
             <p className="subtle">
-              Your draft stays unchanged until you choose to replace it.
+              {t("Your draft stays unchanged until you choose to replace it.")}
             </p>
           </aside>
         )}
@@ -151,28 +155,31 @@ export function FeedInstructions({
             disabled={busy}
             onClick={close}
           >
-            Cancel
+            {t("Cancel")}
           </button>
           <button
             className="pill-button primary"
             disabled={busy || !dirty || !draft.trim() || !client.signedIn()}
           >
-            {busy ? "Saving…" : "Save"}
+            {busy ? t("Saving…") : t("Save")}
           </button>
         </footer>
       </form>
       {confirmClose && (
-        <Modal title="Discard changes?" onClose={() => setConfirmClose(false)}>
-          <p>Your feed instructions have unsaved changes.</p>
+        <Modal
+          title={t("Discard changes?")}
+          onClose={() => setConfirmClose(false)}
+        >
+          <p>{t("Your feed instructions have unsaved changes.")}</p>
           <div className="feed-dialog-actions">
             <button
               className="pill-button"
               onClick={() => setConfirmClose(false)}
             >
-              Keep editing
+              {t("Keep editing")}
             </button>
             <button className="pill-button" onClick={onClose}>
-              Discard changes
+              {t("Discard changes")}
             </button>
           </div>
         </Modal>

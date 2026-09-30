@@ -1,3 +1,4 @@
+import { t } from "../../shared/i18n";
 import { ApiError } from "../../shared/ark";
 import { uuid } from "../../shared/crypto";
 import {
@@ -50,7 +51,9 @@ function validSession(id: string) {
   if (!/^[\w-]{1,200}$/.test(id ?? ""))
     throw new ApiError(
       502,
-      "The generation session ID is unconfirmed. Refresh before proceeding; no duplicate was created.",
+      t(
+        "The generation session ID is unconfirmed. Refresh before proceeding; no duplicate was created.",
+      ),
     );
   return id;
 }
@@ -86,7 +89,7 @@ export class DirectInspiration {
       if (run?.token !== token)
         throw new ApiError(
           409,
-          "This generation changed in another window. Refresh to continue.",
+          t("This generation changed in another window. Refresh to continue."),
         );
       if (
         ["complete", "failed"].includes(run.phase) ||
@@ -108,18 +111,18 @@ export class DirectInspiration {
   async like(id: string, liked: boolean) {
     await this.update((state) => {
       const item = state.items.find((item) => item.id === id);
-      if (!item) throw new ApiError(404, "Post not found.");
+      if (!item) throw new ApiError(404, t("Post not found."));
       item.liked = liked;
     });
   }
   async link(id: string, session: string) {
     await this.update((state) => {
       const item = state.items.find((item) => item.id === id);
-      if (!item) throw new ApiError(404, "Post not found.");
+      if (!item) throw new ApiError(404, t("Post not found."));
       if (item.discussion_id && item.discussion_id !== session)
         throw new ApiError(
           409,
-          "This post already has a discussion. Open it from the feed.",
+          t("This post already has a discussion. Open it from the feed."),
         );
       item.discussion_id = session;
     });
@@ -193,7 +196,9 @@ export class DirectInspiration {
     try {
       if (!answer)
         throw new Error(
-          "Generation finished without a reply. Open the conversation to inspect it.",
+          t(
+            "Generation finished without a reply. Open the conversation to inspect it.",
+          ),
         );
       const content = parseInspiration(eventText(answer));
       await this.update((state) => {
@@ -243,7 +248,7 @@ export class DirectInspiration {
         if (active(current.runs[kind]))
           throw new ApiError(
             409,
-            "Generation is already in progress. Refresh to see it.",
+            t("Generation is already in progress. Refresh to see it."),
           );
         current.runs[kind] = fresh;
       });
@@ -259,7 +264,9 @@ export class DirectInspiration {
         )
           throw new ApiError(
             409,
-            "Another window is generating this content. Refresh to continue.",
+            t(
+              "Another window is generating this content. Refresh to continue.",
+            ),
           );
         Object.assign(current.runs[kind]!, { phase: "creating", prompt });
       });
@@ -283,7 +290,9 @@ export class DirectInspiration {
       if (["creating", "sending"].includes(run!.phase))
         throw new ApiError(
           409,
-          "Submission is unconfirmed. Refresh to check its result; no duplicate was sent.",
+          t(
+            "Submission is unconfirmed. Refresh to check its result; no duplicate was sent.",
+          ),
         );
       return;
     }
@@ -294,7 +303,7 @@ export class DirectInspiration {
       )
         throw new ApiError(
           409,
-          "Another window submitted this generation. Refresh to see it.",
+          t("Another window submitted this generation. Refresh to see it."),
         );
       current.runs[kind]!.phase = "sending";
     });

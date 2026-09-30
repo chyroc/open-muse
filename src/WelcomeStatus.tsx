@@ -1,3 +1,4 @@
+import { t } from "../shared/i18n";
 import { LoaderCircle } from "lucide-react";
 import type { WelcomeState } from "./direct/welcome";
 
@@ -32,20 +33,26 @@ export function WelcomeStatus({
       {busy ? (
         <>
           <LoaderCircle size={22} className="spin" />
-          <span>Preparing your companion…</span>
+          <span>{t("Preparing your companion…")}</span>
         </>
       ) : (
         <>
           <p>
             {error ||
               (unconfirmed
-                ? "The welcome request is unconfirmed. Check history; it will not be sent again."
+                ? t(
+                    "The welcome request is unconfirmed. Check history; it will not be sent again.",
+                  )
                 : state?.phase === "rejected"
-                  ? "The welcome request was not accepted. You can try again."
-                  : "First-conversation setup was interrupted. Continue to verify the existing resources.")}
+                  ? t(
+                      "The welcome request was not accepted. You can try again.",
+                    )
+                  : t(
+                      "First-conversation setup was interrupted. Continue to verify the existing resources.",
+                    ))}
           </p>
           <button onClick={onCheck}>
-            {unconfirmed ? "Check welcome status" : "Continue welcome"}
+            {unconfirmed ? t("Check welcome status") : t("Continue welcome")}
           </button>
         </>
       )}

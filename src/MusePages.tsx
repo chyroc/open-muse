@@ -1,3 +1,4 @@
+import { t } from "../shared/i18n";
 import {
   useCallback,
   useEffect,
@@ -30,11 +31,11 @@ import { CategoryIcon, dateLabel, Markdown } from "./components";
 import { exportText } from "./platform";
 
 export const primaryNavigation = [
-  { id: "home", path: "/", label: "Chat", icon: MessageCircle },
-  { id: "feed", path: "/feed", label: "Feed", icon: PanelsTopLeft },
-  { id: "discover", path: "/discover", label: "Ideas", icon: Lightbulb },
-  { id: "goals", path: "/goals", label: "Goals", icon: SquareCheckBig },
-  { id: "library", path: "/library", label: "Library", icon: Shapes },
+  { id: "home", path: "/", label: t("Chat"), icon: MessageCircle },
+  { id: "feed", path: "/feed", label: t("Feed"), icon: PanelsTopLeft },
+  { id: "discover", path: "/discover", label: t("Ideas"), icon: Lightbulb },
+  { id: "goals", path: "/goals", label: t("Goals"), icon: SquareCheckBig },
+  { id: "library", path: "/library", label: t("Library"), icon: Shapes },
 ] as const;
 
 export function Sheet({
@@ -79,7 +80,11 @@ export function Sheet({
         <div className="sheet-grip" aria-hidden="true" />
         <header>
           <h2>{title}</h2>
-          <button className="icon-button" aria-label="Close" onClick={onClose}>
+          <button
+            className="icon-button"
+            aria-label={t("Close")}
+            onClick={onClose}
+          >
             <X size={22} />
           </button>
         </header>
@@ -97,16 +102,16 @@ export function MoreMenu({
   onClose: () => void;
 }) {
   return (
-    <Sheet title="My Space" onClose={onClose}>
-      <nav className="more-links" aria-label="More">
+    <Sheet title={t("My Space")} onClose={onClose}>
+      <nav className="more-links" aria-label={t("More")}>
         <a href="#/tasks" onClick={onClose}>
           <History />
-          All conversations
+          {t("All conversations")}
           <ChevronRight />
         </a>
         <a href="#/settings" onClick={onClose}>
           <Settings2 />
-          Settings &amp; connections
+          {t("Settings & connections")}
           <ChevronRight />
         </a>
         <a href="#/studio" onClick={onClose}>
@@ -115,7 +120,7 @@ export function MoreMenu({
           <ChevronRight />
         </a>
       </nav>
-      <h3 className="list-caption">Recent conversations</h3>
+      <h3 className="list-caption">{t("Recent conversations")}</h3>
       <div className="more-recents">
         {sessions.slice(0, 8).map((s) => (
           <a key={s.id} href={`#/task/${s.id}`} onClick={onClose}>
@@ -125,7 +130,9 @@ export function MoreMenu({
         ))}
       </div>
       {!sessions.length && (
-        <p className="muted">No conversations yet. Start with a sentence.</p>
+        <p className="muted">
+          {t("No conversations yet. Start with a sentence.")}
+        </p>
       )}
     </Sheet>
   );
@@ -168,8 +175,8 @@ export function ChatWelcome({
     <div className="chat-welcome">
       <div className="welcome-space">
         <span className="welcome-wordmark">muse</span>
-        <h1>What&apos;s on your mind?</h1>
-        <p>Tell Muse what you want to do.</p>
+        <h1>{t("What's on your mind?")}</h1>
+        <p>{t("Tell Muse what you want to do.")}</p>
       </div>
       <div className="welcome-input">
         {goal && (
@@ -178,7 +185,7 @@ export function ChatWelcome({
             <span>{goal.title}</span>
             <button
               className="icon-button"
-              aria-label="Unlink goal"
+              aria-label={t("Unlink goal")}
               onClick={onClearGoal}
             >
               <X size={16} />
@@ -198,10 +205,10 @@ export function ChatWelcome({
           <a href="#/tasks">
             <History size={15} />
             {sessions.length
-              ? `View ${sessions.length} conversations`
-              : "Conversation history"}
+              ? t("View {count} conversations", { count: sessions.length })
+              : t("Conversation history")}
           </a>
-          <span>AI-generated content may be inaccurate</span>
+          <span>{t("AI-generated content may be inaccurate")}</span>
         </div>
       </div>
     </div>
@@ -212,7 +219,7 @@ function Loading() {
   return (
     <div className="loading" role="status">
       <LoaderCircle className="spin" size={22} />
-      Loading…
+      {t("Loading…")}
     </div>
   );
 }
@@ -237,7 +244,7 @@ function ErrorNotice({ error, retry }: { error: string; retry?: () => void }) {
   return error ? (
     <div className="inline-error" role="alert">
       {error}
-      {retry && <button onClick={retry}>Retry</button>}
+      {retry && <button onClick={retry}>{t("Retry")}</button>}
     </div>
   ) : null;
 }
@@ -271,21 +278,21 @@ export function LibraryPage({ client }: { client: Client }) {
   return (
     <section className="muse-page">
       <PageHeader
-        title="Library"
-        description="Save useful replies and come back to them anytime."
+        title={t("Library")}
+        description={t("Save useful replies and come back to them anytime.")}
       />
       <label className="library-search">
         <Search size={19} />
         <input
-          aria-label="Search Library"
+          aria-label={t("Search Library")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search Library"
+          placeholder={t("Search Library")}
         />
       </label>
       <div className="library-section">
         <FileText size={18} />
-        <strong>Saved replies</strong>
+        <strong>{t("Saved replies")}</strong>
         <span>{items.length}</span>
       </div>
       <ErrorNotice error={error} retry={() => void reload()} />
@@ -294,11 +301,13 @@ export function LibraryPage({ client }: { client: Client }) {
       ) : error && !items.length ? null : !visible.length ? (
         <Empty
           icon={<Shapes size={30} />}
-          title={query ? "No matching items" : "Keep content worth saving"}
+          title={
+            query ? t("No matching items") : t("Keep content worth saving")
+          }
           description={
             query
-              ? "Try other keywords."
-              : "Tap Save on a conversation reply to keep it here."
+              ? t("Try other keywords.")
+              : t("Tap Save on a conversation reply to keep it here.")
           }
         />
       ) : (
@@ -328,12 +337,12 @@ export function LibraryPage({ client }: { client: Client }) {
               href={`#/task/${selected.session_id}`}
               onClick={() => setSelected(undefined)}
             >
-              View source conversation
+              {t("View source conversation")}
               <ArrowRight size={16} />
             </a>
             <button
               className="icon-button"
-              aria-label="Export item"
+              aria-label={t("Export item")}
               disabled={exporting}
               onClick={async () => {
                 setExporting(true);

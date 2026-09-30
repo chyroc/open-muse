@@ -1,3 +1,4 @@
+import { t } from "../../shared/i18n";
 import { operations } from "../../shared/ma";
 import {
   buildRequest,
@@ -15,18 +16,18 @@ export async function executeOperation(
   body: object,
 ) {
   const op = operations.find((value) => value.id === operation);
-  if (!op) throw new ApiError(404, "Unregistered MA operation.");
+  if (!op) throw new ApiError(404, t("Unregistered MA operation."));
   const input = inputSchema.parse(body);
   if (op.method !== "GET" && !op.id.startsWith("List") && !input.confirm)
     throw new ApiError(
       400,
-      "Confirm the target and impact before modifying cloud resources.",
+      t("Confirm the target and impact before modifying cloud resources."),
     );
   const path = buildRequest(op, input);
   if (op.id === "StreamSessionEvents")
     throw new ApiError(
       400,
-      "Open the conversation to view the live event stream.",
+      t("Open the conversation to view the live event stream."),
     );
   let result: unknown;
   if (op.transport === "top") {
@@ -45,7 +46,7 @@ export async function executeOperation(
           if (!["bucket", "prefix"].includes(name) || typeof item !== "string")
             throw new ApiError(
               400,
-              "tos only supports bucket and prefix strings.",
+              t("tos only supports bucket and prefix strings."),
             );
           form.append(`tos.${name}`, item);
         }
@@ -57,17 +58,17 @@ export async function executeOperation(
     }
     if (input.file) {
       if (/[\\/\r\n]/.test(input.file.name))
-        throw new ApiError(400, "File names must not contain paths.");
+        throw new ApiError(400, t("File names must not contain paths."));
       const bytes = unbase64(input.file.base64);
       if (bytes.length > 10 * 1024 * 1024)
-        throw new ApiError(413, "Files must be at most 10 MB.");
+        throw new ApiError(413, t("Files must be at most 10 MB."));
       if (
         op.id === "CreateSkill" &&
         (!input.file.name.endsWith(".zip") ||
           bytes[0] !== 80 ||
           bytes[1] !== 75)
       )
-        throw new ApiError(400, "Skills must be ZIP files.");
+        throw new ApiError(400, t("Skills must be ZIP files."));
       form.append(
         op.id === "CreateSkill" ? "files" : "file",
         new Blob([bytes as Uint8Array<ArrayBuffer>], {
@@ -79,7 +80,7 @@ export async function executeOperation(
         input.file.name,
       );
     } else if (op.id === "CreateSkill" || !input.body.url)
-      throw new ApiError(400, "Choose a file to upload first.");
+      throw new ApiError(400, t("Choose a file to upload first."));
     result = await ark.request(path, { method: "POST", body: form });
   } else
     result = await ark.request(path, {

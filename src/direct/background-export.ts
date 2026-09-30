@@ -1,3 +1,4 @@
+import { t } from "../../shared/i18n";
 import {
   backgroundConfigurationSchema,
   type BackgroundConfiguration,
@@ -17,17 +18,21 @@ export async function exportBackgroundConfiguration(
   ark: ArkClient,
 ): Promise<BackgroundConfiguration> {
   if (confirm !== true)
-    throw new Error("Confirm uploading the current Ark configuration first.");
+    throw new Error(
+      t("Confirm uploading the current Ark configuration first."),
+    );
   const login = auth.value;
   if (!login?.apiKey)
-    throw new Error("Connect to Ark before syncing background access.");
+    throw new Error(t("Connect to Ark before syncing background access."));
   const apiKey = login.apiKey,
     project = login.project ?? "";
   const selection = await workspace.selection();
   const memoryStoreId = await companion.storeId();
   if (!memoryStoreId)
     throw new Error(
-      "Prepare your personal memory in Settings before syncing background access.",
+      t(
+        "Prepare your personal memory in Settings before syncing background access.",
+      ),
     );
   const agent = await ark.request<{ id: string; version: number }>(
     `/agents/${encodeURIComponent(selection.agent)}`,
@@ -38,10 +43,12 @@ export async function exportBackgroundConfiguration(
     (login.project ?? "") !== project
   )
     throw new Error(
-      "The local Ark login changed. Review the current account before syncing.",
+      t(
+        "The local Ark login changed. Review the current account before syncing.",
+      ),
     );
   if (agent.id !== selection.agent)
-    throw new Error("The Ark agent response did not match this workspace.");
+    throw new Error(t("The Ark agent response did not match this workspace."));
   const config = backgroundConfigurationSchema.safeParse({
     apiKey,
     project,
@@ -52,7 +59,7 @@ export async function exportBackgroundConfiguration(
   });
   if (!config.success)
     throw new Error(
-      "The current Ark workspace is incomplete. Refresh it before syncing.",
+      t("The current Ark workspace is incomplete. Refresh it before syncing."),
     );
   return config.data;
 }

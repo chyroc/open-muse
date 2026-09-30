@@ -1,3 +1,4 @@
+import { t } from "../shared/i18n";
 import { z } from "zod";
 import { ArkClient, ApiError } from "../shared/ark";
 import { digest, uuid } from "../shared/crypto";
@@ -26,6 +27,14 @@ import { DirectGoals } from "./direct/goals";
 import { DirectChoices } from "./direct/choices";
 import { DirectWelcome } from "./direct/welcome";
 import { identityDefaults } from "../shared/identity";
+import {
+  agentSnapshot,
+  canonicalJson,
+  needsPromptRefresh,
+  refreshedAgentSystem,
+  unreadableInstructions,
+  type AgentSnapshot,
+} from "../shared/session-refresh";
 import { goalCategoryInput, type GoalCategory } from "../shared/goals";
 import type { IdentityDocumentName } from "../shared/identity";
 import { DirectInspiration } from "./direct/inspiration";
@@ -82,7 +91,7 @@ type Runtime = {
 };
 const validId = (id: string) => {
   if (!/^[\w-]{1,200}$/.test(id))
-    throw new ApiError(400, "Invalid resource ID.");
+    throw new ApiError(400, t("Invalid resource ID."));
   return encodeURIComponent(id);
 };
 
@@ -127,7 +136,7 @@ export class Client {
       if (error instanceof z.ZodError)
         throw new ApiError(
           400,
-          "Check the API key, project name, and authorization code format.",
+          t("Check the API key, project name, and authorization code format."),
         );
       throw error;
     }
@@ -143,7 +152,7 @@ export class Client {
     if (!c?.apiKey)
       throw new ApiError(
         401,
-        "Connect to Ark MA with SSO or an API key in Settings first.",
+        t("Connect to Ark MA with SSO or an API key in Settings first."),
       );
     const key = digest(
       JSON.stringify([
@@ -202,7 +211,11 @@ export class Client {
   async backgroundConfiguration(confirm: boolean) {
     const r = this.context();
     const result = await exportBackgroundConfiguration(
-      confirm, this.identity, r.workspace, r.companion, r.ark,
+      confirm,
+      this.identity,
+      r.workspace,
+      r.companion,
+      r.ark,
     );
     r.abort.signal.throwIfAborted();
     return result;
@@ -266,7 +279,7 @@ export class Client {
         this.collect<Session>(r.ark, "/sessions?limit=100&order=desc"),
       create: async (title) => {
         if (!selection)
-          throw new ApiError(400, "Generation preparation did not finish.");
+          throw new ApiError(400, t("Generation preparation did not finish."));
         const session = await r.ark.create(title, "research", selection);
         await this.remember(r, [session]);
         return session;
@@ -355,13 +368,15 @@ export class Client {
         { signal },
       );
       if (!Array.isArray(result.data))
-        throw new ApiError(502, "Ark returned an invalid list response.");
+        throw new ApiError(502, t("Ark returned an invalid list response."));
       data.push(...result.data);
       page = result.next_page ?? "";
       if (page && (seen.has(page) || seen.size >= 100))
         throw new ApiError(
           502,
-          "History pagination repeated or exceeded the safety limit. No writes were retried.",
+          t(
+            "History pagination repeated or exceeded the safety limit. No writes were retried.",
+          ),
         );
       seen.add(page);
     } while (page);
@@ -431,6 +446,7 @@ export class Client {
           environment_id: string;
           memory_store_id: string;
           system?: string;
+          agent_version?: number;
         }
       | undefined;
     return new Conversations(r.key, this.db, {
@@ -446,11 +462,19 @@ export class Client {
           type: string;
           memory_store_id?: string;
         }>(r.ark, `/sessions/${validId(session.id)}/resources?limit=100`);
-        return !resources.some(
+        if (!resources.some(
           (resource) =>
             resource.type === "memory_store" &&
             resource.memory_store_id === storeId,
-        );
+        )) return true;
+        const selected = await r.workspace.selection();
+        try {
+          return needsPromptRefresh(session, r.key, selected.agent);
+        } catch (error) {
+          if (error instanceof Error && error.message === unreadableInstructions)
+            throw new ApiError(502, t(unreadableInstructions));
+          throw error;
+        }
       },
       prepare: async (previous) => {
         if ((await r.workspace.status()).state !== "ready") {
@@ -464,7 +488,9 @@ export class Client {
           if (["running", "rescheduling"].includes(previous.status))
             throw new ApiError(
               409,
-              "Wait for the current response to finish before continuing this conversation.",
+              t(
+                "Wait for the current response to finish before continuing this conversation.",
+              ),
             );
           const index = await this.conversations(r).index();
           const ids = [
@@ -474,7 +500,9 @@ export class Client {
           if (new Set(ids).size !== ids.length)
             throw new ApiError(
               409,
-              "Conversation history links are inconsistent. No history was replaced.",
+              t(
+                "Conversation history links are inconsistent. No history was replaced.",
+              ),
             );
           const chapters = [];
           for (const id of ids)
@@ -489,40 +517,74 @@ export class Client {
           if (pendingPermissions(last.events).length)
             throw new ApiError(
               409,
-              "Resolve the pending tool approval before continuing this conversation.",
+              t(
+                "Resolve the pending tool approval before continuing this conversation.",
+              ),
             );
-          const snapshot = digest(JSON.stringify(last.events));
+          const snapshot = digest(canonicalJson(last.events));
+          const sourceAgent = agentSnapshot(previous);
+          if (sourceAgent && sourceAgent.id !== selection.agent)
+            throw new ApiError(502, t(unreadableInstructions));
+          const sourceResources = await this.collect<{
+            type: string;
+            memory_store_id?: string;
+          }>(r.ark, `/sessions/${validId(previous.id)}/resources?limit=100`);
+          // A text-context rollover cannot safely migrate arbitrary mounts or
+          // bound account credentials. Refuse it rather than dropping them.
+          const vaults = (previous as Session & { vault_ids?: unknown }).vault_ids;
+          if (
+            sourceResources.some((resource) =>
+              resource.type !== "memory_store" ||
+              resource.memory_store_id !== memory_store_id
+            ) ||
+            (vaults !== undefined &&
+              (!Array.isArray(vaults) || vaults.length > 0))
+          ) throw new ApiError(502, t(unreadableInstructions));
           const archive = await r.companion.archive(
             conversationArchive(chapters, r.redact),
           );
-          const [fresh, history, agent] = await Promise.all([
+          const [fresh, history, agent, freshResources] = await Promise.all([
             r.ark.get(previous.id),
             this.collect<AgentEvent>(
               r.ark,
               `/sessions/${validId(previous.id)}/events?order=asc&limit=200`,
             ),
-            r.ark.request<{ system?: string }>(
-              `/agents/${validId(selection.agent)}`,
+            r.ark.request<AgentSnapshot>(
+              `/agents/${validId(selection.agent)}${sourceAgent ? `?version=${sourceAgent.version}` : ""}`,
             ),
+            this.collect<unknown>(r.ark, `/sessions/${validId(previous.id)}/resources?limit=100`),
           ]);
           if (
             ["running", "rescheduling"].includes(fresh.status) ||
-            digest(JSON.stringify(history)) !== snapshot
+            digest(canonicalJson(history)) !== snapshot ||
+            canonicalJson(agentSnapshot(fresh)) !== canonicalJson(sourceAgent) ||
+            canonicalJson(freshResources) !== canonicalJson(sourceResources) ||
+            canonicalJson((fresh as Session & { vault_ids?: unknown }).vault_ids) !== canonicalJson(vaults)
           )
             throw new ApiError(
               409,
-              "The previous conversation changed while preparing. Its history is intact; resume to include the latest messages.",
+              t(
+                "The previous conversation changed while preparing. Its history is intact; resume to include the latest messages.",
+              ),
             );
           if (typeof agent.system !== "string")
             throw new ApiError(
               502,
-              "The agent instructions could not be read. No replacement conversation was created.",
+              t(
+                "The agent instructions could not be read. No replacement conversation was created.",
+              ),
             );
-          selection.system = withConversationHistory(
-            agent.system,
-            archive.store,
-            archive.manifest,
-          );
+          try {
+            const system = sourceAgent
+              ? refreshedAgentSystem(sourceAgent, agent)
+              : agent.system;
+            if (sourceAgent) selection.agent_version = sourceAgent.version;
+            selection.system = withConversationHistory(system, archive.store, archive.manifest);
+          } catch (error) {
+            if (error instanceof Error && error.message === unreadableInstructions)
+              throw new ApiError(502, t(unreadableInstructions));
+            throw error;
+          }
         }
         r.abort.signal.throwIfAborted();
       },
@@ -530,7 +592,9 @@ export class Client {
         if (!selection)
           throw new ApiError(
             400,
-            "Conversation preparation did not finish. No session was created.",
+            t(
+              "Conversation preparation did not finish. No session was created.",
+            ),
           );
         return r.ark.create(title, category, selection);
       },
@@ -777,14 +841,16 @@ export class Client {
       )
         throw new ApiError(
           409,
-          "The first conversation is being prepared or its welcome is unconfirmed. Check its history before sending.",
+          t(
+            "The first conversation is being prepared or its welcome is unconfirmed. Check its history before sending.",
+          ),
         );
     }
     const lock = `${r.key}:${id}`;
     if (this.sends.has(lock))
       throw new ApiError(
         409,
-        "The previous operation is still being submitted.",
+        t("The previous operation is still being submitted."),
       );
     this.sends.add(lock);
     let autoKey: string | undefined;
@@ -814,7 +880,7 @@ export class Client {
           if (input.result !== "allow")
             throw new ApiError(
               400,
-              "Automatic confirmation can only allow safe reads.",
+              t("Automatic confirmation can only allow safe reads."),
             );
           const confirmed = history.find(
             (e) =>
@@ -826,17 +892,17 @@ export class Client {
           if (previous?.state === "confirmed")
             return { data: [await this.annotate(r, id, previous.event)] };
         } else if (previous?.state === "confirmed")
-          throw new ApiError(409, "Already auto-approved; refresh history.");
+          throw new ApiError(409, t("Already auto-approved; refresh history."));
         const tool = pendingPermissions(history).find(
           (e) => e.id === input.tool_use_id,
         );
         if (!tool)
           throw new ApiError(
             409,
-            "The tool is no longer pending; refresh history.",
+            t("The tool is no longer pending; refresh history."),
           );
         if (input.automatic && !canAutoApprove(tool))
-          throw new ApiError(403, "This tool requires manual approval.");
+          throw new ApiError(403, t("This tool requires manual approval."));
         event = {
           ...event,
           tool_use_id: tool.id,
@@ -857,7 +923,9 @@ export class Client {
             if (old)
               throw new ApiError(
                 409,
-                "An auto-approval is unconfirmed. Refresh history and handle it manually.",
+                t(
+                  "An auto-approval is unconfirmed. Refresh history and handle it manually.",
+                ),
               );
             return autoRecord!;
           });
@@ -918,7 +986,7 @@ export class Client {
       ) {
         await response.body?.cancel();
         throw new Error(
-          "The Ark event stream is disconnected; history will be refreshed.",
+          t("The Ark event stream is disconnected; history will be refreshed."),
         );
       }
       onConnected();
@@ -1001,7 +1069,7 @@ export class Client {
       input.steps &&
       new Set(input.steps.map((s) => s.id)).size !== input.steps.length
     )
-      throw new ApiError(400, "Duplicate step IDs.");
+      throw new ApiError(400, t("Duplicate step IDs."));
     if (input.session_id) await r.ark.get(validId(input.session_id));
     return this.goalService(r).update(id, input, revision);
   }
@@ -1025,7 +1093,7 @@ export class Client {
     if (event?.type !== "agent.message" || !eventText(event).trim())
       throw new ApiError(
         404,
-        "No savable assistant reply was found in Ark history.",
+        t("No savable assistant reply was found in Ark history."),
       );
     const rows = await this.db.update<LibraryItem[]>(
       `${r.key}:library`,

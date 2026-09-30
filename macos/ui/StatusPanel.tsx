@@ -1,3 +1,4 @@
+import { formatLocale, t } from "../../shared/i18n";
 import {
   Check,
   Clock3,
@@ -23,7 +24,7 @@ export function fileDate(value?: string) {
   const date = new Date(value);
   return Number.isFinite(date.getTime())
     ? date
-        .toLocaleDateString("en-US", {
+        .toLocaleDateString(formatLocale(), {
           month: "2-digit",
           day: "2-digit",
           year: "2-digit",
@@ -42,12 +43,12 @@ export function IdentityCards({
   disabled: boolean;
 }) {
   return (
-    <section className="desktop-identity" aria-label="Assistant identity">
+    <section className="desktop-identity" aria-label={t("Assistant identity")}>
       <div className="identity-summary">
         <h3>{identity.name}</h3>
         <button disabled={disabled} onClick={() => onOpen("IDENTITY.md")}>
           <Pencil size={14} />
-          Edit
+          {t("Edit")}
         </button>
       </div>
       {identity.warning && (
@@ -60,13 +61,13 @@ export function IdentityCards({
           <button
             key={name}
             className={`identity-file ${name === "SOUL.md" ? "soul" : "memory"}`}
-            aria-label={`Open ${name}`}
+            aria-label={t("Open {name}", { name })}
             disabled={disabled}
             onClick={() => onOpen(name)}
           >
             <span>
               <strong>{name === "SOUL.md" ? "SOUL" : "MEMORY"}</strong>
-              <small>ACCESS WITH CARE</small>
+              <small>{t("ACCESS WITH CARE")}</small>
             </span>
             <footer>
               <time dateTime={identity.documents[name].updated_at}>
@@ -105,16 +106,16 @@ export function StatusPanel({
   onDocument: (name: IdentityDocumentName) => void;
 }) {
   const tabs = [
-    { id: "activity", label: "Activity", Icon: List },
-    { id: "approvals", label: "Approvals", Icon: ShieldCheck },
-    { id: "upcoming", label: "Upcoming", Icon: Clock3 },
-    { id: "identity", label: "Identity", Icon: Fingerprint },
+    { id: "activity", label: t("Activity"), Icon: List },
+    { id: "approvals", label: t("Approvals"), Icon: ShieldCheck },
+    { id: "upcoming", label: t("Upcoming"), Icon: Clock3 },
+    { id: "identity", label: t("Identity"), Icon: Fingerprint },
   ] as const;
   return (
-    <aside className="status-panel" aria-label="Assistant status">
+    <aside className="status-panel" aria-label={t("Assistant status")}>
       <button
         className="status-close icon-button"
-        aria-label="Close panel"
+        aria-label={t("Close panel")}
         onClick={onClose}
       >
         <X size={20} />
@@ -123,7 +124,7 @@ export function StatusPanel({
         <Avatar large />
         <button
           className="edit-profile icon-button"
-          aria-label="Edit assistant name"
+          aria-label={t("Edit assistant name")}
           onClick={() => onDocument("IDENTITY.md")}
         >
           <Pencil size={13} />
@@ -134,7 +135,7 @@ export function StatusPanel({
       <div
         className="status-tabs"
         role="tablist"
-        aria-label="Assistant information"
+        aria-label={t("Assistant information")}
       >
         {tabs.map(({ id, label, Icon }) => (
           <button
@@ -165,10 +166,11 @@ export function StatusPanel({
           />
         )}
         {tab === "upcoming" && (
-          <Empty title="Upcoming tasks">
+          <Empty title={t("Upcoming tasks")}>
             <p>
-              Background scheduling is not connected in this desktop build yet.
-              Chat messages do not create reminders automatically.
+              {t(
+                "Background scheduling is not connected in this desktop build yet. Chat messages do not create reminders automatically.",
+              )}
             </p>
           </Empty>
         )}
@@ -183,13 +185,13 @@ export function StatusPanel({
               />
             ))
           ) : (
-            <Empty title="No approvals needed">
-              <p>Requests for permission appear here.</p>
+            <Empty title={t("No approvals needed")}>
+              <p>{t("Requests for permission appear here.")}</p>
             </Empty>
           ))}
         {tab === "activity" && (
           <>
-            <h3>Activity</h3>
+            <h3>{t("Activity")}</h3>
             {activityEvents(events)
               .slice(-30)
               .reverse()
@@ -197,7 +199,7 @@ export function StatusPanel({
                 <details className="activity-item" key={event.id}>
                   <summary>
                     <Check size={18} />
-                    <span>{event.name ?? "Tool call"}</span>
+                    <span>{event.name ?? t("Tool call")}</span>
                   </summary>
                   <pre>
                     {JSON.stringify(
@@ -209,8 +211,8 @@ export function StatusPanel({
                 </details>
               ))}
             {!activityEvents(events).length && (
-              <Empty title="No activity yet">
-                <p>Your assistant's work will appear here.</p>
+              <Empty title={t("No activity yet")}>
+                <p>{t("Your assistant's work will appear here.")}</p>
               </Empty>
             )}
           </>

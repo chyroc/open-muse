@@ -55,6 +55,15 @@ class MuseBridgeViewController: CAPBridgeViewController {
 
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
+        // Read native preferences before the React bundle initializes. This also
+        // respects the language selected for this app in system Settings.
+        if let data = try? JSONSerialization.data(withJSONObject: Locale.preferredLanguages),
+           let languages = String(data: data, encoding: .utf8) {
+            webView?.configuration.userContentController.addUserScript(WKUserScript(
+                source: "window.__OPEN_MUSE_LANGUAGES__ = \(languages);",
+                injectionTime: .atDocumentStart, forMainFrameOnly: true
+            ))
+        }
         webView?.configuration.userContentController.addScriptMessageHandler(credentialsHandler, contentWorld: .page, name: "museCredentials")
         #if DEBUG && targetEnvironment(simulator)
         // Real-MA acceptance uses separate mappings/resources without changing

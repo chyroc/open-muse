@@ -1,3 +1,4 @@
+import { t } from "../../shared/i18n";
 import { ApiError } from "../../shared/ark";
 import { digest, uuid } from "../../shared/crypto";
 import {
@@ -87,17 +88,21 @@ export class DirectChoices {
     if (!source || source.id !== question || remote.status !== "idle")
       throw new ApiError(
         409,
-        "This question is no longer awaiting an answer. Refresh history or continue in the message field.",
+        t(
+          "This question is no longer awaiting an answer. Refresh history or continue in the message field.",
+        ),
       );
     if (digest(eventText(source)) !== revision)
       throw new ApiError(
         409,
-        "This question changed. Refresh and review its options before choosing.",
+        t(
+          "This question changed. Refresh and review its options before choosing.",
+        ),
       );
     const choice = parseChoiceMessage(eventText(source)).choice!;
     const selected = choice.options.find((item) => item.id === option);
     if (!selected)
-      throw new ApiError(400, "That option is not part of this question.");
+      throw new ApiError(400, t("That option is not part of this question."));
     const reply: ChoiceReply = {
       eventId: `evt-${uuid()}`,
       optionId: selected.id,
@@ -114,7 +119,9 @@ export class DirectChoices {
       )
         throw new ApiError(
           409,
-          "Another selection is unconfirmed. Refresh history before continuing.",
+          t(
+            "Another selection is unconfirmed. Refresh history before continuing.",
+          ),
         );
       return { ...records, [question]: reply };
     });
@@ -130,7 +137,9 @@ export class DirectChoices {
       const saved = await this.reply(session, question);
       if (saved?.state !== "confirmed")
         throw new Error(
-          "The selection is unconfirmed. Refresh history; it will not be sent again.",
+          t(
+            "The selection is unconfirmed. Refresh history; it will not be sent again.",
+          ),
         );
       return saved;
     } catch (error) {

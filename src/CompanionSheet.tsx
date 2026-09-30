@@ -1,3 +1,4 @@
+import { formatLocale, t } from "../shared/i18n";
 import { useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
@@ -44,7 +45,7 @@ export function IdentityCards({
   onOpen: (name: IdentityDocumentName) => void;
 }) {
   return (
-    <section className="identity-overview" aria-label="Personal identity">
+    <section className="identity-overview" aria-label={t("Personal identity")}>
       <h2>{identity.name}</h2>
       {identity.warning && (
         <p className="inline-error" role="alert">
@@ -56,7 +57,7 @@ export function IdentityCards({
         disabled={disabled}
         onClick={() => onOpen("IDENTITY.md")}
       >
-        <Pencil size={21} /> Edit
+        <Pencil size={21} /> {t("Edit")}
       </button>
       <div className="identity-cards">
         {(["SOUL.md", "MEMORY.md"] as const).map((name) => {
@@ -67,24 +68,24 @@ export function IdentityCards({
               key={name}
               className={`identity-card ${name === "SOUL.md" ? "soul" : "memory"}`}
               disabled={disabled}
-              aria-label={`Open ${name}`}
+              aria-label={t("Open {name}", { name })}
               onClick={() => onOpen(name)}
             >
-              <strong>{name === "SOUL.md" ? "SOUL" : "Memory"}</strong>
-              <span>ACCESS WITH CARE</span>
+              <strong>{name === "SOUL.md" ? "SOUL" : t("Memory")}</strong>
+              <span>{t("ACCESS WITH CARE")}</span>
               <footer>
                 <time>
                   {date && Number.isFinite(date.getTime())
                     ? date
-                        .toLocaleDateString("en-US", {
+                        .toLocaleDateString(formatLocale(), {
                           month: "2-digit",
                           day: "2-digit",
                           year: "2-digit",
                         })
                         .replaceAll("/", ".")
                     : doc.id
-                      ? "Saved"
-                      : "Not saved yet"}
+                      ? t("Saved")
+                      : t("Not saved yet")}
                 </time>
                 {name === "SOUL.md" ? (
                   <Heart fill="currentColor" size={25} />
@@ -178,7 +179,7 @@ export function CompanionSheet({
       ref={dialog}
       className="companion-sheet"
       tabIndex={-1}
-      aria-label="Companion details"
+      aria-label={t("Companion details")}
       onCancel={(e) => {
         e.preventDefault();
         if (!selected) onClose();
@@ -187,7 +188,7 @@ export function CompanionSheet({
       <header className="identity-header">
         <button
           className="glass-button identity-dismiss"
-          aria-label="Close companion details"
+          aria-label={t("Close companion details")}
           onClick={onClose}
         >
           <X size={23} />
@@ -196,7 +197,7 @@ export function CompanionSheet({
           <CompanionAvatar />
           <button
             className="glass-button"
-            aria-label="Edit companion name"
+            aria-label={t("Edit companion name")}
             disabled={loading || Boolean(error) || !client.signedIn()}
             onClick={() => setSelected("IDENTITY.md")}
           >
@@ -207,13 +208,13 @@ export function CompanionSheet({
         <span className="identity-connection">
           <Zap
             size={19}
-            fill={status === "Connected" ? "currentColor" : "none"}
+            fill={status === t("Connected") ? "currentColor" : "none"}
           />
           {status}
         </span>
         <button
           className="glass-button identity-refresh"
-          aria-label="Refresh companion details"
+          aria-label={t("Refresh companion details")}
           disabled={loading}
           onClick={() => setRefresh((v) => v + 1)}
         >
@@ -223,13 +224,13 @@ export function CompanionSheet({
       <nav
         className="companion-tabs"
         role="tablist"
-        aria-label="Companion information"
+        aria-label={t("Companion information")}
       >
         {tabs.map(({ name, icon: Icon }) => (
           <button
             key={name}
             role="tab"
-            aria-label={name}
+            aria-label={t(name)}
             aria-selected={tab === name}
             aria-controls="companion-tab-content"
             onClick={() => setTab(name)}
@@ -242,7 +243,7 @@ export function CompanionSheet({
         className="companion-tab-content"
         id="companion-tab-content"
         role="tabpanel"
-        aria-label={tab}
+        aria-label={t(tab)}
       >
         {error && (
           <p className="inline-error" role="alert">
@@ -258,18 +259,22 @@ export function CompanionSheet({
             />
             {!client.signedIn() && (
               <p className="identity-note">
-                These are starting templates.{" "}
+                {t("These are starting templates.")}{" "}
                 <a href="#/settings" onClick={onClose}>
-                  Connect to MA
+                  {t("Connect to MA")}
                 </a>{" "}
-                to save your personal identity.
+                {t("to save your personal identity.")}
               </p>
             )}
             {mounted === false && (
               <aside className="identity-note">
                 {isMain
-                  ? "Personal memory will be connected with your next message. Your main chat keeps its earlier messages and context."
-                  : "This older side chat does not have personal memory attached. Its history is unchanged. New side chats can use your saved identity and memory."}
+                  ? t(
+                      "Personal memory will be connected with your next message. Your main chat keeps its earlier messages and context.",
+                    )
+                  : t(
+                      "This older side chat does not have personal memory attached. Its history is unchanged. New side chats can use your saved identity and memory.",
+                    )}
                 {!isMain && (
                   <button
                     onClick={() => {
@@ -277,39 +282,39 @@ export function CompanionSheet({
                       onNew();
                     }}
                   >
-                    Start a side chat with memory
+                    {t("Start a side chat with memory")}
                   </button>
                 )}
               </aside>
             )}
             {mounted === true && (
               <p className="identity-note">
-                Personal memory is attached to this conversation.
+                {t("Personal memory is attached to this conversation.")}
               </p>
             )}
           </>
         )}
         {tab === "Activity" && (
           <section className="companion-activity">
-            <h2>Activity</h2>
+            <h2>{t("Activity")}</h2>
             {events.some((e) => e.type === "agent.tool_use") ? (
-              <Activity events={events} running={status === "Replying"} />
+              <Activity events={events} running={status === t("Replying")} />
             ) : (
               <div className="companion-empty">
                 <List size={29} />
                 <h3>
-                  {status === "Replying"
-                    ? "Thinking things through"
-                    : "Nothing in progress"}
+                  {status === t("Replying")
+                    ? t("Thinking things through")
+                    : t("Nothing in progress")}
                 </h3>
-                <p>Tool activity from this conversation appears here.</p>
+                <p>{t("Tool activity from this conversation appears here.")}</p>
               </div>
             )}
           </section>
         )}
         {tab === "Approvals" && (
           <section className="companion-approvals">
-            <h2>Approvals</h2>
+            <h2>{t("Approvals")}</h2>
             {permissions.length ? (
               permissions.map((event) => (
                 <PermissionCard
@@ -322,9 +327,11 @@ export function CompanionSheet({
             ) : (
               <div className="companion-empty">
                 <ShieldCheck size={31} />
-                <h3>You’re all caught up</h3>
+                <h3>{t("You’re all caught up")}</h3>
                 <p>
-                  No actions are waiting for your approval in this conversation.
+                  {t(
+                    "No actions are waiting for your approval in this conversation.",
+                  )}
                 </p>
               </div>
             )}
@@ -333,19 +340,20 @@ export function CompanionSheet({
         {tab === "Desktop" && (
           <section className="companion-empty">
             <Monitor size={32} />
-            <h2>Cloud workspace</h2>
+            <h2>{t("Cloud workspace")}</h2>
             <p>
-              Your assistant’s tools run in its MA environment, not on this
-              device. An interactive remote desktop is not connected.
+              {t(
+                "Your assistant’s tools run in its MA environment, not on this device. An interactive remote desktop is not connected.",
+              )}
             </p>
             <a href="#/studio" onClick={onClose}>
-              View workspace in MA Studio
+              {t("View workspace in MA Studio")}
             </a>
           </section>
         )}
         {tab === "Recent" && (
           <section className="companion-recent">
-            <h2>Recent conversations</h2>
+            <h2>{t("Recent conversations")}</h2>
             {sessions.length ? (
               sessions.slice(0, 20).map((session) => (
                 <a
@@ -354,13 +362,13 @@ export function CompanionSheet({
                   onClick={onClose}
                 >
                   <MessageCircle size={21} />
-                  <span>{session.title || "Untitled conversation"}</span>
+                  <span>{session.title || t("Untitled conversation")}</span>
                 </a>
               ))
             ) : (
               <div className="companion-empty">
                 <History size={30} />
-                <h3>No conversations yet</h3>
+                <h3>{t("No conversations yet")}</h3>
               </div>
             )}
           </section>
@@ -481,7 +489,7 @@ function IdentityEditor({
       ref={ref}
       className="identity-document"
       tabIndex={-1}
-      aria-label={isName ? "Edit identity" : initial.name}
+      aria-label={isName ? t("Edit identity") : initial.name}
       onCancel={(e) => {
         e.preventDefault();
         close();
@@ -490,26 +498,26 @@ function IdentityEditor({
       <header>
         <button
           className="glass-button"
-          aria-label="Close identity document"
+          aria-label={t("Close identity document")}
           disabled={pending}
           onClick={close}
         >
           <ChevronDown size={22} />
         </button>
-        <h2>{isName ? "Identity" : initial.name}</h2>
+        <h2>{isName ? t("Identity") : initial.name}</h2>
         {editing ? (
           <button
             className="document-save"
-            aria-label={pending ? "Saving and verifying" : "Save"}
+            aria-label={pending ? t("Saving and verifying") : t("Save")}
             disabled={pending || !signedIn}
             onClick={() => void save()}
           >
-            {pending ? <LoaderCircle size={19} className="spin" /> : "Save"}
+            {pending ? <LoaderCircle size={19} className="spin" /> : t("Save")}
           </button>
         ) : (
           <button
             className="glass-button"
-            aria-label={`Edit ${initial.name}`}
+            aria-label={t("Edit {name}", { name: initial.name })}
             disabled={!signedIn}
             onClick={() => {
               setEditing(true);
@@ -523,37 +531,45 @@ function IdentityEditor({
       <div className={`identity-document-body ${editing ? "editing" : ""}`}>
         {!editing && (
           <aside className="document-about">
-            <strong>About this file.</strong>{" "}
+            <strong>{t("About this file.")}</strong>{" "}
             {isName
-              ? "This is your assistant’s name. It is saved with your personal identity and used by conversations with memory attached."
+              ? t(
+                  "This is your assistant’s name. It is saved with your personal identity and used by conversations with memory attached.",
+                )
               : initial.name === "SOUL.md"
-                ? `This is ${name}’s persona: the values and habits that shape each conversation. You can edit it at any time. If your assistant refines it, it should tell you what changed. This note is not part of the file.`
-                : `This is ${name}’s long-term memory: facts, preferences, and commitments. Conversations with personal memory attached read this file and can update it. Removing an entry does not delete it from earlier conversations. This note is not part of the file.`}
+                ? t(
+                    "This is {name}’s persona: the values and habits that shape each conversation. You can edit it at any time. If your assistant refines it, it should tell you what changed. This note is not part of the file.",
+                    { name },
+                  )
+                : t(
+                    "This is {name}’s long-term memory: facts, preferences, and commitments. Conversations with personal memory attached read this file and can update it. Removing an entry does not delete it from earlier conversations. This note is not part of the file.",
+                    { name },
+                  )}
           </aside>
         )}
         {!editing && !baseline.id && (
           <p className="identity-note">
-            Starting template — not saved to the cloud yet.
+            {t("Starting template — not saved to the cloud yet.")}
           </p>
         )}
         {saved && (
           <p className="document-saved" role="status">
-            Saved and verified in MA
+            {t("Saved and verified in MA")}
           </p>
         )}
         {error && (
           <div className="inline-error" role="alert">
             <p>{error}</p>
             <button disabled={pending} onClick={() => void review()}>
-              Review latest saved version
+              {t("Review latest saved version")}
             </button>
           </div>
         )}
         {latest && (
           <section className="document-conflict">
-            <h3>Latest saved version</h3>
+            <h3>{t("Latest saved version")}</h3>
             <pre>{latest.content}</pre>
-            <p>Your draft below has not changed.</p>
+            <p>{t("Your draft below has not changed.")}</p>
             <button
               disabled={pending}
               onClick={() => {
@@ -573,16 +589,16 @@ function IdentityEditor({
                 setError("");
               }}
             >
-              Replace draft with latest
+              {t("Replace draft with latest")}
             </button>
           </section>
         )}
         {editing ? (
           <label className="document-field">
-            {isName ? "Name" : "Document content"}
+            {isName ? t("Name") : t("Document content")}
             {isName ? (
               <input
-                aria-label="Companion name"
+                aria-label={t("Companion name")}
                 autoComplete="off"
                 maxLength={40}
                 value={draft}
@@ -591,7 +607,7 @@ function IdentityEditor({
               />
             ) : (
               <textarea
-                aria-label={`Edit ${initial.name} content`}
+                aria-label={t("Edit {name} content", { name: initial.name })}
                 spellCheck={false}
                 autoCorrect="off"
                 autoCapitalize="off"
@@ -619,15 +635,15 @@ function IdentityEditor({
               }
             }}
           >
-            Cancel editing
+            {t("Cancel editing")}
           </button>
         )}
       </div>
       {discard && (
         <div className="document-discard" role="alert">
-          <p>Discard your unsaved changes?</p>
-          <button onClick={() => setDiscard(false)}>Keep editing</button>
-          <button onClick={onClose}>Discard changes</button>
+          <p>{t("Discard your unsaved changes?")}</p>
+          <button onClick={() => setDiscard(false)}>{t("Keep editing")}</button>
+          <button onClick={onClose}>{t("Discard changes")}</button>
         </div>
       )}
     </dialog>

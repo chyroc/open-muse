@@ -1,3 +1,4 @@
+import { t } from "../shared/i18n";
 import { useState } from "react";
 import {
   ArrowRight,
@@ -16,7 +17,7 @@ const pretty = (value: unknown) => JSON.stringify(value, null, 2);
 const parse = (value: string) => {
   const parsed = JSON.parse(value || "{}");
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
-    throw new Error("Please enter a JSON object.");
+    throw new Error(t("Please enter a JSON object."));
   return parsed;
 };
 export function Studio({
@@ -108,11 +109,11 @@ export function Studio({
     let upload;
     if (file) {
       if (file.size > 10 * 1024 * 1024)
-        throw new Error("The file can be at most 10 MB.");
+        throw new Error(t("The file can be at most 10 MB."));
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(String(reader.result).split(",")[1]);
-        reader.onerror = () => reject(new Error("Couldn't read the file."));
+        reader.onerror = () => reject(new Error(t("Couldn't read the file.")));
         reader.readAsDataURL(file);
       });
       upload = { name: file.name, base64 };
@@ -154,36 +155,39 @@ export function Studio({
   return (
     <div className="page-content studio-page page-in">
       <div className="page-title">
-        <span className="eyebrow">YOUR AGENT WORKSPACE</span>
-        <h1>Capabilities, your way.</h1>
+        <span className="eyebrow">{t("YOUR AGENT WORKSPACE")}</span>
+        <h1>{t("Capabilities, your way.")}</h1>
         <p>
-          The assistant and runtime are ready automatically; connect more tools
-          and turn ideas into action.
+          {t(
+            "The assistant and runtime are ready automatically; connect more tools and turn ideas into action.",
+          )}
         </p>
       </div>
       <div className="studio-status">
         <ShieldCheck size={18} />
         <span>
           {isReady
-            ? "Live Ark connection · cloud operations may be billed"
-            : "Sign in with SSO or an API key in Settings to use Ark MA"}
+            ? t("Live Ark connection · cloud operations may be billed")
+            : t("Sign in with SSO or an API key in Settings to use Ark MA")}
         </span>
         <a href="#/settings">
-          Connection settings <ArrowRight size={14} />
+          {t("Connection settings")} <ArrowRight size={14} />
         </a>
       </div>
       <WorkspacePanel client={client} />
       <details className="advanced-workbench">
         <summary>
-          Advanced MA management{" "}
+          {t("Advanced MA management")}{" "}
           <span>
-            API debugging, resources, and skills; not needed for daily use
+            {t(
+              "API debugging, resources, and skills; not needed for daily use",
+            )}
           </span>
         </summary>
         <div
           className="studio-tabs"
           role="tablist"
-          aria-label="MA resource type"
+          aria-label={t("MA resource type")}
         >
           {groups.map((g) => (
             <button
@@ -199,41 +203,43 @@ export function Studio({
                 );
               }}
             >
-              {g.label}
+              {t(g.label)}
             </button>
           ))}
         </div>
         <div className="studio-heading">
           <div>
-            <h2>{currentGroup.label}</h2>
-            <p>{currentGroup.hint}</p>
+            <h2>{t(currentGroup.label)}</h2>
+            <p>{t(currentGroup.hint)}</p>
           </div>
-          <span className="small-badge">{choices.length} endpoints</span>
+          <span className="small-badge">
+            {t("{count} endpoints", { count: choices.length })}
+          </span>
         </div>
         {group === "skills" && (
           <div className="skills-assessment">
-            <h3>MuseAI Skills · suitability notes</h3>
+            <h3>{t("MuseAI Skills · suitability notes")}</h3>
             <p>
-              The items below are capability assessments and don't mean a skill
-              is installed. Before using a third-party skill, verify its
-              license, runtime dependencies, and account authorization.
+              {t(
+                "The items below are capability assessments and don't mean a skill is installed. Before using a third-party skill, verify its license, runtime dependencies, and account authorization.",
+              )}
             </p>
             <div className="skill-candidate-grid">
               {skillCandidates.map((skill) => (
                 <a
-                  key={skill.name}
+                  key={t(skill.name)}
                   href={skill.url}
                   target="_blank"
                   rel="noreferrer"
                 >
                   <span className={`skill-tag ${skill.level}`}>
-                    {skill.status}
+                    {t(skill.status)}
                   </span>
                   <h4>
-                    {skill.name}
+                    {t(skill.name)}
                     <ExternalLink size={13} />
                   </h4>
-                  <p>{skill.note}</p>
+                  <p>{t(skill.note)}</p>
                 </a>
               ))}
             </div>
@@ -242,14 +248,14 @@ export function Studio({
         <section className="ma-console">
           <div className="operation-bar">
             <label className="field">
-              Operation
+              {t("Operation")}
               <select
                 value={operation}
                 onChange={(e) => choose(e.target.value)}
               >
                 {choices.map((o) => (
                   <option value={o.id} key={o.id}>
-                    {operationLabel(o.id)} · {o.id}
+                    {t(operationLabel(o.id))} · {o.id}
                   </option>
                 ))}
               </select>
@@ -260,9 +266,9 @@ export function Studio({
           </div>
           {operation === "StreamSessionEvents" ? (
             <p className="info-note">
-              The live stream connects automatically in the task view and
-              backfills history. Pick a session from the list first, then open
-              its task.
+              {t(
+                "The live stream connects automatically in the task view and backfills history. Pick a session from the list first, then open its task.",
+              )}
             </p>
           ) : (
             <>
@@ -277,7 +283,7 @@ export function Studio({
                           setParams({ ...params, [f.name]: e.target.value });
                           setConfirm(false);
                         }}
-                        placeholder="Resource ID"
+                        placeholder={t("Resource ID")}
                       />
                     </label>
                   ))}
@@ -285,7 +291,7 @@ export function Studio({
               )}
               {op.fields.some((f) => ["body", "form"].includes(f.in)) && (
                 <label className="field">
-                  Request body · JSON
+                  {t("Request body · JSON")}
                   <textarea
                     className="json-editor"
                     spellCheck={false}
@@ -297,9 +303,9 @@ export function Studio({
                     rows={Math.min(16, Math.max(4, body.split("\n").length))}
                   />
                   <small>
-                    Nested config, MCP, tool permissions, skills, and multiagent
-                    can all be set here; omitted fields keep their current
-                    value.
+                    {t(
+                      "Nested config, MCP, tool permissions, skills, and multiagent can all be set here; omitted fields keep their current value.",
+                    )}
                   </small>
                 </label>
               )}
@@ -307,8 +313,8 @@ export function Studio({
                 <label className="field file-picker">
                   <FolderOpen size={18} />
                   {operation === "CreateSkill"
-                    ? "Skill ZIP (the root folder must contain SKILL.md)"
-                    : "Choose a file to upload"}
+                    ? t("Skill ZIP (the root folder must contain SKILL.md)")
+                    : t("Choose a file to upload")}
                   <input
                     key={operation}
                     type="file"
@@ -319,16 +325,17 @@ export function Studio({
                     }}
                   />
                   <small>
-                    Up to 10 MB. Uploaded to Ark; it does not run on this
-                    device.
+                    {t(
+                      "Up to 10 MB. Uploaded to Ark; it does not run on this device.",
+                    )}
                   </small>
                 </label>
               )}
               {op.fields.some((f) => f.in === "query") && (
                 <details className="query-options">
-                  <summary>Filter and pagination parameters</summary>
+                  <summary>{t("Filter and pagination parameters")}</summary>
                   <label className="field">
-                    Query JSON
+                    {t("Query JSON")}
                     <textarea
                       className="json-editor"
                       rows={3}
@@ -340,7 +347,7 @@ export function Studio({
                 </details>
               )}
               <details className="contract-fields">
-                <summary>View endpoint fields</summary>
+                <summary>{t("View endpoint fields")}</summary>
                 <div className="contract-table">
                   {op.fields.map((f) => (
                     <div key={f.in + f.name}>
@@ -348,7 +355,7 @@ export function Studio({
                       <span>
                         {f.in} · {f.type}
                       </span>
-                      <span>{f.required ? "Required" : "Optional"}</span>
+                      <span>{f.required ? t("Required") : t("Optional")}</span>
                     </div>
                   ))}
                 </div>
@@ -362,14 +369,19 @@ export function Studio({
                   />
                   <span>
                     {op.method === "DELETE"
-                      ? `Confirm deletion of ${target || "the specified resource"}. Deletion may also remove related data and cannot be undone from this app.`
-                      : "Confirm submitting the above to Ark, which may change cloud resources or trigger execution. It will not be retried automatically."}
+                      ? t(
+                          "Confirm deletion of {target}. Deletion may also remove related data and cannot be undone from this app.",
+                          { target: target || t("the specified resource") },
+                        )
+                      : t(
+                          "Confirm submitting the above to Ark, which may change cloud resources or trigger execution. It will not be retried automatically.",
+                        )}
                   </span>
                 </label>
               )}
               {op.method === "DELETE" && (
                 <label className="field">
-                  Enter the target ID to confirm
+                  {t("Enter the target ID to confirm")}
                   <input
                     value={deleteText}
                     onChange={(e) => setDeleteText(e.target.value)}
@@ -392,27 +404,29 @@ export function Studio({
                 ) : (
                   <ArrowRight size={16} />
                 )}
-                {operationLabel(operation)}
+                {t(operationLabel(operation))}
               </button>
             </>
           )}
           {error && (
             <p className="error-text" role="alert">
-              {error} If the result of a write is unclear, query the resource
-              first to avoid submitting twice.
+              {error}{" "}
+              {t(
+                "If the result of a write is unclear, query the resource first to avoid submitting twice.",
+              )}
             </p>
           )}
         </section>
         {result !== undefined && (
           <section className="ma-result">
             <div className="studio-heading">
-              <h3>Request result</h3>
-              <span className="small-badge">Ark API response</span>
+              <h3>{t("Request result")}</h3>
+              <span className="small-badge">{t("Ark API response")}</span>
             </div>
             {Array.isArray(rows) && (
               <div className="resource-list">
                 {rows.length === 0 ? (
-                  <p>No resources match.</p>
+                  <p>{t("No resources match.")}</p>
                 ) : (
                   rows.map((item, index) => {
                     const row = item as Record<string, unknown>;
@@ -448,7 +462,7 @@ export function Studio({
                               })
                             }
                           >
-                            Open task
+                            {t("Open task")}
                           </button>
                         )}
                       </div>
@@ -463,7 +477,7 @@ export function Studio({
                 disabled={busy}
                 onClick={() => void run(() => execute(String(nextPage)))}
               >
-                Next page
+                {t("Next page")}
               </button>
             )}
             {safeResultLink && (
@@ -475,18 +489,17 @@ export function Studio({
               >
                 <ExternalLink size={16} />
                 {operation === "GetFile"
-                  ? "Open file download link"
-                  : "Go to service authorization"}
+                  ? t("Open file download link")
+                  : t("Go to service authorization")}
               </a>
             )}
             <pre className="result-json">{pretty(result)}</pre>
           </section>
         )}
         <p className="studio-footnote">
-          Public capabilities are integrated via data-plane endpoints; TOP-only
-          capabilities use SSO signing. Internal management endpoints are not
-          exposed. Upstream does not provide skill listing/deletion or memory
-          history versions, so this app does not fake those operations.
+          {t(
+            "Public capabilities are integrated via data-plane endpoints; TOP-only capabilities use SSO signing. Internal management endpoints are not exposed. Upstream does not provide skill listing/deletion or memory history versions, so this app does not fake those operations.",
+          )}
         </p>
       </details>
     </div>

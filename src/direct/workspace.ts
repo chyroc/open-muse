@@ -1,3 +1,4 @@
+import { t } from "../../shared/i18n";
 import { ApiError, ArkClient } from "../../shared/ark";
 import {
   environmentWithTools,
@@ -71,20 +72,25 @@ export class DirectWorkspace {
     if (this.job)
       return {
         state: "preparing",
-        message: row?.message || "Preparing your personal workspace…",
+        message: t(row?.message || "Preparing your personal workspace…"),
       };
     if (row?.state === "preparing")
       return {
         state: "error",
-        message:
+        message: t(
           "Preparation was interrupted. Resume to verify existing cloud resources first.",
+        ),
       };
     return row
-      ? { state: row.state, message: row.message }
+      ? {
+          state: row.state,
+          message: row.state === "error" ? row.message : t(row.message),
+        }
       : {
           state: "idle",
-          message:
+          message: t(
             "Your agent and cloud environment will be created automatically on first use.",
+          ),
         };
   }
   async selection() {
@@ -92,7 +98,7 @@ export class DirectWorkspace {
     if (!row?.agent_id || !row.environment_id || row.state !== "ready")
       throw new ApiError(
         409,
-        "Prepare your personal workspace in Settings first.",
+        t("Prepare your personal workspace in Settings first."),
       );
     return { agent: row.agent_id, environment_id: row.environment_id };
   }
@@ -105,7 +111,7 @@ export class DirectWorkspace {
             row.message =
               error instanceof Error
                 ? error.message
-                : "Preparation failed. Resume to verify existing resources.";
+                : t("Preparation failed. Resume to verify existing resources.");
           });
         })
         .finally(() => {
@@ -120,7 +126,7 @@ export class DirectWorkspace {
   }
   private request<T>(path: string, init: RequestInit = {}) {
     if (this.abort.signal.aborted)
-      throw new Error("Workspace preparation was cancelled.");
+      throw new Error(t("Workspace preparation was cancelled."));
     return this.ark.request<T>(path, {
       ...init,
       signal: this.abort.signal,
@@ -139,7 +145,7 @@ export class DirectWorkspace {
       if (!Array.isArray(result.data))
         throw new ApiError(
           502,
-          "Unexpected cloud resource list. Creation was stopped.",
+          t("Unexpected cloud resource list. Creation was stopped."),
         );
       const owned = result.data
         .filter(
@@ -154,7 +160,7 @@ export class DirectWorkspace {
     }
     throw new ApiError(
       502,
-      "Could not read the complete resource list. Creation was stopped.",
+      t("Could not read the complete resource list. Creation was stopped."),
     );
   }
   private async ensure(kind: Kind, body: object) {
@@ -177,7 +183,7 @@ export class DirectWorkspace {
       if (!resource.id || !/^[\w-]+$/.test(resource.id))
         throw new ApiError(
           502,
-          "Creation result is unconfirmed. Resume to check cloud resources.",
+          t("Creation result is unconfirmed. Resume to check cloud resources."),
         );
       await this.update((r) => {
         r[`${kind}_id`] = resource.id;
@@ -195,7 +201,9 @@ export class DirectWorkspace {
       if (r[`${kind}_id`] || r[`${kind}_pending`])
         throw new ApiError(
           409,
-          "A previous creation is unconfirmed or another app is preparing this workspace. Resume later to verify it; no duplicate was created.",
+          t(
+            "A previous creation is unconfirmed or another app is preparing this workspace. Resume later to verify it; no duplicate was created.",
+          ),
         );
       r[`${kind}_pending`] = true;
       r.message = `Preparing your ${kind}…`;
@@ -332,7 +340,7 @@ export class DirectWorkspace {
     if (!agent.version || !Number.isInteger(agent.version))
       throw new ApiError(
         502,
-        "Invalid agent version; no policy changes were submitted.",
+        t("Invalid agent version; no policy changes were submitted."),
       );
     await this.request(path, {
       method: "POST",

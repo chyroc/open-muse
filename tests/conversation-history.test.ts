@@ -5,6 +5,32 @@ import {
 } from "../shared/conversation-history";
 
 describe("Conversation context archives", () => {
+  it("replaces the preceding chapter's manifest without accumulating competing history instructions", () => {
+    const first =
+      withConversationHistory(
+        "Custom prefix.",
+        "store",
+        "history/first/HISTORY.md",
+      ) + "\nCustom suffix.";
+    const next = withConversationHistory(
+      first,
+      "store",
+      "history/second/HISTORY.md",
+    );
+    expect(next).toContain("Custom prefix.");
+    expect(next).toContain("Custom suffix.");
+    expect(next).not.toContain("history/first/HISTORY.md");
+    expect(next).toContain("history/second/HISTORY.md");
+    expect(next.match(/<open-muse-conversation-history>/g)).toHaveLength(1);
+    for (const malformed of [
+      "<open-muse-conversation-history>unfinished",
+      first + first,
+    ]) {
+      expect(() =>
+        withConversationHistory(malformed, "store", "next.md"),
+      ).toThrow("No replacement");
+    }
+  });
   it("preserves visible turns, speaker identity and source IDs without copying hidden tool internals", () => {
     const archive = conversationArchive(
       [

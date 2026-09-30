@@ -1,3 +1,4 @@
+import { t } from "../../shared/i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -73,24 +74,30 @@ function IdeaRow({
       <button
         className="idea-open"
         onClick={onOpen}
-        aria-label={`View idea: ${item.title}`}
+        aria-label={t("View idea: {title}", { title: item.title })}
       >
         <h3>{item.title}</h3>
         <p>{item.body}</p>
       </button>
       {activation?.phase === "confirmed" && (
-        <span className="idea-started" role="img" aria-label="Started in chat">
+        <span
+          className="idea-started"
+          role="img"
+          aria-label={t("Started in chat")}
+        >
           <Check size={18} />
         </span>
       )}
       <details className="idea-options" ref={menu}>
-        <summary aria-label={`Idea feedback: ${item.title}`}>
+        <summary
+          aria-label={t("Idea feedback: {title}", { title: item.title })}
+        >
           <MoreHorizontal size={19} />
         </summary>
         <div className="idea-menu">
           <button onClick={() => choose(onOpen)}>
             <WandSparkles size={16} />
-            Let's do it
+            {t("Let's do it")}
           </button>
           <hr />
           <button
@@ -98,14 +105,14 @@ function IdeaRow({
             onClick={() => choose(() => onFeedback("up"))}
           >
             <ThumbsUp size={16} />
-            More like this
+            {t("More like this")}
           </button>
           <button
             disabled={busy}
             onClick={() => choose(() => onFeedback("down"))}
           >
             <ThumbsDown size={16} />
-            Not interested
+            {t("Not interested")}
           </button>
         </div>
       </details>
@@ -151,8 +158,8 @@ export function IdeaPreview({
         <Markdown text={item.body} />
         {item.reason && <p className="idea-fit-reason">{item.reason}</p>}
         {detail?.included.length ? (
-          <section className="idea-included" aria-label="What's included">
-            <h4>What's included</h4>
+          <section className="idea-included" aria-label={t("What's included")}>
+            <h4>{t("What's included")}</h4>
             {detail.included.map((activity) => {
               const Icon = icons[activity.kind];
               const canSelect =
@@ -204,12 +211,12 @@ export function IdeaPreview({
         ) : null}
         {detail && (
           <section className="idea-how">
-            <h4>How it works</h4>
+            <h4>{t("How it works")}</h4>
             <p>{detail.howItWorks}</p>
           </section>
         )}
         {item.sources.length > 0 && (
-          <ul className="feed-sources" aria-label="Sources">
+          <ul className="feed-sources" aria-label={t("Sources")}>
             {item.sources.map((source) => (
               <li key={source.url}>
                 <a href={source.url} target="_blank" rel="noopener noreferrer">
@@ -233,14 +240,14 @@ export function IdeaPreview({
         >
           {started ? <MessageCircle size={18} /> : <WandSparkles size={18} />}
           {busy
-            ? "Starting…"
+            ? t("Starting…")
             : pending
-              ? "Checking submission…"
+              ? t("Checking submission…")
               : started
-                ? "Open conversation"
+                ? t("Open conversation")
                 : activation?.phase === "preparing"
-                  ? "Continue setup"
-                  : "Let's do it"}
+                  ? t("Continue setup")
+                  : t("Let's do it")}
         </button>
       </footer>
     </Modal>
@@ -319,7 +326,7 @@ function FeedbackDialog({
   }
   return (
     <Modal
-      title={writing ? "Write something" : "Give feedback"}
+      title={writing ? t("Write something") : t("Give feedback")}
       className="idea-feedback-dialog"
       onClose={close}
     >
@@ -337,30 +344,30 @@ function FeedbackDialog({
             onClick={() => setWriting(false)}
           >
             <ArrowLeft size={18} />
-            Back
+            {t("Back")}
           </button>
           <textarea
             autoFocus
-            aria-label="Idea feedback"
+            aria-label={t("Idea feedback")}
             maxLength={600}
             rows={4}
             value={draft}
             disabled={busy}
-            placeholder="What didn't work about this idea?"
+            placeholder={t("What didn't work about this idea?")}
             onChange={(event) => setDraft(event.target.value)}
           />
           <button className="idea-primary" disabled={busy || !draft.trim()}>
-            {busy ? "Saving…" : "Send"}
+            {busy ? t("Saving…") : t("Send")}
           </button>
         </form>
       ) : (
         <div className="idea-feedback-reasons">
           {[
-            "Not relevant",
-            "Too repetitive",
-            "Too specific",
-            "I don't like it",
-            "I just want to hide it",
+            t("Not relevant"),
+            t("Too repetitive"),
+            t("Too specific"),
+            t("I don't like it"),
+            t("I just want to hide it"),
           ].map((reason) => (
             <button
               key={reason}
@@ -372,7 +379,7 @@ function FeedbackDialog({
             </button>
           ))}
           <button disabled={busy} onClick={() => setWriting(true)}>
-            Write something
+            {t("Write something")}
             <ChevronRight size={18} />
           </button>
         </div>
@@ -383,14 +390,14 @@ function FeedbackDialog({
         </p>
       )}
       {confirm && (
-        <Modal title="Discard feedback?" onClose={() => setConfirm(false)}>
-          <p>Your feedback has not been saved.</p>
+        <Modal title={t("Discard feedback?")} onClose={() => setConfirm(false)}>
+          <p>{t("Your feedback has not been saved.")}</p>
           <div className="feed-dialog-actions">
             <button className="pill-button" onClick={() => setConfirm(false)}>
-              Keep editing
+              {t("Keep editing")}
             </button>
             <button className="pill-button" onClick={onClose}>
-              Discard changes
+              {t("Discard changes")}
             </button>
           </div>
         </Modal>
@@ -515,7 +522,7 @@ export function IdeasPage({
               if (direction === "down") {
                 setDismissed(item);
                 setNotice("");
-              } else setNotice("Thanks for the feedback.");
+              } else setNotice(t("Thanks for the feedback."));
             })
           }
         />
@@ -523,11 +530,11 @@ export function IdeasPage({
     </div>
   );
   return (
-    <section className="desktop-ideas" aria-label="Ideas">
+    <section className="desktop-ideas" aria-label={t("Ideas")}>
       <button
         className="ideas-split-toggle icon-button"
         aria-label={
-          split ? "Close side-by-side chat" : "Open side-by-side chat"
+          split ? t("Close side-by-side chat") : t("Open side-by-side chat")
         }
         aria-pressed={split}
         onClick={onToggleChat}
@@ -536,17 +543,18 @@ export function IdeasPage({
       </button>
       <div className="ideas-column">
         <header className="ideas-heading">
-          <h1>Ideas</h1>
+          <h1>{t("Ideas")}</h1>
         </header>
         <p className="ideas-description">
-          I'm always thinking about new and different ways to help you. I'll
-          surface my favorite ideas here.
+          {t(
+            "I'm always thinking about new and different ways to help you. I'll surface my favorite ideas here.",
+          )}
         </p>
         {error && (
           <div className="feed-error" role="alert">
             {error}
             <button disabled={busy} onClick={() => void refresh()}>
-              Refresh
+              {t("Refresh")}
             </button>
           </div>
         )}
@@ -554,7 +562,7 @@ export function IdeasPage({
           <div
             className="ideas-loading"
             role="status"
-            aria-label="Loading ideas"
+            aria-label={t("Loading ideas")}
           >
             {[0, 1, 2].map((id) => (
               <div key={id}>
@@ -567,13 +575,15 @@ export function IdeasPage({
         )}
         {!loading && !sections.featured.length && (
           <aside className="ideas-empty">
-            <h3>No ideas yet.</h3>
-            <p>New ideas show up here as your companion learns about you.</p>
+            <h3>{t("No ideas yet.")}</h3>
+            <p>
+              {t("New ideas show up here as your companion learns about you.")}
+            </p>
           </aside>
         )}
         <div className="ideas-sections">
           {sections.featured.length > 0 && (
-            <section aria-label="Featured ideas">
+            <section aria-label={t("Featured ideas")}>
               {list(sections.featured)}
             </section>
           )}
@@ -591,9 +601,9 @@ export function IdeasPage({
         )}
         {dismissed && (
           <div className="ideas-notice" role="status">
-            Idea dismissed
+            {t("Idea dismissed")}
             <button onClick={() => setFeedback(dismissed)}>
-              Give feedback
+              {t("Give feedback")}
             </button>
             <button
               disabled={busy}
@@ -604,7 +614,7 @@ export function IdeasPage({
                 })
               }
             >
-              Undo
+              {t("Undo")}
             </button>
           </div>
         )}
@@ -621,10 +631,10 @@ export function IdeasPage({
         {pending && (
           <p className="feed-status" role="status">
             {run?.phase === "creating" || run?.phase === "sending"
-              ? "Checking submission…"
+              ? t("Checking submission…")
               : resumable
-                ? "Ready to continue generation"
-                : "Thinking of new ways to help…"}
+                ? t("Ready to continue generation")
+                : t("Thinking of new ways to help…")}
           </p>
         )}
         {run?.session_id && (pending || run.error) && (
@@ -632,13 +642,14 @@ export function IdeasPage({
             className="feed-text-button"
             onClick={() => onOpenChat(run.session_id!)}
           >
-            View generation conversation
+            {t("View generation conversation")}
           </button>
         )}
         {activationPending && (
           <p className="feed-status" role="status">
-            Checking idea submission. Refresh reads history; it never resends an
-            unconfirmed request.
+            {t(
+              "Checking idea submission. Refresh reads history; it never resends an unconfirmed request.",
+            )}
           </p>
         )}
         {!loading && (
@@ -653,25 +664,25 @@ export function IdeasPage({
               }
             >
               {busy
-                ? "Working…"
+                ? t("Working…")
                 : !client.signedIn()
-                  ? "Connect to MA"
+                  ? t("Connect to MA")
                   : resumable
-                    ? "Continue generation"
-                    : "Generate"}
+                    ? t("Continue generation")
+                    : t("Generate")}
             </button>
             <button
               className="icon-button"
-              aria-label="Refresh ideas"
+              aria-label={t("Refresh ideas")}
               disabled={busy}
               onClick={() => void refresh()}
             >
               <RefreshCw size={17} />
             </button>
             <p>
-              Generated with MA when you ask. Feedback is saved on this Mac and
-              shapes future ideas. Automatic background suggestions are not
-              connected yet.
+              {t(
+                "Generated with MA when you ask. Feedback is saved on this Mac and shapes future ideas. Automatic background suggestions are not connected yet.",
+              )}
             </p>
           </footer>
         )}
@@ -703,7 +714,7 @@ export function IdeasPage({
           onClose={() => setFeedback(undefined)}
           onSaved={async () => {
             setData(await service.snapshot());
-            setNotice("Thanks for the feedback.");
+            setNotice(t("Thanks for the feedback."));
           }}
         />
       )}

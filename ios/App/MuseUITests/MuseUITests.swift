@@ -434,6 +434,59 @@ final class MuseLiveUITests: XCTestCase {
         XCTAssertTrue(app.textViews["Message Muse"].waitForExistence(timeout: 60), "The original identity must remain unchanged")
     }
 
+    func testMainInstructionRefreshUsesRealMA() {
+        guard let profile = UserDefaults.standard.string(forKey: "lastWelcomeAcceptanceProfile") else {
+            XCTFail("Run the real automatic welcome case before this isolated main-chat refresh check")
+            return
+        }
+        app.terminate()
+        app.launchEnvironment["MUSE_UI_TEST_PROFILE"] = profile
+        app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        defer {
+            app.terminate()
+            app.launchEnvironment.removeValue(forKey: "MUSE_UI_TEST_PROFILE")
+            app.launchArguments = []
+            app.launch()
+        }
+        XCTAssertTrue(app.textViews["Message Kit"].waitForExistence(timeout: 60))
+        XCTAssertTrue(app.switches["Choose Kit"].waitForExistence(timeout: 60))
+        XCTAssertTrue(app.staticTexts["MEMORY SAVED"].exists)
+        let input = app.textViews["Message Kit"]
+        tap(input)
+        if !app.keyboards.firstMatch.waitForExistence(timeout: 3) { input.tap() }
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 10))
+        input.typeText("Recall my favorite imaginary color and calculate 21 doubled. Use only memory tools; do not change any memory. Reply exactly with the color, followed by / 42.")
+        tap(app.buttons["Send message"])
+        let answer = app.staticTexts.matching(NSPredicate(format: "label MATCHES %@", "welcome-color-[a-f0-9]{6} / 42")).firstMatch
+        XCTAssertTrue(answer.waitForExistence(timeout: 240), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["MEMORY SAVED"].exists, "Original chapter bubbles must remain in the same main chat")
+        XCTAssertEqual(app.switches.matching(identifier: "Choose Kit").count, 1)
+        XCTAssertEqual(app.switches["Choose Kit"].value as? String, "1")
+        XCTAssertFalse(app.switches["Choose Kit"].isEnabled)
+        capture("main-refresh-context-and-original-choice")
+        let marker = "Refresh-choice-" + String(UUID().uuidString.prefix(6)).lowercased()
+        tap(input)
+        if !app.keyboards.firstMatch.waitForExistence(timeout: 3) { input.tap() }
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 10))
+        input.typeText("\(marker): Ask when I would like a short walk, with Morning and Evening as tappable options. Do not use tools, save preferences or schedule anything. After I choose, reply exactly: \(marker) / followed by my chosen label.")
+        tap(app.buttons["Send message"])
+        let evening = app.switches["Choose Evening"]
+        XCTAssertTrue(evening.waitForExistence(timeout: 180), app.debugDescription)
+        expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: evening)
+        waitForExpectations(timeout: 60)
+        tap(evening)
+        XCTAssertTrue(app.staticTexts["\(marker) / Evening"].waitForExistence(timeout: 180), app.debugDescription)
+        capture("main-refresh-new-inline-choice")
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(app.staticTexts["\(marker) / Evening"].waitForExistence(timeout: 60))
+        XCTAssertTrue(app.staticTexts["MEMORY SAVED"].exists)
+        XCTAssertEqual(app.switches["Choose Evening"].value as? String, "1")
+        XCTAssertFalse(app.switches["Choose Evening"].isEnabled)
+        capture("main-refresh-after-relaunch")
+    }
+
     func testWelcomeRestoresWithoutNewGeneration() {
         guard let profile = UserDefaults.standard.string(forKey: "lastWelcomeAcceptanceProfile") else {
             XCTFail("Run the real automatic welcome case before this read-only restoration check")
@@ -722,6 +775,7 @@ final class MuseUITests: XCTestCase {
         continueAfterFailure = false
         app.launchEnvironment["MUSE_UI_TESTING"] = "1"
         app.launchEnvironment["MUSE_UI_TEST_SIGNED_OUT"] = "1"
+        app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
     }
 
@@ -754,6 +808,32 @@ final class MuseUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Service connection"].exists)
         XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Advanced setup")).firstMatch.exists)
         capture("signed-out-login-options")
+    }
+
+    func testChineseFollowsSystemLanguage() {
+        app.terminate()
+        app.launchArguments = ["-AppleLanguages", "(zh-Hans,en)", "-AppleLocale", "zh_CN"]
+        app.launch()
+        XCTAssertTrue(app.textViews["给 Muse 发消息"].waitForExistence(timeout: 30), app.debugDescription)
+        XCTAssertTrue(app.links["对话"].exists)
+        XCTAssertTrue(app.links["目标"].exists)
+        tap(app.buttons["Muse 的状态：未连接"])
+        tap(app.buttons["身份"])
+        XCTAssertTrue(app.buttons["打开 MEMORY.md"].exists)
+        tap(app.buttons["关闭伙伴详情"])
+        tap(app.links["通过 SSO 或 API Key 连接后开始对话"])
+        XCTAssertTrue(app.buttons["开始 SSO 登录"].waitForExistence(timeout: 10))
+        capture("system-language-chinese")
+    }
+
+    func testUnsupportedLanguageFallsBackToEnglish() {
+        app.terminate()
+        app.launchArguments = ["-AppleLanguages", "(fr)", "-AppleLocale", "fr_FR"]
+        app.launch()
+        XCTAssertTrue(app.textViews["Message Muse"].waitForExistence(timeout: 30), app.debugDescription)
+        XCTAssertTrue(app.links["Chat"].exists)
+        XCTAssertTrue(app.links["Connect with SSO or API Key to start chatting"].exists)
+        capture("system-language-english-fallback")
     }
 
     func testKeyboardKeepsChatControlsVisible() {
