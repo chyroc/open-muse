@@ -48,8 +48,9 @@ asked for them.
 General opens with grouped rows: connection status, sign-in method and project,
 then the resolved interface language with the rule that the app follows the
 system list and stores no override, then the bundle version. The shared sign-in
-panel stays collapsed behind a "manage connection" row so it never pushes the
-other groups off the first screen. Secure storage describes where credentials
+panel stays collapsed behind a "manage connection" row instead of pushing those
+groups out of view; the end of the about group still needs scrolling. Secure
+storage describes where credentials
 actually live. Permissions reports, without changing anything, that the
 provisioned agent toolset is set to always-allow so MA runs those tools directly;
 that MA still sends a request for whatever its own policy evaluates as ask; that

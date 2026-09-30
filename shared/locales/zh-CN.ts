@@ -1021,7 +1021,7 @@ export const zhCN: Record<string, string> = {
   "Data controls": "数据控制",
   "Help and support": "帮助与支持",
   Legal: "法律信息",
-  "Sign out": "退出登录",
+  "Sign out": "退出",
   "Sign out of this Mac?": "退出此 Mac 的登录？",
   Connection: "连接",
   Language: "语言",

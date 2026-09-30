@@ -80,17 +80,17 @@
   max-width: 62ch;
 }
 .settings-group {
-  border: 1px solid var(--line);
+  /* The reference fills its groups instead of outlining them. */
+  background: #f4f4f6;
   border-radius: 14px;
   overflow: hidden;
-  background: #fff;
 }
 .settings-row {
   display: flex;
   align-items: flex-start;
   gap: 16px;
   padding: 13px 16px;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid #e6e6ea;
   font-size: 14px;
 }
 .settings-row:last-child {
@@ -136,7 +136,7 @@
   transform: rotate(180deg);
 }
 .settings-disclosure:hover {
-  background: #f6f6f7;
+  background: #eaeaee;
 }
 /* The shared sign-in panel keeps its own markup; the group only hosts it. */
 .settings-auth {

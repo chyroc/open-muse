@@ -159,7 +159,7 @@ describe("Mac settings window", () => {
       );
       expect(host!.textContent).toContain("0.2.0");
       expect(host!.textContent).toContain(
-        language === "zh-CN" ? "退出登录" : "Sign out",
+        language === "zh-CN" ? "退出" : "Sign out",
       );
     },
   );
@@ -183,6 +183,7 @@ describe("Mac settings window", () => {
   it("matches the reference on the section names it leaves in English", async () => {
     for (const label of ["Computer use", "File system access", "Dictation"])
       expect(zhCN[label]).toBe(label);
+    expect(zhCN["Sign out"]).toBe("退出");
     vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", ["zh-CN"]);
     await mount(<SettingsWindow client={await fixture()} />);
     const names = [
@@ -253,6 +254,8 @@ describe("Mac settings window", () => {
     const css = readFileSync("macos/ui/settings.css", "utf8");
     const top = /\.settings-sidebar \{[^}]*padding: (\d+)px/.exec(css);
     expect(Number(top?.[1])).toBeGreaterThanOrEqual(36);
+    // The reference fills its groups rather than outlining them.
+    expect(css).toMatch(/\.settings-group \{[^}]*background: #f4f4f6/);
   });
   it("requires confirmation before signing this Mac out", async () => {
     const client = await fixture();

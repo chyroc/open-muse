@@ -77,6 +77,16 @@ silently deleted.
 
 The standalone app loaded bundled assets at `muse://app/`, signed in directly with the authorized API key, and read the real iOS verification conversation, including both answers. Saving the second answer to Library verified local IndexedDB writes. After rebuilding and relaunching the app, the Keychain login, cloud conversation list, and local Library entry were restored. No additional conversation turn or cloud resource creation was needed for this check.
 
+### Desktop Library and settings window, read-only
+
+Both surfaces were accepted on frozen, code-signed builds driven through the real UI, with no message sent, no file written, no removal confirmed, no memory document saved, and no cloud or OS setting changed.
+
+Library: the seven-category sidebar and category navigation; the empty state and the truthful unavailable copy for images, podcasts and system files; the memory-document entries opening the existing editor; creation seeding an unsent composer draft beside the workspace, the replacement prompt for an existing draft, and keeping the draft on "keep"; reselecting Library collapsing the side-by-side chat while holding the category; search replacing the header, hiding the list controls, showing the query-specific empty state, and the clear control restoring the category; selection replacing the header with a selected count, a disabled destructive action, select-all, and both exits; one previously saved reply rendering as a card, its reading surface, pin and unpin, the source conversation opening the right session, sorting and grid/list switching; the macOS save panel opening for a Markdown export and reporting a cancelled export without writing a file; and the removal confirmation naming this Mac, the preserved cloud conversation and undo, with cancel leaving the record in place.
+
+Settings: Command-comma and the rail entry opening one separate 800 × 600 window with an accessible title, a disabled zoom and resize, and a working close; the section list starting below the traffic lights; the three section names the reference leaves in English rendering that way while the rest are localized; the connection, language and about groups; the collapsed sign-in panel; the version; the permission section reporting the real rules with no editable control; both sign-out paths stopping at the same confirmation and cancelling without signing out; reopening keeping the selected section without creating a second window; and Command-W closing only the settings window while the workspace kept its page.
+
+Not established by these checks: interactive cloud authorization from these builds, an actually executed sign-out, the cross-window refresh after a credential write, and any appearance, theme, startup, shortcut, account, usage, connector, computer-use, file-system, dictation, wallet, message-channel or device capability, none of which this shell implements yet.
+
 ## How to reproduce
 
 ```bash
