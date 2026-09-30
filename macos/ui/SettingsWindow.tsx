@@ -11,16 +11,25 @@ import {
   LogOut,
   MessageSquare,
   MonitorSmartphone,
+  Monitor,
+  Moon,
   Mouse,
   Scale,
   ShieldCheck,
   SlidersHorizontal,
+  Sun,
   Wallet,
 } from "lucide-react";
 import { t } from "../../shared/i18n";
 import type { Client } from "../../src/api";
 import { AuthPanel } from "../../src/AuthPanel";
 import { Modal } from "./Chrome";
+import {
+  appearances,
+  saveAppearance,
+  storedAppearance,
+  type Appearance,
+} from "./appearance";
 import {
   activeLanguage,
   appVersion,
@@ -51,6 +60,12 @@ const icons: Record<SettingsSectionId, typeof KeyRound> = {
   legal: Scale,
 };
 
+const appearanceIcons: Record<Appearance, typeof Sun> = {
+  light: Sun,
+  dark: Moon,
+  system: Monitor,
+};
+
 function Row({
   title,
   detail,
@@ -78,6 +93,7 @@ export function SettingsWindow({ client }: { client: Client }) {
   const [signOut, setSignOut] = useState<{ resolve?: (ok: boolean) => void }>();
   const [connection, setConnection] = useState<ConnectionStatus>();
   const [manage, setManage] = useState(false);
+  const [appearance, setAppearance] = useState<Appearance>(storedAppearance);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const alive = useRef(true);
@@ -214,12 +230,35 @@ export function SettingsWindow({ client }: { client: Client }) {
                 title={t("Version")}
                 value={version || t("Unknown outside the Mac app")}
               />
-              <Row
-                title={t("Appearance")}
-                detail={t(
-                  "This build renders one light appearance. Dark mode and accent colors are not built yet.",
-                )}
-              />
+              <div className="settings-row">
+                <div>
+                  <strong>{t("Appearance")}</strong>
+                </div>
+                <div
+                  className="settings-segments"
+                  role="radiogroup"
+                  aria-label={t("Appearance")}
+                >
+                  {appearances.map(({ id, label }) => {
+                    const Icon = appearanceIcons[id];
+                    return (
+                      <button
+                        key={id}
+                        role="radio"
+                        aria-checked={appearance === id}
+                        aria-label={t(label)}
+                        title={t(label)}
+                        onClick={() => {
+                          saveAppearance(id);
+                          setAppearance(id);
+                        }}
+                      >
+                        <Icon size={16} strokeWidth={1.8} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <Row
                 title={t("Updates")}
                 detail={t(

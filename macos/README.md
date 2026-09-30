@@ -50,8 +50,7 @@ then the resolved interface language with the rule that the app follows the
 system list and stores no override, then the bundle version. The shared sign-in
 panel stays collapsed behind a "manage connection" row instead of pushing those
 groups out of view; the end of the about group still needs scrolling. Secure
-storage describes where credentials
-actually live. Permissions reports, without changing anything, that the
+storage describes where credentials actually live. Permissions reports, without changing anything, that the
 provisioned agent toolset is set to always-allow so MA runs those tools directly;
 that MA still sends a request for whatever its own policy evaluates as ask; that
 this client auto-approves only pending `web_search`/`web_fetch` by exact protocol
@@ -60,12 +59,16 @@ are never retried. Data controls inventories local and cloud records. Both
 sign-out paths — the sidebar entry and the shared panel's own button — stop at
 the same confirmation, and neither revokes the cloud key.
 
-Connectors, computer use, file system access, dictation, wallet, message
-channels, devices, help and legal keep their place in the list and explain why
-they are not connected. None of them render a control that does nothing: there is
-no appearance switch, theme picker, language picker, usage meter, startup toggle
-or update check, because this shell does not implement them yet. They are pending
-Mac features, not dropped ones, and each will arrive with its own capability.
+Appearance is a real three-way choice: light, dark, or follow macOS. It is a
+device-local presentation preference with no credential, cloud record or identity
+scope, it is applied to both windows at once, and the shell matches the window
+chrome and native dialogs to it. Choosing "system" keeps following macOS as it
+changes; choosing light or dark stops following it. Accent themes, the startup,
+menu-bar and floating-button switches, the shortcut recorder, usage and update
+checks remain pending Mac features, not dropped ones, and connectors, computer
+use, file system access, dictation, wallet, message channels, devices, help and
+legal keep their place in the list and explain why they are not connected. None
+of them render a control that does nothing.
 
 The section list matches the reference, including the three names the reference
 leaves in English inside a Chinese interface. They are ordinary catalog entries
@@ -74,6 +77,16 @@ localization mechanism and the system-language rule are unchanged. The account,
 usage and language panes are replaced by facts this client can prove instead of
 an account portal, a quota meter and a 47-language picker it has no data or
 override for.
+
+## Appearance tokens
+
+Every Mac stylesheet draws from one token set in `ui/theme.css`, with a light and
+a dark value for each token. The values follow the reference desktop app's own
+token scale: its surfaces, dividers, text
+alphas and destructive colors, not an invented palette. Illustration colors, such
+as the avatar and the identity-file cards, are brand art and stay fixed in both
+appearances. The reference's own dark rendering has not been observed, so
+matching its dark screens is unverified; only its token values are used.
 
 ## Desktop Library
 

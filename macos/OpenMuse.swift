@@ -170,10 +170,25 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             replyHandler(status == errSecSuccess ? true : nil, status == errSecSuccess ? nil : localized("Cannot save secure credentials"))
         } else { replyHandler(nil, "Invalid credential operation") }
     }
+    // The web UI owns the preference; the shell only matches the window chrome,
+    // native dialogs and the other window to it.
+    private func applyAppearance(_ value: String?, from sender: WKWebView?) {
+        let appearance: NSAppearance? = value == "dark"
+            ? NSAppearance(named: .darkAqua)
+            : value == "light" ? NSAppearance(named: .aqua) : nil
+        guard value == "dark" || value == "light" || value == "system" else { return }
+        NSApplication.shared.appearance = appearance
+        window?.appearance = appearance
+        settingsWindow?.appearance = appearance
+        let other = sender === webView ? settingsWebView : webView
+        other?.evaluateJavaScript("window.dispatchEvent(new Event('muse-appearance-changed'))", completionHandler: nil)
+    }
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard trusted(message) else { return }
         if message.name == "museWindow" {
-            if (message.body as? [String: String])?["name"] == "settings" { openSettings() }
+            let body = message.body as? [String: String]
+            if body?["name"] == "settings" { openSettings() }
+            if body?["name"] == "appearance" { applyAppearance(body?["value"], from: message.webView) }
             return
         }
         guard message.name == "museExport", let value = message.body as? [String: String], let id = value["id"], let name = value["name"], let content = value["content"], content.utf8.count <= 20_000_000 else { return }

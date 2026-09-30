@@ -4,7 +4,9 @@ import { Client } from "../../src/api";
 import { DesktopApp } from "./DesktopApp";
 import { SettingsWindow } from "./SettingsWindow";
 import { isSettingsRoute } from "./settings";
+import { initializeAppearance } from "./appearance";
 import { nativeCredentials } from "./credentials";
+import "./theme.css";
 import "./desktop.css";
 import "./documents.css";
 import "./feed.css";
@@ -12,6 +14,7 @@ import "./ideas.css";
 import "./goals.css";
 
 initializeLanguage();
+initializeAppearance();
 const client = new Client({ vault: nativeCredentials });
 // The native shell opens the settings window on its own route, so one bundle
 // serves both windows without the workspace rendering behind it.

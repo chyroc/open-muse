@@ -31,7 +31,7 @@
   position: absolute;
   top: 16px;
   left: 20px;
-  color: #777;
+  color: var(--text-2);
 }
 .goals-create h2,
 .goals-list h2 {
@@ -56,13 +56,13 @@
   font-size: 16px;
 }
 .goal-category > svg {
-  color: #6d6d72;
+  color: var(--text-2);
 }
 .goal-category > span {
   flex: 1;
 }
 .goal-category > svg:last-child {
-  color: #9b9b9f;
+  color: var(--text-3);
 }
 .goals-list {
   margin: 8px 0 32px;
@@ -75,7 +75,7 @@
 .goals-dot {
   width: 8px;
   height: 8px;
-  background: #0671e3;
+  background: var(--accent);
   border-radius: 50%;
 }
 .desktop-goal-row {
@@ -88,17 +88,17 @@
   border-radius: 12px;
 }
 .desktop-goal-row:hover {
-  background: #f2f2f3;
+  background: var(--fill);
 }
 .goal-check {
   flex: 0 0 24px;
   height: 24px;
   padding: 0;
-  color: #86868a;
+  color: var(--muted);
   border-radius: 5px;
 }
 .completed .goal-check {
-  color: #0671e3;
+  color: var(--accent);
 }
 .goal-row-open {
   min-width: 0;
@@ -123,10 +123,10 @@
   overflow: hidden;
   font-size: 15px;
   line-height: 21px;
-  color: #757579;
+  color: var(--text-2);
 }
 .completed .goal-row-open strong {
-  color: #888;
+  color: var(--muted);
   text-decoration: line-through;
 }
 .goal-expand {
@@ -138,7 +138,7 @@
   display: grid;
   place-items: center;
   padding: 0;
-  color: #777;
+  color: var(--text-2);
 }
 .goal-options,
 .goals-header-options {
@@ -163,7 +163,7 @@
   border-radius: 50%;
   cursor: pointer;
   list-style: none;
-  color: #777;
+  color: var(--text-2);
 }
 .goal-options summary::-webkit-details-marker,
 .goals-header-options summary::-webkit-details-marker {
@@ -171,7 +171,7 @@
 }
 .goal-options summary:hover,
 .goals-header-options summary:hover {
-  background: #e8e8ec;
+  background: var(--fill-strong);
 }
 .goal-menu {
   position: absolute;
@@ -182,7 +182,7 @@
   padding: 5px;
   border: 1px solid var(--line);
   border-radius: 13px;
-  background: #fff;
+  background: var(--surface);
   box-shadow: 0 6px 28px #0002;
 }
 .goal-menu button {
@@ -196,7 +196,7 @@
 }
 .goal-menu p {
   margin: 6px 9px 2px;
-  color: #858589;
+  color: var(--muted);
   font-size: 12px;
 }
 .goal-menu hr {
@@ -206,21 +206,21 @@
 }
 .goal-menu .danger,
 .goal-delete-dialog .danger {
-  color: #ba3434;
+  color: var(--danger);
 }
 .goals-show-more {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 8px 0;
-  color: #747479;
+  color: var(--text-2);
 }
 .goals-footer {
   display: flex;
   align-items: flex-start;
   gap: 8px;
   margin-top: 40px;
-  color: #929297;
+  color: var(--text-3);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -242,12 +242,12 @@
   min-height: 44px;
   padding: 8px 20px;
   border-radius: 24px;
-  background: #065cc5;
+  background: var(--accent);
   color: white;
   font-weight: 600;
 }
 .goal-primary:hover:not(:disabled) {
-  background: #0752ae;
+  background: var(--accent-hover);
 }
 .goal-intro-dialog {
   width: 420px;
@@ -280,7 +280,7 @@
 }
 .goal-intro-dialog .dialog-body > p {
   margin: 0 0 16px;
-  color: #737378;
+  color: var(--text-2);
   font-size: 16px;
   line-height: 1.4;
 }
@@ -321,20 +321,20 @@
 .goal-state {
   display: inline-block;
   font-size: 12px;
-  color: #0671e3;
+  color: var(--accent);
   margin-bottom: 16px;
 }
 .goal-state.completed {
-  color: #488a63;
+  color: var(--success);
 }
 .goal-state.paused {
-  color: #977823;
+  color: var(--warning);
 }
 .goal-parent {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #777;
+  color: var(--text-2);
   font-size: 13px;
   padding: 0;
   margin-bottom: 8px;
@@ -359,11 +359,11 @@
   width: 18px;
   height: 18px;
   flex-shrink: 0;
-  accent-color: #0671e3;
+  accent-color: var(--accent);
   margin: 1px 0 0;
 }
 .goal-plan .done {
-  color: #888;
+  color: var(--muted);
   text-decoration: line-through;
 }
 .goal-timeline ul {
@@ -379,7 +379,7 @@
   padding: 0 0 20px;
 }
 .goal-timeline li > svg {
-  color: #8a8a90;
+  color: var(--muted);
   flex-shrink: 0;
   background: white;
   z-index: 1;
@@ -401,7 +401,7 @@
 .goal-timeline time,
 .goal-timeline small {
   display: block;
-  color: #929297;
+  color: var(--text-3);
   font-size: 12px;
   margin-top: 4px;
 }
@@ -417,7 +417,7 @@
   margin-top: 20px;
 }
 .goal-sync-note {
-  color: #929297;
+  color: var(--text-3);
   font-size: 12px;
   margin: 12px 0 0;
   line-height: 1.4;
@@ -428,13 +428,13 @@
 }
 .goal-rename-dialog label {
   display: block;
-  color: #777;
+  color: var(--text-2);
   font-size: 13px;
   margin-bottom: 8px;
 }
 .goal-rename-dialog input {
   width: 100%;
-  border: 1px solid #ddd;
+  border: 1px solid var(--line-strong);
   padding: 12px;
   border-radius: 12px;
   font-size: 16px;

@@ -8,13 +8,13 @@
   position: absolute;
   top: 132px;
   left: calc(50% + 18px);
-  background: #f0f0f2;
+  background: var(--fill-hover);
   width: 27px;
   height: 27px;
 }
 .identity-summary {
   padding: 16px;
-  background: #f3f3f5;
+  background: var(--fill);
   border-radius: 23px;
   margin-bottom: 32px;
 }
@@ -28,7 +28,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: #e9e9ec;
+  background: var(--fill-strong);
   border-radius: 20px;
   padding: 8px;
   font-size: 13px;
@@ -63,7 +63,7 @@
 }
 .identity-file.soul,
 .identity-file.soul:hover:not(:disabled) {
-  background: #d4233c;
+  background: var(--danger);
 }
 .identity-file.soul::before {
   background: radial-gradient(ellipse at 70% 80%, #7a1425, transparent 70%);
@@ -122,7 +122,7 @@
   align-items: center;
   padding: 0 15px;
   border-bottom: 1px solid var(--line);
-  background: #fcfcfc;
+  background: var(--bg);
   position: relative;
 }
 .document-toolbar > strong {
@@ -165,7 +165,7 @@
 }
 .document-description {
   margin: 0 0 52px;
-  border-left: 3px solid #e5e5e5;
+  border-left: 3px solid var(--fill-strong);
   padding-left: 15px;
   font-style: italic;
 }
@@ -205,12 +205,12 @@
   margin-bottom: 4px;
 }
 .rich-document blockquote {
-  border-left: 3px solid #ddd;
+  border-left: 3px solid var(--line-strong);
   margin-left: 0;
   padding-left: 15px;
 }
 .rich-document pre {
-  background: #f4f4f6;
+  background: var(--fill);
   border-radius: 10px;
   padding: 15px;
 }
@@ -224,15 +224,15 @@
 }
 .rich-document th,
 .rich-document td {
-  border: 1px solid #ddd;
+  border: 1px solid var(--line-strong);
   padding: 8px;
   vertical-align: top;
 }
 .rich-document th {
-  background: #f4f4f6;
+  background: var(--fill);
 }
 .rich-document .selectedCell {
-  background: #d8eaff;
+  background: var(--accent-soft);
 }
 .document-source {
   width: 100%;
@@ -243,18 +243,18 @@
   font:
     14px/1.65 ui-monospace,
     monospace;
-  background: #fafafa;
+  background: var(--bg);
   border-radius: 10px;
   padding: 20px;
 }
 .document-save-status {
-  color: #999;
+  color: var(--text-3);
   font-size: 12px;
   margin-top: 30px;
   min-height: 20px;
 }
 .document-error {
-  background: #fff1ed;
+  background: var(--danger-soft);
   color: #913e2c;
   border-radius: 12px;
   padding: 15px;
@@ -262,7 +262,7 @@
   font-size: 13px;
 }
 .document-notice {
-  background: #f4f4f6;
+  background: var(--fill);
   padding: 12px;
   border-radius: 10px;
   font-size: 13px;
@@ -277,7 +277,7 @@
   max-height: 45vh;
   overflow: auto;
   padding: 20px;
-  background: #f4f4f6;
+  background: var(--fill);
   border-radius: 10px;
 }
 @media (max-width: 1100px) {

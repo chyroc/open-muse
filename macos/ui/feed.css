@@ -27,13 +27,13 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: #f0f0f1;
+  background: var(--fill);
 }
 .feed-split-toggle {
   position: absolute;
   top: 20px;
   left: 20px;
-  color: #777;
+  color: var(--text-2);
 }
 .feed-edition {
   margin-bottom: 40px;
@@ -110,7 +110,7 @@
   padding: 8px;
 }
 .feed-love.loved {
-  color: #ff453a;
+  color: var(--danger);
 }
 .feed-post-options {
   position: relative;
@@ -125,7 +125,7 @@
   place-items: center;
   cursor: pointer;
   list-style: none;
-  color: #707074;
+  color: var(--text-2);
 }
 .feed-post-options summary::-webkit-details-marker {
   display: none;
@@ -142,7 +142,7 @@
   border: 1px solid var(--line);
   border-radius: 13px;
   box-shadow: 0 6px 28px #0002;
-  background: #fff;
+  background: var(--surface);
   z-index: 10;
 }
 .feed-post-menu button {
@@ -155,7 +155,7 @@
   border-radius: 8px;
 }
 .feed-post-menu button:last-child {
-  color: #ba3434;
+  color: var(--danger);
   border-top: 1px solid var(--line);
   border-radius: 0 0 8px 8px;
 }
@@ -173,7 +173,7 @@
 }
 .feed-prompt-card {
   padding: 20px;
-  border: 1px solid #e9eaeb;
+  border: 1px solid var(--bubble);
   border-radius: 30px;
   background: white;
   box-shadow: 0 2px 8px #00000005;
@@ -216,8 +216,8 @@
   padding: 12px 0;
 }
 .feed-error {
-  color: #b23333;
-  background: #fff3f1;
+  color: var(--danger);
+  background: var(--danger-soft);
   border-radius: 12px;
   padding: 12px;
   margin: 12px 0;
@@ -228,7 +228,7 @@
 .feed-cloud-copy button,
 .feed-text-button,
 .feed-undo button {
-  color: #246ab3;
+  color: var(--accent);
   padding: 4px;
   text-decoration: underline;
 }
@@ -257,14 +257,14 @@
   width: 100%;
   min-height: 150px;
   max-height: 40vh;
-  border: 1px solid #d9d9dc;
+  border: 1px solid var(--line-strong);
   border-radius: 14px;
-  background: #fafafa;
+  background: var(--bg);
   padding: 14px;
   line-height: 1.5;
 }
 .feed-instructions-form .primary {
-  background: #272727;
+  background: var(--text);
   color: white;
 }
 .feed-cloud-copy {

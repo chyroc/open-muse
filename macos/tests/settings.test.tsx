@@ -255,7 +255,7 @@ describe("Mac settings window", () => {
     const top = /\.settings-sidebar \{[^}]*padding: (\d+)px/.exec(css);
     expect(Number(top?.[1])).toBeGreaterThanOrEqual(36);
     // The reference fills its groups rather than outlining them.
-    expect(css).toMatch(/\.settings-group \{[^}]*background: #f4f4f6/);
+    expect(css).toMatch(/\.settings-group \{[^}]*background: var\(--fill\)/);
   });
   it("requires confirmation before signing this Mac out", async () => {
     const client = await fixture();

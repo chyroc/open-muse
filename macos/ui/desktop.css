@@ -1,13 +1,13 @@
 :root {
   font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
-  color: #242424;
-  background: #fff;
+  color: var(--text);
+  background: var(--surface);
   font-size: 14px;
   font-synthesis: none;
-  --line: #e7e7e8;
-  --muted: #858589;
-  --surface: #f5f5f6;
-  --blue: #cce6ff;
+  --line: var(--line);
+  --muted: var(--muted);
+  --surface: var(--surface-2);
+  --blue: var(--blue);
 }
 * {
   box-sizing: border-box;
@@ -41,18 +41,18 @@ a:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 summary:focus-visible {
-  outline: 2px solid #2675dc;
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 button:hover:not(:disabled) {
-  background: #efeff1;
+  background: var(--fill-hover);
 }
 input,
 textarea {
   color: inherit;
 }
 a {
-  color: #246ab3;
+  color: var(--accent);
 }
 button svg {
   flex-shrink: 0;
@@ -92,7 +92,7 @@ h3 {
 .desktop-shell {
   height: 100%;
   display: flex;
-  background: #fff;
+  background: var(--surface);
   isolation: isolate;
 }
 .rail {
@@ -103,7 +103,7 @@ h3 {
   flex-direction: column;
   align-items: center;
   position: relative;
-  background: #fcfcfc;
+  background: var(--bg);
 }
 .window-drag-space {
   height: 35px;
@@ -142,7 +142,7 @@ h3 {
   border-radius: 50%;
 }
 .rail-items button[aria-current="page"] {
-  background: #f1f1f3;
+  background: var(--fill);
 }
 .rail-settings {
   margin-top: auto;
@@ -154,7 +154,7 @@ h3 {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  background: #fdfdfd;
+  background: var(--bg);
 }
 .chat-toolbar {
   height: 58px;
@@ -195,7 +195,7 @@ h3 {
   text-overflow: ellipsis;
 }
 .pill-button {
-  background: #ededee;
+  background: var(--fill-hover);
 }
 .toolbar-spacer {
   flex: 1;
@@ -250,7 +250,7 @@ h3 {
 }
 .message-bubble {
   border-radius: 23px;
-  background: #ebebed;
+  background: var(--fill-strong);
   padding: 10px 15px;
   max-width: min(82%, 730px);
   overflow-wrap: anywhere;
@@ -298,7 +298,7 @@ h3 {
   height: 25px;
   width: 28px;
   border-radius: 20px;
-  color: #777;
+  color: var(--text-2);
 }
 .desktop-composer {
   margin: 16px 16px 14px;
@@ -308,12 +308,12 @@ h3 {
   align-items: flex-end;
   gap: 8px;
   border-radius: 30px;
-  background: #fff;
+  background: var(--surface);
   box-shadow:
     0 2px 12px #0000000d,
     0 1px 4px #00000004;
   z-index: 2;
-  border: 1px solid #f5f5f6;
+  border: 1px solid var(--surface-2);
 }
 .desktop-composer textarea {
   resize: none;
@@ -329,17 +329,17 @@ h3 {
   align-self: center;
 }
 .desktop-composer textarea::placeholder {
-  color: #b4b4b8;
+  color: var(--line-strong);
 }
 .send-button {
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: #cce6ff;
+  background: var(--blue);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #255480;
+  color: var(--accent);
   flex-shrink: 0;
   margin-bottom: 2px;
 }
@@ -348,7 +348,7 @@ h3 {
 }
 .send-button:disabled {
   opacity: 0.45;
-  background: #e5f1ff;
+  background: var(--accent-soft);
 }
 .empty-state {
   display: flex;
@@ -356,7 +356,7 @@ h3 {
   align-items: center;
   justify-content: center;
   text-align: center;
-  color: #777;
+  color: var(--text-2);
   max-width: 440px;
   margin: auto;
   padding: 25px;
@@ -365,7 +365,7 @@ h3 {
   line-height: 1.5;
 }
 .empty-state h3 {
-  color: #333;
+  color: var(--text);
   margin: 0;
   font-size: 15px;
 }
@@ -375,7 +375,7 @@ h3 {
 .chat-drawer {
   width: 240px;
   flex-shrink: 0;
-  background: #fcfcfc;
+  background: var(--bg);
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
@@ -393,7 +393,7 @@ h3 {
   gap: 7px;
   padding: 8px 12px;
   min-width: 0;
-  color: #888;
+  color: var(--muted);
 }
 .search-field input {
   width: 100%;
@@ -432,7 +432,7 @@ h3 {
   padding: 16px 8px;
 }
 .side-chat-list > button[aria-current="page"] {
-  background: #eaeaec;
+  background: var(--fill-strong);
 }
 .status-panel {
   position: relative;
@@ -441,7 +441,7 @@ h3 {
   width: 345px;
   flex-shrink: 0;
   border-left: 1px solid var(--line);
-  background: #fcfcfc;
+  background: var(--bg);
   padding: 0 15px;
 }
 .status-close {
@@ -468,7 +468,7 @@ h3 {
 .status-tabs {
   display: flex;
   border-radius: 23px;
-  background: #f0f0f2;
+  background: var(--fill-hover);
   padding: 3px;
   gap: 3px;
 }
@@ -479,12 +479,12 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #888;
+  color: var(--muted);
 }
 .status-tabs button[aria-selected="true"] {
-  background: #fff;
+  background: var(--surface);
   box-shadow: 0 2px 9px #00000010;
-  color: #444;
+  color: var(--text-2);
 }
 .status-content {
   padding: 18px 0;
@@ -502,7 +502,7 @@ h3 {
 .activity-item {
   border-radius: 11px;
   margin-bottom: 8px;
-  background: #f2f2f4;
+  background: var(--fill);
   padding: 10px;
 }
 .activity-item summary {
@@ -610,12 +610,12 @@ h3 {
   position: absolute;
   inset: -3px -6px;
   border-radius: 50%;
-  border: 1px solid #e4e4e6;
-  background: #f8f8f8;
+  border: 1px solid var(--fill-strong);
+  background: var(--bg);
   z-index: -1;
 }
 .thinking {
-  color: #777;
+  color: var(--text-2);
   font-size: 13px;
   max-width: 920px;
   margin: 8px auto;
@@ -625,7 +625,7 @@ h3 {
 }
 .error-banner {
   margin: 0 16px 10px;
-  background: #fff1ef;
+  background: var(--danger-soft);
   border: 1px solid #ffd1c9;
   color: #9d3023;
   border-radius: 12px;
@@ -655,7 +655,7 @@ h3 {
   left: 50%;
   border: 1px solid var(--line);
   box-shadow: 0 2px 10px #0001;
-  background: #fff;
+  background: var(--surface);
   border-radius: 50%;
   width: 34px;
   height: 34px;
@@ -667,7 +667,7 @@ h3 {
   bottom: 25px;
   left: 50%;
   transform: translateX(-50%);
-  background: #fff;
+  background: var(--surface);
   box-shadow: 0 6px 30px #0002;
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -687,7 +687,7 @@ h3 {
   max-height: calc(100vh - 80px);
   color: inherit;
   box-shadow: 0 20px 80px #0003;
-  background: #fdfdfd;
+  background: var(--bg);
 }
 .desktop-dialog.wide {
   width: 740px;
@@ -703,7 +703,7 @@ h3 {
   border-bottom: 1px solid var(--line);
   position: sticky;
   top: 0;
-  background: #fdfdfd;
+  background: var(--bg);
   z-index: 1;
 }
 .desktop-dialog h2 {
@@ -769,7 +769,7 @@ h3 {
 .small-badge {
   font-size: 11px;
   white-space: nowrap;
-  background: #f0f0f2;
+  background: var(--fill-hover);
   border-radius: 15px;
   padding: 5px 8px;
   margin-left: auto;
@@ -777,7 +777,7 @@ h3 {
 .auth-methods {
   display: flex;
   gap: 6px;
-  background: #eeeef0;
+  background: var(--fill-hover);
   padding: 4px;
   border-radius: 22px;
   margin-bottom: 22px;
@@ -805,7 +805,7 @@ h3 {
 .field input,
 .field textarea,
 .field select {
-  border: 1px solid #ddd;
+  border: 1px solid var(--line-strong);
   border-radius: 10px;
   padding: 10px 12px;
   background: white;
@@ -814,7 +814,7 @@ h3 {
 .auth-help {
   font-size: 12px;
   line-height: 1.6;
-  color: #888;
+  color: var(--muted);
 }
 .button {
   display: inline-flex;
@@ -823,14 +823,14 @@ h3 {
   gap: 7px;
   padding: 10px 15px;
   border-radius: 22px;
-  background: #eee;
+  background: var(--fill-hover);
 }
 .button.primary {
-  background: #242424;
+  background: var(--text);
   color: white;
 }
 .button.primary:hover {
-  background: #444;
+  background: var(--text-2);
 }
 .error-text {
   color: #a13b2b;
@@ -859,17 +859,17 @@ h3 {
 .permission-status {
   font-size: 10px;
   margin-left: auto;
-  color: #956713;
+  color: var(--warning);
 }
 .permission-description {
   line-height: 1.5;
   margin-top: 12px;
-  color: #777;
+  color: var(--text-2);
 }
 .permission-details pre {
   max-height: 180px;
   overflow: auto;
-  background: #f3f3f5;
+  background: var(--fill);
   padding: 10px;
   border-radius: 8px;
 }
@@ -881,7 +881,7 @@ h3 {
 }
 .permission-format {
   margin-left: auto;
-  color: #999;
+  color: var(--text-3);
 }
 .permission-footer {
   display: flex;
@@ -890,7 +890,7 @@ h3 {
   margin-top: 15px;
 }
 .permission-scope {
-  color: #888;
+  color: var(--muted);
   display: flex;
   gap: 6px;
   align-items: center;
@@ -903,11 +903,11 @@ h3 {
 .permission-actions button {
   padding: 7px 12px;
   border-radius: 20px;
-  background: #eee;
+  background: var(--fill-hover);
 }
 .permission-actions button:last-child {
-  background: #242424;
-  color: #fff;
+  background: var(--text);
+  color: var(--surface);
 }
 .permission-icon {
   display: none;
@@ -922,7 +922,7 @@ h3 {
   margin: 7px 0;
 }
 .permission-queries li > span:first-child {
-  color: #999;
+  color: var(--text-3);
 }
 .permission-search-label {
   display: flex;

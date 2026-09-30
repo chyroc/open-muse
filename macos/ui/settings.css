@@ -4,8 +4,8 @@
   display: flex;
   height: 100%;
   min-height: 0;
-  background: #fff;
-  color: #242424;
+  background: var(--surface);
+  color: var(--text);
 }
 .settings-sidebar {
   width: 225px;
@@ -16,7 +16,7 @@
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--line);
-  background: #fbfbfc;
+  background: var(--sidebar);
 }
 .settings-sidebar-items {
   display: flex;
@@ -36,21 +36,21 @@
   border-radius: 9px;
   text-align: left;
   font-size: 13px;
-  color: #242424;
+  color: var(--text);
 }
 .settings-sidebar button svg {
-  color: #6f6f75;
+  color: var(--text-2);
   flex-shrink: 0;
 }
 .settings-sidebar button:hover {
-  background: #f0f0f2;
+  background: var(--fill-hover);
 }
 .settings-sidebar button[aria-current] {
-  background: #ebebee;
+  background: var(--fill-strong);
   font-weight: 550;
 }
 .settings-sidebar button[aria-current] svg {
-  color: #242424;
+  color: var(--text);
 }
 .settings-sign-out {
   margin-top: auto !important;
@@ -69,19 +69,19 @@
 .settings-main h2 {
   font-size: 14px;
   font-weight: 500;
-  color: #6f6f75;
+  color: var(--text-2);
   margin: 22px 0 8px;
 }
 .settings-lead {
   font-size: 13px;
   line-height: 1.55;
-  color: #4a4a50;
+  color: var(--text-2);
   margin: 0 0 16px;
   max-width: 62ch;
 }
 .settings-group {
   /* The reference fills its groups instead of outlining them. */
-  background: #f4f4f6;
+  background: var(--fill);
   border-radius: 14px;
   overflow: hidden;
 }
@@ -90,7 +90,7 @@
   align-items: flex-start;
   gap: 16px;
   padding: 13px 16px;
-  border-bottom: 1px solid #e6e6ea;
+  border-bottom: 1px solid var(--line);
   font-size: 14px;
 }
 .settings-row:last-child {
@@ -103,17 +103,17 @@
   margin: 4px 0 0;
   font-size: 12px;
   line-height: 1.55;
-  color: #6f6f75;
+  color: var(--text-2);
   max-width: 58ch;
 }
 .settings-row > span {
   margin-left: auto;
   font-size: 13px;
-  color: #6f6f75;
+  color: var(--text-2);
   white-space: nowrap;
 }
 .settings-unavailable .settings-row strong {
-  color: #8a6d3b;
+  color: var(--warning);
 }
 .settings-disclosure {
   display: flex;
@@ -129,14 +129,14 @@
 }
 .settings-disclosure svg {
   margin-left: auto;
-  color: #6f6f75;
+  color: var(--text-2);
   transition: transform 0.15s;
 }
 .settings-disclosure svg.open {
   transform: rotate(180deg);
 }
 .settings-disclosure:hover {
-  background: #eaeaee;
+  background: var(--fill-strong);
 }
 /* The shared sign-in panel keeps its own markup; the group only hosts it. */
 .settings-auth {
@@ -151,11 +151,34 @@
 }
 .settings-auth h2 {
   font-size: 15px;
-  color: #242424;
+  color: var(--text);
   margin: 0;
 }
+/* Three-segment appearance control, like the reference's row-aligned pills. */
+.settings-segments {
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 17px;
+  background: var(--fill-strong);
+  flex-shrink: 0;
+}
+.settings-segments button {
+  width: 30px;
+  height: 30px;
+  border-radius: 15px;
+  display: grid;
+  place-items: center;
+  color: var(--text-2);
+}
+.settings-segments button[aria-checked="true"] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 3px var(--shadow);
+}
 .settings-error {
-  color: #973d39;
+  color: var(--danger);
   font-size: 13px;
 }
 .settings-main .settings-card {
