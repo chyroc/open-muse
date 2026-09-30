@@ -263,10 +263,6 @@
   padding: 14px;
   line-height: 1.5;
 }
-.feed-instructions-form .primary {
-  background: var(--text);
-  color: white;
-}
 .feed-cloud-copy {
   border: 1px solid var(--line);
   border-radius: 12px;

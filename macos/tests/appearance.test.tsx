@@ -16,6 +16,7 @@ import {
   systemPrefersDark,
 } from "../ui/appearance";
 import { SettingsWindow } from "../ui/SettingsWindow";
+import { contrast, paintedRules, themeTokens } from "./contrast";
 
 let root: Root | undefined;
 let host: HTMLDivElement | undefined;
@@ -169,6 +170,37 @@ describe("Mac appearance preference", () => {
     expect(swift).toContain("NSAppearance(named: .darkAqua)");
     expect(swift).toContain("NSApplication.shared.appearance = appearance");
     expect(swift).toContain("muse-appearance-changed");
+  });
+  it("keeps every self-painted rule legible in both appearances", () => {
+    const { light, dark } = themeTokens();
+    const rules = paintedRules();
+    // Every rule that paints its own background and text is checked as a pair,
+    // which is how the invisible save label reached a build: its tokens existed,
+    // but the pair resolved to white on white in one appearance.
+    expect(rules.length).toBeGreaterThan(10);
+    const unreadable = rules.flatMap((rule) =>
+      (["light", "dark"] as const).flatMap((appearance) => {
+        const ratio = contrast(rule, appearance === "light" ? light : dark);
+        return ratio === undefined || ratio >= 3
+          ? []
+          : [`${rule.file} ${rule.selector} ${appearance} ${ratio.toFixed(2)}`];
+      }),
+    );
+    expect(unreadable).toEqual([]);
+  });
+  it("resolves a white-on-white pair as unreadable", () => {
+    const { dark } = themeTokens();
+    const ratio = contrast(
+      {
+        file: "probe.css",
+        selector: ".probe",
+        background: "var(--text)",
+        color: "white",
+      },
+      dark,
+    );
+    expect(ratio).toBeDefined();
+    expect(ratio!).toBeLessThan(1.1);
   });
   it("translates every appearance option", () => {
     for (const option of appearances)

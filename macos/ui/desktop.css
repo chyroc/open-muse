@@ -825,11 +825,13 @@ h3 {
   border-radius: 22px;
   background: var(--fill-hover);
 }
-.button.primary {
+.button.primary,
+.pill-button.primary {
   background: var(--primary-bg);
   color: var(--primary-text);
 }
-.button.primary:hover {
+.button.primary:hover:not(:disabled),
+.pill-button.primary:hover:not(:disabled) {
   background: var(--primary-bg-hover);
 }
 .error-text {
