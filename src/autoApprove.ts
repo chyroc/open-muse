@@ -2,7 +2,7 @@ import { canAutoApprove } from "../shared/approval-policy";
 import { pendingPermissions, type AgentEvent } from "../shared/types";
 import type { Client } from "./api";
 
-// 每次观察覆盖当前状态，队列执行前再次核对；同一实例失败后不自动重试。
+// Each observation overwrites current state; re-check before the queue executes; a failed instance is not retried automatically.
 export class AutoApprover {
   private events: AgentEvent[] = [];
   private attempted = new Set<string>();

@@ -9,6 +9,11 @@ import { chooseModel, Workspaces, workspaceKey } from "../server/workspace";
 import type { Runtime } from "../server/ma";
 import request from "supertest";
 import { createApp } from "../server/app";
+import {
+  environmentWithTools,
+  systemWithTools,
+  type EnvironmentConfig,
+} from "../server/tooling";
 
 let dir: string;
 let workspaces: Workspaces;
@@ -19,6 +24,7 @@ type TestResource = {
   metadata: object;
   version?: number;
   system?: string;
+  config?: EnvironmentConfig;
   tools?: Array<Record<string, any>>;
 };
 let resources: Record<string, TestResource[]>;
@@ -52,9 +58,13 @@ beforeEach(async () => {
       const id = path.split("/")[2];
       if (id) {
         const item = resources[collection].find((r) => r.id === id)!;
-        if (body.version !== item.version)
+        if (collection === "agents" && body.version !== item.version)
           throw new ApiError(409, "version conflict");
-        Object.assign(item, body, { version: body.version + 1 });
+        Object.assign(
+          item,
+          body,
+          collection === "agents" ? { version: body.version + 1 } : {},
+        );
         return item as never;
       }
       const value = {
@@ -86,8 +96,8 @@ async function prepare() {
   return workspaces.wait(runtime);
 }
 
-describe("自动工作空间与 SQLite 映射", () => {
-  it("无 ID 自动创建、采用云环境和审批策略，不把 ID/密钥返回普通客户端", async () => {
+describe("Automatic workspace and SQLite mapping", () => {
+  it("auto-creates without IDs, adopting the cloud environment and approval policy; never returns IDs/keys to ordinary clients", async () => {
     expect(workspaces.status(runtime).state).toBe("idle");
     expect(runtime.ark.request).not.toHaveBeenCalled();
     const status = await prepare();
@@ -97,10 +107,12 @@ describe("自动工作空间与 SQLite 映射", () => {
       environment_id: "environments-1",
     });
     expect(posts()).toHaveLength(2);
-    expect(JSON.parse(String(posts()[0][1]?.body)).config).toEqual({
-      type: "cloud",
-      networking: { type: "unrestricted" },
-    });
+    expect(JSON.parse(String(posts()[0][1]?.body)).config).toEqual(
+      environmentWithTools({
+        type: "cloud",
+        networking: { type: "unrestricted" },
+      }),
+    );
     expect(JSON.parse(String(posts()[1][1]?.body)).tools[0].type).toBe(
       "agent_toolset_20260701",
     );
@@ -120,7 +132,7 @@ describe("自动工作空间与 SQLite 映射", () => {
       ),
     ).toBe(false);
   });
-  it("重启复用 SQLite 映射，重复准备不重复创建", async () => {
+  it("reuses the SQLite mapping after restart so repeated prepare does not recreate", async () => {
     await prepare();
     workspaces.close();
     workspaces = new Workspaces(dir);
@@ -128,12 +140,12 @@ describe("自动工作空间与 SQLite 映射", () => {
     await prepare();
     expect(posts()).toHaveLength(2);
   });
-  it("已有助手按版本更新权限与默认提示词，保留工具配置且不新建资源", async () => {
+  it("updates permissions and the default prompt for existing assistants by version, keeping tool config and never creating new resources", async () => {
     await prepare();
     const agent = resources.agents[0];
     agent.tools![0].default_config.permission_policy.type = "always_ask";
     agent.system =
-      "你是 Open Muse，帮助用户研究、写作和规划。使用用户的语言，准确说明依据与不确定性。外部写入、发送消息、交易和删除必须获得明确确认，不把未执行的操作描述为已完成。";
+      "You are Open Muse, helping the user with research, writing, and planning. Use the user's language, and state evidence and uncertainty accurately. External writes, sending messages, transactions, and deletions require explicit confirmation; never describe unexecuted operations as completed.";
     agent.tools![0].configs = [
       { name: "delete_file", permission_policy: { type: "always_deny" } },
     ];
@@ -153,7 +165,9 @@ describe("自动工作空间与 SQLite 映射", () => {
       "always_deny",
     );
     expect(agent.tools![1]).toEqual({ type: "custom", name: "keep" });
-    expect(agent.system).toContain("不额外请求工具权限确认");
+    expect(agent.system).toContain(
+      "without asking for additional tool permission confirmation",
+    );
     expect(JSON.parse(String(posts()[2][1]?.body))).toEqual({
       version: 1,
       tools: agent.tools,
@@ -162,20 +176,20 @@ describe("自动工作空间与 SQLite 映射", () => {
     await prepare();
     expect(posts()).toHaveLength(3);
   });
-  it("不覆盖自定义提示词、默认拒绝或外部资源", async () => {
+  it("does not overwrite a custom prompt, a default-deny policy, or external resources", async () => {
     await prepare();
     const agent = resources.agents[0];
     agent.system = "custom system";
     agent.tools![0].default_config.permission_policy.type = "always_deny";
     await workspaces.syncToolPolicy(runtime);
-    expect(posts()).toHaveLength(2);
+    expect(posts()).toHaveLength(3);
     agent.metadata = {};
     agent.tools![0].default_config.permission_policy.type = "always_ask";
     await workspaces.syncToolPolicy(runtime);
-    expect(posts()).toHaveLength(2);
-    expect(agent.system).toBe("custom system");
+    expect(posts()).toHaveLength(3);
+    expect(agent.system).toBe(systemWithTools("custom system"));
   });
-  it("无有效版本不更新，权限同步失败不新建替代资源", async () => {
+  it("does not update without a valid version; a permission-sync failure never creates a replacement resource", async () => {
     await prepare();
     resources.agents[0].version = undefined;
     resources.agents[0].tools![0].default_config.permission_policy.type =
@@ -184,12 +198,79 @@ describe("自动工作空间与 SQLite 映射", () => {
     expect(posts()).toHaveLength(2);
     expect(resources.agents).toHaveLength(1);
   });
-  it("同一连接的并发准备合并为一个任务", async () => {
+  it("concurrent prepares on the same connection merge into a single job", async () => {
     await Promise.all(Array.from({ length: 8 }, () => prepare()));
     expect(posts()).toHaveLength(2);
     expect(workspaces.status(runtime).state).toBe("ready");
   });
-  it("上游地址、密钥、项目分别隔离，SQLite 只保存摘要", async () => {
+  it("upgrades an existing environment in place and adds the guide once", async () => {
+    await prepare();
+    const environment = resources.environments[0];
+    environment.config = {
+      type: "cloud",
+      networking: { type: "limited" },
+      env: { CUSTOM: "keep" },
+      packages: { apt: ["git=custom"], npm: ["custom-package"] },
+      setup_script: "echo custom",
+    };
+    resources.agents[0].system = "Custom instructions";
+    await workspaces.syncToolPolicy(runtime);
+    expect(resources.environments).toHaveLength(1);
+    expect(resources.agents).toHaveLength(1);
+    expect(
+      posts()
+        .slice(2)
+        .map(([path]) => path),
+    ).toEqual(["/environments/environments-1", "/agents/agents-1"]);
+    expect(environment.config.networking).toEqual({ type: "limited" });
+    expect(environment.config.env).toEqual({ CUSTOM: "keep" });
+    expect(environment.config.packages?.npm).toEqual(["custom-package"]);
+    expect(environment.config.setup_script).toContain("echo custom");
+    expect(resources.agents[0].system).toBe(
+      systemWithTools("Custom instructions"),
+    );
+    await workspaces.syncToolPolicy(runtime);
+    expect(posts()).toHaveLength(4);
+  });
+  it("does not provision external or self-hosted environments", async () => {
+    await prepare();
+    for (const external of [true, false]) {
+      const environment = resources.environments[0];
+      environment.config = { type: external ? "cloud" : "self_hosted" };
+      environment.metadata = external
+        ? {}
+        : { open_muse_workspace: workspaceKey(runtime) };
+      resources.agents[0].system = "Custom instructions";
+      await workspaces.syncToolPolicy(runtime);
+      expect(posts()).toHaveLength(2);
+      expect(environment.config.setup_script).toBeUndefined();
+      expect(resources.agents[0].system).toBe("Custom instructions");
+    }
+  });
+  it("stops on environment update failure without replacing resources or changing the prompt", async () => {
+    await prepare();
+    resources.environments[0].config = { type: "cloud" };
+    resources.agents[0].system = "Custom instructions";
+    const original = vi.mocked(runtime.ark.request).getMockImplementation()!;
+    vi.mocked(runtime.ark.request).mockImplementation(async (path, init) => {
+      if (path === "/environments/environments-1" && init?.method === "POST")
+        throw new ApiError(403, "Update denied");
+      return original(path, init);
+    });
+    await expect(workspaces.syncToolPolicy(runtime)).rejects.toThrow(
+      "Update denied",
+    );
+    expect(resources.agents[0].system).toBe("Custom instructions");
+    expect(resources.environments).toHaveLength(1);
+    expect(resources.agents).toHaveLength(1);
+    expect(posts()).toHaveLength(3);
+    vi.mocked(runtime.ark.request).mockImplementation(original);
+    await workspaces.syncToolPolicy(runtime);
+    expect(resources.agents[0].system).toBe(
+      systemWithTools("Custom instructions"),
+    );
+  });
+  it("isolates upstream URL, key, and project separately; SQLite stores only a digest", async () => {
     await prepare();
     for (const changed of [
       { ...runtime, config: { ...runtime.config, arkKey: "other-key" } },
@@ -207,13 +288,13 @@ describe("自动工作空间与 SQLite 映射", () => {
       expect(workspaces.selection(changed)).toBeUndefined();
     }
   });
-  it("部分失败保留已建环境，恢复时只创建缺失助手", async () => {
+  it("keeps the created environment on partial failure; recovery creates only the missing assistant", async () => {
     const original = vi.mocked(runtime.ark.request).getMockImplementation()!;
     let denied = true;
     vi.mocked(runtime.ark.request).mockImplementation(async (path, init) => {
       if (path === "/agents" && denied) {
         denied = false;
-        throw new ApiError(403, "无权限");
+        throw new ApiError(403, "Permission denied");
       }
       return original(path, init);
     });
@@ -223,7 +304,7 @@ describe("自动工作空间与 SQLite 映射", () => {
     expect(resources.environments).toHaveLength(1);
     expect(resources.agents).toHaveLength(1);
   });
-  it("云端成功但响应丢失：重启后按标记恢复，不重复 POST", async () => {
+  it("when the cloud succeeds but the response is lost, recovers by marker after restart without duplicate POSTs", async () => {
     const original = vi.mocked(runtime.ark.request).getMockImplementation()!;
     let lost = true;
     vi.mocked(runtime.ark.request).mockImplementation(async (path, init) => {
@@ -240,7 +321,7 @@ describe("自动工作空间与 SQLite 映射", () => {
     expect((await prepare()).state).toBe("ready");
     expect(posts()).toHaveLength(2);
   });
-  it("结果不明且列表未查到时不盲目重建，不认领同名外部资源", async () => {
+  it("does not blindly recreate when the result is unknown and not found in the list, and never claims an external resource of the same name", async () => {
     const original = vi.mocked(runtime.ark.request).getMockImplementation()!;
     vi.mocked(runtime.ark.request).mockImplementation(async (path, init) => {
       if (path === "/environments") {
@@ -255,10 +336,10 @@ describe("自动工作空间与 SQLite 映射", () => {
       return original(path, init);
     });
     await prepare();
-    expect((await prepare()).message).toContain("暂不重复创建");
+    expect((await prepare()).message).toContain("will not be recreated");
     expect(posts()).toHaveLength(1);
   });
-  it("仅在明确 404 后补建，403 与 502 不触发重建", async () => {
+  it("only recreates after an explicit 404; 403 and 502 do not trigger recreation", async () => {
     await prepare();
     const original = vi.mocked(runtime.ark.request).getMockImplementation()!;
     for (const status of [403, 502]) {
@@ -273,7 +354,7 @@ describe("自动工作空间与 SQLite 映射", () => {
     expect((await prepare()).state).toBe("ready");
     expect(posts()).toHaveLength(3);
   });
-  it("旧版默认配置迁入 SQLite，不创建替代资源", async () => {
+  it("migrates old default configuration into SQLite without creating replacement resources", async () => {
     runtime.store.data.selection = {
       agent: "old-agent",
       environment_id: "old-env",
@@ -294,9 +375,9 @@ describe("自动工作空间与 SQLite 映射", () => {
     });
     expect(posts()).toHaveLength(0);
   });
-  it("模型不可用不创建资源，管理员可配置模型而不提供资源 ID", async () => {
+  it("creates no resources when no model is available; an admin can configure a model without supplying a resource ID", async () => {
     vi.mocked(runtime.ark.request).mockResolvedValueOnce({ data: [] });
-    expect((await prepare()).message).toContain("没有可用");
+    expect((await prepare()).message).toContain("No tool-calling model");
     expect(posts()).toHaveLength(0);
     runtime.config.modelId = "configured-model";
     expect((await prepare()).state).toBe("ready");
@@ -304,7 +385,7 @@ describe("自动工作空间与 SQLite 映射", () => {
       "configured-model",
     );
   });
-  it("中断后不继续创建后续资源", async () => {
+  it("does not continue creating subsequent resources after cancellation", async () => {
     const original = vi.mocked(runtime.ark.request).getMockImplementation()!;
     vi.mocked(runtime.ark.request).mockImplementation(async (path, init) => {
       if (path === "/environments") workspaces.cancel(runtime);
@@ -314,7 +395,7 @@ describe("自动工作空间与 SQLite 映射", () => {
     expect(posts()).toHaveLength(1);
     expect(resources.agents).toHaveLength(0);
   });
-  it("公开流程只需 prepare，再创建任务时服务端填入映射", async () => {
+  it("the public flow only needs prepare; the server fills in the mapping when a task is created", async () => {
     const app = await createApp(runtime.config, { ark: runtime.ark });
     try {
       const start = await request(app.app)
@@ -346,18 +427,18 @@ describe("自动工作空间与 SQLite 映射", () => {
       app.close();
     }
   });
-  it("只选择文本生成且支持工具调用的模型", () => {
+  it("only selects text-generation models that support tool calling", () => {
     expect(chooseModel(models)).toBe("text-tools");
     expect(() =>
       chooseModel({ data: [{ ...models.data[0], status: "Shutdown" }] }),
-    ).toThrow("没有可用");
+    ).toThrow("No tool-calling model");
     expect(() =>
       chooseModel({
         data: [{ ...models.data[0], task_type: ["ImageGeneration"] }],
       }),
-    ).toThrow("没有可用");
+    ).toThrow("No tool-calling model");
     expect(() =>
       chooseModel({ data: [{ ...models.data[0], features: {} }] }),
-    ).toThrow("没有可用");
+    ).toThrow("No tool-calling model");
   });
 });

@@ -53,14 +53,17 @@ export function organizerRouter() {
     const input = updateInput.parse(req.body);
     const { store } = res.locals.runtime as Runtime;
     const goal = store.data.goals?.find((g) => g.id === req.params.id);
-    if (!goal) throw new ApiError(404, "未找到这个目标。");
+    if (!goal) throw new ApiError(404, "Goal not found.");
     if (input.session_id && !store.get(input.session_id))
-      throw new ApiError(404, "关联对话不属于当前空间。");
+      throw new ApiError(
+        404,
+        "The linked session does not belong to the current workspace.",
+      );
     if (
       input.steps &&
       new Set(input.steps.map((s) => s.id)).size !== input.steps.length
     )
-      throw new ApiError(400, "步骤标识重复。");
+      throw new ApiError(400, "Duplicate step IDs.");
     Object.assign(goal, input, { updated_at: new Date().toISOString() });
     await store.save();
     res.json(goal);
@@ -84,7 +87,7 @@ export function organizerRouter() {
       .parse(req.body);
     const { store, ark, config } = res.locals.runtime as Runtime;
     const session = store.get(input.session_id);
-    if (!session) throw new ApiError(404, "未找到来源对话。");
+    if (!session) throw new ApiError(404, "Source session not found.");
     const existing = store.data.library?.find(
       (item) =>
         item.session_id === input.session_id &&
@@ -105,12 +108,15 @@ export function organizerRouter() {
         page = result.next_page;
         if (event || !page) break;
         if (seen.has(page) || seen.size >= 100)
-          throw new ApiError(502, "来源对话分页异常，请稍后重试。");
+          throw new ApiError(
+            502,
+            "Abnormal pagination for the source session; try again later.",
+          );
         seen.add(page);
       } while (page);
     }
     if (!event || event.type !== "agent.message" || !eventText(event).trim())
-      throw new ApiError(404, "未找到可保存的助手回复。");
+      throw new ApiError(404, "No savable assistant reply found.");
     // Recheck after awaiting upstream; concurrent saves are idempotent.
     const library = (store.data.library ??= []);
     const duplicate = library.find(

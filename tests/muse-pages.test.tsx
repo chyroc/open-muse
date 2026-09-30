@@ -9,26 +9,26 @@ import {
   goalPrompt,
 } from "../src/MusePages";
 
-describe("Muse iOS 导航与真实状态", () => {
-  it("规划请求包含目标说明、已有步骤和完成状态", () => {
+describe("Muse iOS navigation and real status", () => {
+  it("the planning request includes the goal description, existing steps, and completion status", () => {
     const prompt = goalPrompt({
       id: "goal",
-      title: "周末旅行",
-      description: "预算 1000 元",
+      title: "Weekend trip",
+      description: "Budget: 1000 CNY",
       status: "active",
       created_at: "",
       updated_at: "",
       steps: [
-        { id: "one", title: "确定日期", done: true },
-        { id: "two", title: "选择车次", done: false },
+        { id: "one", title: "Choose dates", done: true },
+        { id: "two", title: "Pick trains", done: false },
       ],
     });
-    expect(prompt).toContain("预算 1000 元");
-    expect(prompt).toContain("- [x] 确定日期");
-    expect(prompt).toContain("- [ ] 选择车次");
-    expect(prompt).toContain("先请求批准");
+    expect(prompt).toContain("Budget: 1000 CNY");
+    expect(prompt).toContain("- [x] Choose dates");
+    expect(prompt).toContain("- [ ] Pick trains");
+    expect(prompt).toContain("ask for approval first");
   });
-  it("保留静态包中确认的五个入口", () => {
+  it("keeps the five entries confirmed in the static bundle", () => {
     expect(primaryNavigation.map((item) => item.id)).toEqual([
       "home",
       "feed",
@@ -38,20 +38,22 @@ describe("Muse iOS 导航与真实状态", () => {
     ]);
     expect(new Set(primaryNavigation.map((item) => item.path)).size).toBe(5);
   });
-  it("动态空状态不展示虚构结果", () => {
+  it("the dynamic empty state shows no fabricated results", () => {
     const html = renderToStaticMarkup(
       <FeedPage sessions={[]} loading={false} />,
     );
-    expect(html).toContain("还没有新动态");
-    expect(html).toContain("尚未提供定时推送或主动推荐");
+    expect(html).toContain("No new activity yet");
+    expect(html).toContain(
+      "Scheduled pushes and proactive recommendations are not available",
+    );
   });
-  it("动态展示真实会话链接和运行状态", () => {
+  it("dynamically shows real session links and running status", () => {
     const html = renderToStaticMarkup(
       <FeedPage
         sessions={[
           {
             id: "my-session",
-            title: "测试",
+            title: "Test",
             status: "running",
             category: "general",
             created_at: "2026-09-29",
@@ -62,23 +64,23 @@ describe("Muse iOS 导航与真实状态", () => {
       />,
     );
     expect(html).toContain("#/task/my-session");
-    expect(html).toContain("正在处理");
+    expect(html).toContain("Processing");
   });
-  it("预设灵感不冒充个性化推荐", () => {
+  it("preset ideas never masquerade as personalized recommendations", () => {
     expect(renderToStaticMarkup(<IdeasPage onTemplate={() => {}} />)).toContain(
-      "这些是预设建议",
+      "These are preset suggestions",
     );
   });
-  it("聊天输入与目标关联可见", () => {
+  it("the chat input and its linked goal are visible", () => {
     const html = renderToStaticMarkup(
       <ChatWelcome
-        composer={<textarea aria-label="描述你的任务" />}
+        composer={<textarea aria-label="Describe your task" />}
         sessions={[]}
         onTemplate={() => {}}
         onClearGoal={() => {}}
         goal={{
           id: "goal",
-          title: "周末计划",
+          title: "Weekend plan",
           description: "",
           steps: [],
           status: "active",
@@ -87,8 +89,8 @@ describe("Muse iOS 导航与真实状态", () => {
         }}
       />,
     );
-    expect(html).toContain("周末计划");
-    expect(html).toContain("取消关联目标");
-    expect(html).toContain("描述你的任务");
+    expect(html).toContain("Weekend plan");
+    expect(html).toContain("Unlink goal");
+    expect(html).toContain("Describe your task");
   });
 });

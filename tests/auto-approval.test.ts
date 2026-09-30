@@ -35,8 +35,8 @@ const waiting = (...tools: AgentEvent[]): AgentEvent[] => [
   },
 ];
 
-describe("自动批准白名单", () => {
-  it.each(["web_search", "web_fetch"])("允许内置 %s", (name) => {
+describe("Auto-approval allowlist", () => {
+  it.each(["web_search", "web_fetch"])("allows built-in %s", (name) => {
     expect(canAutoApprove(tool("tool", name))).toBe(true);
   });
   it.each([
@@ -52,12 +52,12 @@ describe("自动批准白名单", () => {
     tool("a", "web_fetch", { evaluated_permission: "deny" }),
     tool("a", "web_fetch", { evaluated_permission: "allow" }),
     tool("a", "web_fetch", { evaluated_permission: undefined }),
-  ])("拒绝越界的 $type / $name / $evaluated_permission", (event) => {
+  ])("rejects out-of-scope $type / $name / $evaluated_permission", (event) => {
     expect(canAutoApprove(event)).toBe(false);
   });
 });
 
-describe("自动批准服务端", () => {
+describe("Auto-approval server", () => {
   let directory: string;
   let app: Awaited<ReturnType<typeof createApp>>;
   let ark: ArkClient;
@@ -98,7 +98,7 @@ describe("自动批准服务端", () => {
     app = await createApp(configFor(), { ark });
     app.store.data.sessions.push({
       id: "sesn-test",
-      title: "自动批准测试",
+      title: "Auto-approval test",
       category: "general",
       status: "idle",
       created_at: "2026-09-29",
@@ -111,7 +111,7 @@ describe("自动批准服务端", () => {
     await rm(directory, { recursive: true, force: true });
   });
   it.each(["web_search", "web_fetch"])(
-    "批准 %s，保留线程且不上传本地标记",
+    "approves %s, keeping the thread and not uploading a local marker",
     async (name) => {
       history = waiting(tool("search", name));
       const result = await submit("search", {
@@ -137,15 +137,18 @@ describe("自动批准服务端", () => {
     tool("search", "send_email"),
     tool("search", "web_search", { type: "agent.mcp_tool_use" }),
     tool("search", "web_fetch", { evaluated_permission: "deny" }),
-  ])("客户端伪造名称不能自动批准 $name / $type", async (event) => {
-    history = waiting(event);
-    await submit("search", {
-      name: "web_search",
-      evaluated_permission: "ask",
-    }).expect(403);
-    expect(ark.send).not.toHaveBeenCalled();
-  });
-  it("未进入 requires_action、已恢复运行和已中断时不批准", async () => {
+  ])(
+    "a client-forged name cannot auto-approve $name / $type",
+    async (event) => {
+      history = waiting(event);
+      await submit("search", {
+        name: "web_search",
+        evaluated_permission: "ask",
+      }).expect(403);
+      expect(ark.send).not.toHaveBeenCalled();
+    },
+  );
+  it("does not approve when not in requires_action, already running again, or interrupted", async () => {
     for (const events of [
       [tool()],
       [...waiting(tool()), { id: "run", type: "session.status_running" }],
@@ -156,7 +159,7 @@ describe("自动批准服务端", () => {
     }
     expect(ark.send).not.toHaveBeenCalled();
   });
-  it("只读历史不会触发批准，不存在会话拒绝访问", async () => {
+  it("read-only history never triggers approval; a nonexistent session is denied access", async () => {
     await request(app.app).get("/api/sessions/sesn-test/events").expect(200);
     await request(app.app)
       .post("/api/sessions/foreign/events")
@@ -169,7 +172,7 @@ describe("自动批准服务端", () => {
       .expect(404);
     expect(ark.send).not.toHaveBeenCalled();
   });
-  it("逐项批准网页工具，混合队列里的其他工具保持待确认", async () => {
+  it("approves web tools one by one, leaving other tools in a mixed queue pending", async () => {
     history = waiting(
       tool(),
       tool("fetch", "web_fetch"),
@@ -184,7 +187,7 @@ describe("自动批准服务端", () => {
     expect(ark.send).toHaveBeenCalledTimes(2);
   });
   it.each(["allow", "deny"] as const)(
-    "已有 %s 确认时只返回历史，不重复发送",
+    "when a %s confirmation already exists, only returns history without resending",
     async (result) => {
       history.push({
         id: "manual",
@@ -198,7 +201,7 @@ describe("自动批准服务端", () => {
       expect(ark.send).not.toHaveBeenCalled();
     },
   );
-  it("并发自动/手动提交共享锁，只有一个请求发送到上游", async () => {
+  it("concurrent automatic/manual submissions share a lock, so only one request reaches upstream", async () => {
     let release!: () => void;
     vi.mocked(ark.send).mockImplementation(async (_id, event) => {
       await new Promise<void>((resolve) => {
@@ -215,7 +218,7 @@ describe("自动批准服务端", () => {
     expect((await first).status).toBe(200);
     expect(ark.send).toHaveBeenCalledTimes(1);
   });
-  it("成功记录持久化：重启且历史滞后时也不重复批准", async () => {
+  it("persists the success record: no duplicate approval after restart with lagging history", async () => {
     const accepted = await submit().expect(200);
     history = waiting(tool());
     app.close();
@@ -224,7 +227,7 @@ describe("自动批准服务端", () => {
     expect(replay.body).toEqual(accepted.body);
     expect(ark.send).toHaveBeenCalledTimes(1);
   });
-  it("兼容只返回受理信封的上游，不把已受理误报为失败", async () => {
+  it("supports upstreams that return only an acceptance envelope and does not misreport acceptance as failure", async () => {
     vi.mocked(ark.send).mockResolvedValueOnce({ ok: true } as never);
     const result = await submit().expect(200);
     expect(result.body.data[0]).toMatchObject({
@@ -236,8 +239,10 @@ describe("自动批准服务端", () => {
     await submit().expect(200);
     expect(ark.send).toHaveBeenCalledTimes(1);
   });
-  it("失败后刷新与重启不盲目重试，仍可显式手动处理", async () => {
-    vi.mocked(ark.send).mockRejectedValueOnce(new ApiError(502, "模拟失败"));
+  it("after a failure, refresh and restart do not blindly retry; explicit manual handling still works", async () => {
+    vi.mocked(ark.send).mockRejectedValueOnce(
+      new ApiError(502, "Simulated failure"),
+    );
     await submit().expect(502);
     await submit().expect(409);
     app.close();
@@ -247,17 +252,17 @@ describe("自动批准服务端", () => {
     await submit("search", { automatic: undefined }).expect(200);
     expect(ark.send).toHaveBeenCalledTimes(2);
   });
-  it("上游接收后响应丢失：先核对历史，不重复提交", async () => {
+  it("when the response is lost after upstream acceptance, checks history first and never resubmits", async () => {
     vi.mocked(ark.send).mockImplementationOnce(async (_id, event) => {
       history.push(event as AgentEvent);
-      throw new ApiError(502, "模拟响应丢失");
+      throw new ApiError(502, "Simulated lost response");
     });
     await submit().expect(502);
     const recovered = await submit().expect(200);
     expect(recovered.body.data[0].approval_source).toBe("automatic");
     expect(ark.send).toHaveBeenCalledTimes(1);
   });
-  it("重启前停在 sending 状态时不重发", async () => {
+  it("does not resend when it was in the sending state before a restart", async () => {
     app.store.data.autoApprovals = {
       [approvalKey("sesn-test", "search")]: {
         state: "sending",
@@ -275,7 +280,7 @@ describe("自动批准服务端", () => {
     await submit().expect(409);
     expect(ark.send).not.toHaveBeenCalled();
   });
-  it("读取完整分页后才批准，异常游标不提交", async () => {
+  it("approves only after reading full pages; an abnormal cursor is not submitted", async () => {
     vi.mocked(ark.events).mockImplementation(async (_id, page) =>
       page ? { data: [history[1]] } : { data: [history[0]], next_page: "next" },
     );
@@ -286,15 +291,15 @@ describe("自动批准服务端", () => {
     await submit().expect(502);
     expect(ark.send).not.toHaveBeenCalled();
   });
-  it("自动拒绝请求与跨站请求不提交", async () => {
+  it("automatic deny requests and cross-site requests are not submitted", async () => {
     await submit("search", { result: "deny" }).expect(400);
     await submit().set("Origin", "https://untrusted.example").expect(403);
     expect(ark.send).not.toHaveBeenCalled();
   });
 });
 
-describe("客户端自动批准队列", () => {
-  it("历史补拉和 SSE 重复事件只发送一次，其他工具不发送", async () => {
+describe("Client auto-approval queue", () => {
+  it("sends history backfills and duplicate SSE events only once, and never sends for other tools", async () => {
     const send = vi.fn().mockResolvedValue({ data: [] });
     const approver = new AutoApprover(
       { send },
@@ -323,7 +328,7 @@ describe("客户端自动批准队列", () => {
       automatic: true,
     });
   });
-  it("只有工具事件时不提前提交，收到 requires_action 后才批准", async () => {
+  it("does not submit early with only tool events; approves after receiving requires_action", async () => {
     const send = vi.fn().mockResolvedValue({ data: [] });
     const approver = new AutoApprover(
       { send },
@@ -337,7 +342,7 @@ describe("客户端自动批准队列", () => {
     approver.observe(waiting(tool()));
     await vi.waitFor(() => expect(send).toHaveBeenCalledTimes(1));
   });
-  it("失败后回退手动入口，不因反复观察而重试", async () => {
+  it("falls back to the manual entry after failure without retrying on repeated observations", async () => {
     const send = vi.fn().mockRejectedValue(new Error("offline"));
     const fail = vi.fn();
     const approver = new AutoApprover(
@@ -352,7 +357,7 @@ describe("客户端自动批准队列", () => {
     approver.observe(waiting(tool()));
     expect(send).toHaveBeenCalledTimes(1);
   });
-  it("切换会话后不启动排队项，也不将旧结果写入新会话", async () => {
+  it("does not start queued items or write old results into the new session after switching sessions", async () => {
     let release!: (value: { data: AgentEvent[] }) => void;
     const send = vi.fn().mockImplementation(
       () =>
@@ -376,7 +381,7 @@ describe("客户端自动批准队列", () => {
     expect(send).toHaveBeenCalledTimes(1);
     expect(onEvents).not.toHaveBeenCalled();
   });
-  it("排队期间工具不再待确认，则不提交过期的下一项", async () => {
+  it("does not submit a stale next item when the tool is no longer pending during the queue wait", async () => {
     let release!: (value: { data: AgentEvent[] }) => void;
     const send = vi.fn().mockImplementation(
       () =>

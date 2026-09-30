@@ -73,12 +73,12 @@ export function useTask(client: Client, id?: string) {
             if (signal.aborted) return;
             retry = 0;
             setConnected(true);
-            // 方舟 SSE 没有历史回放：订阅建立后再次补拉，覆盖连接窗口。
+            // Ark SSE has no history replay: pull history again after the subscription is established to cover the connection window.
             void sync();
           },
         );
       } catch {
-        /* 断流后仍定期补拉历史，重连不重发用户消息。 */
+        /* After the stream drops, keep periodically pulling history; reconnects do not resend user messages. */
       }
       if (!signal.aborted) {
         setConnected(false);

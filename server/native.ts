@@ -1,4 +1,4 @@
-// Mac App 内嵌服务。独立于 tsx、npm 和用户 shell 环境启动。
+// Service embedded in the Mac app. Started independently of tsx, npm, and the user's shell environment.
 import { createApp } from "./app";
 import { loadConfig } from "./config";
 async function main() {

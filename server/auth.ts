@@ -92,13 +92,16 @@ export class AuthStore {
     if (!identity || identity.expiresAt < Date.now())
       throw new ApiError(
         401,
-        "登录已过期，请重新登录；不会自动切换到其他账户。",
+        "Login has expired; please sign in again. It will not switch to another account automatically.",
       );
     return identity.credentials;
   }
   async serialized<T>(token: string, action: () => Promise<T>) {
     if (this.locks.has(token))
-      throw new ApiError(409, "登录操作正在处理，请稍后再试。");
+      throw new ApiError(
+        409,
+        "A login operation is already in progress; please try again later.",
+      );
     this.locks.add(token);
     try {
       return await action();
@@ -114,9 +117,12 @@ export class AuthStore {
     const router = Router();
     router.post("/api-key", async (req, res) => {
       if (!validateAPIKey)
-        throw new ApiError(503, "当前服务未启用 API Key 登录。");
+        throw new ApiError(503, "API Key login is not enabled on this server.");
       if (req.get("X-Muse-Session"))
-        throw new ApiError(409, "请先退出当前登录，再连接其他凭据。");
+        throw new ApiError(
+          409,
+          "Sign out of the current login before connecting other credentials.",
+        );
       const input = z
         .object({
           apiKey: z
@@ -136,7 +142,10 @@ export class AuthStore {
         .strict()
         .parse(req.body);
       if (this.keyLogins >= 5)
-        throw new ApiError(429, "连接请求过多，请稍后重试。");
+        throw new ApiError(
+          429,
+          "Too many connection requests; please try again later.",
+        );
       this.keyLogins++;
       try {
         const credentials: APIKeyCredentials = {
@@ -168,7 +177,10 @@ export class AuthStore {
       for (const [id, value] of this.pending)
         if (value.expiresAt < Date.now()) this.pending.delete(id);
       if (this.pending.size >= 100)
-        throw new ApiError(429, "登录请求过多，请稍后重试。");
+        throw new ApiError(
+          429,
+          "Too many login requests; please try again later.",
+        );
       const login = beginLogin();
       const transaction = randomBytes(32).toString("base64url");
       this.pending.set(digest(transaction), {
@@ -186,7 +198,10 @@ export class AuthStore {
         .parse(req.body);
       const pending = this.pending.get(digest(input.transaction));
       if (!pending || pending.expiresAt < Date.now())
-        throw new ApiError(400, "登录事务已过期或已使用，请重新开始。");
+        throw new ApiError(
+          400,
+          "The login transaction has expired or was already used; please start over.",
+        );
       const code = extractCode(input.code, pending.state);
       this.pending.delete(digest(input.transaction));
       const credentials = await this.provider.exchange(code, pending.verifier);
@@ -211,11 +226,15 @@ export class AuthStore {
     router.get("/projects", async (req, res) => {
       const token = req.get("X-Muse-Session") ?? "";
       const c = this.get(token);
-      if (!c) throw new ApiError(401, "请先登录火山账号。");
+      if (!c)
+        throw new ApiError(
+          401,
+          "Please sign in to your Volcano Engine account first.",
+        );
       if (!isSSOCredentials(c))
         throw new ApiError(
           403,
-          "项目列表需要 SSO 登录，API Key 无法提供 STS。",
+          "Listing projects requires SSO login; an API Key cannot provide STS.",
         );
       let projects: string[];
       try {
@@ -230,11 +249,15 @@ export class AuthStore {
     router.post("/project", async (req, res) => {
       const token = req.get("X-Muse-Session") ?? "";
       const c = this.get(token);
-      if (!c) throw new ApiError(401, "请先登录火山账号。");
+      if (!c)
+        throw new ApiError(
+          401,
+          "Please sign in to your Volcano Engine account first.",
+        );
       if (!isSSOCredentials(c))
         throw new ApiError(
           403,
-          "项目授权需要 SSO 登录，API Key 无法提供 STS。",
+          "Project authorization requires SSO login; an API Key cannot provide STS.",
         );
       const { project, confirm } = z
         .object({
@@ -244,13 +267,19 @@ export class AuthStore {
         .parse(req.body);
       await this.serialized(token, async () => {
         if (c.apiKey && c.project !== project)
-          throw new ApiError(409, "项目已连接。切换项目请退出后重新登录。");
+          throw new ApiError(
+            409,
+            "A project is already connected. To switch projects, sign out and sign in again.",
+          );
         if (c.apiKeyId && c.project !== project)
-          throw new ApiError(409, "已有待完成的 API Key，请继续原项目。");
+          throw new ApiError(
+            409,
+            "An API Key is already pending; continue with the original project.",
+          );
         try {
           if (c.apiKey) return;
           if (!(await this.provider.projects(c)).includes(project))
-            throw new ApiError(403, "无权访问所选项目。");
+            throw new ApiError(403, "No access to the selected project.");
           if (confirm && c.apiKeyId) await this.provider.readKey(c);
           else await this.provider.mintKey(c, project);
         } finally {

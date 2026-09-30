@@ -65,11 +65,18 @@ export function AuthPanel({
           <KeyRound size={21} />
         </div>
         <div>
-          <h2>连接方舟 MA</h2>
-          <p>连接方舟项目，自动准备你的个人助手</p>
+          <h2>Connect to Ark MA</h2>
+          <p>
+            Connect an Ark project and your personal assistant is set up
+            automatically
+          </p>
         </div>
         <span className="small-badge">
-          {status?.ready ? "已连接" : status?.loggedIn ? "选择项目" : "未登录"}
+          {status?.ready
+            ? "Connected"
+            : status?.loggedIn
+              ? "Choose a project"
+              : "Not signed in"}
         </span>
       </div>
       {error && (
@@ -79,7 +86,11 @@ export function AuthPanel({
       )}
       {!status?.loggedIn && (
         <>
-          <div className="auth-methods" role="group" aria-label="登录方式">
+          <div
+            className="auth-methods"
+            role="group"
+            aria-label="Sign-in method"
+          >
             <button
               type="button"
               aria-pressed={method === "sso"}
@@ -90,7 +101,7 @@ export function AuthPanel({
                 setError("");
               }}
             >
-              火山 SSO
+              Volcano SSO
             </button>
             <button
               type="button"
@@ -129,9 +140,9 @@ export function AuthPanel({
               }}
             >
               <label className="field">
-                方舟 API Key
+                Ark API Key
                 <input
-                  aria-label="方舟 API Key"
+                  aria-label="Ark API Key"
                   type="password"
                   autoComplete="off"
                   autoCapitalize="none"
@@ -141,37 +152,40 @@ export function AuthPanel({
                   maxLength={1024}
                   value={apiKey}
                   onChange={(event) => setAPIKey(event.target.value)}
-                  placeholder="粘贴已有的方舟 API Key"
+                  placeholder="Paste an existing Ark API Key"
                 />
               </label>
               <label className="field">
-                项目名称（可选）
+                Project name (optional)
                 <input
                   autoComplete="off"
                   autoCapitalize="none"
                   maxLength={128}
                   value={keyProject}
                   onChange={(event) => setKeyProject(event.target.value)}
-                  placeholder="留空使用密钥所属项目"
+                  placeholder="Leave blank to use the key's own project"
                 />
               </label>
               <p className="auth-consent-note">
-                密钥仅提交给当前 Open Muse
-                服务，加密保存后不回传。连接时验证密钥，首次使用时自动创建助手和运行环境，云端调用可能计费。需要
-                STS 的控制面接口仍须 SSO 登录。
+                The key is submitted only to this Open Muse service and stored
+                encrypted without being sent back. It is verified when you
+                connect; the assistant and runtime are created automatically on
+                first use, and cloud calls may be billed. Control-plane
+                endpoints that require STS still need SSO sign-in.
               </p>
               <button
                 className="button primary"
                 disabled={busy || !apiKey.trim()}
               >
-                连接 API Key
+                Connect with API Key
               </button>
             </form>
           ) : (
             <>
               <p className="settings-description">
-                在火山官网完成登录，把页面显示的授权码粘贴回来。STS、刷新令牌与
-                API Key 只保存在服务端，不会发送到 App。
+                Sign in on the Volcano website, then paste the authorization
+                code shown on the page back here. STS, refresh tokens, and the
+                API Key are kept only on the server and never sent to the app.
               </p>
               {!login ? (
                 <button
@@ -183,7 +197,7 @@ export function AuthPanel({
                     })
                   }
                 >
-                  开始 SSO 登录
+                  Start SSO sign-in
                 </button>
               ) : (
                 <div className="auth-steps">
@@ -201,20 +215,21 @@ export function AuthPanel({
                       }
                     }}
                   >
-                    1. 前往火山授权 <ExternalLink size={16} />
+                    1. Authorize on Volcano <ExternalLink size={16} />
                   </a>
                   <label className="field">
-                    2. 粘贴授权码
+                    2. Paste the authorization code
                     <input
                       type="password"
                       autoComplete="off"
                       value={code}
                       onChange={(e) => setCode(e.target.value)}
-                      placeholder="授权码、编码回调或完整回调 URL"
+                      placeholder="Authorization code, encoded callback, or full callback URL"
                     />
                   </label>
                   <small>
-                    授权链接有效期 10 分钟。不要把授权码发送给他人。
+                    The authorization link is valid for 10 minutes. Don't share
+                    the code with anyone.
                   </small>
                   <button
                     className="button secondary"
@@ -234,7 +249,7 @@ export function AuthPanel({
                       })
                     }
                   >
-                    验证授权码
+                    Verify authorization code
                   </button>
                   <button
                     className="text-button"
@@ -244,7 +259,7 @@ export function AuthPanel({
                       setCode("");
                     }}
                   >
-                    重新开始
+                    Start over
                   </button>
                 </div>
               )}
@@ -255,10 +270,10 @@ export function AuthPanel({
       {status?.loggedIn && !status.ready && (
         <div className="auth-steps">
           <label className="field project-field">
-            项目
+            Project
             <div className="project-select-wrap">
               <select
-                aria-label="选择项目"
+                aria-label="Select a project"
                 disabled={busy || Boolean(status.apiKeyId)}
                 value={project}
                 onChange={(e) => setProject(e.target.value)}
@@ -275,13 +290,16 @@ export function AuthPanel({
               disabled={busy}
               onClick={() => void run(statusAndProjects)}
             >
-              重新读取项目
+              Reload projects
             </button>
           )}
           <p className="auth-consent-note">
-            连接后，Muse 会在此项目创建专用密钥，并自动准备助手和云端运行环境。
-            密钥可访问项目全部方舟资源，不限制来源
-            IP；云端调用可能计费。云环境可访问公网，工具默认直接执行，可能产生外部写入或删除。
+            Once connected, Muse creates a dedicated key in this project and
+            automatically sets up the assistant and cloud runtime. The key can
+            access all Ark resources in the project with no source-IP
+            restriction; cloud calls may be billed. The cloud environment can
+            reach the public internet, and tools run directly by default, which
+            may cause external writes or deletions.
           </p>
           <button
             className="button primary"
@@ -297,27 +315,32 @@ export function AuthPanel({
               })
             }
           >
-            {status.apiKeyId ? "继续连接" : "连接项目并开始使用"}
+            {status.apiKeyId
+              ? "Continue connecting"
+              : "Connect project and get started"}
           </button>
         </div>
       )}
       {status?.ready && (
         <div className="auth-connected">
           <p>
-            {status.method === "api_key" ? "API Key 已连接" : "SSO 已连接"} ·{" "}
+            {status.method === "api_key"
+              ? "Connected with API Key"
+              : "Connected with SSO"}{" "}
+            ·{" "}
             {status.project ? (
               <>
-                项目 <strong>{status.project}</strong>
+                Project <strong>{status.project}</strong>
               </>
             ) : (
-              "密钥所属项目"
+              "The key's own project"
             )}
           </p>
           <WorkspacePanel client={client} />
           {status.apiKeyId && (
             <details className="auth-key-details">
-              <summary>密钥管理信息</summary>
-              <p className="muted">API Key ID：{status.apiKeyId}</p>
+              <summary>Key details</summary>
+              <p className="muted">API Key ID: {status.apiKeyId}</p>
             </details>
           )}
         </div>
@@ -336,17 +359,19 @@ export function AuthPanel({
             }
           >
             <LogOut size={15} />
-            退出此登录
+            Sign out of this login
           </button>
           <small>
-            退出会删除服务端登录凭据，但不会撤销云端 API
-            Key。可在方舟控制台撤销。切换登录方式请先退出。
+            Signing out removes the server-side sign-in credentials but does not
+            revoke the cloud API Key. You can revoke it in the Ark console.
+            Switch sign-in methods by signing out first.
           </small>
         </div>
       )}
       {busy && (
         <p className="muted" role="status">
-          <LoaderCircle className="spin" size={15} /> 正在处理，请勿重复提交…
+          <LoaderCircle className="spin" size={15} /> Working, please don't
+          submit again…
         </p>
       )}
     </section>

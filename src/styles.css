@@ -1,4 +1,4 @@
-/* MA 工作台沿用纸张与橄榄绿，把复杂能力留在任务之外。 */
+/* MA Studio keeps the paper and olive palette, leaving complex capabilities outside the task view. */
 .studio-page {
   max-width: 1130px;
   padding-bottom: 80px;
@@ -2800,7 +2800,7 @@ code {
   }
 }
 
-/* 手机键盘不因小字号缩放页面，关键按钮保留足够的点击区域。 */
+/* Prevent the mobile keyboard from zooming the page on small font sizes; key buttons keep a generous tap target. */
 @media (max-width: 760px) {
   .composer textarea,
   .composer.compact textarea,

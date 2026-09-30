@@ -27,8 +27,8 @@ afterEach(async () => {
   await rm(directory, { recursive: true, force: true });
 });
 
-describe("MA 完整接口映射", () => {
-  it("覆盖 49 项 MA 能力与 3 项文件 API，禁止 inner/admin 操作", async () => {
+describe("Full MA interface mapping", () => {
+  it("covers 49 MA capabilities and 3 file APIs and forbids inner/admin operations", async () => {
     const result = await request(app.app)
       .get("/api/ma/capabilities")
       .expect(200);
@@ -59,7 +59,7 @@ describe("MA 完整接口映射", () => {
       o.transport === "rest" &&
       !["UploadFile", "CreateSkill", "StreamSessionEvents"].includes(o.id),
   )) {
-    it(`${op.id} 使用契约中的 method/path 和字段位置`, async () => {
+    it(`${op.id} uses the contract method/path and field positions`, async () => {
       const params = Object.fromEntries(
         op.fields
           .filter((f) => f.in === "path")
@@ -90,7 +90,7 @@ describe("MA 完整接口映射", () => {
       });
     });
   }
-  it("路径不能穿越、字段不能注入未知头部或任意 URL", async () => {
+  it("does not allow path traversal, injecting unknown headers into fields, or arbitrary URLs", async () => {
     for (const id of ["../agents", "http://evil.example", "%2e%2e", "id?x=1"]) {
       await request(app.app)
         .post("/api/ma/execute/GetAgent")
@@ -110,7 +110,7 @@ describe("MA 完整接口映射", () => {
       .expect(400);
     expect(ark.request).not.toHaveBeenCalled();
   });
-  it("写操作要求确认，Agent 更新必须带版本", async () => {
+  it("requires confirmation for write operations and a version for agent updates", async () => {
     await request(app.app)
       .post("/api/ma/execute/DeleteAgent")
       .send({ params: { id: "agent-1" } })
@@ -125,7 +125,7 @@ describe("MA 完整接口映射", () => {
       .expect(400);
     expect(ark.request).not.toHaveBeenCalled();
   });
-  it("数组查询保留重复参数，游标安全编码", () => {
+  it("array queries keep repeated parameters and cursors are safely encoded", () => {
     const path = buildRequest(
       operations.find((o) => o.id === "ListSessions")!,
       {
@@ -136,7 +136,7 @@ describe("MA 完整接口映射", () => {
     );
     expect(path).toBe("/sessions?status=running&status=idle&page=a%2B%2F%3D");
   });
-  it("技能只上传 ZIP，转换为 multipart files", async () => {
+  it("uploads skills only as ZIP, converting them to multipart files", async () => {
     await request(app.app)
       .post("/api/ma/execute/CreateSkill")
       .send({
@@ -160,7 +160,7 @@ describe("MA 完整接口映射", () => {
     expect(form.get("display_title")).toBe("test");
     expect((form.get("files") as File).name).toBe("skill.zip");
   });
-  it("文件上传支持 multipart 与 TOS 字段，API Key 由 ArkClient 添加", async () => {
+  it("file uploads support multipart and TOS fields; the API key is added by ArkClient", async () => {
     await request(app.app)
       .post("/api/ma/execute/UploadFile")
       .send({
@@ -179,13 +179,13 @@ describe("MA 完整接口映射", () => {
     expect(form.get("tos.bucket")).toBe("test-bucket");
     expect((form.get("file") as File).name).toBe("notes.md");
   });
-  it("TOP 独有操作需要 SSO，API Key 不冒充 STS", async () => {
+  it("TOP-only operations require SSO; an API key never masquerades as STS", async () => {
     await request(app.app)
       .post("/api/ma/execute/ListOAuthProviders")
       .send({})
       .expect(401);
   });
-  it("从方舟列表导入会话后，可在任务详情继续；不自动暴露任意会话", async () => {
+  it("after importing sessions from the Ark list they can continue in task details; arbitrary sessions are never auto-exposed", async () => {
     vi.mocked(ark.request).mockResolvedValue({
       data: [
         {
@@ -204,7 +204,7 @@ describe("MA 完整接口映射", () => {
     expect(app.store.get("sesn-cloud")?.category).toBe("general");
     await request(app.app).get("/api/sessions/unknown").expect(404);
   });
-  it("读取工作空间不创建资源，移除用户手动填写 ID 的入口", async () => {
+  it("reading the workspace creates no resources and removes the manual ID entry", async () => {
     expect((await request(app.app).get("/api/workspace")).body.state).toBe(
       "idle",
     );
@@ -219,7 +219,7 @@ describe("MA 完整接口映射", () => {
       .expect(404);
     expect(app.store.data.selection).toBeUndefined();
   });
-  it("凭据回包二次脱敏，记忆正文保持不变", () => {
+  it("redacts credential payloads a second time while keeping the notes body unchanged", () => {
     expect(
       redactSecrets({
         auth: {

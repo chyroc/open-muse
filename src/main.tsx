@@ -25,6 +25,6 @@ if (
   !desktop
 ) {
   void navigator.serviceWorker.register("/sw.js").catch(() => {
-    /* 离线外壳不可用时，不影响在线功能。 */
+    /* If the offline shell is unavailable, online functionality is unaffected. */
   });
 }

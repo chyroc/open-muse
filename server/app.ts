@@ -99,7 +99,7 @@ export async function createApp(
     return runtimes.get(token!)!;
   }
   if (config.mode === "ark") {
-    // 注册表绑定上游租户配置，避免切换凭据后访问上一次的会话。
+    // Bind the registry to the upstream tenant config so switching credentials never exposes a previous session.
     const { createHash } = await import("node:crypto");
     const identity = createHash("sha256")
       .update(
@@ -121,17 +121,18 @@ export async function createApp(
     const ownOrigin = `${req.protocol}://${req.headers.host}`;
     const localHosts = new Set(["localhost", "127.0.0.1", "[::1]"]);
     if (!config.accessToken && !localHosts.has(req.hostname))
-      return res
-        .status(403)
-        .json({ error: "无访问令牌时，仅允许回环地址访问。" });
+      return res.status(403).json({
+        error:
+          "Only loopback addresses are allowed when no access token is set.",
+      });
     if (origin) {
       if (
         !config.origins.includes(origin) &&
         !(origin === ownOrigin && localHosts.has(req.hostname))
       ) {
-        return res
-          .status(403)
-          .json({ error: "此来源未获允许，请配置 MUSE_ALLOWED_ORIGINS。" });
+        return res.status(403).json({
+          error: "Origin not allowed; configure MUSE_ALLOWED_ORIGINS.",
+        });
       }
       res.setHeader("Access-Control-Allow-Origin", origin);
       res.setHeader("Vary", "Origin");
@@ -152,7 +153,7 @@ export async function createApp(
       )
         return res
           .status(401)
-          .json({ error: "访问令牌有误，请在设置中重新连接。" });
+          .json({ error: "Invalid access token; reconnect in Settings." });
     }
     next();
   });
@@ -160,7 +161,9 @@ export async function createApp(
   app.use(express.json({ limit: "80kb" }));
   app.use("/api", (req, res, next) => {
     if (req.method === "POST" && !req.is("application/json"))
-      return res.status(415).json({ error: "仅接受 application/json 请求。" });
+      return res
+        .status(415)
+        .json({ error: "Only application/json requests are accepted." });
     next();
   });
   app.use(
@@ -205,7 +208,7 @@ export async function createApp(
     )
       throw new ApiError(
         409,
-        "登录尚未完成，请在设置中选择项目并创建 API Key。",
+        "Login is not complete; select a project and create an API Key in Settings.",
       );
     res.locals.runtime = await runtimeFor(token);
     next();
@@ -289,7 +292,7 @@ export async function createApp(
         409,
         status.state === "error"
           ? status.message
-          : "个人工作空间正在准备。请在设置中查看进度，完成后再开始任务。",
+          : "Your personal workspace is being prepared. Check progress in Settings before starting a task.",
       );
     }
     await workspaces.syncToolPolicy(runtime);
@@ -301,9 +304,12 @@ export async function createApp(
   app.use("/api/sessions/:id", async (req, res, next) => {
     const { store } = res.locals.runtime as Runtime;
     const id = String(req.params.id);
-    if (!/^[\w-]+$/.test(id)) throw new ApiError(400, "会话 ID 格式有误。");
+    if (!/^[\w-]+$/.test(id))
+      throw new ApiError(400, "Invalid session ID format.");
     if (!store.get(id))
-      return res.status(404).json({ error: "未找到本应用创建的任务。" });
+      return res
+        .status(404)
+        .json({ error: "No task created by this app was found." });
     next();
   });
   app.get("/api/sessions/:id", async (req, res) => {
@@ -322,7 +328,8 @@ export async function createApp(
     const id = String(req.params.id);
     const page =
       typeof req.query.page === "string" ? req.query.page : undefined;
-    if (page && page.length > 2048) throw new ApiError(400, "分页参数过长。");
+    if (page && page.length > 2048)
+      throw new ApiError(400, "Pagination parameter is too long.");
     if (config.mode === "ark") {
       const result = await ark.events(id, page);
       return res.json({
@@ -330,7 +337,8 @@ export async function createApp(
         data: result.data.map((event) => annotateApproval(store, id, event)),
       });
     }
-    if (page && !/^\d+$/.test(page)) throw new ApiError(400, "分页参数无效。");
+    if (page && !/^\d+$/.test(page))
+      throw new ApiError(400, "Invalid pagination parameter.");
     const offset = Number(page ?? 0);
     const events = store.data.events[id];
     res.json({
@@ -349,7 +357,10 @@ export async function createApp(
     const locks = runtimeLocks.get(store) ?? new Set<string>();
     runtimeLocks.set(store, locks);
     if (locks.has(id))
-      throw new ApiError(409, "上一项操作仍在提交，请稍后再试。");
+      throw new ApiError(
+        409,
+        "The previous operation is still being submitted; please try again later.",
+      );
     locks.add(id);
     try {
       let event: Partial<AgentEvent> = {
@@ -361,7 +372,7 @@ export async function createApp(
       if (input.type === "user.message")
         event.content = [{ type: "text", text: input.text }];
       if (input.type === "user.tool_confirmation") {
-        // 确认只针对上游当前明确要求的工具，不能批准任意 event id。
+        // Confirm only the tool the upstream is currently asking for; an arbitrary event id cannot be approved.
         const events: AgentEvent[] = [];
         if (config.mode === "ark") {
           let page: string | undefined;
@@ -371,18 +382,27 @@ export async function createApp(
             events.push(...batch.data);
             page = batch.next_page || undefined;
             if (page && seen.has(page))
-              throw new ApiError(502, "上游分页游标重复，请稍后重试。");
+              throw new ApiError(
+                502,
+                "Upstream pagination cursor repeated; please try again later.",
+              );
             if (page) seen.add(page);
             if (events.length > 20000)
-              throw new ApiError(413, "会话过长，暂无法安全确认操作。");
+              throw new ApiError(
+                413,
+                "Session is too long to safely confirm the operation right now.",
+              );
           } while (page);
         } else events.push(...store.data.events[id]);
         const key = approvalKey(id, input.tool_use_id);
         const previous = store.data.autoApprovals?.[key];
         if (input.automatic) {
           if (input.result !== "allow")
-            throw new ApiError(400, "自动审批只支持允许操作。");
-          // 先核对历史：失败/超时可能已被上游接收，不能重发或覆盖用户的拒绝。
+            throw new ApiError(
+              400,
+              "Automatic approval only allows operations.",
+            );
+          // Check history first: a failure or timeout may already have been accepted upstream, so never resend or overwrite the user's denial.
           const confirmation = events.find(
             (item) =>
               item.type === "user.tool_confirmation" &&
@@ -397,18 +417,28 @@ export async function createApp(
               data: [annotateApproval(store, id, previous.event)],
             });
         } else if (previous?.state === "confirmed") {
-          throw new ApiError(409, "这项操作已自动批准，请刷新历史记录。");
+          throw new ApiError(
+            409,
+            "This operation was auto-approved; refresh the history.",
+          );
         }
         const tool = pendingPermissions(events).find(
           (item) => item.id === input.tool_use_id,
         );
-        if (!tool) throw new ApiError(409, "这项操作已处理或不再等待确认。");
+        if (!tool)
+          throw new ApiError(
+            409,
+            "This operation was already handled or is no longer pending.",
+          );
         if (input.automatic && !canAutoApprove(tool))
-          throw new ApiError(403, "此工具不在自动批准名单中，需要手动确认。");
+          throw new ApiError(
+            403,
+            "This tool is not on the auto-approval list; manual confirmation is required.",
+          );
         if (input.automatic && previous)
           throw new ApiError(
             409,
-            "自动批准的提交结果尚未确认，请刷新历史记录后手动处理。",
+            "The auto-approval submission is unconfirmed; refresh the history and handle it manually.",
           );
         event = {
           ...event,
@@ -428,7 +458,7 @@ export async function createApp(
           };
           store.data.autoApprovals ??= {};
           store.data.autoApprovals[key] = autoRecord;
-          // 写入先于外部请求。重启、断流、失去响应后均不盲目重复批准。
+          // Persist before the external request. Restarts, dropped streams, or lost responses never trigger a blind duplicate approval.
           await store.save();
         }
       }
@@ -445,7 +475,7 @@ export async function createApp(
         }
         throw error;
       }
-      // 部分上游版本只返回受理信封，不包含事件列表。
+      // Some upstream versions return only an acceptance envelope without the event list.
       result = {
         ...result,
         data: Array.isArray(result.data) ? result.data : [],
@@ -484,7 +514,7 @@ export async function createApp(
     runtime.streams ??= new Set();
     runtime.streams.add(abort);
     res.on("close", () => abort.abort());
-    // 周期性重建 SSE，并由客户端补拉历史，避免永久僵死连接。
+    // Rebuild the SSE connection periodically while the client backfills history, avoiding a permanently stalled connection.
     const lifetime = setTimeout(() => abort.abort(), 60_000);
     lifetime.unref();
     const start = () => {
@@ -524,7 +554,10 @@ export async function createApp(
           !upstream.headers.get("content-type")?.includes("text/event-stream")
         ) {
           await upstream.body?.cancel();
-          throw new ApiError(502, "方舟事件流连接失败，将通过历史记录恢复。");
+          throw new ApiError(
+            502,
+            "The Ark event stream connection failed; recovery will use the history.",
+          );
         }
         start();
         const { readSSE } = await import("../shared/sse");
@@ -546,7 +579,7 @@ export async function createApp(
     }
   });
   app.use("/api", (_req, res) =>
-    res.status(404).json({ error: "接口不存在。" }),
+    res.status(404).json({ error: "Endpoint not found." }),
   );
   const dist = path.resolve("dist");
   if (existsSync(dist)) {
@@ -566,16 +599,17 @@ export async function createApp(
       if (error instanceof z.ZodError)
         return res
           .status(400)
-          .json({ error: "输入不符合要求，请检查内容和长度。" });
+          .json({ error: "Input is invalid; check the content and length." });
       if (error instanceof SyntaxError)
-        return res.status(400).json({ error: "请求 JSON 格式有误。" });
+        return res.status(400).json({ error: "Malformed request JSON." });
       if (error instanceof ApiError)
         return res.status(error.status).json({ error: error.message });
       if ((error as { type?: string })?.type === "entity.too.large")
-        return res.status(413).json({ error: "请求内容过大。" });
-      res
-        .status(500)
-        .json({ error: "服务暂时不可用，请检查服务端配置或稍后重试。" });
+        return res.status(413).json({ error: "Request body is too large." });
+      res.status(500).json({
+        error:
+          "The service is temporarily unavailable; check the server configuration or try again later.",
+      });
     },
   );
   return {

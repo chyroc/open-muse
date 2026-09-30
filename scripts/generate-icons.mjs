@@ -18,7 +18,7 @@ try {
     .png()
     .toFile(native);
 } catch {
-  /* 生成 iOS 工程前，仅生成 PWA 图标。 */
+  /* Before the iOS project is generated, only the PWA icons are produced. */
 }
 for (const [density, size] of Object.entries({
   mdpi: 48,
@@ -53,7 +53,7 @@ for (const [density, size] of Object.entries({
     .toFile(`${directory}ic_launcher_foreground.png`);
 }
 
-// 替换原生模板的启动图，所有视觉资源均来自本项目的图标。
+// Replace the splash images in the native templates; all visual assets come from this project's icon.
 const splashTargets = [];
 const iosSplash = new URL(
   "../ios/App/App/Assets.xcassets/Splash.imageset/",
@@ -63,7 +63,7 @@ try {
   for (const file of await readdir(iosSplash))
     if (file.endsWith(".png")) splashTargets.push(iosSplash + file);
 } catch {
-  /* 工程可能尚未生成。 */
+  /* The project may not have been generated yet. */
 }
 const androidResources = new URL(
   "../android/app/src/main/res/",
@@ -77,11 +77,11 @@ try {
       await access(file);
       splashTargets.push(file);
     } catch {
-      /* 非启动图目录。 */
+      /* Not a splash-image directory. */
     }
   }
 } catch {
-  /* 工程可能尚未生成。 */
+  /* The project may not have been generated yet. */
 }
 for (const target of splashTargets) {
   const { width, height } = await sharp(target).metadata();

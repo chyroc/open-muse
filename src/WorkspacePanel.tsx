@@ -55,7 +55,7 @@ export function WorkspacePanel({ client }: { client: Client }) {
     }
   }
   return (
-    <section className="workspace-card" aria-label="个人工作空间">
+    <section className="workspace-card" aria-label="Personal workspace">
       <div className="workspace-heading">
         {preparing ? (
           <LoaderCircle className="spin" size={20} />
@@ -63,26 +63,33 @@ export function WorkspacePanel({ client }: { client: Client }) {
           <Check size={20} />
         )}
         <div>
-          <h3>个人工作空间</h3>
-          <p>助手与运行环境由 Muse 自动管理，无需手动配置。</p>
+          <h3>Personal workspace</h3>
           <p>
-            云端环境可访问公网；新任务的工具默认直接执行，可能产生外部写入、删除或费用。
+            The assistant and runtime are managed automatically by Muse, no
+            manual setup needed.
+          </p>
+          <p>
+            The cloud environment can access the public internet; tools in new
+            tasks run directly by default and may cause external writes,
+            deletions, or charges.
           </p>
         </div>
         <span className="small-badge">
           {preparing
-            ? "准备中"
+            ? "Preparing"
             : status?.state === "ready"
-              ? "已就绪"
+              ? "Ready"
               : status?.state === "demo"
-                ? "待连接"
-                : "待准备"}
+                ? "Not connected"
+                : "Needs setup"}
         </span>
       </div>
-      <p role="status">{error || status?.message || "正在读取工作空间状态…"}</p>
+      <p role="status">
+        {error || status?.message || "Reading workspace status…"}
+      </p>
       {status?.state === "ready" ? (
         <a className="button primary" href="#/">
-          开始一件新事
+          Start something new
         </a>
       ) : (
         status?.state !== "demo" && (
@@ -97,18 +104,18 @@ export function WorkspacePanel({ client }: { client: Client }) {
               <RefreshCw size={16} />
             )}
             {error
-              ? "重新读取状态"
+              ? "Read status again"
               : preparing
-                ? "正在自动准备…"
+                ? "Setting up automatically…"
                 : status?.state === "error"
-                  ? "继续准备"
-                  : "准备工作空间"}
+                  ? "Continue setup"
+                  : "Set up workspace"}
           </button>
         )
       )}
       {status?.state === "demo" && (
         <a className="button secondary" href="#/settings">
-          登录并连接项目
+          Sign in and connect a project
         </a>
       )}
     </section>

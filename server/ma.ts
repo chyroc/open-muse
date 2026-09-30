@@ -34,16 +34,19 @@ export function buildRequest(
   let path = op.path.replace(/:([a-z_]+)/g, (_match, key: string) => {
     const value = input.params[key];
     if (!value || !/^[\w-]+$/.test(value))
-      throw new ApiError(400, `请填写有效的 ${key}。`);
+      throw new ApiError(400, `Please provide a valid ${key}.`);
     return encodeURIComponent(value);
   });
   const query = new URLSearchParams();
   for (const [key, value] of Object.entries(input.query)) {
     if (!op.fields.some((f) => f.in === "query" && f.name === key))
-      throw new ApiError(400, `不支持查询字段 ${key}。`);
+      throw new ApiError(400, `Unsupported query field ${key}.`);
     for (const item of Array.isArray(value) ? value : [value]) {
       if (!["string", "number", "boolean"].includes(typeof item))
-        throw new ApiError(400, "查询参数须为基本类型或数组。");
+        throw new ApiError(
+          400,
+          "Query parameters must be primitives or arrays.",
+        );
       query.append(key, String(item));
     }
   }
@@ -51,10 +54,10 @@ export function buildRequest(
   const allowed = op.fields.filter((f) => ["body", "form"].includes(f.in));
   for (const key of Object.keys(input.body))
     if (!allowed.some((f) => f.name === key))
-      throw new ApiError(400, `不支持请求字段 ${key}。`);
+      throw new ApiError(400, `Unsupported request field ${key}.`);
   for (const field of allowed)
     if (field.required && input.body[field.name] === undefined)
-      throw new ApiError(400, `缺少 ${field.name}。`);
+      throw new ApiError(400, `Missing ${field.name}.`);
   return path;
 }
 export function maRouter(auth: AuthStore) {
@@ -68,24 +71,37 @@ export function maRouter(auth: AuthStore) {
   );
   router.post("/execute/:operation", async (req, res) => {
     const op = operations.find((o) => o.id === req.params.operation);
-    if (!op) throw new ApiError(404, "未注册的 MA 操作；不允许任意代理请求。");
+    if (!op)
+      throw new ApiError(
+        404,
+        "Unregistered MA operation; arbitrary proxy requests are not allowed.",
+      );
     const runtime = res.locals.runtime as Runtime;
     if (runtime.config.mode !== "ark")
       throw new ApiError(
         409,
-        "工作台需要真实方舟连接。演示模式不会伪造 MA 资源。",
+        "The workbench requires a real Ark connection. Demo mode does not fabricate MA resources.",
       );
     const input = inputSchema.parse(req.body);
     if (op.method !== "GET" && !op.id.startsWith("List") && !input.confirm)
-      throw new ApiError(400, "此操作会修改云端资源，请确认操作对象与影响。");
+      throw new ApiError(
+        400,
+        "This operation modifies cloud resources; confirm the target and its impact.",
+      );
     const path = buildRequest(op, input);
     if (op.id === "StreamSessionEvents")
-      throw new ApiError(400, "实时事件流请从任务详情查看，工作台只查询历史。");
+      throw new ApiError(
+        400,
+        "View the real-time event stream from the task details; the workbench only queries history.",
+      );
     let result: unknown;
     if (op.transport === "top") {
       const credentials = runtime.credentials;
       if (!credentials || !isSSOCredentials(credentials))
-        throw new ApiError(401, "此控制面接口需要 SSO 登录提供 STS 凭据。");
+        throw new ApiError(
+          401,
+          "This control-plane API requires SSO login to provide STS credentials.",
+        );
       try {
         result = await auth.serialized(req.get("X-Muse-Session") ?? "", () =>
           auth.provider.action(credentials, op.id, {
@@ -108,7 +124,10 @@ export function maRouter(auth: AuthStore) {
                 !["bucket", "prefix"].includes(name) ||
                 typeof item !== "string"
               )
-                throw new ApiError(400, "tos 仅支持 bucket 与 prefix 字符串。");
+                throw new ApiError(
+                  400,
+                  "tos only supports the bucket and prefix strings.",
+                );
               form.append(`tos.${name}`, item);
             }
           } else
@@ -119,16 +138,16 @@ export function maRouter(auth: AuthStore) {
         }
       if (input.file) {
         if (/[\\/\r\n]/.test(input.file.name))
-          throw new ApiError(400, "文件名不允许包含路径。");
+          throw new ApiError(400, "File names must not contain paths.");
         const bytes = Buffer.from(input.file.base64, "base64");
         if (bytes.length > 10 * 1024 * 1024)
-          throw new ApiError(413, "文件最大为 10 MB。");
+          throw new ApiError(413, "The file must be at most 10 MB.");
         if (
           op.id === "CreateSkill" &&
           (!input.file.name.endsWith(".zip") ||
             bytes.subarray(0, 2).toString() !== "PK")
         )
-          throw new ApiError(400, "MA 技能接口只接受 ZIP 文件。");
+          throw new ApiError(400, "The MA skill API only accepts ZIP files.");
         form.append(
           op.id === "CreateSkill" ? "files" : "file",
           new Blob([bytes], {
@@ -140,7 +159,7 @@ export function maRouter(auth: AuthStore) {
           input.file.name,
         );
       } else if (op.id === "CreateSkill" || !input.body.url)
-        throw new ApiError(400, "请先选择上传文件。");
+        throw new ApiError(400, "Please choose a file to upload first.");
       result = await runtime.ark.request(path, { method: "POST", body: form });
     } else {
       result = await runtime.ark.request(path, {
@@ -151,7 +170,8 @@ export function maRouter(auth: AuthStore) {
         ...(op.method === "POST" ? { body: JSON.stringify(input.body) } : {}),
       });
     }
-    // 创建/导入会话后，让任务页可继续对话；租户授权始终由当前上游凭据决定。
+    // After creating/importing a session, let the task page continue the conversation;
+    // tenant authorization is always determined by the current upstream credentials.
     if (["CreateSession", "GetSession", "ListSessions"].includes(op.id)) {
       const payload = result as {
         data?: import("../shared/types").Session[];
@@ -161,7 +181,7 @@ export function maRouter(auth: AuthStore) {
           const old = runtime.store.get(session.id);
           const value = {
             ...session,
-            title: session.title || "未命名任务",
+            title: session.title || "Untitled task",
             category: old?.category ?? ("general" as const),
           };
           if (old) Object.assign(old, value);
@@ -175,7 +195,8 @@ export function maRouter(auth: AuthStore) {
       );
       await runtime.store.save();
     }
-    // 凭据验证接口的原始 HTTP body 可能带刷新后的令牌，不交给客户端展示。
+    // The raw HTTP body from the credential-validation API may carry a refreshed
+    // token; do not expose it to the client.
     if (
       op.id === "ValidateCredential" &&
       result &&

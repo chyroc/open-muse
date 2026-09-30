@@ -13,7 +13,7 @@ import type { AgentEvent } from "../shared/types";
 const object = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
-// 只为已知的搜索参数提供摘要；未知字段仍默认展开，不能把摘要当成完整授权范围。
+// Only summarize known search parameters; unknown fields stay expanded by default, since a summary is not the full authorization scope.
 export function searchPreview(event: AgentEvent) {
   if (event.name !== "web_search" || !object(event.input)) return null;
   const input = event.input;
@@ -95,34 +95,34 @@ export function PermissionCard({
         </span>
         <div className="permission-heading-copy">
           <h3 id={`${id}-title`}>
-            {preview ? "允许搜索网页？" : "允许执行此工具？"}
+            {preview ? "Allow web search?" : "Allow this tool to run?"}
           </h3>
-          <code>{event.name || "未命名工具"}</code>
+          <code>{event.name || "Unnamed tool"}</code>
         </div>
         <span className="permission-status" role="status">
-          {busy ? "正在提交" : "等待确认"}
+          {busy ? "Submitting" : "Pending approval"}
         </span>
       </header>
       <p className="permission-description">
         {preview
-          ? "以下搜索词将发送至搜索服务，用于查找网页信息。"
-          : "请检查完整参数及操作影响，确认后 Muse 才会继续。"}
+          ? "The following search queries will be sent to the search service to find information on the web."
+          : "Please review the full parameters and their impact. Muse will only continue after you confirm."}
       </p>
       {preview && (
         <div className="permission-search">
           <div className="permission-search-label">
             <span>
-              搜索内容 <b>{preview.queries.length} 项</b>
+              Searching <b>{preview.queries.length} items</b>
             </span>
             {preview.maxResults !== undefined && (
-              <span>结果上限 {preview.maxResults}</span>
+              <span>Max results {preview.maxResults}</span>
             )}
           </div>
           {queryList(preview.queries.slice(0, 3))}
           {preview.queries.length > 3 && (
             <details className="permission-more">
               <summary>
-                查看其余 {preview.queries.length - 3} 项搜索
+                View the other {preview.queries.length - 3} searches
                 <ChevronDown size={14} aria-hidden="true" />
               </summary>
               {queryList(preview.queries.slice(3), 3)}
@@ -134,18 +134,20 @@ export function PermissionCard({
         <summary>
           <ChevronDown size={14} aria-hidden="true" />
           <span>
-            {preview?.extra ? "完整参数 · 含额外选项，请检查" : "查看完整参数"}
+            {preview?.extra
+              ? "Full parameters · includes additional options, please review"
+              : "View full parameters"}
           </span>
           <span className="permission-format">JSON</span>
         </summary>
-        <pre tabIndex={0} aria-label="完整工具参数">
+        <pre tabIndex={0} aria-label="Full tool parameters">
           {JSON.stringify(event.input ?? {}, null, 2)}
         </pre>
       </details>
       <footer className="permission-footer">
         <span className="permission-scope">
           <ShieldCheck size={14} aria-hidden="true" />
-          仅授权本次调用
+          Authorize this call only
         </span>
         <div className="permission-actions">
           <button
@@ -159,7 +161,7 @@ export function PermissionCard({
             ) : (
               <X size={16} aria-hidden="true" />
             )}
-            {busy && decision === "deny" ? "正在拒绝…" : "拒绝"}
+            {busy && decision === "deny" ? "Denying…" : "Deny"}
           </button>
           <button
             type="button"
@@ -172,7 +174,7 @@ export function PermissionCard({
             ) : (
               <Check size={16} aria-hidden="true" />
             )}
-            {busy && decision === "allow" ? "正在允许…" : "允许这一次"}
+            {busy && decision === "allow" ? "Allowing…" : "Approve"}
           </button>
         </div>
       </footer>

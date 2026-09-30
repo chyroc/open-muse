@@ -4,7 +4,7 @@ import { Share } from "@capacitor/share";
 export const nativeMobile = () => Capacitor.isNativePlatform();
 export async function openAuthorization(url: string) {
   if (new URL(url).origin !== "https://signin.volcengine.com")
-    throw new Error("授权站点不正确。");
+    throw new Error("The authorization site is incorrect.");
   if (nativeMobile()) await Browser.open({ url });
   else window.open(url, "_blank", "noopener,noreferrer");
 }
@@ -27,9 +27,9 @@ export async function exportText(
         const result = (event as CustomEvent).detail;
         if (result.id !== id) return;
         window.removeEventListener("muse-export-result", listener);
-        if (result.success) resolve("对话已保存");
-        else if (result.cancelled) resolve("已取消导出");
-        else reject(new Error("保存失败，请检查文件权限。"));
+        if (result.success) resolve("Conversation saved");
+        else if (result.cancelled) resolve("Export canceled");
+        else reject(new Error("Save failed. Please check file permissions."));
       };
       window.addEventListener("muse-export-result", listener);
     });
@@ -44,9 +44,11 @@ export async function exportText(
     const result = await Share.share({
       title: name,
       text: content,
-      dialogTitle: "导出对话",
+      dialogTitle: "Export conversation",
     });
-    return result.activityType ? "已交给所选应用" : "分享窗口已关闭";
+    return result.activityType
+      ? "Handed off to the selected app"
+      : "Share sheet closed";
   }
   const url = URL.createObjectURL(
     new Blob([content], { type: "text/markdown;charset=utf-8" }),
@@ -56,5 +58,5 @@ export async function exportText(
   link.download = name;
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  return "已发起 Markdown 下载";
+  return "Markdown download started";
 }

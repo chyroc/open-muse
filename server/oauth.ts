@@ -51,7 +51,7 @@ export function extractCode(pasted: string, state: string) {
       url.origin !== "https://signin.volcengine.com" ||
       url.pathname !== "/authorize/oauth/authorize"
     )
-      throw new ApiError(400, "授权回调地址不正确。");
+      throw new ApiError(400, "Incorrect authorization callback URL.");
     query = url.searchParams;
   } else if (input.startsWith("code=")) query = new URLSearchParams(input);
   else {
@@ -60,14 +60,17 @@ export function extractCode(pasted: string, state: string) {
   }
   if (query) {
     if (query.get("state") !== state)
-      throw new ApiError(400, "授权状态不匹配，请重新开始登录。");
+      throw new ApiError(
+        400,
+        "Authorization state mismatch; please start the login over.",
+      );
     const code = query.get("code");
-    if (!code) throw new ApiError(400, "授权码为空。");
+    if (!code) throw new ApiError(400, "Authorization code is empty.");
     return code;
   }
-  // 火山也提供裸授权码；该形式通过单次服务端事务和 PKCE verifier 绑定。
+  // Volcano also supports a bare authorization code; this form is bound to a single server-side transaction and the PKCE verifier.
   if (!input || input.length > 8192 || /\s/.test(input))
-    throw new ApiError(400, "授权码格式有误。");
+    throw new ApiError(400, "Invalid authorization code format.");
   return input;
 }
 
@@ -85,7 +88,10 @@ export class OAuthProvider {
       body: new URLSearchParams({ client_id: clientID, ...form }),
     });
     if (!response.ok)
-      throw new ApiError(401, "火山授权失败或已过期，请重新登录。");
+      throw new ApiError(
+        401,
+        "Volcano authorization failed or expired; please sign in again.",
+      );
     const body = (await response.json()) as {
       access_token: string;
       refresh_token?: string;
@@ -105,7 +111,10 @@ export class OAuthProvider {
         expiresAt: Date.now() + (body.expires_in || 900) * 1000,
       };
     } catch {
-      throw new ApiError(502, "授权响应未包含有效 STS 凭据。");
+      throw new ApiError(
+        502,
+        "The authorization response did not contain valid STS credentials.",
+      );
     }
   }
   exchange(code: string, verifier: string) {
@@ -119,7 +128,7 @@ export class OAuthProvider {
   async refresh(credentials: Credentials) {
     if (credentials.expiresAt > Date.now() + 60_000) return;
     if (!credentials.refreshToken)
-      throw new ApiError(401, "SSO 登录已过期，请重新登录。");
+      throw new ApiError(401, "SSO login has expired; please sign in again.");
     const fresh = await this.token({
       grant_type: "refresh_token",
       refresh_token: credentials.refreshToken,
@@ -168,9 +177,9 @@ export class OAuthProvider {
     if (!response.ok || data.ResponseMetadata?.Error)
       throw new ApiError(
         response.status === 429 ? 429 : 502,
-        `${action} 请求失败，请检查项目权限或稍后重试。`,
+        `${action} request failed; check project permissions or try again later.`,
       );
-    // 部分 MA TOP 列表返回 Items/Data 在信封顶层。
+    // Some MA TOP list responses return Items/Data at the top level of the envelope.
     return data.Result ?? (data as Record<string, unknown>);
   }
   async projects(credentials: Credentials) {
@@ -195,7 +204,10 @@ export class OAuthProvider {
       }
       if (rows.length < 100) return [...names];
     }
-    throw new ApiError(502, "项目列表过长，请联系管理员缩小权限范围。");
+    throw new ApiError(
+      502,
+      "The project list is too long; ask an administrator to narrow the permission scope.",
+    );
   }
   async mintKey(credentials: Credentials, project: string) {
     const created = await this.action(credentials, "CreateApiKey", {
@@ -209,9 +221,9 @@ export class OAuthProvider {
     if (!id)
       throw new ApiError(
         502,
-        "API Key 创建结果未包含 ID，请到方舟控制台检查，勿重复创建。",
+        "The API Key creation result did not include an ID; check the Ark console and do not create it again.",
       );
-    // 先记录 ID，GetRawApiKey 失败时可重试读取而不是重复创建。
+    // Record the ID first so a GetRawApiKey failure can retry the read instead of creating a duplicate key.
     credentials.apiKeyId = String(id);
     credentials.project = project;
     await this.readKey(credentials);
@@ -226,7 +238,10 @@ export class OAuthProvider {
     const key =
       data.ApiKey ?? data.RawApiKey ?? data.api_key ?? data.Key ?? data.Secret;
     if (typeof key !== "string" || !key)
-      throw new ApiError(502, "未能读取新建 API Key，请稍后重试。");
+      throw new ApiError(
+        502,
+        "Could not read the newly created API Key; please try again later.",
+      );
     credentials.apiKey = key;
   }
 }

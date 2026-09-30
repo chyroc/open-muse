@@ -106,9 +106,11 @@ export function Composer({
   return (
     <form className={`composer ${compact ? "compact" : ""}`} onSubmit={submit}>
       <textarea
-        aria-label={compact ? "继续对话" : "描述你的任务"}
+        aria-label={compact ? "Continue conversation" : "Describe your task"}
         placeholder={
-          compact ? "补充一个想法，或者继续聊聊…" : "有什么事，想交给 Muse？"
+          compact
+            ? "Add a thought, or keep the conversation going…"
+            : "What do you want Muse to handle?"
         }
         value={value}
         maxLength={16000}
@@ -131,7 +133,7 @@ export function Composer({
             <label className="category-select">
               <CategoryIcon category={category} size={15} />
               <select
-                aria-label="任务类型"
+                aria-label="Task type"
                 value={category}
                 onChange={(event) =>
                   setCategory(event.target.value as Category)
@@ -148,7 +150,7 @@ export function Composer({
           ) : (
             <span className="composer-hint">
               <ShieldCheck size={14} />
-              工具按云端权限直接执行
+              Tools run directly with cloud permissions
             </span>
           )}
         </div>
@@ -158,7 +160,7 @@ export function Composer({
             <button
               className="send-button stop"
               type="button"
-              aria-label="停止任务"
+              aria-label="Stop task"
               disabled={busy}
               onClick={onStop}
             >
@@ -172,7 +174,7 @@ export function Composer({
             <button
               className="send-button"
               type="submit"
-              aria-label="发送任务"
+              aria-label="Send task"
               disabled={busy || disabled || !value.trim()}
             >
               {busy ? (
@@ -205,7 +207,7 @@ export function Markdown({ text }: { text: string }) {
               target="_blank"
               rel="noopener noreferrer"
             >
-              查看图片：{alt || "图片"}
+              View image: {alt || "image"}
             </a>
           ),
         }}
@@ -228,16 +230,16 @@ export function Activity({
     (event) => !["agent.message", "user.message"].includes(event.type),
   );
   const names: Record<string, string> = {
-    "agent.thinking": "正在思考与规划",
-    "session.status_running": "开始执行",
-    "session.status_idle": "本轮执行结束",
-    "session.status_rescheduled": "等待重新调度",
-    "session.status_terminated": "会话已终止",
-    "user.interrupt": "已请求停止",
-    "user.tool_confirmation": "已提交操作确认",
-    "agent.tool_result": "工具返回结果",
-    "agent.mcp_tool_result": "工具返回结果",
-    "session.error": "执行异常",
+    "agent.thinking": "Thinking and planning",
+    "session.status_running": "Started execution",
+    "session.status_idle": "Finished this run",
+    "session.status_rescheduled": "Waiting to be rescheduled",
+    "session.status_terminated": "Session terminated",
+    "user.interrupt": "Stop requested",
+    "user.tool_confirmation": "Action confirmation submitted",
+    "agent.tool_result": "Tool returned result",
+    "agent.mcp_tool_result": "Tool returned result",
+    "session.error": "Execution error",
   };
   if (!actions.length) return null;
   return (
@@ -252,8 +254,8 @@ export function Activity({
         ) : (
           <CheckCheck size={16} />
         )}
-        <span>{running ? "Muse 正在处理" : "查看执行记录"}</span>
-        <small>{actions.length} 条事件</small>
+        <span>{running ? "Muse is processing" : "View execution log"}</span>
+        <small>{actions.length} events</small>
         <ChevronDown size={16} className={expanded ? "rotated" : ""} />
       </button>
       {expanded && (
@@ -264,9 +266,9 @@ export function Activity({
               <div>
                 <strong>
                   {event.approval_source === "automatic"
-                    ? "已自动批准网页工具"
+                    ? "Web tool auto-approved"
                     : event.name
-                      ? `调用 ${event.name}`
+                      ? `Called ${event.name}`
                       : (names[event.type] ?? event.type)}
                 </strong>
                 <time>
@@ -289,7 +291,7 @@ export function Activity({
 }
 export function formatTime(time?: string) {
   return time && !Number.isNaN(Date.parse(time))
-    ? new Date(time).toLocaleTimeString("zh-CN", {
+    ? new Date(time).toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",
       })
@@ -298,6 +300,6 @@ export function formatTime(time?: string) {
 export function dateLabel(time: string) {
   const date = new Date(time);
   return date.toDateString() === new Date().toDateString()
-    ? `今天 ${formatTime(time)}`
-    : date.toLocaleDateString("zh-CN", { month: "short", day: "numeric" });
+    ? `Today ${formatTime(time)}`
+    : date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }

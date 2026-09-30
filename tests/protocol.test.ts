@@ -21,8 +21,9 @@ function event(
     ...extra,
   };
 }
-describe("SSE 协议", () => {
-  it("解码跨字节的中文、多行 data、CRLF 和心跳", async () => {
+describe("SSE protocol", () => {
+  it("decodes Chinese split across bytes, multi-line data, CRLF, and heartbeats", async () => {
+    // Chinese payload is intentionally kept to verify multi-byte UTF-8 decoding across chunks.
     const bytes = new TextEncoder().encode(
       ': heartbeat\r\n\r\ndata: {"text":\r\ndata: "你好"}\r\n\r\ndata: [DONE]\n\n',
     );
@@ -36,7 +37,7 @@ describe("SSE 协议", () => {
     for await (const data of readSSE(stream)) result.push(data);
     expect(result).toEqual(['{"text":\n"你好"}', "[DONE]"]);
   });
-  it("丢弃断线时不完整的帧，留待历史补拉", async () => {
+  it("drops incomplete frames on disconnect so history backfill can recover them", async () => {
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
         controller.enqueue(new TextEncoder().encode('data: {"id":'));
@@ -47,7 +48,7 @@ describe("SSE 协议", () => {
     for await (const data of readSSE(stream)) result.push(data);
     expect(result).toEqual([]);
   });
-  it("限制异常帧长度", async () => {
+  it("limits abnormal frame length", async () => {
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
         controller.enqueue(new TextEncoder().encode("x".repeat(2_000_001)));
@@ -61,13 +62,13 @@ describe("SSE 协议", () => {
     }).rejects.toThrow("size limit");
   });
 });
-describe("事件状态", () => {
-  it("按事件 ID 去重并按时间合并历史和实时事件", () => {
+describe("Event state", () => {
+  it("deduplicates by event id and merges history with live events by time", () => {
     const first = event("a", "user.message");
     const last = event("bb", "agent.message");
     expect(mergeEvents([last], [first, last])).toEqual([first, last]);
   });
-  it("模型消息不代表任务完成", () => {
+  it("a model message does not mean the task is complete", () => {
     expect(
       taskState([
         event("a", "session.status_running"),
@@ -79,14 +80,14 @@ describe("事件状态", () => {
     ["requires_action", "attention"],
     ["retries_exhausted", "error"],
     ["end_turn", "complete"],
-  ])("正确解释 stop_reason %s", (reason, state) => {
+  ])("correctly interprets stop_reason %s", (reason, state) => {
     expect(
       taskState([
         event("a", "session.status_idle", { stop_reason: { type: reason } }),
       ]),
     ).toBe(state);
   });
-  it("停止后不显示已完成，重新运行时清除停止状态", () => {
+  it("does not show completed after stopping and clears the stopped state on rerun", () => {
     const stopped = [
       event("a", "user.interrupt"),
       event("bb", "session.status_idle", { stop_reason: { type: "end_turn" } }),
@@ -96,7 +97,7 @@ describe("事件状态", () => {
       taskState([...stopped, event("ccc", "session.status_running")]),
     ).toBe("running");
   });
-  it("批准只匹配当前 stop_reason，并排除已确认和过期请求", () => {
+  it("approval matches only the current stop_reason, excluding confirmed and stale requests", () => {
     const tool = event("tool", "agent.tool_use", {
       name: "send_email",
       evaluated_permission: "ask",
@@ -122,25 +123,25 @@ describe("事件状态", () => {
     ).toEqual([]);
   });
 });
-describe("服务端配置", () => {
-  it("默认本地演示，不因存在凭据而隐式切换真实模式", () => {
+describe("Server configuration", () => {
+  it("defaults to local demo and never implicitly switches to real mode just because credentials exist", () => {
     expect(loadConfig({ ARK_API_KEY: "secret" }).mode).toBe("demo");
     expect(loadConfig({}).host).toBe("127.0.0.1");
     expect(loadConfig({}).arkBaseUrl).toBe(
       "https://ark.cn-beijing.volces.com/api/v3",
     );
   });
-  it("真实模式缺凭据时拒绝启动", () =>
+  it("refuses to start in real mode without credentials", () =>
     expect(() => loadConfig({ MUSE_MODE: "ark" })).toThrow("requires"));
-  it("外网监听必须有足够长的应用访问令牌", () =>
+  it("listening on a public interface requires a sufficiently long app access token", () =>
     expect(() => loadConfig({ HOST: "0.0.0.0" })).toThrow("MUSE_ACCESS_TOKEN"));
-  it("上游地址强制 HTTPS", () =>
+  it("forces HTTPS for the upstream URL", () =>
     expect(() => loadConfig({ ARK_BASE_URL: "http://insecure.test" })).toThrow(
       "HTTPS",
     ));
 });
-describe("方舟契约", () => {
-  it("正确创建 Session、提交 user.message、分页拉事件，不暴露密钥", async () => {
+describe("Ark contract", () => {
+  it("correctly creates a session, submits a user.message, pages events, and never exposes the key", async () => {
     const calls: { url: string; init: RequestInit }[] = [];
     const config = loadConfig({
       MUSE_MODE: "ark",
@@ -154,16 +155,16 @@ describe("方舟契约", () => {
       return Response.json({ id: "sesn-test", data: [] });
     };
     const ark = new ArkClient(config, fetcher);
-    await ark.create("任务", "general");
+    await ark.create("Task", "general");
     await ark.send("sesn-test", {
       type: "user.message",
-      content: [{ type: "text", text: "你好" }],
+      content: [{ type: "text", text: "Hello" }],
     });
     await ark.events("sesn-test", "page+/=2");
     expect(JSON.parse(calls[0].init.body as string)).toEqual({
       agent: "agt-test",
       environment_id: "env-test",
-      title: "任务",
+      title: "Task",
     });
     expect(JSON.parse(calls[1].init.body as string).events[0].type).toBe(
       "user.message",
@@ -181,7 +182,7 @@ describe("方舟契约", () => {
       "project-a",
     );
   });
-  it("不转发上游敏感错误原文", async () => {
+  it("does not forward raw sensitive upstream errors", async () => {
     const ark = new ArkClient(
       loadConfig({}),
       async () => new Response("private-token", { status: 403 }),
@@ -189,7 +190,7 @@ describe("方舟契约", () => {
     await expect(ark.get("id")).rejects.toThrow("HTTP 403");
     await expect(ark.get("id")).rejects.not.toThrow("private-token");
   });
-  it("保留 Headers 实例的额外请求头，凭据和项目由服务端固定", async () => {
+  it("keeps extra headers from Headers instances while credentials and project stay fixed server-side", async () => {
     const calls: RequestInit[] = [];
     const ark = new ArkClient(
       loadConfig({
@@ -213,7 +214,7 @@ describe("方舟契约", () => {
     expect(headers.get("Authorization")).toBe("Bearer secret");
     expect(headers.get("X-Project-Name")).toBe("selected-project");
   });
-  it("超长或非结构化错误仍返回 HTTP 状态，不泄露响应内容", async () => {
+  it("oversized or non-structured errors still return the HTTP status and never leak the response body", async () => {
     for (const body of [
       "private-token",
       JSON.stringify({ error: { message: "private-token".repeat(6000) } }),
@@ -233,7 +234,7 @@ describe("方舟契约", () => {
       await expect(ark.get("id")).rejects.not.toThrow("private-token");
     }
   });
-  it("解析上游错误信封，只保留安全诊断", async () => {
+  it("parses the upstream error envelope and keeps only safe diagnostics", async () => {
     for (const wrap of [
       (error: object) => ({ error }),
       (error: object) => error,
@@ -256,11 +257,13 @@ describe("方舟契约", () => {
       );
       await expect(ark.get("id")).rejects.toThrow("InvalidParameter");
       await expect(ark.get("id")).rejects.toThrow(
-        "字段 config.networking.type",
+        "Field config.networking.type",
       );
-      await expect(ark.get("id")).rejects.toThrow("允许值 unrestricted");
       await expect(ark.get("id")).rejects.toThrow(
-        "请求 ID 20260929-request-test",
+        "Allowed values unrestricted",
+      );
+      await expect(ark.get("id")).rejects.toThrow(
+        "Request ID 20260929-request-test",
       );
       await expect(ark.get("id")).rejects.not.toThrow("private-token");
       await expect(ark.get("id")).rejects.not.toThrow("another-secret");

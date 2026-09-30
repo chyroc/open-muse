@@ -22,21 +22,21 @@ afterEach(async () => {
   app.close();
   await rm(directory, { recursive: true, force: true });
 });
-async function create(title = "一个测试任务") {
+async function create(title = "A test task") {
   const result = await request(app.app)
     .post("/api/sessions")
     .send({ title, category: "general" })
     .expect(201);
   return result.body.id as string;
 }
-describe("本地 API", () => {
-  it("目标提示词中的批准要求不会被误判为发送邮件", async () => {
-    const id = await create("目标规划");
+describe("Local API", () => {
+  it("the approval requirement in a goal prompt is not misclassified as sending an email", async () => {
+    const id = await create("Goal planning");
     await request(app.app)
       .post(`/api/sessions/${id}/events`)
       .send({
         type: "user.message",
-        text: "帮我制定旅行计划，需要对外操作时先请求批准。",
+        text: "help me plan a trip; ask for approval before any external action",
       })
       .expect(200);
     await vi.waitFor(() => expect(app.store.get(id)?.status).toBe("idle"));
@@ -47,11 +47,11 @@ describe("本地 API", () => {
       false,
     );
   });
-  it("完整任务：创建、发送、读取事件、继续对话", async () => {
+  it("full task: create, send, read events, continue the conversation", async () => {
     const id = await create();
     await request(app.app)
       .post(`/api/sessions/${id}/events`)
-      .send({ type: "user.message", text: "你好" })
+      .send({ type: "user.message", text: "Hello" })
       .expect(200);
     await vi.waitFor(() => expect(app.store.get(id)?.status).toBe("idle"));
     const result = await request(app.app)
@@ -62,14 +62,14 @@ describe("本地 API", () => {
     ).toBe(true);
     await request(app.app)
       .post(`/api/sessions/${id}/events`)
-      .send({ type: "user.message", text: "继续" })
+      .send({ type: "user.message", text: "Continue" })
       .expect(200);
     await vi.waitFor(() => expect(app.store.get(id)?.status).toBe("idle"));
     expect(
       app.store.data.events[id].filter((e) => e.type === "user.message"),
     ).toHaveLength(2);
   });
-  it("持久保存，重建服务后可恢复历史", async () => {
+  it("persists data so history survives a server rebuild", async () => {
     const id = await create();
     app.close();
     app = await createApp(loadConfig({ MUSE_DATA_DIR: directory }));
@@ -77,11 +77,11 @@ describe("本地 API", () => {
       (await request(app.app).get("/api/sessions").expect(200)).body.data[0].id,
     ).toBe(id);
   });
-  it("只有当前待批准的工具可确认，重复或伪造确认被拒绝", async () => {
-    const id = await create("审批测试");
+  it("only the currently pending tool can be confirmed; duplicate or forged confirmations are rejected", async () => {
+    const id = await create("Approval test");
     await request(app.app)
       .post(`/api/sessions/${id}/events`)
-      .send({ type: "user.message", text: "帮我发送邮件" })
+      .send({ type: "user.message", text: "help me send an email" })
       .expect(200);
     await vi.waitFor(() =>
       expect(app.store.data.events[id].at(-1)?.stop_reason?.type).toBe(
@@ -122,11 +122,11 @@ describe("本地 API", () => {
       })
       .expect(409);
   });
-  it("停止演示任务，不再产生结果", async () => {
+  it("stops a demo task so it produces no more results", async () => {
     const id = await create();
     await request(app.app)
       .post(`/api/sessions/${id}/events`)
-      .send({ type: "user.message", text: "任务" })
+      .send({ type: "user.message", text: "task" })
       .expect(200);
     await request(app.app)
       .post(`/api/sessions/${id}/events`)
@@ -138,7 +138,7 @@ describe("本地 API", () => {
     ).toHaveLength(0);
     expect(app.store.get(id)?.status).toBe("idle");
   });
-  it("拒绝空消息、过长消息、任意上游事件和不存在的 Session", async () => {
+  it("rejects empty messages, overly long messages, arbitrary upstream events, and nonexistent sessions", async () => {
     const id = await create();
     for (const body of [
       { type: "user.message", text: "  " },
@@ -157,7 +157,7 @@ describe("本地 API", () => {
       .get(`/api/sessions/${id}/events?page=NaN`)
       .expect(400);
   });
-  it("拒绝跨站来源和 DNS rebinding 的 Host", async () => {
+  it("rejects cross-site origins and DNS-rebinding Host headers", async () => {
     await request(app.app)
       .get("/api/sessions")
       .set("Origin", "https://evil.example")
@@ -171,7 +171,7 @@ describe("本地 API", () => {
       .set("Origin", "http://127.0.0.1:4310")
       .expect(204);
   });
-  it("设置应用令牌后保护所有会话接口，config 不返回任何凭据", async () => {
+  it("once an app token is set, it protects all session endpoints and config returns no credentials", async () => {
     app.close();
     app = await createApp(
       loadConfig({
@@ -196,7 +196,7 @@ describe("本地 API", () => {
     });
     expect(JSON.stringify(config.body)).not.toContain("secret");
   });
-  it("事件历史翻页没有截断", async () => {
+  it("event history pagination is not truncated", async () => {
     const id = await create();
     app.store.data.events[id] = Array.from({ length: 205 }, (_, index) => ({
       id: String(index),
@@ -211,7 +211,7 @@ describe("本地 API", () => {
     expect(first.body.data.length + second.body.data.length).toBe(205);
     expect(second.body.next_page).toBeUndefined();
   });
-  it("真实 SSE 与历史列表对同一事件使用相同 ID", async () => {
+  it("real SSE and the history list use the same id for the same event", async () => {
     const id = await create();
     const server = app.app.listen(0, "127.0.0.1");
     await new Promise<void>((resolve) => server.once("listening", resolve));
@@ -241,7 +241,7 @@ describe("本地 API", () => {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
   });
-  it("重启时将未完成的演示任务标记为异常，而非永久运行", async () => {
+  it("on restart marks unfinished demo tasks as errored rather than permanently running", async () => {
     const id = await create();
     app.store.get(id)!.status = "running";
     await app.store.save();
@@ -253,8 +253,8 @@ describe("本地 API", () => {
     );
   });
 });
-describe("真实模式边界", () => {
-  it("上游 SSE 失败返回 502，而不是提前结束成 200", async () => {
+describe("Real-mode boundaries", () => {
+  it("an upstream SSE failure returns 502 instead of ending early as 200", async () => {
     app.close();
     const config = loadConfig({
       MUSE_MODE: "ark",
@@ -266,7 +266,7 @@ describe("真实模式边界", () => {
     const ark = new ArkClient(config);
     vi.spyOn(ark, "create").mockResolvedValue({
       id: "sesn-stream",
-      title: "流测试",
+      title: "Stream test",
       category: "general",
       status: "idle",
       created_at: new Date().toISOString(),
@@ -280,10 +280,10 @@ describe("真实模式边界", () => {
     const response = await request(app.app)
       .get(`/api/sessions/${id}/events/stream`)
       .expect(502);
-    expect(response.body.error).toContain("事件流连接失败");
+    expect(response.body.error).toContain("event stream connection failed");
     expect(response.text).not.toContain("private-error");
   });
-  it("只访问本应用创建的会话，并保存注册表", async () => {
+  it("only accesses sessions created by this app and persists the registry", async () => {
     app.close();
     const config = loadConfig({
       MUSE_MODE: "ark",
@@ -295,7 +295,7 @@ describe("真实模式边界", () => {
     const ark = new ArkClient(config);
     vi.spyOn(ark, "create").mockResolvedValue({
       id: "sesn-test",
-      title: "任务",
+      title: "Task",
       category: "general",
       status: "idle",
       created_at: new Date().toISOString(),

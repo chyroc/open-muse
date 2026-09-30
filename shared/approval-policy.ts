@@ -1,6 +1,7 @@
 import type { AgentEvent } from "./types";
 
-// 只匹配内置工具的协议名称；不使用前缀、模糊匹配或 MCP 显示名称。
+// Match only the protocol names of built-in tools; no prefixes, fuzzy matching,
+// or MCP display names.
 export function canAutoApprove(event: AgentEvent): boolean {
   return (
     event.type === "agent.tool_use" &&

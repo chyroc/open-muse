@@ -80,20 +80,20 @@ type Tab =
   | "library";
 const navItems = [
   ...primaryNavigation,
-  { id: "tasks", path: "/tasks", label: "所有对话", icon: History },
-  { id: "studio", path: "/studio", label: "MA 工作台", icon: Blocks },
-  { id: "settings", path: "/settings", label: "设置", icon: Settings2 },
+  { id: "tasks", path: "/tasks", label: "All conversations", icon: History },
+  { id: "studio", path: "/studio", label: "MA Studio", icon: Blocks },
+  { id: "settings", path: "/settings", label: "Settings", icon: Settings2 },
 ] as const;
 function navigate(path: string) {
   location.hash = path;
 }
 const statusNames = {
-  idle: "等待开始",
-  running: "进行中",
-  complete: "本轮已完成",
-  attention: "需要确认",
-  error: "执行异常",
-  stopped: "已停止",
+  idle: "Idle",
+  running: "Running",
+  complete: "Turn complete",
+  attention: "Needs approval",
+  error: "Error",
+  stopped: "Stopped",
 };
 
 export default function App() {
@@ -130,13 +130,13 @@ export default function App() {
   if (restored !== client)
     return (
       <main className="settings-card" aria-live="polite">
-        <p>{restoreError || "正在恢复连接…"}</p>
+        <p>{restoreError || "Restoring connection…"}</p>
         {restoreError && (
           <button
             className="button primary"
             onClick={() => setRestoreAttempt((value) => value + 1)}
           >
-            重试
+            Retry
           </button>
         )}
       </main>
@@ -265,7 +265,7 @@ function Workspace({
       if (alive.current)
         setActionError(
           (error as Error).message +
-            " 提交未确认时，请先刷新历史记录，避免重复操作。",
+            " If the submission is unconfirmed, refresh the history first to avoid doing it twice.",
         );
     } finally {
       busyRef.current = false;
@@ -334,14 +334,14 @@ function Workspace({
   }
   async function exportTask() {
     const text =
-      `# ${task.session?.title ?? "Muse 任务"}\n\n` +
+      `# ${task.session?.title ?? "Muse task"}\n\n` +
       task.events
         .filter((event) =>
           ["user.message", "agent.message"].includes(event.type),
         )
         .map(
           (event) =>
-            `## ${event.type === "user.message" ? "我" : "Muse"}\n\n${eventText(event)}`,
+            `## ${event.type === "user.message" ? "Me" : "Muse"}\n\n${eventText(event)}`,
         )
         .join("\n\n");
     try {
@@ -384,9 +384,9 @@ function Workspace({
           }}
         >
           <Plus size={18} />
-          新对话
+          New conversation
         </button>
-        <nav aria-label="主导航">
+        <nav aria-label="Main navigation">
           {navItems.map((item) => (
             <a
               key={item.id}
@@ -403,7 +403,7 @@ function Workspace({
           ))}
         </nav>
         <div className="sidebar-recents">
-          <span className="eyebrow">最近的对话</span>
+          <span className="eyebrow">Recent conversations</span>
           {sessions.slice(0, 5).map((session) => (
             <a
               key={session.id}
@@ -416,9 +416,9 @@ function Workspace({
           ))}
           {!sessions.length && (
             <p>
-              那些闪过的想法，
+              Every passing thought can
               <br />
-              都可以从一次对话开始。
+              start with a single conversation.
             </p>
           )}
         </div>
@@ -426,16 +426,16 @@ function Workspace({
           <div className="small-note">
             <span className="little-star">✳</span>
             <p>
-              少一些琐事，
+              Fewer little chores,
               <br />
-              多一些自己的时间。
+              more time for yourself.
             </p>
           </div>
           <a className="account" href="#/settings">
-            <span className="avatar">我</span>
+            <span className="avatar">Me</span>
             <div>
-              <strong>我的空间</strong>
-              <small>个人 AI 工作室</small>
+              <strong>My Space</strong>
+              <small>Personal AI studio</small>
             </div>
             <Settings2 size={17} />
           </a>
@@ -445,7 +445,7 @@ function Workspace({
         <header className="topbar">
           <button
             className="icon-button menu-trigger"
-            aria-label="打开侧边栏"
+            aria-label="Open sidebar"
             onClick={() => setMoreOpen(true)}
           >
             <Menu size={25} />
@@ -454,11 +454,11 @@ function Workspace({
             <span>muse</span>
           </a>
           <div className="breadcrumb">
-            <span>我的空间</span>
+            <span>My Space</span>
             <ChevronRight size={13} />
             <span>
               {activeId
-                ? "一起完成"
+                ? "Let's do this together"
                 : navItems.find((item) => item.id === tab)?.label}
             </span>
           </div>
@@ -469,9 +469,9 @@ function Workspace({
             <span />
             {config
               ? config.mode === "ark"
-                ? "方舟 Managed Agents"
-                : "演示模式 · 未连接模型"
-              : "等待连接"}
+                ? "Ark Managed Agents"
+                : "Demo mode · no model connected"
+              : "Waiting to connect"}
           </a>
         </header>
         {(loadError || actionError) && (
@@ -479,7 +479,7 @@ function Workspace({
             <Unplug size={18} />
             <span>{actionError || loadError}</span>
             <button
-              aria-label="重试连接"
+              aria-label="Retry connection"
               onClick={() => {
                 setActionError("");
                 void reload();
@@ -488,7 +488,7 @@ function Workspace({
             >
               <RefreshCw size={17} />
             </button>
-            <a href="#/settings">连接设置</a>
+            <a href="#/settings">Connection settings</a>
           </div>
         )}
 
@@ -530,20 +530,20 @@ function Workspace({
           <div className="page-content page-in">
             <div className="page-title">
               <span className="eyebrow">YOUR IDEAS, IN MOTION</span>
-              <h1>所有对话</h1>
+              <h1>All conversations</h1>
               <p>
                 {runningCount
-                  ? `${runningCount} 项任务正在进行，随时回来看看。`
-                  : "继续对话，回看进展，拾起还没完成的想法。"}
+                  ? `${runningCount} task${runningCount === 1 ? "" : "s"} in progress — check back anytime.`
+                  : "Pick up a conversation, review progress, and revisit ideas still in motion."}
               </p>
             </div>
             <div className="task-toolbar">
               <div className="segmented">
                 {(
                   [
-                    { id: "all", label: "全部" },
-                    { id: "running", label: "进行中" },
-                    { id: "idle", label: "未运行" },
+                    { id: "all", label: "All" },
+                    { id: "running", label: "Running" },
+                    { id: "idle", label: "Idle" },
                   ] as const
                 ).map((item) => (
                   <button
@@ -560,8 +560,8 @@ function Workspace({
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="搜索任务"
-                  aria-label="搜索任务"
+                  placeholder="Search tasks"
+                  aria-label="Search tasks"
                 />
               </label>
             </div>
@@ -578,20 +578,20 @@ function Workspace({
                 <Layers3 size={34} />
                 <h2>
                   {query || filter !== "all"
-                    ? "没有匹配的任务"
-                    : "第一件事，从这里开始"}
+                    ? "No matching tasks"
+                    : "Start your first thing here"}
                 </h2>
                 <p>
                   {query || filter !== "all"
-                    ? "试试其他关键词或筛选条件。"
-                    : "把一个想法交给 Muse，它会保存在这里。"}
+                    ? "Try a different keyword or filter."
+                    : "Hand an idea to Muse and it'll be saved here."}
                 </p>
                 <button
                   className="button primary"
                   onClick={() => navigate("/")}
                 >
                   <Plus size={17} />
-                  新建任务
+                  New task
                 </button>
               </div>
             )}
@@ -603,25 +603,27 @@ function Workspace({
             <header className="conversation-header">
               <a
                 className="icon-button"
-                aria-label="返回任务列表"
+                aria-label="Back to conversations"
                 href="#/tasks"
               >
                 <ArrowLeft size={20} />
               </a>
               <div>
-                <h1>{task.session?.title ?? "加载任务…"}</h1>
+                <h1>{task.session?.title ?? "Loading task…"}</h1>
                 <span className={`task-state ${state}`}>
                   <span />
                   {statusNames[state]}
                 </span>
                 <span className="stream-status">
-                  {task.connected ? "实时连接" : "历史同步 / 正在重连"}
+                  {task.connected
+                    ? "Live connection"
+                    : "History sync / reconnecting"}
                 </span>
               </div>
               <button
                 className="icon-button"
-                aria-label="导出对话"
-                title="导出对话"
+                aria-label="Export conversation"
+                title="Export conversation"
                 disabled={
                   !task.events.some((event) => event.type === "agent.message")
                 }
@@ -634,21 +636,25 @@ function Workspace({
               {config?.mode === "demo" && (
                 <div className="demo-notice">
                   <Sparkles size={14} />
-                  这是一场演示对话，内容非模型生成，不执行外部操作。
+                  This is a demo conversation. Its content is not
+                  model-generated and no external actions are performed.
                 </div>
               )}
               {task.error && (
                 <div className="inline-error" role="alert">
                   {task.error}
-                  <button onClick={() => void task.refresh()}>重试</button>
+                  <button onClick={() => void task.refresh()}>Retry</button>
                 </div>
               )}
               {task.loading && <Loading />}
               {!task.loading && !task.events.length && !task.error && (
                 <div className="empty-state">
                   <MuseMark large />
-                  <h2>说说你的想法</h2>
-                  <p>从一句话开始，我们一起把它变成下一步。</p>
+                  <h2>Tell me what's on your mind</h2>
+                  <p>
+                    Start with one line, and we'll turn it into the next step
+                    together.
+                  </p>
                 </div>
               )}
               {task.events
@@ -664,7 +670,7 @@ function Workspace({
                       <div className="assistant-label">
                         <MuseMark />
                         <strong>Muse</strong>
-                        <span>与你一起</span>
+                        <span>with you</span>
                       </div>
                     )}
                     <Markdown text={eventText(event)} />
@@ -675,12 +681,12 @@ function Workspace({
                         onClick={() =>
                           void action(async () => {
                             await client.saveReply(activeId, event.id);
-                            setToast("已收藏到资料库");
+                            setToast("Saved to Library");
                           })
                         }
                       >
                         <Bookmark size={16} />
-                        收藏
+                        Save
                       </button>
                     )}
                   </article>
@@ -690,9 +696,11 @@ function Workspace({
                 task.autoApprovalFailures.includes(event.id),
               ) && (
                 <div className="inline-error" role="alert">
-                  网页工具自动批准未完成。请先刷新历史记录，再手动处理，避免重复提交。
+                  Automatic approval of web tools didn't finish. Refresh the
+                  history first, then handle it manually to avoid duplicate
+                  submissions.
                   <button onClick={() => void task.refresh()}>
-                    刷新历史记录
+                    Refresh history
                   </button>
                 </div>
               )}
@@ -711,12 +719,13 @@ function Workspace({
                     <i />
                     <i />
                   </span>
-                  Muse 正在处理，可以稍后回来继续查看。
+                  Muse is working — come back and check in a little later.
                 </div>
               )}
               {state === "error" && (
                 <div className="inline-error">
-                  本轮执行出现异常，请展开执行记录查看原因，再决定是否继续。
+                  Something went wrong this turn. Expand the activity log to see
+                  the cause, then decide whether to continue.
                 </div>
               )}
             </div>
@@ -734,8 +743,8 @@ function Workspace({
                       <ShieldCheck size={14} aria-hidden="true" />
                     )}
                     {automaticCount > 0
-                      ? "正在自动批准网页搜索与读取…"
-                      : "Muse 正在等待你的确认"}
+                      ? "Automatically approving web searches and reads…"
+                      : "Muse is waiting for your approval"}
                   </span>
                   {permissions.length > 0 && (
                     <button
@@ -749,7 +758,8 @@ function Workspace({
                           })
                       }
                     >
-                      查看 {permissions.length} 项待确认
+                      View {permissions.length} pending approval
+                      {permissions.length === 1 ? "" : "s"}
                     </button>
                   )}
                 </p>
@@ -770,7 +780,9 @@ function Workspace({
                   }
                 />
               )}
-              <p className="fine-print">AI 也可能出错，重要信息请核实。</p>
+              <p className="fine-print">
+                AI can make mistakes. Please verify important information.
+              </p>
             </div>
           </div>
         )}
@@ -786,7 +798,7 @@ function Workspace({
           />
         )}
       </main>
-      <nav className="mobile-nav" aria-label="手机导航">
+      <nav className="mobile-nav" aria-label="Mobile navigation">
         {primaryNavigation.map((item) => (
           <a
             key={item.id}
@@ -828,12 +840,12 @@ function SessionRow({ session }: { session: Session }) {
           {running ? (
             <>
               <span className="status-dot" />
-              进行中
+              Running
             </>
           ) : session.status === "terminated" ? (
-            "已终止"
+            "Ended"
           ) : (
-            "可继续对话"
+            "Ready to continue"
           )}
         </span>
         <time>{dateLabel(session.updated_at)}</time>
@@ -846,7 +858,7 @@ function Loading() {
   return (
     <div className="loading" role="status">
       <LoaderCircle className="spin" size={22} />
-      正在加载…
+      Loading…
     </div>
   );
 }
@@ -877,13 +889,15 @@ function Settings({
       };
       if (nativeMobile() && !connection.baseUrl)
         throw new Error(
-          "iOS App 需要填写 Open Muse 服务地址；真机使用 HTTPS，模拟器可使用 http://127.0.0.1:4311。",
+          "The iOS app needs an Open Muse service URL; use HTTPS on a real device, or http://127.0.0.1:4311 in the simulator.",
         );
       const next = new Client(connection);
       const conf = await next.config();
       await next.sessions();
       setSuccess(true);
-      setMessage(`已连接${conf.mode === "ark" ? "方舟模式" : "演示模式"}。`);
+      setMessage(
+        `Connected in ${conf.mode === "ark" ? "Ark mode" : "demo mode"}.`,
+      );
       onConnection(connection);
     } catch (error) {
       setMessage((error as Error).message);
@@ -895,8 +909,8 @@ function Settings({
     <div className="page-content settings-page page-in">
       <div className="page-title">
         <span className="eyebrow">MAKE YOURSELF AT HOME</span>
-        <h1>设置</h1>
-        <p>选择方舟项目，剩下的准备交给 Muse。</p>
+        <h1>Settings</h1>
+        <p>Pick an Ark project and leave the rest of the setup to Muse.</p>
       </div>
       <AuthPanel
         client={client}
@@ -911,40 +925,43 @@ function Settings({
             <Radio size={21} />
           </div>
           <div>
-            <h2>服务连接</h2>
-            <p>手机 App 通过你的服务端连接方舟。</p>
+            <h2>Service connection</h2>
+            <p>The mobile app connects to Ark through your server.</p>
           </div>
           <span className="small-badge">
             {config?.mode === "ark"
-              ? "方舟模式"
+              ? "Ark mode"
               : config?.mode === "demo"
-                ? "演示模式"
-                : "未连接"}
+                ? "Demo mode"
+                : "Not connected"}
           </span>
         </div>
         <label className="field">
-          服务地址
+          Service URL
           <input
             type="url"
             autoCapitalize="none"
             spellCheck={false}
             value={endpoint}
-            placeholder="留空使用当前网站，手机端填写 HTTPS 地址"
+            placeholder="Leave blank to use this site; on mobile enter an HTTPS URL"
             onChange={(event) => setEndpoint(event.target.value)}
           />
-          <small>填写 Open Muse 服务根地址，不是方舟 API 地址。</small>
+          <small>
+            Enter the Open Muse service root URL, not an Ark API URL.
+          </small>
         </label>
         <label className="field">
-          应用访问令牌
+          App access token
           <input
             type="password"
             autoComplete="off"
             value={token}
-            placeholder="对应服务端 MUSE_ACCESS_TOKEN"
+            placeholder="Matches the server's MUSE_ACCESS_TOKEN"
             onChange={(event) => setToken(event.target.value)}
           />
           <small>
-            令牌仅保留在当前客户端会话，不要在这里填写方舟 API Key。
+            The token stays only in this client session. Don't enter an Ark API
+            Key here.
           </small>
         </label>
         {message && (
@@ -962,50 +979,56 @@ function Settings({
           ) : (
             <RefreshCw size={16} />
           )}
-          验证并连接
+          Verify and connect
         </button>
       </section>
       <details className="settings-card advanced-connection">
-        <summary>高级接入 · 服务端 API Key</summary>
+        <summary>Advanced setup · server-side API Key</summary>
         <div className="settings-card-heading">
           <div className="settings-symbol">
             <ShieldCheck size={21} />
           </div>
           <div>
-            <h2>方舟 Managed Agents</h2>
-            <p>API Key 始终保留在服务端。</p>
+            <h2>Ark Managed Agents</h2>
+            <p>The API Key always stays on the server.</p>
           </div>
         </div>
         <p className="settings-description">
-          在服务端的 <code>.env</code>{" "}
-          中配置以下变量，然后重启服务。演示与真实会话分别保存，不会自动切换或混用。
+          Configure the variables below in the server's <code>.env</code> file,
+          then restart the service. Demo and real sessions are stored separately
+          and are never switched or mixed automatically.
         </p>
         <pre className="config-example">
           {
-            "MUSE_MODE=ark\nARK_BASE_URL=https://ark.cn-beijing.volces.com/api/v3\nARK_API_KEY=你的服务端密钥"
+            "MUSE_MODE=ark\nARK_BASE_URL=https://ark.cn-beijing.volces.com/api/v3\nARK_API_KEY=your-server-side-secret"
           }
         </pre>
         <div className="info-note">
           <CircleHelp size={17} />
           <span>
-            助手和运行环境会自动创建。接入地址与凭据必须属于同一环境，不要混用生产与测试凭据。
+            The assistant and runtime are created automatically. The endpoint
+            and credentials must belong to the same environment; don't mix
+            production and test credentials.
           </span>
         </div>
       </details>
       <section className="privacy-grid">
         <div>
           <ShieldCheck size={22} />
-          <h3>每一步，都可查看</h3>
+          <h3>Every step is visible</h3>
           <p>
-            新任务的工具默认直接执行，可能向外部服务发送数据、执行写入或删除，并产生费用。
-            上游显式拒绝仍然有效，执行记录保留在任务内。
+            Tools in new tasks run directly by default and may send data to
+            external services, perform writes or deletions, and incur charges.
+            Explicit upstream denials still apply, and execution records stay
+            inside the task.
           </p>
         </div>
         <div>
           <Unplug size={22} />
-          <h3>未连接，不假装完成</h3>
+          <h3>No connection, no pretend completion</h3>
           <p>
-            演示模式不调用模型、不发送邮件、不执行支付。真实模式只使用已配置的工具能力。
+            Demo mode doesn't call models, send emails, or make payments. Real
+            mode uses only the tools you've configured.
           </p>
         </div>
       </section>
@@ -1019,7 +1042,7 @@ function Settings({
           target="_blank"
           rel="noreferrer"
         >
-          了解火山方舟
+          Learn about Volcano Ark
           <ExternalLink size={13} />
         </a>
       </div>

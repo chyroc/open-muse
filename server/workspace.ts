@@ -6,10 +6,15 @@ import { ApiError } from "./ark";
 import { isSSOCredentials } from "./oauth";
 import type { Runtime } from "./ma";
 import type { WorkspaceStatus } from "../shared/types";
+import {
+  environmentWithTools,
+  systemWithTools,
+  type EnvironmentConfig,
+} from "./tooling";
 const agentSystem =
-  "你是 Open Muse，帮助用户研究、写作和规划。使用用户的语言，准确说明依据与不确定性。按用户请求直接执行工具，不额外请求工具权限确认；不得绕过上游拒绝策略，不把未执行的操作描述为已完成。";
+  "You are Open Muse, helping the user with research, writing, and planning. Use the user's language, and state evidence and uncertainty accurately. Execute tools directly when the user requests them, without asking for additional tool permission confirmation; never bypass upstream denial policies, and never describe unexecuted operations as completed.";
 const legacyAgentSystem =
-  "你是 Open Muse，帮助用户研究、写作和规划。使用用户的语言，准确说明依据与不确定性。外部写入、发送消息、交易和删除必须获得明确确认，不把未执行的操作描述为已完成。";
+  "You are Open Muse, helping the user with research, writing, and planning. Use the user's language, and state evidence and uncertainty accurately. External writes, sending messages, transactions, and deletions require explicit confirmation; never describe unexecuted operations as completed.";
 
 type AgentResource = Resource & {
   version?: number;
@@ -38,7 +43,7 @@ type Resource = {
   metadata?: Record<string, string>;
 };
 
-// 凭据只参与不可逆摘要，不写入 SQLite；不同上游、Key、项目不会共用映射。
+// Credentials only participate in an irreversible digest and are never written to SQLite; different upstreams, keys, or projects never share a mapping.
 export function workspaceKey(runtime: Runtime) {
   return createHash("sha256")
     .update(
@@ -127,34 +132,43 @@ export class Workspaces {
     if (runtime.config.mode !== "ark")
       return {
         state: "demo",
-        message: "登录并连接项目后，自动准备个人工作空间。",
+        message:
+          "After signing in and connecting a project, your personal workspace is prepared automatically.",
       };
     const key = workspaceKey(runtime);
     const row = this.row(key);
     if (this.jobs.has(key))
       return {
         state: "preparing",
-        message: row?.message || "正在准备个人工作空间…",
+        message: row?.message || "Preparing your personal workspace…",
       };
     if (row?.state === "preparing")
       return {
         state: "error",
-        message: "上次准备被中断。继续准备时会先核对已创建的资源。",
+        message:
+          "The previous preparation was interrupted. Resuming will first verify the resources already created.",
       };
     if (row?.state === "error") return { state: "error", message: row.message };
     if (this.selection(runtime))
-      return { state: "ready", message: "个人工作空间已就绪，可以开始任务。" };
+      return {
+        state: "ready",
+        message: "Your personal workspace is ready; you can start a task.",
+      };
     return {
       state: "idle",
-      message: "首次使用时会自动创建助手和云端运行环境。",
+      message:
+        "On first use, an agent and a cloud environment are created automatically.",
     };
   }
   start(runtime: Runtime) {
     if (runtime.config.mode !== "ark")
-      throw new ApiError(409, "请先登录并连接方舟项目。");
+      throw new ApiError(409, "Sign in and connect an Ark project first.");
     const key = workspaceKey(runtime);
     if (this.closed)
-      throw new ApiError(503, "应用正在关闭，请重新打开后继续。");
+      throw new ApiError(
+        503,
+        "The app is shutting down; reopen it to continue.",
+      );
     if (!this.jobs.has(key)) {
       const abort = new AbortController();
       const promise = this.prepare(runtime, abort.signal)
@@ -164,10 +178,10 @@ export class Workspaces {
           if (row) {
             row.state = "error";
             row.message = abort.signal.aborted
-              ? "准备已中断，重新连接后可继续。"
+              ? "Preparation was interrupted; reconnect to continue."
               : error instanceof ApiError
                 ? error.message
-                : "工作空间准备失败，已保存完成的步骤。请稍后继续准备。";
+                : "Workspace preparation failed; completed steps were saved. Please resume later.";
             this.save(row);
           }
         })
@@ -187,9 +201,25 @@ export class Workspaces {
     const pending = this.policyJobs.get(key);
     if (pending) return pending;
     const job = (async () => {
+      const environmentPath = `/environments/${encodeURIComponent(row.environment_id)}`;
+      const environment = await runtime.ark.request<
+        Resource & { config?: EnvironmentConfig }
+      >(environmentPath, { signal });
+      const managedCloud =
+        environment.metadata?.open_muse_workspace === key &&
+        environment.config?.type === "cloud";
+      if (managedCloud) {
+        const config = environmentWithTools(environment.config!);
+        if (JSON.stringify(config) !== JSON.stringify(environment.config))
+          await runtime.ark.request(environmentPath, {
+            method: "POST",
+            signal,
+            body: JSON.stringify({ config }),
+          });
+      }
       const path = `/agents/${encodeURIComponent(row.agent_id)}`;
       const agent = await runtime.ark.request<AgentResource>(path, { signal });
-      // 只同步本应用创建的资源，不修改手动接入或同名的外部助手。
+      // Only sync resources created by this app; never modify manually onboarded or same-named external agents.
       if (agent.metadata?.open_muse_workspace !== key) return;
       let changed = false;
       const tools = agent.tools?.map((tool) => {
@@ -208,14 +238,20 @@ export class Workspaces {
           },
         };
       });
-      const system =
+      const baseSystem =
         agent.system === legacyAgentSystem ? agentSystem : agent.system;
+      const system = managedCloud
+        ? systemWithTools(baseSystem ?? agentSystem)
+        : baseSystem;
       const body: Record<string, unknown> = {};
       if (changed) body.tools = tools;
       if (system !== agent.system) body.system = system;
       if (!Object.keys(body).length) return;
       if (!Number.isInteger(agent.version) || agent.version! < 1)
-        throw new ApiError(502, "助手版本无效，未修改工具权限。请稍后重试。");
+        throw new ApiError(
+          502,
+          "Invalid agent version; tool permissions were not changed. Please try again later.",
+        );
       await runtime.ark.request(path, {
         method: "POST",
         signal,
@@ -273,14 +309,14 @@ export class Workspaces {
       row.message = message;
       this.save(row);
     };
-    step("正在检查个人工作空间…");
+    step("Checking your personal workspace…");
     for (const kind of ["environment", "agent"] as const) {
       const id = row[`${kind}_id`];
       if (!id) continue;
       try {
         await request(`/${kind}s/${encodeURIComponent(id)}`);
       } catch (error) {
-        // 只有明确的 404 才重新创建；无权限或网络故障不能当作资源不存在。
+        // Recreate only on an explicit 404; permission errors or network failures must not be treated as a missing resource.
         if (!(error instanceof ApiError) || error.status !== 404) throw error;
         row[`${kind}_id`] = "";
         row[`${kind}_pending`] = 0;
@@ -289,7 +325,11 @@ export class Workspaces {
     }
     const ensure = async (kind: Kind, body: object) => {
       if (row[`${kind}_id`]) return;
-      step(kind === "agent" ? "正在准备你的助手…" : "正在准备云端运行环境…");
+      step(
+        kind === "agent"
+          ? "Preparing your agent…"
+          : "Preparing your cloud environment…",
+      );
       const recover = async () => {
         let page = "";
         const seen = new Set<string>();
@@ -303,7 +343,7 @@ export class Workspaces {
           if (!Array.isArray(result.data))
             throw new ApiError(
               502,
-              "云端资源列表格式异常，未继续创建。请稍后重试。",
+              "The cloud resource list has an unexpected format; creation was stopped. Please try again later.",
             );
           const found = result.data.find(
             (r) =>
@@ -318,14 +358,14 @@ export class Workspaces {
         }
         throw new ApiError(
           502,
-          "云端资源列表未能完整读取，未继续创建。请稍后重试。",
+          "The cloud resource list could not be read completely; creation was stopped. Please try again later.",
         );
       };
       const record = (resource: Resource) => {
         if (typeof resource.id !== "string" || !/^[\w-]+$/.test(resource.id))
           throw new ApiError(
             502,
-            "云端未返回有效资源标识。结果尚未确认，继续准备时将先核对资源。",
+            "The cloud did not return a valid resource identifier. The result is unconfirmed; resuming will verify the resources first.",
           );
         signal.throwIfAborted();
         row[`${kind}_id`] = resource.id;
@@ -340,11 +380,11 @@ export class Workspaces {
         }
         throw new ApiError(
           409,
-          "上次创建结果尚未确认，暂不重复创建。请稍后点击继续准备以核对云端资源。",
+          "The previous creation result is unconfirmed, so it will not be recreated. Click resume later to verify the cloud resources.",
         );
       }
       row[`${kind}_pending`] = 1;
-      this.save(row); // 请求发送前记录，进程中断也不会丢失不确定状态。
+      this.save(row); // Record before sending the request, so a process crash never loses the uncertain state.
       try {
         record(
           await request<Resource>(`/${kind}s`, {
@@ -368,25 +408,26 @@ export class Workspaces {
       }
     };
     if (!row.agent_id && !row.model_id && !row.agent_pending) {
-      step("正在选择支持工具调用的模型…");
+      step("Selecting a model that supports tool calls…");
       row.model_id =
         runtime.config.modelId || chooseModel(await request("/models"));
       this.save(row);
     }
     await ensure("environment", {
-      description: "Open Muse 自动管理的个人云环境",
-      config: {
+      description:
+        "Personal cloud environment managed automatically by Open Muse",
+      config: environmentWithTools({
         type: "cloud",
         networking: {
-          // 网络访问与工具权限分别配置。
+          // Network access and tool permissions are configured separately.
           type: "unrestricted",
         },
-      },
+      }),
     });
     await ensure("agent", {
-      description: "Open Muse 自动管理的个人助手",
+      description: "Personal agent managed automatically by Open Muse",
       model: { id: row.model_id },
-      system: agentSystem,
+      system: systemWithTools(agentSystem),
       tools: [
         {
           type: "agent_toolset_20260701",
@@ -399,7 +440,7 @@ export class Workspaces {
       ],
     });
     await this.syncToolPolicy(runtime, signal);
-    step("个人工作空间已就绪，可以开始任务。");
+    step("Your personal workspace is ready; you can start a task.");
     row.state = "ready";
     this.save(row);
   }
@@ -434,7 +475,7 @@ export function chooseModel(result: unknown): string {
   if (!models.length)
     throw new ApiError(
       409,
-      "当前项目没有可用的工具调用模型。请在方舟开通模型，或由服务管理员配置 ARK_MODEL_ID 后继续准备。",
+      "No tool-calling model is available in the current project. Enable a model in Ark, or have the server administrator configure ARK_MODEL_ID before resuming.",
     );
   return models[0].id;
 }

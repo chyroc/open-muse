@@ -4,7 +4,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
 });
-describe("手机端 API 客户端", () => {
+describe("Mobile API client", () => {
   function nativeFixture() {
     const temporary = new Map<string, string>();
     const secure = new Map<string, string>();
@@ -30,7 +30,7 @@ describe("手机端 API 客户端", () => {
     });
     return { temporary, secure, postMessage };
   }
-  it("iOS 会话从安全存储恢复，并按服务地址隔离", async () => {
+  it("restores the iOS session from secure storage and isolates it by service URL", async () => {
     const { temporary, secure, postMessage } = nativeFixture();
     const a = new Client({ baseUrl: "https://a.example", token: "" });
     const b = new Client({ baseUrl: "https://b.example", token: "" });
@@ -51,26 +51,28 @@ describe("手机端 API 客户端", () => {
       token: "app-session-only",
     });
   });
-  it("安全存储失败不伪装成登录已保存，也不清除原会话", async () => {
+  it("a secure-storage failure neither pretends the login was saved nor clears the existing session", async () => {
     const { temporary, postMessage } = nativeFixture();
     temporary.set("muse.sso:https://a.example", "previous-session");
     postMessage.mockRejectedValue(new Error("locked"));
     const client = new Client({ baseUrl: "https://a.example", token: "" });
-    await expect(client.restoreSSOToken()).rejects.toThrow("安全存储");
-    await expect(client.setSSOToken("new-session")).rejects.toThrow("安全存储");
+    await expect(client.restoreSSOToken()).rejects.toThrow("secure storage");
+    await expect(client.setSSOToken("new-session")).rejects.toThrow(
+      "secure storage",
+    );
     expect(client.ssoToken()).toBe("previous-session");
   });
-  it("安全存储无响应时可以重试，不无限停在启动页", async () => {
+  it("can retry when secure storage never responds instead of staying forever on the launch screen", async () => {
     vi.useFakeTimers();
     const { postMessage } = nativeFixture();
     postMessage.mockImplementation(() => new Promise<never>(() => {}));
     const pending = expect(
       new Client({ baseUrl: "https://a.example", token: "" }).restoreSSOToken(),
-    ).rejects.toThrow("安全存储");
+    ).rejects.toThrow("secure storage");
     await vi.advanceTimersByTimeAsync(5000);
     await pending;
   });
-  it("Mac 同源登录仍使用原生桌面会话桥接", async () => {
+  it("same-origin login on Mac still uses the native desktop session bridge", async () => {
     nativeFixture();
     const postMessage = vi.fn();
     vi.stubGlobal("window", {
@@ -80,7 +82,7 @@ describe("手机端 API 客户端", () => {
     await new Client({ baseUrl: "", token: "" }).setSSOToken("desktop-session");
     expect(postMessage).toHaveBeenCalledWith("desktop-session");
   });
-  it("工作空间就绪后不重复发起准备请求", async () => {
+  it("does not send duplicate prepare requests once the workspace is ready", async () => {
     const fetcher = vi
       .fn()
       .mockResolvedValue(Response.json({ state: "ready", message: "ready" }));
@@ -92,7 +94,7 @@ describe("手机端 API 客户端", () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(fetcher.mock.calls[0][0]).toBe("https://muse.example/api/workspace");
   });
-  it("自动准备只传递动作，不要求客户端传入 Agent 或环境标识", async () => {
+  it("automatic prepare sends only the action and never requires the client to pass an agent or environment id", async () => {
     const fetcher = vi
       .fn()
       .mockResolvedValueOnce(Response.json({ state: "idle", message: "idle" }))
@@ -109,7 +111,7 @@ describe("手机端 API 客户端", () => {
       "https://muse.example/api/workspace/prepare",
     );
   });
-  it("SSO 令牌按服务地址隔离，不放入 URL", async () => {
+  it("isolates the SSO token by service URL and never puts it in the URL", async () => {
     const values = new Map<string, string>();
     vi.stubGlobal("sessionStorage", {
       getItem: (key: string) => values.get(key),
@@ -135,7 +137,7 @@ describe("手机端 API 客户端", () => {
     await a.setSSOToken("");
     expect(a.ssoToken()).toBe("");
   });
-  it("只允许 HTTPS 远程地址和本机开发地址", () => {
+  it("only allows HTTPS remote URLs and local development URLs", () => {
     expect(validateEndpoint("")).toBe("");
     expect(validateEndpoint("https://muse.example/")).toBe(
       "https://muse.example",
@@ -151,7 +153,7 @@ describe("手机端 API 客户端", () => {
     ])
       expect(() => validateEndpoint(url)).toThrow();
   });
-  it("分页收集历史，令牌只在 Header 中", async () => {
+  it("collects history via pagination with the token only in the header", async () => {
     const fetcher = vi
       .fn()
       .mockResolvedValueOnce(
@@ -175,7 +177,7 @@ describe("手机端 API 客户端", () => {
       "Bearer private",
     );
   });
-  it("发现重复分页游标时结束，而不是无限请求", async () => {
+  it("stops when a duplicate pagination cursor is found instead of requesting forever", async () => {
     vi.stubGlobal(
       "fetch",
       vi
@@ -186,9 +188,9 @@ describe("手机端 API 客户端", () => {
     );
     await expect(
       new Client({ baseUrl: "", token: "" }).events("session"),
-    ).rejects.toThrow("分页异常");
+    ).rejects.toThrow("paging through history");
   });
-  it("有外部取消信号时，仍保留超时保护", async () => {
+  it("keeps the timeout guard even when an external abort signal is present", async () => {
     vi.useFakeTimers();
     vi.stubGlobal(
       "fetch",
@@ -202,7 +204,7 @@ describe("手机端 API 客户端", () => {
     const client = new Client({ baseUrl: "", token: "" });
     const request = expect(
       client.session("session", new AbortController().signal),
-    ).rejects.toThrow("请求超时");
+    ).rejects.toThrow("Request timed out");
     await vi.advanceTimersByTimeAsync(35000);
     await request;
   });

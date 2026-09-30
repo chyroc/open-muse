@@ -23,20 +23,22 @@ afterEach(async () => {
 const agentEvent: AgentEvent = {
   id: "answer",
   type: "agent.message",
-  content: [{ type: "text", text: "# 已完成的结果\n\n这是来源回复。" }],
+  content: [
+    { type: "text", text: "# Completed result\n\nThis is the source reply." },
+  ],
 };
 async function session() {
   const response = await request(instance.app)
     .post("/api/sessions")
-    .send({ title: "资料来源" })
+    .send({ title: "Source material" })
     .expect(201);
   instance.store.data.events[response.body.id] = [agentEvent];
   await instance.store.save();
   return response.body.id as string;
 }
 
-describe("目标与资料库", () => {
-  it("旧数据没有新增字段时返回空列表", async () => {
+describe("Goals and library", () => {
+  it("returns empty lists when old data lacks the new fields", async () => {
     expect((await request(instance.app).get("/api/goals")).body.data).toEqual(
       [],
     );
@@ -44,13 +46,13 @@ describe("目标与资料库", () => {
       [],
     );
   });
-  it("创建、更新步骤、暂停、完成并在重启后恢复目标", async () => {
+  it("creates, updates steps, pauses, completes a goal, and restores it after restart", async () => {
     const { body: goal } = await request(instance.app)
       .post("/api/goals")
-      .send({ title: "  周末旅行  ", description: "两天" })
+      .send({ title: "  Weekend trip  ", description: "Two days" })
       .expect(201);
-    expect(goal.title).toBe("周末旅行");
-    const steps = [{ id: "one", title: "确定日期", done: true }];
+    expect(goal.title).toBe("Weekend trip");
+    const steps = [{ id: "one", title: "Choose dates", done: true }];
     await request(instance.app)
       .post(`/api/goals/${goal.id}`)
       .send({ steps, status: "paused" })
@@ -63,13 +65,13 @@ describe("目标与资料库", () => {
     instance = await createApp(loadConfig({ MUSE_DATA_DIR: directory }));
     expect(
       (await request(instance.app).get("/api/goals")).body.data[0],
-    ).toMatchObject({ title: "周末旅行", status: "completed", steps });
+    ).toMatchObject({ title: "Weekend trip", status: "completed", steps });
   });
-  it("目标只能关联当前空间登记过的会话", async () => {
+  it("a goal can only be linked to a session registered in the current space", async () => {
     const id = await session();
     const { body: goal } = await request(instance.app)
       .post("/api/goals")
-      .send({ title: "目标" });
+      .send({ title: "Goal" });
     await request(instance.app)
       .post(`/api/goals/${goal.id}`)
       .send({ session_id: "someone-elses-session" })
@@ -80,7 +82,7 @@ describe("目标与资料库", () => {
       .expect(200);
     expect(response.body.session_id).toBe(id);
   });
-  it("拒绝无效目标、重复步骤和未知目标", async () => {
+  it("rejects invalid goals, duplicate steps, and unknown goals", async () => {
     await request(instance.app)
       .post("/api/goals")
       .send({ title: " " })
@@ -91,22 +93,22 @@ describe("目标与资料库", () => {
       .expect(404);
     const { body: goal } = await request(instance.app)
       .post("/api/goals")
-      .send({ title: "目标" });
+      .send({ title: "Goal" });
     await request(instance.app)
       .post(`/api/goals/${goal.id}`)
       .send({ status: "automatic" })
       .expect(400);
-    const step = { id: "same", title: "一步", done: false };
+    const step = { id: "same", title: "A step", done: false };
     await request(instance.app)
       .post(`/api/goals/${goal.id}`)
       .send({ steps: [step, step] })
       .expect(400);
   });
-  it("收藏真实回复，忽略伪造正文；重复收藏幂等且重启后保留", async () => {
+  it("saves a real reply and ignores forged text; repeats are idempotent and survive restart", async () => {
     const id = await session();
     const response = await request(instance.app)
       .post("/api/library")
-      .send({ session_id: id, event_id: "answer", text: "伪造内容" })
+      .send({ session_id: id, event_id: "answer", text: "Forged content" })
       .expect(201);
     expect(response.body.text).toBe(agentEvent.content![0].text);
     const repeat = await request(instance.app)
@@ -120,12 +122,12 @@ describe("目标与资料库", () => {
       (await request(instance.app).get("/api/library")).body.data,
     ).toHaveLength(1);
   });
-  it("不能收藏其他空间的会话、未知事件或用户输入", async () => {
+  it("cannot save sessions from another space, unknown events, or user input", async () => {
     const id = await session();
     instance.store.data.events[id].push({
       id: "user",
       type: "user.message",
-      content: [{ type: "text", text: "输入" }],
+      content: [{ type: "text", text: "Input" }],
     });
     for (const input of [
       { session_id: "foreign", event_id: "answer" },
@@ -135,7 +137,7 @@ describe("目标与资料库", () => {
       await request(instance.app).post("/api/library").send(input).expect(404);
     }
   });
-  it("新增接口仍受访问令牌保护", async () => {
+  it("new endpoints remain protected by the access token", async () => {
     instance.close();
     instance = await createApp(
       loadConfig({
@@ -155,7 +157,7 @@ describe("目标与资料库", () => {
   });
 });
 
-describe("MA 资料来源校验", () => {
+describe("MA source validation", () => {
   async function arkApp() {
     instance.close();
     const config = loadConfig({
@@ -167,7 +169,7 @@ describe("MA 资料来源校验", () => {
     instance = await createApp(config, { ark });
     instance.store.data.sessions.push({
       id: "registered",
-      title: "MA 结果",
+      title: "MA result",
       status: "idle",
       category: "general",
       created_at: "2026-09-29",
@@ -175,7 +177,7 @@ describe("MA 资料来源校验", () => {
     } as Session);
     return ark;
   }
-  it("逐页读取 MA 历史后收藏，并发请求只保存一份", async () => {
+  it("reads MA history page by page before saving; concurrent requests save only one copy", async () => {
     const ark = await arkApp();
     vi.spyOn(ark, "events").mockImplementation(async (_id, page) =>
       page ? { data: [agentEvent] } : { data: [], next_page: "page-2" },
@@ -189,7 +191,7 @@ describe("MA 资料来源校验", () => {
     expect(ark.events).toHaveBeenCalledWith("registered", "page-2");
     expect(instance.store.data.library).toHaveLength(1);
   });
-  it("检测循环游标，不会卡死或保存不存在的结果", async () => {
+  it("detects a looping cursor without hanging or saving nonexistent results", async () => {
     const ark = await arkApp();
     vi.spyOn(ark, "events").mockResolvedValue({ data: [], next_page: "loop" });
     await request(instance.app)

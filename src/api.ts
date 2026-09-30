@@ -34,7 +34,9 @@ export function validateEndpoint(input: string) {
     url.hash ||
     url.pathname !== "/"
   )
-    throw new Error("请输入服务根地址，不要包含路径、账号或查询参数。");
+    throw new Error(
+      "Enter the service root URL, without any path, credentials, or query parameters.",
+    );
   if (
     url.protocol !== "https:" &&
     !(
@@ -42,7 +44,9 @@ export function validateEndpoint(input: string) {
       ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
     )
   ) {
-    throw new Error("远程服务必须使用 HTTPS，只有本机开发地址允许 HTTP。");
+    throw new Error(
+      "Remote services must use HTTPS; only local development addresses allow HTTP.",
+    );
   }
   return url.origin;
 }
@@ -83,7 +87,7 @@ async function nativeSessionRequest(input: {
     ]);
   } catch {
     throw new Error(
-      "无法访问 iOS 安全存储。请解锁设备后重试，登录状态尚未恢复或保存。",
+      "Couldn't access iOS secure storage. Unlock your device and try again; your sign-in state has not been restored or saved.",
     );
   } finally {
     clearTimeout(timer);
@@ -164,20 +168,26 @@ export class Client {
       try {
         data = await response.json();
       } catch {
-        throw new Error("服务未返回有效数据，请检查服务地址。");
+        throw new Error(
+          "The service returned no valid data. Check the service URL.",
+        );
       }
       if (!response.ok)
         throw new Error(
           (data as { error?: string }).error ??
-            `请求失败（${response.status}）。`,
+            `Request failed (${response.status}).`,
         );
       return data as T;
     } catch (error) {
       if (init.signal?.aborted) throw error;
       if (timeout.signal.aborted)
-        throw new Error("请求超时，请先刷新历史记录确认是否已提交。");
+        throw new Error(
+          "Request timed out. Refresh the history first to confirm whether it went through.",
+        );
       if (response) throw error;
-      throw new Error("无法连接服务，请检查网络和设置中的服务地址。");
+      throw new Error(
+        "Couldn't reach the service. Check your network and the service URL in Settings.",
+      );
     } finally {
       timeout.dispose();
     }
@@ -229,7 +239,7 @@ export class Client {
     if (status.state !== "ready")
       throw new Error(
         status.state === "preparing"
-          ? "工作空间仍在准备，请在设置中查看进度；尚未创建任务。"
+          ? "The workspace is still preparing. Check the progress in Settings; no task has been created yet."
           : status.message,
       );
   }
@@ -265,7 +275,9 @@ export class Client {
       data.push(...result.data);
       page = result.next_page ?? "";
       if (page && (seen.has(page) || seen.size >= 100))
-        throw new Error("历史记录分页异常，请稍后重试。");
+        throw new Error(
+          "Something went wrong paging through history. Please try again shortly.",
+        );
       seen.add(page);
     } while (page);
     return data;
@@ -287,7 +299,7 @@ export class Client {
         !response.body ||
         !response.headers.get("content-type")?.includes("text/event-stream")
       )
-        throw new Error("事件流暂时断开");
+        throw new Error("The event stream is temporarily disconnected");
       onConnected();
       for await (const data of readSSE(response.body)) {
         if (data === "[DONE]") return;
@@ -300,7 +312,7 @@ export class Client {
   }
 }
 
-// iOS 15 WebView 不依赖较新的 AbortSignal.timeout / any。
+// iOS 15 WebView cannot rely on the newer AbortSignal.timeout / any.
 function boundedSignal(
   parent: AbortSignal | null | undefined,
   milliseconds: number,

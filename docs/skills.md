@@ -1,14 +1,14 @@
-# 技能适用性
+# Skill applicability
 
-工作台的技能页提供能力评估，不表示条目已经安装。评估对象为 [MuseAI-Skills](https://github.com/win4r/MuseAI-Skills)。使用第三方内容前，须逐项核对许可、依赖和授权要求；公开可访问不等于获得再分发许可。
+The skills page in the Studio provides capability assessments; it does not mean the entries are already installed. The assessment target is [MuseAI-Skills](https://github.com/win4r/MuseAI-Skills). Before using third-party content, review its license, dependencies, and authorization requirements item by item; public accessibility does not imply permission to redistribute.
 
-| 方向                 | 接入要求                                         |
-| -------------------- | ------------------------------------------------ |
-| Markdown 与产物验收  | MA 文件能力，以及生成后回读、渲染和可用性检查    |
-| 多主题研究           | 多 Agent 编排、统一输出字段、失败项与覆盖率检查  |
-| 旅行规划             | 搜索工具；预订、实时价格与交易需要另外接入供应商 |
-| 邮箱、日历和知识管理 | MCP、OAuth、账号授权和操作确认                   |
-| 目标与长期记忆       | 持久化、调度和数据保留策略                       |
-| 设备数据与系统集成   | 平台权限与专门的宿主能力                         |
+| Direction                                 | Integration requirements                                                                          |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Markdown and deliverable acceptance       | MA file capabilities, plus post-generation read-back, rendering, and usability checks             |
+| Multi-topic research                      | Multi-agent orchestration, unified output fields, and failure-item and coverage checks            |
+| Travel planning                           | Search tools; booking, real-time pricing, and transactions require separate supplier integrations |
+| Email, calendar, and knowledge management | MCP, OAuth, account authorization, and operation confirmation                                     |
+| Goals and long-term memory                | Persistence, scheduling, and data retention policies                                              |
+| Device data and system integration        | Platform permissions and dedicated host capabilities                                              |
 
-文档或技能包本身不提供外部服务访问权限。当前应用不包含定时调度、推送、HealthKit、支付或独立连接器服务。技能上传功能只提交 ZIP 到方舟，不会自动安装未授权的第三方依赖。
+The docs and skill packages themselves do not grant access to external services. The current app does not include scheduled tasks, push notifications, HealthKit, payments, or standalone connector services. The skill upload feature only submits a ZIP to Ark and does not automatically install unauthorized third-party dependencies.

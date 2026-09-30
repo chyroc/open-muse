@@ -2,7 +2,7 @@ import AppKit
 import WebKit
 import Security
 
-// 原生窗口 + 内嵌 BFF。密钥不在 URL 中出现，外链只在系统浏览器打开。
+// Native window with an embedded BFF. Secrets never appear in the URL; external links open in the system browser.
 @main
 final class OpenMuseApp: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
     private var window: NSWindow!
@@ -31,7 +31,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         window.center()
         window.makeKeyAndOrderFront(nil)
         NSApplication.shared.activate(ignoringOtherApps: true)
-        let label = NSTextField(labelWithString: "正在启动 Open Muse…")
+        let label = NSTextField(labelWithString: "Starting Open Muse…")
         label.alignment = .center
         label.frame = NSRect(x: 0, y: 360, width: 1180, height: 36)
         label.autoresizingMask = [.width, .minYMargin, .maxYMargin]
@@ -40,16 +40,16 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     }
 
     private func startService() {
-        guard let resources = Bundle.main.resourceURL else { fail("应用资源缺失，请重新构建。"); return }
+        guard let resources = Bundle.main.resourceURL else { fail("App resources are missing; rebuild the app."); return }
         var bytes = [UInt8](repeating: 0, count: 32)
-        guard SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess else { fail("无法生成本地访问令牌。"); return }
+        guard SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes) == errSecSuccess else { fail("Could not generate a local access token."); return }
         accessToken = Data(bytes).base64EncodedString()
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Open Muse", isDirectory: true)
         let task = Process()
         task.executableURL = resources.appendingPathComponent("node")
         task.arguments = [resources.appendingPathComponent("app/server.cjs").path]
         task.currentDirectoryURL = resources.appendingPathComponent("app")
-        // 不继承 NODE_OPTIONS、ARK_API_KEY 等 shell 凭据；默认演示，登录后按用户切换。
+        // Do not inherit shell credentials such as NODE_OPTIONS or ARK_API_KEY; demo mode by default, switched per user after login.
         task.environment = ["PATH": "/usr/bin:/bin", "MUSE_MODE": "demo", "HOST": "127.0.0.1", "MUSE_ACCESS_TOKEN": accessToken, "MUSE_DATA_DIR": support.path, "NODE_ENV": "production"]
         let pipe = Pipe()
         task.standardOutput = pipe
@@ -59,18 +59,18 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
             if data.isEmpty { handle.readabilityHandler = nil; return }
             DispatchQueue.main.async { self?.readServiceOutput(data) }
         }
-        task.terminationHandler = { [weak self] _ in DispatchQueue.main.async { if NSApplication.shared.isRunning { self?.fail("本地服务已停止。请退出并重新打开 Open Muse。")} } }
+        task.terminationHandler = { [weak self] _ in DispatchQueue.main.async { if NSApplication.shared.isRunning { self?.fail("The local service stopped. Quit and reopen Open Muse.")} } }
         do { try task.run(); server = task }
-        catch { fail("无法启动本地服务，请重新构建 Mac App。"); return }
+        catch { fail("Could not start the local service; rebuild the Mac app."); return }
         startupTimer = Timer.scheduledTimer(withTimeInterval: 20, repeats: false) { [weak self] _ in
-            if self?.port == 0 { self?.fail("本地服务启动超时，请检查应用数据目录权限后重新打开。") }
+            if self?.port == 0 { self?.fail("The local service timed out during startup; check permissions on the app data directory and reopen.") }
         }
     }
 
     private func readServiceOutput(_ data: Data) {
         guard port == 0 else { return }
         output.append(data)
-        guard output.count < 65536 else { fail("本地服务启动响应异常。"); return }
+        guard output.count < 65536 else { fail("Unexpected startup response from the local service."); return }
         while let end = output.firstIndex(of: 10) {
             let line = output.prefix(upTo: end)
             output.removeSubrange(...end)
@@ -178,14 +178,14 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         let menu = NSMenu()
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "关于 Open Muse", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: "About Open Muse", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "退出 Open Muse", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: "Quit Open Muse", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
         menu.addItem(appItem)
-        let editItem = NSMenuItem(title: "编辑", action: nil, keyEquivalent: "")
-        let editMenu = NSMenu(title: "编辑")
-        for (title, selector, key) in [("撤销", "undo:", "z"), ("剪切", "cut:", "x"), ("拷贝", "copy:", "c"), ("粘贴", "paste:", "v"), ("全选", "selectAll:", "a")] { editMenu.addItem(withTitle: title, action: Selector(selector), keyEquivalent: key) }
+        let editItem = NSMenuItem(title: "Edit", action: nil, keyEquivalent: "")
+        let editMenu = NSMenu(title: "Edit")
+        for (title, selector, key) in [("Undo", "undo:", "z"), ("Cut", "cut:", "x"), ("Copy", "copy:", "c"), ("Paste", "paste:", "v"), ("Select All", "selectAll:", "a")] { editMenu.addItem(withTitle: title, action: Selector(selector), keyEquivalent: key) }
         editItem.submenu = editMenu; menu.addItem(editItem)
         NSApplication.shared.mainMenu = menu
     }

@@ -34,21 +34,21 @@ import { CategoryIcon, dateLabel, Markdown } from "./components";
 import { exportText } from "./platform";
 
 export const primaryNavigation = [
-  { id: "home", path: "/", label: "聊天", icon: MessageCircle },
-  { id: "feed", path: "/feed", label: "动态", icon: Rss },
-  { id: "discover", path: "/discover", label: "灵感", icon: Lightbulb },
-  { id: "goals", path: "/goals", label: "目标", icon: Target },
-  { id: "library", path: "/library", label: "资料库", icon: Shapes },
+  { id: "home", path: "/", label: "Chat", icon: MessageCircle },
+  { id: "feed", path: "/feed", label: "Activity", icon: Rss },
+  { id: "discover", path: "/discover", label: "Inspiration", icon: Lightbulb },
+  { id: "goals", path: "/goals", label: "Goals", icon: Target },
+  { id: "library", path: "/library", label: "Library", icon: Shapes },
 ] as const;
 
 export function goalPrompt(goal: Goal) {
   return [
-    `请帮我制定并逐步推进这个目标：${goal.title}`,
+    `Please help me plan and work toward this goal step by step: ${goal.title}`,
     goal.description,
     goal.steps.length
-      ? `已有步骤（请保留完成状态）：\n${goal.steps.map((s) => `- [${s.done ? "x" : " "}] ${s.title}`).join("\n")}`
+      ? `Existing steps (please preserve completion status):\n${goal.steps.map((s) => `- [${s.done ? "x" : " "}] ${s.title}`).join("\n")}`
       : "",
-    "请先确认必要的信息，给出可执行步骤；需要对外操作时先请求批准。",
+    "First confirm the necessary information and provide actionable steps. When an action affects external systems, ask for approval first.",
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -91,7 +91,7 @@ export function Sheet({
         <div className="sheet-grip" aria-hidden="true" />
         <header>
           <h2>{title}</h2>
-          <button className="icon-button" aria-label="关闭" onClick={onClose}>
+          <button className="icon-button" aria-label="Close" onClick={onClose}>
             <X size={22} />
           </button>
         </header>
@@ -109,25 +109,25 @@ export function MoreMenu({
   onClose: () => void;
 }) {
   return (
-    <Sheet title="我的空间" onClose={onClose}>
-      <nav className="more-links" aria-label="更多功能">
+    <Sheet title="My Space" onClose={onClose}>
+      <nav className="more-links" aria-label="More">
         <a href="#/tasks" onClick={onClose}>
           <History />
-          所有对话
+          All conversations
           <ChevronRight />
         </a>
         <a href="#/settings" onClick={onClose}>
           <Settings2 />
-          设置与连接
+          Settings &amp; connections
           <ChevronRight />
         </a>
         <a href="#/studio" onClick={onClose}>
           <Blocks />
-          MA 工作台
+          MA Studio
           <ChevronRight />
         </a>
       </nav>
-      <h3 className="list-caption">最近的对话</h3>
+      <h3 className="list-caption">Recent conversations</h3>
       <div className="more-recents">
         {sessions.slice(0, 8).map((s) => (
           <a key={s.id} href={`#/task/${s.id}`} onClick={onClose}>
@@ -136,7 +136,9 @@ export function MoreMenu({
           </a>
         ))}
       </div>
-      {!sessions.length && <p className="muted">还没有对话。从一句话开始。</p>}
+      {!sessions.length && (
+        <p className="muted">No conversations yet. Start with a sentence.</p>
+      )}
     </Sheet>
   );
 }
@@ -178,8 +180,8 @@ export function ChatWelcome({
     <div className="chat-welcome">
       <div className="welcome-space">
         <span className="welcome-wordmark">muse</span>
-        <h1>有什么新想法？</h1>
-        <p>聊聊你想做的事。</p>
+        <h1>What&apos;s on your mind?</h1>
+        <p>Tell Muse what you want to do.</p>
       </div>
       <div className="welcome-input">
         {goal && (
@@ -188,7 +190,7 @@ export function ChatWelcome({
             <span>{goal.title}</span>
             <button
               className="icon-button"
-              aria-label="取消关联目标"
+              aria-label="Unlink goal"
               onClick={onClearGoal}
             >
               <X size={16} />
@@ -207,9 +209,11 @@ export function ChatWelcome({
         <div className="welcome-footer">
           <a href="#/tasks">
             <History size={15} />
-            {sessions.length ? `查看 ${sessions.length} 个对话` : "对话历史"}
+            {sessions.length
+              ? `View ${sessions.length} conversations`
+              : "Conversation history"}
           </a>
-          <span>AI 生成的内容可能不准确</span>
+          <span>AI-generated content may be inaccurate</span>
         </div>
       </div>
     </div>
@@ -223,8 +227,8 @@ export function IdeasPage({
 }) {
   return (
     <section className="muse-page">
-      <PageHeader title="灵感" description="从一个想法开始。" />
-      <p className="list-caption">起步建议</p>
+      <PageHeader title="Inspiration" description="Start with an idea." />
+      <p className="list-caption">Starter ideas</p>
       <div className="idea-list">
         {templates.map((t) => (
           <button className="idea-row" key={t.id} onClick={() => onTemplate(t)}>
@@ -240,7 +244,8 @@ export function IdeasPage({
         ))}
       </div>
       <p className="page-note">
-        这些是预设建议。选择后可以编辑，再交给 Muse 执行。
+        These are preset suggestions. You can edit one before handing it to
+        Muse.
       </p>
     </section>
   );
@@ -255,14 +260,17 @@ export function FeedPage({
 }) {
   return (
     <section className="muse-page">
-      <PageHeader title="动态" description="对话的最新进展，都在这里。" />
+      <PageHeader
+        title="Activity"
+        description="The latest progress from your conversations, all in one place."
+      />
       {loading ? (
         <Loading />
       ) : !sessions.length ? (
         <Empty
           icon={<Rss />}
-          title="还没有新动态"
-          description="开始对话后，这里会显示实际任务状态。"
+          title="No new activity yet"
+          description="Once you start a conversation, real task status will show up here."
         />
       ) : (
         <div className="feed-list">
@@ -276,16 +284,19 @@ export function FeedPage({
                 <time>{dateLabel(s.updated_at)}</time>
               </div>
               <h2>{s.title}</h2>
-              <p>{s.preview || "打开对话，查看回复与工具执行记录。"}</p>
+              <p>
+                {s.preview ||
+                  "Open the conversation to see replies and tool executions."}
+              </p>
               <footer>
                 <span
                   className={s.status === "running" ? "status-running" : ""}
                 >
                   {s.status === "running" || s.status === "rescheduling"
-                    ? "正在处理"
+                    ? "Processing"
                     : s.status === "terminated"
-                      ? "已停止"
-                      : "查看对话"}
+                      ? "Stopped"
+                      : "View conversation"}
                 </span>
                 <ArrowRight size={19} />
               </footer>
@@ -294,7 +305,8 @@ export function FeedPage({
         </div>
       )}
       <p className="page-note">
-        显示当前空间的会话状态；尚未提供定时推送或主动推荐。
+        Shows session status for the current space. Scheduled pushes and
+        proactive recommendations are not available.
       </p>
     </section>
   );
@@ -304,7 +316,7 @@ function Loading() {
   return (
     <div className="loading" role="status">
       <LoaderCircle className="spin" size={22} />
-      正在加载…
+      Loading…
     </div>
   );
 }
@@ -329,7 +341,7 @@ function ErrorNotice({ error, retry }: { error: string; retry?: () => void }) {
   return error ? (
     <div className="inline-error" role="alert">
       {error}
-      {retry && <button onClick={retry}>重试</button>}
+      {retry && <button onClick={retry}>Retry</button>}
     </div>
   ) : null;
 }
@@ -396,12 +408,12 @@ export function GoalsPage({
   return (
     <section className="muse-page">
       <PageHeader
-        title="目标"
-        description="把想做的事，一步步完成。"
+        title="Goals"
+        description="Get things done, one step at a time."
         action={
           <button
             className="icon-button filled"
-            aria-label="新建目标"
+            aria-label="New goal"
             onClick={() => {
               setCreate(true);
               setError("");
@@ -411,14 +423,14 @@ export function GoalsPage({
           </button>
         }
       />
-      <div className="muse-filters" role="group" aria-label="目标状态">
+      <div className="muse-filters" role="group" aria-label="Goal status">
         {(["active", "completed"] as const).map((f) => (
           <button
             key={f}
             aria-pressed={filter === f}
             onClick={() => setFilter(f)}
           >
-            {f === "active" ? "进行中" : "已完成"}
+            {f === "active" ? "In progress" : "Completed"}
             <span>
               {
                 goals.filter((g) =>
@@ -440,12 +452,14 @@ export function GoalsPage({
         <Empty
           icon={<Target size={30} />}
           title={
-            filter === "completed" ? "还没有已完成的目标" : "让想法有个方向"
+            filter === "completed"
+              ? "No completed goals yet"
+              : "Give your ideas a direction"
           }
           description={
             filter === "completed"
-              ? "完成的目标会保留在这里。"
-              : "添加一个目标，让 Muse 帮你制定计划。"
+              ? "Completed goals will be kept here."
+              : "Add a goal and let Muse build a plan for you."
           }
         />
       ) : (
@@ -466,18 +480,18 @@ export function GoalsPage({
                 <strong>{g.title}</strong>
                 <small>
                   {g.status === "paused"
-                    ? "已暂停"
+                    ? "Paused"
                     : g.status === "completed"
-                      ? "已完成"
+                      ? "Completed"
                       : g.steps.length
-                        ? `${g.steps.filter((s) => s.done).length} / ${g.steps.length} 步已完成`
-                        : "等待制定计划"}
+                        ? `${g.steps.filter((s) => s.done).length} / ${g.steps.length} steps done`
+                        : "Waiting for a plan"}
                 </small>
                 {g.steps.length > 0 && (
                   <progress
                     value={g.steps.filter((s) => s.done).length}
                     max={g.steps.length}
-                    aria-label={`${g.title}进度`}
+                    aria-label={`${g.title} progress`}
                   />
                 )}
               </span>
@@ -487,11 +501,12 @@ export function GoalsPage({
         </div>
       )}
       <p className="page-note">
-        目标和步骤保存在当前服务空间。执行由对话发起，不会自动定时运行。
+        Goals and steps are saved in the current service space. Execution starts
+        from a conversation and never runs on an automatic schedule.
       </p>
       {create && (
         <Sheet
-          title="新建目标"
+          title="New goal"
           onClose={() => {
             if (!busy) setCreate(false);
           }}
@@ -510,23 +525,23 @@ export function GoalsPage({
             }}
           >
             <label className="field">
-              想完成什么？
+              What do you want to accomplish?
               <input
                 autoFocus
                 required
                 maxLength={160}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="例如：规划一次周末旅行"
+                placeholder="e.g., Plan a weekend trip"
               />
             </label>
             <label className="field">
-              补充说明
+              Additional details
               <textarea
                 value={description}
                 maxLength={8000}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="时间、偏好，或希望 Muse 帮忙的部分"
+                placeholder="Timing, preferences, or parts you want Muse to handle"
                 rows={3}
               />
             </label>
@@ -535,7 +550,7 @@ export function GoalsPage({
               className="button primary wide"
               disabled={busy || !title.trim()}
             >
-              {busy ? "正在保存…" : "创建目标"}
+              {busy ? "Saving…" : "Create goal"}
             </button>
           </form>
         </Sheet>
@@ -553,12 +568,12 @@ export function GoalsPage({
           <div className="goal-status">
             <Target size={16} />
             {current.status === "completed"
-              ? "已完成"
+              ? "Completed"
               : current.status === "paused"
-                ? "已暂停"
-                : "进行中"}
+                ? "Paused"
+                : "In progress"}
           </div>
-          <h3 className="list-caption">计划步骤</h3>
+          <h3 className="list-caption">Plan steps</h3>
           <div className="goal-steps">
             {current.steps.map((s) => (
               <label key={s.id}>
@@ -602,15 +617,15 @@ export function GoalsPage({
             }}
           >
             <input
-              aria-label="新步骤"
+              aria-label="New step"
               value={step}
               maxLength={160}
-              placeholder="添加一个步骤"
+              placeholder="Add a step"
               onChange={(e) => setStep(e.target.value)}
             />
             <button
               className="icon-button"
-              aria-label="添加步骤"
+              aria-label="Add step"
               disabled={busy || !step.trim() || current.steps.length >= 40}
             >
               <Plus size={22} />
@@ -628,7 +643,9 @@ export function GoalsPage({
             }}
           >
             <MessageCircle size={18} />
-            {current.session_id ? "继续目标对话" : "让 Muse 帮我规划"}
+            {current.session_id
+              ? "Resume goal conversation"
+              : "Have Muse plan this for me"}
           </button>
           <div className="goal-actions">
             <button
@@ -644,7 +661,7 @@ export function GoalsPage({
               }
             >
               <Check size={16} />
-              {current.status === "completed" ? "重新开启" : "标记完成"}
+              {current.status === "completed" ? "Reopen" : "Mark as completed"}
             </button>
             {current.status !== "completed" && (
               <button
@@ -659,12 +676,13 @@ export function GoalsPage({
                 }
               >
                 <Pause size={16} />
-                {current.status === "paused" ? "恢复目标" : "暂停目标"}
+                {current.status === "paused" ? "Resume goal" : "Pause goal"}
               </button>
             )}
           </div>
           <p className="page-note">
-            暂停或完成只更新目标记录。如需停止正在执行的任务，请进入对话操作。
+            Pausing or completing only updates the goal record. To stop a
+            running task, open the conversation and do it there.
           </p>
         </Sheet>
       )}
@@ -700,19 +718,22 @@ export function LibraryPage({ client }: { client: Client }) {
   );
   return (
     <section className="muse-page">
-      <PageHeader title="资料库" description="收藏有用的回复，随时回来查看。" />
+      <PageHeader
+        title="Library"
+        description="Save useful replies and come back to them anytime."
+      />
       <label className="library-search">
         <Search size={19} />
         <input
-          aria-label="搜索资料库"
+          aria-label="Search Library"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="搜索资料库"
+          placeholder="Search Library"
         />
       </label>
       <div className="library-section">
         <FileText size={18} />
-        <strong>已保存的回复</strong>
+        <strong>Saved replies</strong>
         <span>{items.length}</span>
       </div>
       <ErrorNotice error={error} retry={() => void reload()} />
@@ -721,11 +742,11 @@ export function LibraryPage({ client }: { client: Client }) {
       ) : error && !items.length ? null : !visible.length ? (
         <Empty
           icon={<Shapes size={30} />}
-          title={query ? "没有匹配的资料" : "留住值得收藏的内容"}
+          title={query ? "No matching items" : "Keep content worth saving"}
           description={
             query
-              ? "试试其他关键词。"
-              : "在对话回复下点击收藏，即可保存到这里。"
+              ? "Try other keywords."
+              : "Tap Save on a conversation reply to keep it here."
           }
         />
       ) : (
@@ -755,12 +776,12 @@ export function LibraryPage({ client }: { client: Client }) {
               href={`#/task/${selected.session_id}`}
               onClick={() => setSelected(undefined)}
             >
-              查看来源对话
+              View source conversation
               <ArrowRight size={16} />
             </a>
             <button
               className="icon-button"
-              aria-label="导出资料"
+              aria-label="Export item"
               disabled={exporting}
               onClick={async () => {
                 setExporting(true);

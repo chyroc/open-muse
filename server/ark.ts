@@ -38,7 +38,7 @@ export class ArkClient {
         [400, 401, 403, 404, 409, 413, 429].includes(response.status)
           ? response.status
           : 502,
-        `方舟请求失败（HTTP ${response.status}${diagnostic ? `；${diagnostic}` : ""}）。请检查服务端配置或稍后重试。`,
+        `Ark request failed (HTTP ${response.status}${diagnostic ? `; ${diagnostic}` : ""}). Check the server configuration or try again later.`,
       );
     }
     if (response.status === 204) return { ok: true } as T;
@@ -53,7 +53,10 @@ export class ArkClient {
       !(selection?.agent ?? this.config.agentId) ||
       !(selection?.environment_id ?? this.config.environmentId)
     )
-      throw new ApiError(409, "个人工作空间尚未就绪，请在设置中继续准备。");
+      throw new ApiError(
+        409,
+        "Your personal workspace is not ready yet; continue preparing it in Settings.",
+      );
     const session = await this.request<Session>("/sessions", {
       method: "POST",
       body: JSON.stringify({
@@ -62,7 +65,8 @@ export class ArkClient {
         title,
       }),
     });
-    if (!session.id) throw new ApiError(502, "方舟未返回会话 ID。");
+    if (!session.id)
+      throw new ApiError(502, "Ark did not return a session ID.");
     return { ...session, category };
   }
   get(id: string) {
@@ -95,7 +99,7 @@ export class ArkClient {
   }
 }
 
-// 只回传结构化诊断与已知校验类别，不回传可能包含凭据或用户输入的错误原文。
+// Return only structured diagnostics and known validation categories, never raw error text that may contain credentials or user input.
 async function errorDiagnostic(response: Response, secret: string) {
   const parts: string[] = [];
   const requestId = response.headers.get("x-request-id");
@@ -104,9 +108,9 @@ async function errorDiagnostic(response: Response, secret: string) {
     /^[a-zA-Z0-9_-]{8,100}$/.test(requestId) &&
     requestId !== secret
   )
-    parts.push(`请求 ID ${requestId}`);
+    parts.push(`Request ID ${requestId}`);
   const reader = response.body?.getReader();
-  if (!reader) return parts.join("；");
+  if (!reader) return parts.join("; ");
   try {
     let raw = "";
     let bytes = 0;
@@ -115,7 +119,7 @@ async function errorDiagnostic(response: Response, secret: string) {
       const chunk = await reader.read();
       if (chunk.done) break;
       bytes += chunk.value.byteLength;
-      if (bytes > 65_536) return parts.join("；");
+      if (bytes > 65_536) return parts.join("; ");
       raw += decoder.decode(chunk.value, { stream: true });
     }
     raw += decoder.decode();
@@ -146,7 +150,7 @@ async function errorDiagnostic(response: Response, secret: string) {
     const field = fields.find(
       (field) => message.includes(field) || error?.param === field,
     );
-    if (field) parts.push(`字段 ${field}`);
+    if (field) parts.push(`Field ${field}`);
     const expected = message.match(/must be (?:one of )?(.+)/i)?.[1];
     if (expected) {
       const values = [
@@ -156,15 +160,15 @@ async function errorDiagnostic(response: Response, secret: string) {
         "cloud",
         "self_hosted",
       ].filter((value) => new RegExp(`\\b${value}\\b`).test(expected));
-      if (values.length) parts.push(`允许值 ${values.join(" / ")}`);
+      if (values.length) parts.push(`Allowed values ${values.join(" / ")}`);
     }
     for (const [pattern, label] of [
-      [/not supported|unsupported/i, "不支持该配置"],
-      [/missing|required/i, "缺少必填参数"],
-      [/length|too long|too short/i, "长度不符合要求"],
-      [/already exists|duplicate/i, "资源名称重复"],
-      [/must match|pattern|regexp/i, "格式不符合要求"],
-      [/must be|one of|invalid/i, "参数值未通过校验"],
+      [/not supported|unsupported/i, "Unsupported configuration"],
+      [/missing|required/i, "Missing required parameter"],
+      [/length|too long|too short/i, "Length constraint violated"],
+      [/already exists|duplicate/i, "Resource name already exists"],
+      [/must match|pattern|regexp/i, "Format constraint violated"],
+      [/must be|one of|invalid/i, "Parameter value failed validation"],
     ] as const) {
       if (pattern.test(message)) {
         parts.push(label);
@@ -172,10 +176,10 @@ async function errorDiagnostic(response: Response, secret: string) {
       }
     }
   } catch {
-    /* 非 JSON 或中断时保留 HTTP 状态和请求 ID。 */
+    /* For non-JSON or interrupted responses, keep the HTTP status and request ID. */
   } finally {
     await reader.cancel().catch(() => {});
     reader.releaseLock();
   }
-  return parts.join("；");
+  return parts.join("; ");
 }

@@ -17,7 +17,7 @@ const arkFactory = (config: ServerConfig) => {
   const ark = new ArkClient(config);
   vi.spyOn(ark, "request").mockImplementation(async (path) => {
     calls.push({ path, config });
-    if (rejectKey) throw new ApiError(401, "方舟拒绝此密钥。");
+    if (rejectKey) throw new ApiError(401, "Ark rejected this key.");
     return { data: [] } as never;
   });
   return ark;
@@ -44,8 +44,8 @@ async function login(apiKey = key, project = "") {
   return response.body.sessionToken as string;
 }
 
-describe("手动 API Key 登录", () => {
-  it("先只读验证密钥，再返回应用会话；不会创建新 Key 或偷偷创建云资源", async () => {
+describe("Manual API key login", () => {
+  it("verifies the key read-only first, then returns an app session; it never creates a new key or secretly creates cloud resources", async () => {
     const token = await login();
     expect(calls.map((c) => c.path)).toEqual(["/models"]);
     expect(calls[0].config.arkBaseUrl).toBe(
@@ -67,7 +67,7 @@ describe("手动 API Key 登录", () => {
         .body.mode,
     ).toBe("ark");
   });
-  it("密钥加密保存，退出后旧会话失效且不撤销用户 Key", async () => {
+  it("stores the key encrypted; after logout the old session is invalid and the user's key is not revoked", async () => {
     const token = await login();
     expect(
       (await readFile(join(directory, "auth.enc"))).includes(Buffer.from(key)),
@@ -84,7 +84,7 @@ describe("手动 API Key 登录", () => {
       .expect(401);
     expect(calls.map((c) => c.path)).toEqual(["/models"]);
   });
-  it("拒绝无效密钥，不保存失败的密钥", async () => {
+  it("rejects an invalid key and does not persist the failed key", async () => {
     rejectKey = true;
     await request(app.app)
       .post("/api/auth/api-key")
@@ -94,7 +94,7 @@ describe("手动 API Key 登录", () => {
       code: "ENOENT",
     });
   });
-  it("拒绝未确认、Header 注入和自选上游，避免误发密钥", async () => {
+  it("rejects missing confirmation, header injection, and a self-selected upstream, avoiding accidental key disclosure", async () => {
     for (const body of [
       { apiKey: key },
       { apiKey: `${key}\r\nInjected: yes`, confirm: true },
@@ -104,7 +104,7 @@ describe("手动 API Key 登录", () => {
       await request(app.app).post("/api/auth/api-key").send(body).expect(400);
     expect(calls).toHaveLength(0);
   });
-  it("项目只作为上游请求头，不把 API Key 冒充 STS", async () => {
+  it("uses the project only as an upstream request header and never passes the API key off as STS", async () => {
     const token = await login(key, "project-a");
     expect(calls[0].config.project).toBe("project-a");
     await request(app.app)
@@ -131,7 +131,7 @@ describe("手动 API Key 登录", () => {
       .expect(401);
     expect(calls.map((c) => c.path)).toEqual(["/models"]);
   });
-  it("不同密钥和项目的目标隔离，同一身份多次登录共享一致的存储", async () => {
+  it("isolates storage by key and project, while repeated logins of the same identity share consistent storage", async () => {
     const a = await login();
     const a2 = await login();
     const b = await login("test-only-second-api-key-identity");
@@ -141,7 +141,7 @@ describe("手动 API Key 登录", () => {
         request(app.app)
           .post("/api/goals")
           .set("X-Muse-Session", token)
-          .send({ title: `目标 ${i}` })
+          .send({ title: `Goal ${i}` })
           .expect(201),
       ),
     );
@@ -156,12 +156,12 @@ describe("手动 API Key 登录", () => {
           .body.data,
       ).toEqual([]);
   });
-  it("服务重启和同一 Key 重新登录可以恢复目标", async () => {
+  it("restores goals after a server restart or a fresh login with the same key", async () => {
     const token = await login();
     await request(app.app)
       .post("/api/goals")
       .set("X-Muse-Session", token)
-      .send({ title: "持久化目标" })
+      .send({ title: "Persisted goal" })
       .expect(201);
     app.close();
     app = await createApp(loadConfig({ MUSE_DATA_DIR: directory }), {
@@ -171,9 +171,9 @@ describe("手动 API Key 登录", () => {
       expect(
         (await request(app.app).get("/api/goals").set("X-Muse-Session", t)).body
           .data[0].title,
-      ).toBe("持久化目标");
+      ).toBe("Persisted goal");
   });
-  it("已有会话不能直接覆盖身份，登录仍受 Origin 和应用访问令牌保护", async () => {
+  it("does not let an existing session overwrite identity; login stays protected by Origin and the application access token", async () => {
     const token = await login();
     await request(app.app)
       .post("/api/auth/api-key")

@@ -83,8 +83,8 @@ async function ready(token: string) {
     .expect(200);
 }
 
-describe("SSO 协议与隔离", () => {
-  it("PKCE 使用随机 verifier、S256，且回调地址固定", () => {
+describe("SSO protocol and isolation", () => {
+  it("PKCE uses a random verifier, S256, and a fixed callback URL", () => {
     const login = beginLogin();
     const url = new URL(login.url);
     expect(url.origin).toBe("https://signin.volcengine.com");
@@ -94,7 +94,7 @@ describe("SSO 协议与隔离", () => {
     expect(login.verifier).not.toBe(beginLogin().verifier);
     expect(url.searchParams.has("code_verifier")).toBe(false);
   });
-  it("裸授权码、带 state 查询和 base64 回调；拒绝其他站点与错误 state", () => {
+  it("accepts a raw code, a state query, and a base64 callback; rejects other sites and a wrong state", () => {
     expect(extractCode("raw-code", "state")).toBe("raw-code");
     expect(
       extractCode(
@@ -103,14 +103,14 @@ describe("SSO 协议与隔离", () => {
       ),
     ).toBe("valid");
     expect(() => extractCode("code=value&state=forged", "state")).toThrow(
-      "状态不匹配",
+      "state mismatch",
     );
     expect(() =>
       extractCode("https://evil.example/?code=x&state=state", "state"),
-    ).toThrow("地址不正确");
-    expect(() => extractCode("code=x", "state")).toThrow("状态不匹配");
+    ).toThrow("Incorrect authorization callback URL");
+    expect(() => extractCode("code=x", "state")).toThrow("state mismatch");
   });
-  it("同一登录事务只交换一次；verifier 不回传", async () => {
+  it("exchanges a login transaction only once; the verifier is never sent back", async () => {
     const { begin } = await login();
     expect(JSON.stringify(begin)).not.toContain("verifier");
     await request(app.app)
@@ -119,7 +119,7 @@ describe("SSO 协议与隔离", () => {
       .expect(400);
     expect(provider.exchange).toHaveBeenCalledTimes(1);
   });
-  it("错误 state 不兑换令牌，过期事务被拒绝", async () => {
+  it("does not exchange tokens for a wrong state and rejects expired transactions", async () => {
     const begin = (await request(app.app).post("/api/auth/begin").send({}))
       .body;
     await request(app.app)
@@ -133,7 +133,7 @@ describe("SSO 协议与隔离", () => {
       .expect(400);
     expect(provider.exchange).not.toHaveBeenCalled();
   });
-  it("连接按钮确认创建密钥，重复连接同一项目不会再创建密钥", async () => {
+  it("the connect button confirms key creation; reconnecting the same project does not mint another key", async () => {
     const { token } = await login();
     await request(app.app)
       .get("/api/sessions")
@@ -158,7 +158,7 @@ describe("SSO 协议与隔离", () => {
       .expect(200);
     expect(provider.mintKey).toHaveBeenCalledTimes(1);
   });
-  it("凭据加密保存、文件 0600，客户端状态不含 STS/API Key", async () => {
+  it("stores credentials encrypted with 0600 files; client status never contains STS/API keys", async () => {
     const { token } = await login();
     await ready(token);
     const status = (
@@ -173,7 +173,7 @@ describe("SSO 协议与隔离", () => {
     expect((await stat(join(dir, "auth.enc"))).mode & 0o777).toBe(0o600);
     expect((await stat(join(dir, "auth.key"))).mode & 0o777).toBe(0o600);
   });
-  it("两个登录的工作空间独立；退出后不回退到另一账号", async () => {
+  it("keeps two logged-in workspaces independent; logout never falls back to the other account", async () => {
     const a = await login();
     const b = await login();
     await ready(a.token);
@@ -204,7 +204,7 @@ describe("SSO 协议与隔离", () => {
     ).toBe("ark");
     expect((await request(app.app).get("/api/config")).body.mode).toBe("demo");
   });
-  it("重启后可恢复登录；无效会话不降级到默认凭据", async () => {
+  it("restores login after restart; an invalid session never degrades to default credentials", async () => {
     const { token } = await login();
     await ready(token);
     app.close();
@@ -220,7 +220,7 @@ describe("SSO 协议与隔离", () => {
       .set("X-Muse-Session", "forged")
       .expect(401);
   });
-  it("请求必须为 JSON；SSO 也受访问令牌和 Origin 保护", async () => {
+  it("requires JSON requests; SSO is also protected by the access token and Origin", async () => {
     await request(app.app)
       .post("/api/auth/begin")
       .type("form")
@@ -234,8 +234,8 @@ describe("SSO 协议与隔离", () => {
   });
 });
 
-describe("火山 OAuth 适配器", () => {
-  it("兑换时使用表单、PKCE，错误不会泄露上游内容", async () => {
+describe("Volcano OAuth adapter", () => {
+  it("uses a form body and PKCE for exchange; errors never leak upstream content", async () => {
     const fetcher = vi.fn().mockResolvedValue(
       Response.json({
         access_token: JSON.stringify({
@@ -260,7 +260,7 @@ describe("火山 OAuth 适配器", () => {
       "private-credential",
     );
   });
-  it("TOP 请求使用官方签名；敏感凭据不在 URL", async () => {
+  it("uses official signing for TOP requests; sensitive credentials never appear in the URL", async () => {
     const fetcher = vi
       .fn()
       .mockResolvedValue(Response.json({ Result: { Items: [] } }));
@@ -275,7 +275,7 @@ describe("火山 OAuth 适配器", () => {
     expect(init.headers["X-Security-Token"]).toBe("private-sts");
     expect(init.redirect).toBe("error");
   });
-  it("过期 STS 自动刷新并保留刷新令牌轮换", async () => {
+  it("auto-refreshes an expired STS and keeps the rotated refresh token", async () => {
     const fetcher = vi.fn().mockResolvedValue(
       Response.json({
         access_token: JSON.stringify({

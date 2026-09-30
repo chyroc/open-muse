@@ -1,4 +1,5 @@
-// 按 SSE 行协议解码，允许任意字节分片、CRLF、多行 data 和注释心跳。
+// Decodes the SSE line protocol, tolerating arbitrary byte chunks, CRLF,
+// multi-line data fields, and comment heartbeats.
 export async function* readSSE(
   body: ReadableStream<Uint8Array>,
 ): AsyncGenerator<string> {

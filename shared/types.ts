@@ -23,7 +23,7 @@ export interface AgentEvent {
   mcp_tool_use_id?: string;
   session_thread_id?: string;
   result?: "allow" | "deny";
-  // 本地审计标记，不发送给方舟。
+  // Local audit marker; not sent to Ark.
   approval_source?: "automatic";
   is_error?: boolean;
   error?: { message?: string; type?: string };

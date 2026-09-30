@@ -1,27 +1,27 @@
-# 验证记录
+# Verification record
 
-验证日期：2026-09-29。区分模拟上游回归测试与真实云端测试，不包含个人凭据、账号、资源 ID 或原始日志。
+Verification date: 2026-09-29. Mocked-upstream regression tests are distinguished from real cloud tests. No personal credentials, accounts, resource IDs, or raw logs are included.
 
-## 自动检查
+## Automated checks
 
-- TypeScript 检查通过，11 个测试文件、196 项测试通过。
-- 覆盖 SSO、API Key 登录、加密保存、身份隔离、SQLite 自动配置、API 适配、SSE、审批、目标和资料库。
-- 前端生产构建及 iOS Simulator 构建通过。
-- macOS 原生壳已完成本地构建和窗口交互验证；开发包尚未公证。
+- TypeScript checks pass; 11 test files and 196 tests pass.
+- Coverage includes SSO, API key login, encrypted storage, identity isolation, SQLite auto-configuration, API adaptation, SSE, approvals, goals, and the library.
+- Frontend production build and iOS Simulator build pass.
+- The macOS native shell has completed local build and window interaction verification; the development build is not yet notarized.
 
-## iOS 真实 MA
+## Real MA on iOS
 
-环境为 iPhone 17 Pro、iOS 26.5 模拟器。通过应用密码框输入测试凭据，连接真实方舟数据面。2 项原生端到端测试通过：
+Environment: iPhone 17 Pro, iOS 26.5 simulator. Test credentials were entered via the app's password field to connect to the real Ark data plane. Two native end-to-end tests pass:
 
-1. 手动 API Key 登录，自动创建工作空间；两轮计算结果为 `42` 和 `84`，第二轮正确恢复上下文。
-2. 收藏回复并在资料库查看；终止、重启应用后登录与来源对话恢复。
-3. `web_fetch` 读取公开示例网页，返回标题；执行记录保留自动审批结果，无需手动批准。
+1. Manual API key login with automatic workspace creation; two rounds of computation returned `42` and `84`, with the second round correctly restoring context.
+2. Saving a reply and viewing it in the library; after terminating and relaunching the app, login and the source conversation were restored.
+3. `web_fetch` read a public example page and returned its title; the execution record retained the auto-approval result with no manual approval needed.
 
-同一连接重复登录复用一组工作空间映射。测试未发送邮件、购买或删除云端资源。
+Repeated logins with the same connection reuse one set of workspace mappings. The tests did not send email, make purchases, or delete cloud resources.
 
-发现并修复了 iOS 临时登录存储导致的重启失效问题，现使用按服务地址隔离的 Keychain 会话。模拟器构建启用 ad-hoc 签名，以避免 Keychain 权限错误；安全存储失败时保留重试入口，不回退到匿名工作区。
+A restart failure caused by temporary iOS login storage was found and fixed; sessions now use Keychain isolated by server address. Simulator builds enable ad-hoc signing to avoid Keychain permission errors; when secure storage fails, a retry entry is retained rather than falling back to an anonymous workspace.
 
-## 复查方式
+## How to reproduce
 
 ```bash
 npm ci
@@ -30,13 +30,13 @@ npm run build
 npm run ios:build
 ```
 
-`ios/App/MuseUITests/MuseUITests.swift` 包含默认演示 UI 用例，以及通过 `MUSE_LIVE_TESTS` 编译条件显式启用的真实用例。真实用例会产生云端调用，不能作为无凭据 CI 的默认测试。
+`ios/App/MuseUITests/MuseUITests.swift` contains the default demo-mode UI cases and live cases explicitly enabled via the `MUSE_LIVE_TESTS` compilation condition. Live cases incur cloud calls and must not be the default for CI without credentials.
 
-演示用例需要独立演示服务监听 `4312`；真实用例需要独立服务监听 `4313`、未登录的应用，以及通过模拟器剪贴板提供的测试 Key。不要把密钥写入源码、命令参数或启动环境。完成后清空剪贴板；结果包和截图只保留在被忽略的本地测试目录。
+Demo cases require a standalone demo server listening on `4312`; live cases require a standalone server listening on `4313`, a logged-out app, and a test key provided via the simulator clipboard. Do not put keys in source code, command arguments, or launch environment. Clear the clipboard afterward; result bundles and screenshots stay only in ignored local test directories.
 
-## 未覆盖范围
+## Not covered
 
-- 物理 iPhone 安装与签名、Android 构建及设备交互。
-- 本轮未重跑完整真实 SSO 授权；SSO 兼容性由自动测试覆盖，另有此前的真实 macOS 对话记录。
-- 全部 52 项 MA 操作的实账号权限、完整 MCP OAuth、真实技能和文件上传。
-- 多租户公开部署、并发性能、完整安全审计与商店发布。
+- Physical iPhone installation and signing, Android builds, and device interaction.
+- The full real SSO authorization flow was not re-run this round; SSO compatibility is covered by automated tests, supplemented by earlier real macOS conversation records.
+- Real-account permissions for all 52 MA operations, full MCP OAuth, real skills, and file uploads.
+- Multi-tenant public deployment, concurrent performance, a full security audit, and app store release.
