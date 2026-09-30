@@ -44,6 +44,7 @@ function fixture() {
   const documents: Record<string, Record<string, unknown>[]> = {};
   const events: AgentEvent[] = [];
   const sessionEvents = new Map<string, AgentEvent[]>();
+  const files: Record<string, unknown>[] = [];
   const fetcher = vi.fn<typeof fetch>(async (input, init = {}) => {
     const url = new URL(String(input));
     expect(url.origin).toBe("https://ark.cn-beijing.volces.com");
@@ -102,6 +103,15 @@ function fixture() {
       }
       return Response.json({ data: rows });
     }
+    if (path === "/files")
+      return Response.json({
+        object: "list",
+        data: files,
+        has_more: false,
+        last_id: String(files.at(-1)?.id ?? ""),
+      });
+    if (path.startsWith("/files/"))
+      return Response.json(files.find((file) => path === `/files/${file.id}`));
     const [, group, id] = path.split("/");
     if (!resources[group]) return Response.json({ data: [] });
     if (init.method === "POST") {
@@ -150,6 +160,7 @@ function fixture() {
     resources,
     events,
     sessionEvents,
+    files,
     fetcher,
     login,
   };
@@ -914,6 +925,56 @@ describe("Direct MA client", () => {
     await f.client.auth("logout", {});
     await f.login();
     expect((await f.client.library()).data).toHaveLength(1);
+  });
+  it("lists session outputs only from this identity's Open Muse sessions", async () => {
+    const f = fixture();
+    expect((await f.client.libraryFiles()).data).toEqual([]);
+    await f.login();
+    await f.client.prepareWorkspace();
+    const own = await f.client.create("Report task", "research");
+    f.resources.sessions.push({
+      id: "sesn-foreign",
+      title: "Someone else",
+      agent: { id: "agent-foreign", metadata: {} },
+    });
+    const created = Math.floor(Date.now() / 1000);
+    const file = (id: string, session: string) => ({
+      id,
+      purpose: "agent",
+      filename: `${id}.md`,
+      bytes: 10,
+      mime_type: "text/markdown",
+      created_at: created,
+      expire_at: created + 3600,
+      status: "active",
+      scope: { type: "session", id: session },
+      download_url: `https://bucket.tos-cn-beijing.volces.com/${id}?sig=1`,
+    });
+    f.files.push(
+      file("file-own", own.id),
+      file("file-foreign", "sesn-foreign"),
+    );
+    const listed = (await f.client.libraryFiles()).data;
+    expect(listed.map((item) => item.id)).toEqual(["file-own"]);
+    expect(listed[0].session_title).toBe("Report task");
+    expect(JSON.stringify(listed)).not.toContain("sig=1");
+    const opened = await f.client.libraryFileDownload("file-own");
+    expect(opened.url).toContain("sig=1");
+    const request = f.fetcher.mock.calls.find(([input]) =>
+      String(input).endsWith("/files/file-own"),
+    );
+    expect(
+      new Headers(request?.[1]?.headers).get("X-Ark-PreSignedURL-ExpiresAfter"),
+    ).toBe("300");
+    await expect(
+      f.client.libraryFileDownload("file-foreign"),
+    ).rejects.toMatchObject({ status: 404 });
+    await f.client.auth("logout", {});
+    await f.client.auth("api-key", {
+      apiKey: "test-other-account-key-123456789",
+      confirm: true,
+    });
+    expect((await f.client.libraryFiles()).data).toEqual([]);
   });
   it("serializes concurrent cloud goal updates without losing records", async () => {
     const f = fixture();

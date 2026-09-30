@@ -41,7 +41,8 @@ import { canAutoApprove } from "../shared/approval-policy";
 import { AuthPanel } from "./AuthPanel";
 import { Studio } from "./Studio";
 import { exportText } from "./platform";
-import { LibraryPage, Sheet, primaryNavigation } from "./MusePages";
+import { Sheet, primaryNavigation } from "./MusePages";
+import { LibraryPage } from "./LibraryPage";
 import {
   ChatActions,
   ChatComposer,

@@ -1,21 +1,10 @@
 import { t } from "../shared/i18n";
+import { useEffect, useRef, type ReactNode } from "react";
 import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
-import {
-  ArrowDownToLine,
-  ArrowRight,
   ChevronRight,
-  FileText,
   History,
   Lightbulb,
-  LoaderCircle,
   MessageCircle,
-  Search,
   Settings2,
   Shapes,
   Target,
@@ -24,11 +13,9 @@ import {
   PanelsTopLeft,
   SquareCheckBig,
 } from "lucide-react";
-import type { Client } from "./api";
-import type { Goal, LibraryItem, Session } from "../shared/types";
+import type { Goal, Session } from "../shared/types";
 import { categories, templates } from "./content";
-import { CategoryIcon, dateLabel, Markdown } from "./components";
-import { exportText } from "./platform";
+import { CategoryIcon } from "./components";
 
 export const primaryNavigation = [
   { id: "home", path: "/", label: t("Chat"), icon: MessageCircle },
@@ -212,155 +199,5 @@ export function ChatWelcome({
         </div>
       </div>
     </div>
-  );
-}
-
-function Loading() {
-  return (
-    <div className="loading" role="status">
-      <LoaderCircle className="spin" size={22} />
-      {t("Loading…")}
-    </div>
-  );
-}
-function Empty({
-  icon,
-  title,
-  description,
-}: {
-  icon: ReactNode;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="muse-empty">
-      <span>{icon}</span>
-      <h2>{title}</h2>
-      <p>{description}</p>
-    </div>
-  );
-}
-function ErrorNotice({ error, retry }: { error: string; retry?: () => void }) {
-  return error ? (
-    <div className="inline-error" role="alert">
-      {error}
-      {retry && <button onClick={retry}>{t("Retry")}</button>}
-    </div>
-  ) : null;
-}
-
-export function LibraryPage({ client }: { client: Client }) {
-  const [items, setItems] = useState<LibraryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<LibraryItem>();
-  const [exporting, setExporting] = useState(false);
-  const reload = useCallback(async () => {
-    setLoading(true);
-    try {
-      setItems((await client.library()).data);
-      setError("");
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [client]);
-  useEffect(() => {
-    void reload();
-  }, [reload]);
-  const visible = items.filter((item) =>
-    `${item.title}\n${item.text}`
-      .toLocaleLowerCase()
-      .includes(query.toLocaleLowerCase()),
-  );
-  return (
-    <section className="muse-page">
-      <PageHeader
-        title={t("Library")}
-        description={t("Save useful replies and come back to them anytime.")}
-      />
-      <label className="library-search">
-        <Search size={19} />
-        <input
-          aria-label={t("Search Library")}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={t("Search Library")}
-        />
-      </label>
-      <div className="library-section">
-        <FileText size={18} />
-        <strong>{t("Saved replies")}</strong>
-        <span>{items.length}</span>
-      </div>
-      <ErrorNotice error={error} retry={() => void reload()} />
-      {loading ? (
-        <Loading />
-      ) : error && !items.length ? null : !visible.length ? (
-        <Empty
-          icon={<Shapes size={30} />}
-          title={
-            query ? t("No matching items") : t("Keep content worth saving")
-          }
-          description={
-            query
-              ? t("Try other keywords.")
-              : t("Tap Save on a conversation reply to keep it here.")
-          }
-        />
-      ) : (
-        <div className="library-grid">
-          {visible.map((item) => (
-            <button
-              className="library-card"
-              key={item.id}
-              onClick={() => setSelected(item)}
-            >
-              <div className="document-preview">
-                <FileText size={22} />
-                <p>{item.text.replace(/[#*>`]/g, "").slice(0, 220)}</p>
-              </div>
-              <strong>{item.title}</strong>
-              <small>{dateLabel(item.created_at)}</small>
-            </button>
-          ))}
-        </div>
-      )}
-      {selected && (
-        <Sheet title={selected.title} onClose={() => setSelected(undefined)}>
-          <Markdown text={selected.text} />
-          <div className="library-detail-actions">
-            <a
-              className="button secondary"
-              href={`#/task/${selected.session_id}`}
-              onClick={() => setSelected(undefined)}
-            >
-              {t("View source conversation")}
-              <ArrowRight size={16} />
-            </a>
-            <button
-              className="icon-button"
-              aria-label={t("Export item")}
-              disabled={exporting}
-              onClick={async () => {
-                setExporting(true);
-                try {
-                  await exportText(`${selected.title}.md`, selected.text);
-                } catch (e) {
-                  setError((e as Error).message);
-                } finally {
-                  setExporting(false);
-                }
-              }}
-            >
-              <ArrowDownToLine size={21} />
-            </button>
-          </div>
-          <ErrorNotice error={error} />
-        </Sheet>
-      )}
-    </section>
   );
 }

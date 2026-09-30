@@ -26,6 +26,7 @@ import { DirectIdentity, defaultIdentity } from "./direct/identity";
 import { DirectGoals } from "./direct/goals";
 import { DirectChoices } from "./direct/choices";
 import { DirectWelcome } from "./direct/welcome";
+import { DirectLibrary } from "./direct/library";
 import { identityDefaults } from "../shared/identity";
 import {
   agentSnapshot,
@@ -1117,6 +1118,72 @@ export class Client {
         []
       ).sort((a, b) => b.created_at.localeCompare(a.created_at)),
     };
+  }
+  private librarySessions?: {
+    key: string;
+    at: number;
+    value: Promise<ReadonlyMap<string, string>>;
+  };
+  // Only the current identity's Open Muse sessions, or sessions this identity
+  // explicitly tracks locally, may contribute files to the Library.
+  private async librarySessionTitles(r: Runtime) {
+    const [rows, index, saved] = await Promise.all([
+      this.collect<Session & { agent?: { metadata?: Record<string, string> } }>(
+        r.ark,
+        "/sessions?limit=100&order=desc",
+      ),
+      this.conversations(r).index(),
+      this.db.get<LibraryItem[]>(`${r.key}:library`),
+    ]);
+    r.abort.signal.throwIfAborted();
+    const known = new Map<string, string>();
+    for (const [id, entry] of Object.entries(index.entries)) {
+      known.set(id, entry.title);
+      for (const previous of entry.previousIds ?? [])
+        known.set(previous, entry.title);
+    }
+    if (index.mainId && !known.has(index.mainId))
+      known.set(index.mainId, t("Main chat"));
+    for (const item of saved ?? [])
+      if (!known.has(item.session_id)) known.set(item.session_id, item.title);
+    for (const row of rows)
+      if (
+        !known.has(row.id) &&
+        row.agent?.metadata?.open_muse_workspace === r.key
+      )
+        known.set(row.id, row.title || t("Untitled conversation"));
+    return known;
+  }
+  private fileLibrary(r: Runtime) {
+    return new DirectLibrary(r.ark, (fresh) => {
+      const cached = this.librarySessions;
+      if (
+        !fresh &&
+        cached?.key === r.key &&
+        Date.now() - cached.at < 5 * 60_000
+      )
+        return cached.value;
+      const value = this.librarySessionTitles(r);
+      const entry = { key: r.key, at: Date.now(), value };
+      this.librarySessions = entry;
+      value.catch(() => {
+        if (this.librarySessions === entry) this.librarySessions = undefined;
+      });
+      return value;
+    });
+  }
+  async libraryFiles() {
+    if (!this.signedIn()) return { data: [] };
+    const r = this.context();
+    const data = await this.fileLibrary(r).list();
+    r.abort.signal.throwIfAborted();
+    return { data };
+  }
+  async libraryFileDownload(id: string) {
+    const r = this.context();
+    const result = await this.fileLibrary(r).download(id);
+    r.abort.signal.throwIfAborted();
+    return result;
   }
   async saveReply(session_id: string, event_id: string) {
     const r = this.context();

@@ -1,0 +1,146 @@
+/* The reference places the segments 24pt below the companion pill, 12pt
+   closer than the shared header and page padding otherwise allow. */
+@media (max-width: 760px) {
+  .companion-main:has(.library-page) .companion-header {
+    flex-basis: calc(126px + env(safe-area-inset-top));
+  }
+  .companion-shell .muse-page.library-page {
+    padding-top: 0;
+  }
+}
+.library-segments {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid #e7e7e9;
+  border-radius: 28px;
+  padding: 5px;
+  background: #fff;
+}
+.library-segments button {
+  border: 0;
+  border-radius: 23px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink);
+  background: transparent;
+  height: 36px;
+}
+.library-segments button[aria-selected="true"] {
+  background: #f3f3f5;
+}
+.library-segments button:focus-visible {
+  outline: 2px solid #2977d4;
+  outline-offset: 1px;
+}
+.library-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 42px;
+  margin: 6px 0 14px;
+}
+.library-toolbar > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  margin-right: auto;
+}
+.library-page .library-empty {
+  padding: 0 20px;
+  min-height: 48vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.library-empty > span {
+  color: #a2a4a7;
+  margin-bottom: 20px;
+}
+.library-empty h2 {
+  color: #77797c;
+  font-size: 21px;
+  margin-bottom: 8px;
+}
+.library-empty p {
+  font-size: 17px;
+  max-width: 340px;
+  margin: 0 auto;
+}
+.library-file-cover {
+  height: 190px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  border-radius: 15px;
+  border: 1px solid var(--line);
+  background: #f4f5f7;
+  color: #8492a7;
+  padding: 16px;
+}
+.library-file-cover > span {
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.file-image {
+  background: #f4f6f3;
+  color: #81937d;
+}
+.file-audio {
+  background: #f8f5f1;
+  color: #a2927c;
+}
+.file-video {
+  background: #f1f4f7;
+  color: #8094a8;
+}
+.library-card .file-state {
+  display: block;
+  margin-top: 6px;
+}
+.library-file-info {
+  text-align: center;
+}
+.library-file-info .library-card {
+  width: 100%;
+  text-align: center;
+}
+.library-file-info .library-file-cover {
+  height: 160px;
+}
+.library-file-info p {
+  margin: 14px 0 5px;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.library-file-info > small {
+  display: block;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.library-file-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+.library-file-actions > button {
+  flex: 1;
+  justify-content: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .library-page .spin {
+    animation: none;
+  }
+}

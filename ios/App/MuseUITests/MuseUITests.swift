@@ -794,6 +794,137 @@ final class MuseLiveUITests: XCTestCase {
         tap(app.links["Ideas"])
         XCTAssertTrue(app.buttons[title].waitForExistence(timeout: 40))
     }
+
+    private func relaunch(language: String = "en", locale: String = "en_US") {
+        app.terminate()
+        app.launchArguments = ["-AppleLanguages", "(\(language))", "-AppleLocale", locale]
+        app.launch()
+    }
+
+    private func openLibrary() {
+        tap(app.links["Library"], timeout: 40)
+        if !app.buttons["Artifacts"].waitForExistence(timeout: 3) { tap(app.links["Library"]) }
+        XCTAssertTrue(app.buttons["Artifacts"].waitForExistence(timeout: 20), app.debugDescription)
+        XCTAssertTrue(app.buttons["Media"].exists)
+    }
+
+    // MA exports sandbox outputs asynchronously, so refresh a bounded number of times.
+    private func libraryFile(_ name: String, section: String) -> XCUIElement {
+        let card = app.buttons["Open file: \(name)"]
+        for _ in 0..<12 {
+            tap(app.buttons[section])
+            if card.waitForExistence(timeout: 10) { return card }
+            tap(app.buttons["Refresh Library"])
+        }
+        XCTAssertTrue(card.waitForExistence(timeout: 20), app.debugDescription)
+        return card
+    }
+
+    // Quick Look must show the downloaded bytes, not only an empty controller:
+    // text files expose their content, the synthetic PNG renders at 64x64.
+    // The app-owned close control must be visible without first revealing
+    // Quick Look's own controls, including in the black image view.
+    private func openPreview(file: String, content: String?, close: String = "Close preview") -> XCUIElement {
+        let preview = app.otherElements["QLPreviewControllerView"]
+        XCTAssertTrue(preview.waitForExistence(timeout: 60), "Quick Look must open the downloaded file")
+        if let content = content {
+            let text = app.textViews.matching(NSPredicate(format: "label == %@", content)).firstMatch
+            XCTAssertTrue(text.waitForExistence(timeout: 30), "Quick Look must render the real file content")
+        } else {
+            XCTAssertTrue(preview.images.firstMatch.waitForExistence(timeout: 30), "Quick Look must render the real image")
+            XCTAssertTrue(preview.images.allElementsBoundByIndex.contains { $0.frame.size == CGSize(width: 64, height: 64) }, app.debugDescription)
+        }
+        let button = app.buttons["museFilePreviewClose"]
+        XCTAssertTrue(button.waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertEqual(button.label, close)
+        XCTAssertTrue(button.isHittable, "Close must be visible and tappable")
+        XCTAssertGreaterThanOrEqual(button.frame.width, 44)
+        XCTAssertGreaterThanOrEqual(button.frame.minY, app.windows.firstMatch.frame.minY + 44, "Close must sit below the status bar")
+        XCTAssertFalse(app.buttons["Preview file"].isHittable)
+        capture("library-preview-\(file)")
+        return button
+    }
+
+    private func closePreview(_ button: XCUIElement, detail: String = "Preview file") {
+        button.tap()
+        XCTAssertTrue(app.otherElements["QLPreviewControllerView"].waitForNonExistence(timeout: 15))
+        XCTAssertTrue(app.buttons[detail].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons[detail].isHittable, "Closing returns to the file details")
+    }
+
+    private func previewAndShare(_ card: XCUIElement, file: String, content: String? = nil) {
+        tap(card)
+        tap(app.buttons["Preview file"])
+        closePreview(openPreview(file: file, content: content))
+        capture("library-preview-closed-\(file)")
+        tap(app.buttons["Share file"])
+        let sheet = app.otherElements["ActivityListView"]
+        XCTAssertTrue(sheet.waitForExistence(timeout: 60), "Share sheet must open with the file")
+        capture("library-share-\(file)")
+        if sheet.buttons["Close"].exists { sheet.buttons["Close"].tap() }
+        else { app.buttons["Close"].firstMatch.tap() }
+        XCTAssertTrue(sheet.waitForNonExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["Share file"].isEnabled, "Native bridge must release after dismissal")
+        // Cancelling the share sheet must leave the file previewable again.
+        tap(app.buttons["Preview file"])
+        closePreview(openPreview(file: file, content: content))
+    }
+
+    private func verifyLibraryOutputs(_ marker: String) {
+        openLibrary()
+        let document = libraryFile("\(marker).md", section: "Artifacts")
+        XCTAssertFalse(app.buttons["Open file: \(marker).png"].exists, "Images stay out of Artifacts")
+        capture("library-artifacts")
+        previewAndShare(document, file: "\(marker).md", content: "# Library check \(marker)")
+        XCTAssertTrue(contains("Acceptance test \(marker)").exists, "The source conversation title must be shown")
+        tap(app.buttons["Close"])
+        let image = libraryFile("\(marker).png", section: "Media")
+        XCTAssertFalse(app.buttons["Open file: \(marker).md"].exists, "Documents stay out of Media")
+        capture("library-media")
+        previewAndShare(image, file: "\(marker).png")
+        tap(app.links["View source conversation"])
+        XCTAssertTrue(app.staticTexts["saved \(marker)"].waitForExistence(timeout: 60), app.debugDescription)
+        capture("library-source-conversation")
+        relaunch()
+        openLibrary()
+        XCTAssertTrue(libraryFile("\(marker).md", section: "Artifacts").exists)
+        capture("library-after-relaunch")
+    }
+
+    func testLibraryShowsRealSessionOutputs() {
+        let marker = "library-check-" + String(UUID().uuidString.prefix(6)).lowercased()
+        relaunch()
+        tap(app.buttons["Open sidebar"], timeout: 40)
+        tap(app.buttons["New side chat"])
+        let prompt = "Acceptance test \(marker). Use bash to write two synthetic files into /mnt/session/outputs: \(marker).md containing exactly '# Library check \(marker)', and \(marker).png, a 64x64 solid teal PNG generated with only Python's standard library (zlib and struct). Verify both files exist, do not read or change memory, do not use the network, then reply exactly: saved \(marker)"
+        enterMessage(prompt)
+        tap(app.buttons["Send message"])
+        XCTAssertTrue(app.staticTexts["saved \(marker)"].waitForExistence(timeout: 300), app.debugDescription)
+        capture("library-side-chat-created-files")
+        verifyLibraryOutputs(marker)
+    }
+
+    // Reuses the synthetic outputs from a previous real run; sends nothing to MA.
+    func testLibraryOutputsRestoreWithoutGeneration() {
+        relaunch()
+        openLibrary()
+        let card = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@ AND label ENDSWITH %@", "Open file: library-check-", ".md")).firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 60), app.debugDescription)
+        let name = card.label.replacingOccurrences(of: "Open file: ", with: "")
+        verifyLibraryOutputs((name as NSString).deletingPathExtension)
+        relaunch(language: "zh-Hans,en", locale: "zh_CN")
+        tap(app.links["资料库"], timeout: 40)
+        if !app.buttons["构件"].waitForExistence(timeout: 3) { tap(app.links["资料库"]) }
+        XCTAssertTrue(app.buttons["影音内容"].waitForExistence(timeout: 20), app.debugDescription)
+        let localized = app.buttons["打开文件：\(name)"]
+        XCTAssertTrue(localized.waitForExistence(timeout: 60), app.debugDescription)
+        tap(localized)
+        XCTAssertTrue(app.buttons["预览文件"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["分享文件"].exists)
+        capture("library-simplified-chinese")
+        tap(app.buttons["预览文件"])
+        closePreview(openPreview(file: name, content: "# Library check \((name as NSString).deletingPathExtension)", close: "关闭预览"), detail: "预览文件")
+    }
 }
 #endif
 
@@ -818,6 +949,17 @@ final class MuseUITests: XCTestCase {
         attachment.name = name
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    func testSignedOutLibraryShowsNoFiles() {
+        tap(app.links["Library"], timeout: 30)
+        tap(app.buttons["Artifacts"])
+        XCTAssertTrue(app.staticTexts["Nothing created yet"].waitForExistence(timeout: 20), app.debugDescription)
+        tap(app.buttons["Media"])
+        XCTAssertTrue(app.staticTexts["No media yet"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Open file: ")).firstMatch.exists)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Couldn't load")).firstMatch.exists)
+        capture("signed-out-library-empty")
     }
 
     func testSignedOutRequiresRealConnection() {

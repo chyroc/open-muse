@@ -52,6 +52,7 @@ private final class MuseCredentialsHandler: NSObject, WKScriptMessageHandlerWith
 class MuseBridgeViewController: CAPBridgeViewController {
     private var keyboardObservers: [NSObjectProtocol] = []
     private let credentialsHandler = MuseCredentialsHandler()
+    private lazy var filesHandler = MuseFilesHandler(presenter: self)
 
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
@@ -65,6 +66,7 @@ class MuseBridgeViewController: CAPBridgeViewController {
             ))
         }
         webView?.configuration.userContentController.addScriptMessageHandler(credentialsHandler, contentWorld: .page, name: "museCredentials")
+        webView?.configuration.userContentController.addScriptMessageHandler(filesHandler, contentWorld: .page, name: "museFiles")
         #if DEBUG && targetEnvironment(simulator)
         // Real-MA acceptance uses separate mappings/resources without changing
         // the user's normal main chat or personal memory. No credential is injected.
