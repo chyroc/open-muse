@@ -503,9 +503,21 @@ describe("Muse accounts end to end", () => {
     expect(await alice.account.status()).toMatchObject({
       backgroundReady: false,
     });
-    // Ark still matches the saved settings, so a check ends the drift.
+    // Ark matches the saved settings now, but the lost write could still
+    // arrive, so the environment stays marked and background work paused.
     expect(await alice.client.checkWorkspaceSettings()).toMatchObject({
-      change: "drift_cleared",
+      change: "matches_now",
+      settings: "drift",
+    });
+    expect(await alice.client.workspaceStatus()).toMatchObject({
+      review: "drift",
+    });
+    expect(await alice.account.status()).toMatchObject({
+      backgroundReady: false,
+    });
+    // Only the user's explicit acceptance ends it.
+    expect(await alice.client.checkWorkspaceSettings("adopt")).toMatchObject({
+      change: "adopted",
     });
     expect((await alice.client.workspaceStatus()).review).toBeUndefined();
     expect(posts()).toBe(before);

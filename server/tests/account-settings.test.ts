@@ -234,13 +234,13 @@ describe("Account workspace settings changes", () => {
     );
   });
 
-  it.each<[Failure, "applied" | "review"]>([
+  it.each<[Failure, "matches_now" | "review"]>([
     ["network-before", "review"],
     ["status-408", "review"],
     ["status-429", "review"],
-    ["network-after", "applied"],
-    ["status-500-after", "applied"],
-    ["unparseable-after", "applied"],
+    ["network-after", "matches_now"],
+    ["status-500-after", "matches_now"],
+    ["unparseable-after", "matches_now"],
   ])(
     "keeps the change unconfirmed after %s and resolves it only by reading Ark",
     async (failure, outcome) => {
@@ -269,9 +269,11 @@ describe("Account workspace settings changes", () => {
       expect(updates()).toBe(before + 1);
       const resolved = await reconcile();
       expect(updates()).toBe(before + 1);
-      if (outcome === "applied") {
+      if (outcome === "matches_now") {
+        // Ark shows the requested values, which is sealed, but that does not
+        // prove this write executed, so it is never reported as applied.
         expect(resolved.status).toBe(200);
-        expect(await resolved.json()).toMatchObject({ change: "applied" });
+        expect(await resolved.json()).toMatchObject({ change: "matches_now" });
         expect((await record()).workspace.environment).toEqual(
           expect.objectContaining({
             config: {
@@ -292,19 +294,37 @@ describe("Account workspace settings changes", () => {
         workspace: { environment: saved },
       });
       // The user keeps the saved settings; Open Muse keeps saying Ark may
-      // differ until a read shows it does not.
+      // differ, even when a read matches them.
       expect(await (await reconcile("discard")).json()).toMatchObject({
         change: "discarded",
         settings: "drift",
       });
       expect(updates()).toBe(before + 1);
       expect(await (await reconcile()).json()).toMatchObject({
-        change: "drift_cleared",
+        change: "matches_now",
+        settings: "drift",
       });
-      expect(await record()).toMatchObject({
-        workspace: { environment: saved },
+      // A confirmed later change does not end it either.
+      expect((await change("environment", config("later"))).status).toBe(200);
+      expect(await record()).toMatchObject({ settings: "drift" });
+      // The abandoned write arrives after all and replaces the later change.
+      const id = (await record()).workspace.environmentId;
+      ark.environments[id].config = config(`after-${failure}`).config;
+      expect(await (await reconcile()).json()).toMatchObject({
+        change: "drift_kept",
+        settings: "drift",
+      });
+      expect((await record()).workspace.environment).toEqual(
+        expect.objectContaining({ config: config("later").config }),
+      );
+      // Only the user's explicit acceptance ends it.
+      expect(await (await reconcile("adopt")).json()).toMatchObject({
+        change: "adopted",
       });
       expect((await record()).settings).toBeUndefined();
+      expect((await record()).workspace.environment).toEqual(
+        expect.objectContaining({ config: config(`after-${failure}`).config }),
+      );
     },
   );
 
@@ -316,7 +336,7 @@ describe("Account workspace settings changes", () => {
     expect(response.status).toBe(503);
     expect(updates()).toBe(before + 1);
     expect(await (await reconcile()).json()).toMatchObject({
-      change: "applied",
+      change: "matches_now",
     });
   });
 
@@ -429,7 +449,8 @@ describe("Account workspace settings changes", () => {
     const refused = await bind();
     expect(refused.status).toBe(409);
     expect(await refused.json()).toMatchObject({ code: "settings_review" });
-    ark.environments[saved.workspace.environmentId].config = config("fixed");
+    ark.environments[saved.workspace.environmentId].config =
+      config("fixed").config;
     expect(await (await reconcile("adopt")).json()).toMatchObject({
       change: "adopted",
     });
@@ -468,6 +489,48 @@ describe("Account workspace settings changes", () => {
       change: "adopted",
       workspace: { agent: { system: "arrives late" } },
     });
+  });
+
+  it("never builds an agent change on a version Open Muse did not save", async () => {
+    const saved = await record();
+    const agent = ark.agents[saved.workspace.agentId];
+    const sealed = saved.workspace.agent!.version as number;
+    expect(agent.version).toBe(sealed);
+    // A client that read an old version is refused without marking a drift.
+    let before = updates();
+    const stale = await change("agent", {
+      version: sealed - 1,
+      system: "stale read",
+    });
+    expect(stale.status).toBe(409);
+    expect(updates()).toBe(before);
+    expect((await record()).settings).toBeUndefined();
+    // A change from elsewhere, such as a late write, moved Ark's version.
+    // A change built on it, as a policy sync reading Ark would send, is
+    // refused before anything is sent, and Ark is marked as possibly
+    // different instead of the other change being sealed silently.
+    agent.system = "from elsewhere";
+    agent.version = sealed + 1;
+    before = updates();
+    const response = await change("agent", {
+      version: sealed + 1,
+      system: "built on it",
+    });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ code: "settings_review" });
+    expect(updates()).toBe(before);
+    expect(await record()).toMatchObject({
+      settings: "drift",
+      workspace: { agent: saved.workspace.agent },
+    });
+    expect(await (await reconcile()).json()).toMatchObject({
+      change: "drift_kept",
+    });
+    expect(await (await reconcile("adopt")).json()).toMatchObject({
+      change: "adopted",
+      workspace: { agent: { system: "from elsewhere", version: sealed + 1 } },
+    });
+    expect((await record()).settings).toBeUndefined();
   });
 
   it("can always leave a change it could not save, and keeps saying Ark may differ", async () => {
@@ -558,8 +621,34 @@ describe("Account workspace settings changes", () => {
     };
     expect((await reconcile("adopt")).status).toBe(409);
     expect((await record()).settings).toBe("drift");
-    // A confirmed change ends the drift.
+    // A confirmed change is sealed, but the abandoned write could still
+    // arrive after it, so the environment stays marked until the user
+    // accepts Ark's values.
     expect((await change("environment", config("settled"))).status).toBe(200);
+    expect(await record()).toMatchObject({
+      settings: "drift",
+      workspace: { environment: { config: config("settled").config } },
+    });
+    const refused = await call(
+      "/v1/connection",
+      {
+        workspace: {
+          agentId: saved.workspace.agentId,
+          agentVersion: agent.version,
+          environmentId: saved.workspace.environmentId,
+          memoryStoreId: saved.workspace.memoryStoreId,
+        },
+        credentialRevision: 1,
+        revision: (await connections.status()).revision,
+        confirm: true,
+      },
+      "PUT",
+    );
+    expect(refused.status).toBe(409);
+    expect(await refused.json()).toMatchObject({ code: "settings_review" });
+    expect(await (await reconcile("adopt")).json()).toMatchObject({
+      change: "adopted",
+    });
     expect((await record()).settings).toBeUndefined();
   });
 

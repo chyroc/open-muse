@@ -537,6 +537,38 @@ export class AccountWorkspaces {
       throw new HttpError(409, "Prepare the workspace before changing it.");
     await this.quota(now, "update", UPDATE_LIMIT);
     const values = parsed.data as Record<string, unknown>;
+    // An agent change must build on the version Open Muse saved. When Ark
+    // has another version, it came from elsewhere, possibly an earlier
+    // change arriving late; it is never built upon and sealed silently.
+    const saved = workspace.agent?.version;
+    if (
+      kind === "agent" &&
+      typeof saved === "number" &&
+      values.version !== saved
+    ) {
+      const live = await ark
+        .request<{ version?: unknown }>(
+          `/${collection}/${encodeURIComponent(id)}`,
+        )
+        .catch(() => {
+          throw unconfirmed("Ark could not be read. Nothing was changed.");
+        });
+      if (live.version !== saved)
+        await this.write(
+          workspaceKey,
+          revision,
+          { ...workspace, drift: { ...workspace.drift, agent: now } },
+          null,
+          now,
+          undefined,
+          true,
+        );
+      throw new HttpError(
+        409,
+        "The agent in Ark is not the version Open Muse saved. Check the settings before changing them; nothing was sent.",
+        "settings_review",
+      );
+    }
     const keys = Object.keys(values).filter((key) => key !== "version");
     const pending: Pending = {
       op: "update",
@@ -635,6 +667,8 @@ export class AccountWorkspaces {
     current: Record<string, unknown>,
     credentialRevision: number,
     now: number,
+    // The user explicitly accepted Ark's current values.
+    accepted = false,
   ) {
     const settings = pick(current, settingsFields[kind]);
     const row = await this.row(workspaceKey);
@@ -663,9 +697,13 @@ export class AccountWorkspaces {
       );
     }
     const model = (settings.model as { id?: unknown } | undefined)?.id;
-    // Sealing what Ark confirms also ends any drift for this resource.
+    // Sealing what Ark confirms ends an agent's drift: a late write would
+    // change its version, which background work and the next change check.
+    // An environment has no version, so an abandoned write could still
+    // arrive after this one; its drift ends only by the user's acceptance or
+    // a rebuild.
     const drift = { ...workspace.drift };
-    delete drift[kind];
+    if (kind === "agent" || accepted) delete drift[kind];
     await this.write(
       workspaceKey,
       held,
@@ -788,7 +826,9 @@ export class AccountWorkspaces {
       return review(
         "A workspace resource was changed outside Open Muse. Review it in the Ark console.",
       );
-    const seal = async (change: "applied" | "adopted" | "drift_cleared") => ({
+    const seal = async (
+      change: "applied" | "adopted" | "drift_cleared" | "matches_now",
+    ) => ({
       ...(await this.settle(
         workspaceKey,
         held,
@@ -798,27 +838,38 @@ export class AccountWorkspaces {
         current,
         credentialRevision,
         now,
+        change === "adopted",
       )),
       change,
     });
+    const fields = settingsFields[kind];
     if (!update) {
-      // Drift ends only when Ark matches the saved settings or the user
-      // adopts Ark's usable values.
+      // An agent's drift ends when Ark matches the saved settings, version
+      // included: a late write would change the version. An environment has
+      // no version, so matching now does not rule out an abandoned write
+      // arriving later; its drift ends only when the user accepts Ark's
+      // usable values or the environment is rebuilt.
       if (mode === "adopt") return seal("adopted");
-      const fields = settingsFields[kind];
-      if (
+      const same =
         fingerprint(current, fields) ===
-        fingerprint(workspace[kind] ?? {}, fields)
-      )
-        return seal("drift_cleared");
-      return { ...(await this.read()), change: "drift_kept" as const };
+        fingerprint(workspace[kind] ?? {}, fields);
+      if (same && kind === "agent") return seal("drift_cleared");
+      return {
+        ...(await this.read()),
+        change: same ? ("matches_now" as const) : ("drift_kept" as const),
+      };
     }
     const matches = fingerprint(current, update.keys) === update.hash;
+    // Agent: exactly the next version proves this one write executed.
     if (
       matches &&
-      (kind !== "agent" || current.version === (update.base ?? 0) + 1)
+      kind === "agent" &&
+      current.version === (update.base ?? 0) + 1
     )
       return seal("applied");
+    // Environment: Ark shows the requested values now, but that does not
+    // prove the write executed; if it had not, it may still arrive later.
+    if (matches && kind === "environment") return seal("matches_now");
     if (mode === "adopt" && update.state === "review") return seal("adopted");
     // An agent still at the base version had not taken the change when read.
     // A later arrival would change the version, so the next change based on

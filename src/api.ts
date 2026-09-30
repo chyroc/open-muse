@@ -1567,7 +1567,8 @@ export class Client {
       // never sent again.
       if ((error as { code?: string }).code !== "unconfirmed") throw error;
       const checked = await this.checkWorkspaceSettings();
-      if (checked.change === "applied") return checked;
+      if (checked.change === "applied" || checked.change === "matches_now")
+        return checked;
       throw new ApiError(
         409,
         checked.change === "not_applied_yet"

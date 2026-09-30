@@ -8,7 +8,7 @@ import type { WorkspaceStatus } from "../shared/types";
 function reviewNote(review: NonNullable<WorkspaceStatus["review"]>) {
   return review === "drift"
     ? t(
-        "You kept the saved settings, but the agent or environment in Ark may differ from them. Background work stays paused until they are checked.",
+        "You kept the saved settings, but the agent or environment in Ark may differ from them now or later, because an earlier unconfirmed change may still arrive. Background work stays paused until you save Ark's current settings.",
       )
     : review === "unconfirmed"
       ? t(
@@ -27,6 +27,7 @@ export function WorkspacePanel({ client }: { client: Client }) {
   const [status, setStatus] = useState<WorkspaceStatus>();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
   useEffect(() => {
     const abort = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
@@ -51,13 +52,20 @@ export function WorkspacePanel({ client }: { client: Client }) {
   }, [client, busy]);
   const preparing = busy || status?.state === "preparing";
   // A decision the user made about a change or a rebuild that needed review.
-  async function decide(action: () => Promise<unknown>) {
+  async function decide(action: () => Promise<object>) {
     if (busy) return;
     setBusy(true);
     setError("");
+    setNotice("");
     try {
-      await action();
+      const result: { change?: string } = await action();
       setStatus(await client.workspaceStatus());
+      if (result.change === "matches_now")
+        setNotice(
+          t(
+            "Ark matched the saved settings when checked. An earlier unconfirmed environment change may still arrive, so they stay marked as possibly different.",
+          ),
+        );
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -148,6 +156,19 @@ export function WorkspacePanel({ client }: { client: Client }) {
           </button>
         )
       )}
+      {notice && (
+        <p className="background-note" role="status">
+          {notice}
+        </p>
+      )}
+      {!busy &&
+        (status?.review === "settings" || status?.review === "drift") && (
+          <p className="background-note">
+            {t(
+              "Saving the current settings accepts Ark's values as they are when you save them. An earlier unconfirmed change may still arrive later.",
+            )}
+          </p>
+        )}
       {!busy && status?.review && (
         <div className="background-actions">
           {(status.review === "unconfirmed" || status.review === "drift") && (

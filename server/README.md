@@ -297,21 +297,30 @@ deployed or that a real unattended generation can complete.
 - `POST /v1/account/workspace/reconcile`: `{revision, credentialRevision,
   mode?: "adopt" | "discard", confirm: true}` resolves a held change or a drift
   by reading Ark only; nothing is sent to Ark. Without `mode` it reports
-  `change: "applied"` when Ark shows the change (for an agent, at exactly the
-  next version), and `"not_applied_yet"` only when the agent is still at the
+  `change: "applied"` when the agent shows the change at exactly the next
+  version, which proves this one write executed. For an environment, which has
+  no version, Ark showing the requested values is sealed but reported as
+  `"matches_now"`: if the write had not executed yet, it may still arrive
+  later. `"not_applied_yet"` is reported only while the agent is still at the
   change's base version; the record is released with the saved settings kept,
   and if the change arrives later the agent's version has moved, so the next
-  change is refused by Ark and checked again instead of overwriting it. An
-  environment has no version, so nothing proves its change did not apply: any
-  other result is 409 `{code: "settings_review"}`. After review, `mode:
-  "adopt"` seals Ark's current values if an account may use them, and `mode:
+  change is refused and checked again instead of overwriting it. Any other
+  result is 409 `{code: "settings_review"}`. After review, `mode: "adopt"`
+  seals Ark's current values if an account may use them (the user accepts them
+  as they are; an earlier unconfirmed write may still arrive), and `mode:
   "discard"` keeps the saved settings, reports `change: "discarded"` and
   `settings: "drift"` (Ark may differ from them), and in the same batch revokes
   background work and pauses its schedule; binding background work is refused
-  while a drift or review is open. A drift ends only when a later check finds
-  Ark matching the saved settings (`"drift_cleared"`, otherwise
-  `"drift_kept"`), when the user adopts usable values, or when a change is
-  confirmed. A change still being sent is left alone for two minutes.
+  while a drift or review is open. An agent's drift ends when a check finds Ark
+  matching the saved settings, version included (`"drift_cleared"`), or when an
+  agent change is confirmed, since a late write would move the version. An
+  environment's drift ends only when the user adopts Ark's usable values or the
+  environment is rebuilt after deletion; a matching read reports
+  `"matches_now"` and a confirmed later change is sealed, but the drift stays
+  (`"drift_kept"` when Ark differs). An agent change is accepted only on the
+  version Open Muse saved: when Ark has another version, the change is refused
+  before anything is sent and the agent is marked as drifted. A change still
+  being sent is left alone for two minutes.
 
 When a recorded agent or environment was deleted at Ark, `POST
 /v1/account/workspace` creates it again from the account's saved settings and

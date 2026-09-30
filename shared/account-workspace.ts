@@ -99,6 +99,9 @@ export const accountWorkspaceResponseSchema = z
         "discarded",
         "drift_cleared",
         "drift_kept",
+        // Ark shows these values at the time of the check; an earlier
+        // unconfirmed environment change may still arrive later.
+        "matches_now",
       ])
       .optional(),
     // After a settings change: whether background work was rebound to the

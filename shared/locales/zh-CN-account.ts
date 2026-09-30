@@ -119,8 +119,12 @@ export const zhAccount: Record<string, string> = {
     "更改已发送，但结果尚未确认。Open Muse 会先检查它，再进行其他更改；未重复提交。",
   "The change had not taken effect when Open Muse checked. It may still arrive later; Open Muse notices that at the next change. Nothing was sent again.":
     "Open Muse 检查时这次更改尚未生效。它仍可能稍后生效；下次更改时 Open Muse 会发现。未重复发送。",
-  "You kept the saved settings, but the agent or environment in Ark may differ from them. Background work stays paused until they are checked.":
-    "你保留了已保存的设置，但 Ark 中的智能体或环境可能与之不同。在检查之前，后台任务保持暂停。",
+  "You kept the saved settings, but the agent or environment in Ark may differ from them now or later, because an earlier unconfirmed change may still arrive. Background work stays paused until you save Ark's current settings.":
+    "你保留了已保存的设置，但 Ark 中的智能体或环境现在或以后都可能与之不同，因为之前一次未确认的更改仍可能稍后生效。在你保存 Ark 当前设置之前，后台任务保持暂停。",
+  "Saving the current settings accepts Ark's values as they are when you save them. An earlier unconfirmed change may still arrive later.":
+    "保存当前设置即表示接受保存时 Ark 中的值。之前一次未确认的更改仍可能稍后生效。",
+  "Ark matched the saved settings when checked. An earlier unconfirmed environment change may still arrive, so they stay marked as possibly different.":
+    "检查时 Ark 与已保存的设置一致。之前一次未确认的环境更改仍可能稍后生效，因此仍标记为可能不同。",
   "Check the settings again": "重新检查设置",
   "Needs review": "需要确认",
   "The workspace settings need your review: they reference resources an account cannot use or differ from what Open Muse saved. Background work stays paused until you decide.":
