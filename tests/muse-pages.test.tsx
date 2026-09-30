@@ -1,7 +1,8 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ChatWelcome, primaryNavigation, goalPrompt } from "../src/MusePages";
+import { ChatWelcome, primaryNavigation } from "../src/MusePages";
+import { goalPrompt } from "../shared/goals";
 import {
   InspirationPage,
   InspirationPost,

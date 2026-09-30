@@ -40,6 +40,8 @@ export interface Goal {
   id: string;
   title: string;
   description: string;
+  category?: import("./goals").GoalCategory;
+  parent_id?: string;
   status: "active" | "paused" | "completed";
   steps: { id: string; title: string; done: boolean }[];
   session_id?: string;

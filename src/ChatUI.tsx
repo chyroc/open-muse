@@ -111,6 +111,7 @@ export function ChatHeader({
   feed = false,
   showSidebar = true,
   showMore = true,
+  moreLabel,
 }: {
   onSidebar: () => void;
   onStatus: () => void;
@@ -121,6 +122,7 @@ export function ChatHeader({
   feed?: boolean;
   showSidebar?: boolean;
   showMore?: boolean;
+  moreLabel?: string;
 }) {
   return (
     <header className="companion-header">
@@ -151,7 +153,10 @@ export function ChatHeader({
       {showMore && (
         <button
           className="glass-button header-right"
-          aria-label={feed ? "Edit feed instructions" : "Conversation options"}
+          aria-label={
+            moreLabel ??
+            (feed ? "Edit feed instructions" : "Conversation options")
+          }
           onClick={onMore}
         >
           {feed ? (

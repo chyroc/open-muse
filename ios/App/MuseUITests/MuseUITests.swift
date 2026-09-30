@@ -326,6 +326,133 @@ final class MuseLiveUITests: XCTestCase {
         capture("continued-main-after-relaunch")
     }
 
+    func testGoalStateSurvivesRelaunch() {
+        tap(app.links["Goals"], timeout: 40)
+        if !app.buttons["Goals options"].waitForExistence(timeout: 3) { tap(app.links["Goals"]) }
+        tap(app.buttons["Goals options"])
+        tap(app.buttons["Completed goals"])
+        let saved = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Open goal: Goal-check-")).firstMatch
+        XCTAssertTrue(saved.waitForExistence(timeout: 60))
+        let originalName = saved.label.replacingOccurrences(of: "Open goal: ", with: "")
+        tap(saved, timeout: 60)
+        XCTAssertTrue(app.buttons["Mark as active"].waitForExistence(timeout: 15))
+        let checkboxes = app.checkBoxes
+        if checkboxes.count == 2 {
+            XCTAssertEqual(checkboxes.element(boundBy: 0).value as? String, "1")
+            XCTAssertEqual(checkboxes.element(boundBy: 1).value as? String, "1")
+        } else {
+            XCTAssertEqual(app.switches["Read one screen-break tip"].value as? String, "1")
+            XCTAssertEqual(app.switches["Write one reminder note"].value as? String, "1")
+        }
+        capture("goals-latest-build-persisted-cloud-progress")
+        // Only rename the synthetic acceptance goal, then restore its name.
+        func renameGoal(_ name: String) {
+            tap(app.buttons["Rename goal"])
+            let field = app.textFields["Goal name"]
+            tap(field)
+            if !app.keyboards.firstMatch.waitForExistence(timeout: 3) { field.tap() }
+            let previous = field.value as? String ?? ""
+            field.press(forDuration: 1.2)
+            if app.menuItems["Select All"].waitForExistence(timeout: 3) { tap(app.menuItems["Select All"]) }
+            else { field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: previous.count)) }
+            field.typeText(name)
+            XCTAssertEqual(field.value as? String, name)
+            XCTAssertTrue(app.buttons["Save name"].isHittable)
+            XCTAssertLessThan(app.buttons["Save name"].frame.maxY, app.keyboards.firstMatch.frame.minY)
+            capture("goal-rename-keyboard-save-visible")
+            tap(app.buttons["Save name"])
+            XCTAssertTrue(app.staticTexts[name].waitForExistence(timeout: 60))
+        }
+        renameGoal(originalName + "-edited")
+        app.terminate()
+        app.launch()
+        tap(app.links["Goals"], timeout: 40)
+        if !app.buttons["Goals options"].waitForExistence(timeout: 3) { tap(app.links["Goals"]) }
+        tap(app.buttons["Goals options"])
+        tap(app.buttons["Completed goals"])
+        tap(app.buttons["Open goal: \(originalName)-edited"], timeout: 60)
+        renameGoal(originalName)
+        capture("goals-name-restore-verified")
+        tap(app.buttons["Close"])
+        tap(app.buttons["Close"])
+        app.terminate()
+        app.launch()
+        tap(app.links["Goals"], timeout: 40)
+        if !app.staticTexts["Tracking"].waitForExistence(timeout: 3) { tap(app.links["Goals"]) }
+        XCTAssertTrue(app.staticTexts["Nothing is being tracked yet"].waitForExistence(timeout: 60))
+        capture("goals-latest-build-categories")
+    }
+
+    func testGoalConversationAndCloudProgress() {
+        let marker = "Goal-check-" + String(UUID().uuidString.prefix(6)).lowercased()
+        tap(app.links["Goals"], timeout: 40)
+        if !app.buttons["Create a health goal"].waitForExistence(timeout: 3) { tap(app.links["Goals"]) }
+        XCTAssertTrue(app.staticTexts["Tracking"].waitForExistence(timeout: 20))
+        capture("goals-categories")
+        tap(app.buttons["Create a health goal"])
+        XCTAssertTrue(contains("First, we’ll work out your goal together in chat.").waitForExistence(timeout: 15))
+        capture("goal-category-chat-introduction")
+        tap(app.buttons["Continue in chat"])
+        let input = app.textViews["Message Muse"]
+        XCTAssertTrue(input.waitForExistence(timeout: 15))
+        XCTAssertTrue((input.value as? String ?? "").contains("before saving a plan"))
+        capture("goal-editable-conversation-starter")
+        tap(app.buttons["Send message"])
+        XCTAssertTrue(app.buttons["Stop response"].waitForExistence(timeout: 30))
+        expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: app.buttons["Stop response"])
+        waitForExpectations(timeout: 240)
+        capture("goal-real-clarification")
+        enterMessage("This is a synthetic app acceptance goal, not medical advice. Save this agreed plan to personal goals now. Title: \(marker). Category: health. Outcome: learn to take a short screen break over the next week. Exactly two steps: Read one screen-break tip; Write one reminder note. Both steps are not done yet. Use only personal memory tools, preserve all other goals, and read the saved goal back. Do not schedule anything or use external services.")
+        tap(app.buttons["Send message"])
+        XCTAssertTrue(app.buttons["Stop response"].waitForExistence(timeout: 30))
+        expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: app.buttons["Stop response"])
+        waitForExpectations(timeout: 240)
+        capture("goal-plan-saved-by-real-ma")
+        tap(app.links["Goals"])
+        tap(app.buttons["Open goal: \(marker)"], timeout: 60)
+        XCTAssertTrue(app.staticTexts["Read one screen-break tip"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.staticTexts["Write one reminder note"].exists)
+        capture("goal-cloud-plan-details")
+        let firstStep = app.checkBoxes["Read one screen-break tip"]
+        if firstStep.exists { tap(firstStep) }
+        else { tap(app.switches["Read one screen-break tip"]) }
+        expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: app.buttons["Talk about this goal"])
+        waitForExpectations(timeout: 60)
+        tap(app.buttons["Talk about this goal"])
+        XCTAssertTrue(input.waitForExistence(timeout: 15))
+        tap(input)
+        if !app.keyboards.firstMatch.waitForExistence(timeout: 3) { input.tap() }
+        let existing = input.value as? String ?? ""
+        input.press(forDuration: 1.2)
+        if app.menuItems["Select All"].waitForExistence(timeout: 3) { tap(app.menuItems["Select All"]) }
+        else { input.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: existing.count)) }
+        let progress = "For the saved goal \(marker), report which step is already complete from personal memory, then record that I have now finished Write one reminder note too. Keep the goal active so I can complete it in the app. Read back the updated record. Use only memory tools; preserve all other goals."
+        input.typeText(progress)
+        XCTAssertEqual(input.value as? String, progress)
+        tap(app.buttons["Send message"])
+        XCTAssertTrue(app.buttons["Stop response"].waitForExistence(timeout: 30))
+        expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: app.buttons["Stop response"])
+        waitForExpectations(timeout: 240)
+        capture("goal-agent-reads-and-updates-progress")
+        tap(app.links["Goals"])
+        tap(app.buttons["Open goal: \(marker)"], timeout: 60)
+        capture("goal-all-steps-completed")
+        tap(app.buttons["Mark as completed"])
+        XCTAssertTrue(app.buttons["Mark as active"].waitForExistence(timeout: 60))
+        tap(app.buttons["Close"])
+        app.terminate()
+        app.launch()
+        tap(app.links["Goals"], timeout: 40)
+        if !app.buttons["Goals options"].waitForExistence(timeout: 3) { tap(app.links["Goals"]) }
+        tap(app.buttons["Goals options"])
+        tap(app.buttons["Completed goals"])
+        tap(app.buttons["Open goal: \(marker)"], timeout: 60)
+        XCTAssertTrue(app.buttons["Mark as active"].exists)
+        capture("goal-completion-survives-relaunch")
+        tap(app.buttons["Close"])
+        tap(app.buttons["Close"])
+    }
+
     func testPersonalizedFeedAndIdeasUseRealMA() {
         tap(app.links["Feed"])
         tap(app.buttons["Edit feed instructions"])

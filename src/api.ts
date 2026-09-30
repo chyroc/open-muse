@@ -21,6 +21,8 @@ import { LocalDatabase, type CredentialStore } from "./direct/storage";
 import { ARK_BASE_URL, directFetch } from "./direct/transport";
 import { DirectWorkspace } from "./direct/workspace";
 import { DirectIdentity, defaultIdentity } from "./direct/identity";
+import { DirectGoals } from "./direct/goals";
+import { goalCategoryInput, type GoalCategory } from "../shared/goals";
 import type { IdentityDocumentName } from "../shared/identity";
 import { DirectInspiration } from "./direct/inspiration";
 import {
@@ -68,6 +70,7 @@ type Runtime = {
   ark: ArkClient;
   workspace: DirectWorkspace;
   companion: DirectIdentity;
+  goals: DirectGoals;
   redact: (text: string) => string;
   abort: AbortController;
 };
@@ -145,12 +148,14 @@ export class Client {
         this.fetcher,
         abort.signal,
       );
+      const companion = new DirectIdentity(key, ark, this.db);
       this.runtime = {
         key,
         ark,
         abort,
         workspace: new DirectWorkspace(key, ark, this.db),
-        companion: new DirectIdentity(key, ark, this.db),
+        companion,
+        goals: new DirectGoals(key, this.db, companion),
         redact: (text) => text.replaceAll(apiKey, "[redacted]"),
       };
     }
@@ -203,7 +208,7 @@ export class Client {
         selection = { ...(await r.workspace.selection()), memory_store_id };
         const index = await this.conversations(r).index();
         const events = index.mainId ? await this.events(index.mainId) : [];
-        const goals = (await this.db.get<Goal[]>(`${r.key}:goals`)) ?? [];
+        const goals = (await this.goalService(r).snapshot()).data;
         const instructions = await r.companion.feedInstructions();
         r.abort.signal.throwIfAborted();
         return r.redact(
@@ -768,19 +773,30 @@ export class Client {
       bound.dispose();
     }
   }
-  async goals(): Promise<Page<Goal>> {
-    if (!this.identity.value?.apiKey) return { data: [] };
-    return {
-      data: (
-        (await this.db.get<Goal[]>(`${this.context().key}:goals`)) ?? []
-      ).sort((a, b) => b.updated_at.localeCompare(a.updated_at)),
-    };
+  private goalService(r: Runtime) {
+    return r.goals;
   }
-  async createGoal(title: string, description: string) {
+  async goals() {
+    if (!this.identity.value?.apiKey)
+      return { data: [] as Goal[], revision: "" };
+    return this.goalService(this.context()).snapshot();
+  }
+  prepareGoals() {
+    return this.goalService(this.context()).prepare();
+  }
+  async createGoal(
+    title: string,
+    description: string,
+    category: GoalCategory = "custom",
+  ) {
     const r = this.context();
     const input = z
-      .object({ title: titleInput, description: z.string().trim().max(8000) })
-      .parse({ title, description });
+      .object({
+        title: titleInput,
+        description: z.string().trim().max(8000),
+        category: goalCategoryInput,
+      })
+      .parse({ title, description, category });
     const now = new Date().toISOString();
     const goal: Goal = {
       ...input,
@@ -790,17 +806,17 @@ export class Client {
       created_at: now,
       updated_at: now,
     };
-    await this.db.update<Goal[]>(`${r.key}:goals`, (rows) => [
-      goal,
-      ...(rows ?? []),
-    ]);
-    return goal;
+    return this.goalService(r).create(goal);
   }
   async updateGoal(
     id: string,
     body: Partial<
-      Pick<Goal, "title" | "description" | "status" | "steps" | "session_id">
+      Pick<
+        Goal,
+        "title" | "description" | "status" | "steps" | "session_id" | "category"
+      >
     >,
+    revision?: string,
   ) {
     const r = this.context();
     const input = z
@@ -808,6 +824,7 @@ export class Client {
         title: titleInput.optional(),
         description: z.string().trim().max(8000).optional(),
         status: z.enum(["active", "paused", "completed"]).optional(),
+        category: goalCategoryInput.optional(),
         session_id: z.string().min(1).max(200).optional(),
         steps: z
           .array(
@@ -828,13 +845,7 @@ export class Client {
     )
       throw new ApiError(400, "Duplicate step IDs.");
     if (input.session_id) await r.ark.get(validId(input.session_id));
-    const rows = await this.db.update<Goal[]>(`${r.key}:goals`, (rows) => {
-      const goal = rows?.find((g) => g.id === id);
-      if (!goal) throw new ApiError(404, "Goal not found.");
-      Object.assign(goal, input, { updated_at: new Date().toISOString() });
-      return rows!;
-    });
-    return rows.find((g) => g.id === id)!;
+    return this.goalService(r).update(id, input, revision);
   }
   async library(): Promise<Page<LibraryItem>> {
     if (!this.identity.value?.apiKey) return { data: [] };

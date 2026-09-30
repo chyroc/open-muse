@@ -606,7 +606,7 @@ describe("Direct MA client", () => {
     await f.login();
     expect((await f.client.library()).data).toHaveLength(1);
   });
-  it("allows concurrent local updates without losing goals", async () => {
+  it("serializes concurrent cloud goal updates without losing records", async () => {
     const f = fixture();
     await f.login();
     await Promise.all(

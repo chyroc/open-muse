@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ArkClient } from "../shared/ark";
 import { digest, uuid } from "../shared/crypto";
 import { identityDefaults, systemWithIdentity } from "../shared/identity";
+import { emptyGoalsDocument } from "../shared/goals";
 import { DirectIdentity, defaultIdentity } from "../src/direct/identity";
 import { LocalDatabase } from "../src/direct/storage";
 
@@ -71,6 +72,46 @@ function fixture() {
 }
 
 describe("Personal identity documents", () => {
+  it("validates cloud goals before provisioning and keeps goal navigation read-only", async () => {
+    const f = fixture();
+    const initial = await f.client.goalsDocument();
+    expect(initial.content).toBe(emptyGoalsDocument);
+    await expect(
+      f.client.saveGoalsDocument("invalid", initial.revision),
+    ).rejects.toThrow("No goals were replaced");
+    expect(f.writes()).toHaveLength(0);
+    const saved = await f.client.saveGoalsDocument(
+      emptyGoalsDocument,
+      initial.revision,
+    );
+    expect(saved.id).toBeTruthy();
+    expect(f.docs.get("store-1")?.some((doc) => doc.path === "/GOALS.md")).toBe(
+      true,
+    );
+    const count = f.writes().length;
+    await expect(
+      f.client.saveGoalsDocument(emptyGoalsDocument, "stale"),
+    ).rejects.toThrow("goals changed");
+    expect(f.writes()).toHaveLength(count);
+  });
+  it("does not repeat an unresolved goal document write even when the visible content is unchanged", async () => {
+    const f = fixture();
+    const initial = await f.client.goalsDocument();
+    const saved = await f.client.saveGoalsDocument(
+      emptyGoalsDocument,
+      initial.revision,
+    );
+    await f.db.set("owner:identity:v1:store-1:GOALS.md:write", {
+      token: "uncertain",
+      content: "Unconfirmed edit",
+      before: saved.revision,
+    });
+    const count = f.writes().length;
+    await expect(
+      f.client.saveGoalsDocument(emptyGoalsDocument, saved.revision),
+    ).rejects.toThrow("unconfirmed");
+    expect(f.writes()).toHaveLength(count);
+  });
   it("stores feed instructions in a separate cloud document and rejects stale drafts", async () => {
     const f = fixture();
     const initial = await f.client.feedInstructions();

@@ -11,6 +11,7 @@ import type { Page } from "../../shared/types";
 import type { conversationArchive } from "../../shared/conversation-history";
 import { LocalDatabase } from "./storage";
 import { defaultFeedInstructions } from "../../shared/inspiration";
+import { emptyGoalsDocument, parseGoals } from "../../shared/goals";
 
 type Store = { id: string; metadata?: Record<string, string> };
 type Memory = {
@@ -185,6 +186,34 @@ export class DirectIdentity {
   }
   storeId() {
     return this.store(false);
+  }
+  async goalsDocument() {
+    const store = await this.store(false);
+    return (
+      (store ? await this.document(store, "GOALS.md") : undefined) ?? {
+        content: emptyGoalsDocument,
+        revision: digest(emptyGoalsDocument),
+        id: undefined,
+      }
+    );
+  }
+  async saveGoalsDocument(content: string, revision: string) {
+    parseGoals(content);
+    const store = await this.ensure();
+    const current = await this.document(store, "GOALS.md");
+    if (await this.db.get<Write | null>(this.writeKey(store, "GOALS.md")))
+      throw new ApiError(
+        409,
+        "The previous goal change is unconfirmed. Refresh goals before trying again.",
+      );
+    if ((current?.revision ?? digest(emptyGoalsDocument)) !== revision)
+      throw new ApiError(
+        409,
+        "Your goals changed. Refresh and review the latest progress before saving.",
+      );
+    if (!current || current.content !== content)
+      await this.write(store, "GOALS.md", content, current);
+    return this.goalsDocument();
   }
   async feedInstructions() {
     const store = await this.store(false);

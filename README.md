@@ -65,11 +65,11 @@ CORS responses, so neither sign-in nor workspace preparation depends on it.
   storage. A page reload preserves the browser session; signing out clears it.
   Browser extensions or injected scripts can still access browser-held secrets:
   use a trusted host, avoid shared profiles, and revoke compromised keys in Ark.
-- Workspace mappings, session metadata, goals, saved replies, and local approval
+- Workspace mappings, session metadata, legacy goals, saved replies, and local approval
   records live in IndexedDB. They contain no raw API keys, but conversation
   content is not encrypted by the app. Protect the device/browser profile.
-- Goals and saved replies are device-local, not automatically synced across
-  devices. Conversations and execution history are read directly from MA.
+- Saved replies and conversation indexes are device-local. Current goals live
+  in personal MA memory; conversations and execution history are read from MA.
 - Personal identity documents live in an app-owned MA memory store, scoped to
   the API key and project. Local pending-write records can contain document
   drafts until cloud readback confirms them. These records are not encrypted.
@@ -154,6 +154,36 @@ continuation described above. Older side chats retain their original history
 and display a compatibility note; start a new side chat to use personal memory.
 There is no scheduled nightly maintenance or interactive remote desktop in this
 version.
+
+## Goals
+
+Goals start with Health, Relationships, Finance, Career, Interests, Productivity,
+or Something else. The category sheet explains the conversational workflow and
+opens an editable draft. Sending it starts a memory-enabled side chat. The
+assistant is instructed to clarify the outcome before saving an agreed plan;
+selecting a category alone creates no goal.
+
+Confirmed plans and reported progress live in `GOALS.md` in personal MA memory,
+as a bounded, validated JSON document. The assistant can read and update the
+same records shown in Goals. The app supports plan steps, subgoals, renaming,
+completion and reactivation. Completed goals remain accessible through Goals
+options. Active goals also inform Feed and Ideas generation.
+
+Existing device-local goals remain intact. An explicit goal action imports
+unmigrated records into memory; merely opening Goals is read-only. Cloud records
+take precedence for an existing ID. Imported local copies are not resurrected
+if a goal is later removed from cloud memory. Older backend SQLite data is not
+imported by this process.
+
+Saves check the displayed revision and verify cloud readback. Same-client writes
+are queued, and Web Locks coordinate same-origin views when supported. These
+checks are not an atomic cross-device lock or a lock against agent-side edits.
+Malformed documents remain visible as errors and are never replaced with an
+empty plan. Unconfirmed writes are not automatically repeated.
+
+Tracking currently means user-confirmed plans and reported progress, not
+scheduled execution. No autonomous check-ins, notification delivery, or external
+monitoring are enabled. Completing a goal does not interrupt running tools.
 
 ## Capabilities
 

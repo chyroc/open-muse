@@ -19,6 +19,8 @@ import { defaultIdentity } from "./direct/identity";
 import { useTask } from "./useTask";
 import { discussionPrompt, type InspirationItem } from "../shared/inspiration";
 import { InspirationPage } from "./InspirationPages";
+import { GoalsPage } from "./GoalsPage";
+import { goalPrompt, goalStarter, type GoalCategory } from "../shared/goals";
 import { Activity, Markdown, MuseMark, PermissionCard } from "./components";
 import type {
   AgentEvent,
@@ -32,13 +34,7 @@ import { canAutoApprove } from "../shared/approval-policy";
 import { AuthPanel } from "./AuthPanel";
 import { Studio } from "./Studio";
 import { exportText } from "./platform";
-import {
-  GoalsPage,
-  LibraryPage,
-  Sheet,
-  primaryNavigation,
-  goalPrompt,
-} from "./MusePages";
+import { LibraryPage, Sheet, primaryNavigation } from "./MusePages";
 import {
   ChatActions,
   ChatComposer,
@@ -138,6 +134,8 @@ function Workspace({
   const [panel, setPanel] = useState<"actions" | "status">();
   const [selectedMessage, setSelectedMessage] = useState<AgentEvent>();
   const [goalDraft, setGoalDraft] = useState<Goal>();
+  const [goalInitiation, setGoalInitiation] = useState(false);
+  const [goalOptions, setGoalOptions] = useState(false);
   const [inspirationDraft, setInspirationDraft] = useState<InspirationItem>();
   const [feedEditor, setFeedEditor] = useState(false);
   const [config, setConfig] = useState<AppConfig>();
@@ -188,6 +186,7 @@ function Workspace({
       setActionError("");
       setSelectedMessage(undefined);
       setPanel(undefined);
+      setGoalOptions(false);
     };
     window.addEventListener("hashchange", onRoute);
     return () => window.removeEventListener("hashchange", onRoute);
@@ -280,6 +279,7 @@ function Workspace({
   }
   function newSideChat() {
     setGoalDraft(undefined);
+    setGoalInitiation(false);
     setInspirationDraft(undefined);
     setCategory("general");
     navigate("/new");
@@ -291,6 +291,7 @@ function Workspace({
     action(async () => {
       const text = draft.trim();
       if (!text) return;
+      if (goalInitiation || goalDraft) await client.prepareGoals();
       let sessionId = activeId;
       if (!sessionId || sessionId === index.mainId) {
         const session = await client.openConversation(
@@ -325,6 +326,7 @@ function Workspace({
       if (!alive.current) return;
       await client.send(sessionId, { type: "user.message", text });
       if (alive.current) {
+        setGoalInitiation(false);
         setDrafts((current) => ({ ...current, [sessionId!]: "" }));
         setAwayFromBottom(false);
         await task.refresh();
@@ -349,6 +351,7 @@ function Workspace({
       }
     });
   function discussInspiration(item: InspirationItem) {
+    setGoalInitiation(false);
     if (item.discussion_id) {
       navigate(`/task/${item.discussion_id}`);
       return;
@@ -412,8 +415,13 @@ function Workspace({
             onSidebar={() => setSidebarOpen(true)}
             onStatus={() => setPanel("status")}
             onMore={() =>
-              tab === "feed" ? setFeedEditor(true) : setPanel("actions")
+              tab === "feed"
+                ? setFeedEditor(true)
+                : tab === "goals"
+                  ? setGoalOptions(true)
+                  : setPanel("actions")
             }
+            moreLabel={tab === "goals" ? "Goals options" : undefined}
             feed={tab === "feed"}
             showSidebar={isChat}
             showMore={tab !== "discover"}
@@ -652,7 +660,21 @@ function Workspace({
             {tab === "goals" && (
               <GoalsPage
                 client={client}
+                optionsOpen={goalOptions}
+                onOptionsClose={() => setGoalOptions(false)}
+                onCategory={(category: GoalCategory, parent?: Goal) => {
+                  setGoalDraft(undefined);
+                  setGoalInitiation(true);
+                  setInspirationDraft(undefined);
+                  setCategory("general");
+                  setDrafts((current) => ({
+                    ...current,
+                    "new-side": goalStarter(category, parent),
+                  }));
+                  navigate("/new");
+                }}
                 onStart={(goal) => {
+                  setGoalInitiation(true);
                   setInspirationDraft(undefined);
                   setGoalDraft(goal);
                   setCategory("general");
