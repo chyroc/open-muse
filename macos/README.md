@@ -97,6 +97,16 @@ hard-coded light value there stays light on a dark surface and hides its own
 label. A stylesheet that redefines a token can shadow or self-reference it and
 invalidate the theme, so the tests reject both.
 
+## Section names
+
+The rail, the page headings and the accessible names of a section all read the
+same, following the desktop app this client mirrors rather than the shared
+mobile wording. Where another client uses the same string, the Mac wording goes
+through its own catalog entry and English keeps the shared source wording, so no
+reader ever sees a disambiguating key; `macos/tests/labels.test.tsx` fixes both
+renderings and asserts that the renamed entries have no consumer outside
+`macos/`. User content, model output and conversation titles are not relabelled.
+
 ## Desktop Library
 
 Library has a 240-point category sidebar, search, grid/list layouts, pinning,

@@ -85,7 +85,11 @@ Library: the seven-category sidebar and category navigation; the empty state and
 
 Settings: Command-comma and the rail entry opening one separate 800 × 600 window with an accessible title, a disabled zoom and resize, and a working close; the section list starting below the traffic lights; the three section names the reference leaves in English rendering that way while the rest are localized; the connection, language and about groups; the collapsed sign-in panel; the version; the permission section reporting the real rules with no editable control; both sign-out paths stopping at the same confirmation and cancelling without signing out; reopening keeping the selected section without creating a second window; and Command-W closing only the settings window while the workspace kept its page.
 
-Not established by these checks: interactive cloud authorization from these builds, an actually executed sign-out, the cross-window refresh after a credential write, and any appearance, theme, startup, shortcut, account, usage, connector, computer-use, file-system, dictation, wallet, message-channel or device capability, none of which this shell implements yet.
+Appearance: the light and dark settings surfaces, the three-way control keeping its choice across a close and reopen, the workspace following the settings window into dark and back, the chat header scrim and the feed prompt card reading correctly in dark, the library preview and the dark native save panel, and the primary action label staying readable enabled and disabled in both appearances. Brand illustration colors stay fixed by design.
+
+Navigation: the rail, the ideas heading and landmark, and the library landmarks reading as the sections they open.
+
+Not established by these checks: interactive cloud authorization from these builds, an actually executed sign-out, the cross-window refresh after a credential write, dark parity against the reference app, whose own dark rendering has not been observed, any surface that needs populated cloud data, and any theme, startup, shortcut, language-choice, account, usage, connector, computer-use, file-system, dictation, wallet, message-channel or device capability, none of which this shell implements yet.
 
 ## How to reproduce
 
