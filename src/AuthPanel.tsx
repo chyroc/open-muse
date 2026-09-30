@@ -378,7 +378,7 @@ export function AuthPanel(props: Parameters<typeof ArkAuthPanel>[0]) {
   return (
     <>
       <ArkAuthPanel {...props} />
-      <BackgroundSettings />
+      <BackgroundSettings client={props.client} />
     </>
   );
 }

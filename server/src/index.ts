@@ -3,8 +3,14 @@ import { backgroundReady, HttpError, json, type Env } from "./env";
 import { Repository } from "./repository";
 import { validateTime } from "./schedule";
 import { tick } from "./jobs";
+import { ConnectionStore, credentialStorageReady } from "./connection";
+import { backgroundConfigurationSchema } from "../../shared/background-connection";
+import { ArkRemote } from "./ark";
 
-async function body(request: Request): Promise<Record<string, unknown>> {
+async function body(
+  request: Request,
+  limit = 4096,
+): Promise<Record<string, unknown>> {
   if (!request.headers.get("Content-Type")?.startsWith("application/json"))
     throw new HttpError(415, "Use an application/json request.");
   const reader = request.body?.getReader();
@@ -16,7 +22,7 @@ async function body(request: Request): Promise<Record<string, unknown>> {
       const { done, value } = await reader.read();
       if (done) break;
       size += value.length;
-      if (size > 4096) {
+      if (size > limit) {
         await reader.cancel();
         throw new HttpError(413, "Request is too large.");
       }
@@ -40,7 +46,11 @@ async function body(request: Request): Promise<Record<string, unknown>> {
   }
 }
 
-export async function handle(request: Request, env: Env): Promise<Response> {
+export async function handle(
+  request: Request,
+  env: Env,
+  fetcher: typeof fetch = fetch,
+): Promise<Response> {
   let origin: string | null = null;
   let response: Response;
   try {
@@ -54,13 +64,86 @@ export async function handle(request: Request, env: Env): Promise<Response> {
     } else {
       const owner = await authenticate(request, env);
       const repo = new Repository(env.DB, owner);
+      const connections = new ConnectionStore(env, owner);
+      const ready = async () => {
+        try {
+          const connection = await connections.resolve();
+          return Boolean(connection && backgroundReady(connection.env));
+        } catch {
+          return false;
+        }
+      };
+      const binding = async () => {
+        const connection = await connections.resolve();
+        if (!connection || !backgroundReady(connection.env))
+          throw new HttpError(
+            409,
+            "Background MA access is not configured or is disabled.",
+          );
+        return {
+          revision: connection.revision,
+          hash: await new ArkRemote(connection.env).fingerprint(),
+        };
+      };
       if (url.pathname === "/v1/status" && request.method === "GET") {
         response = json({
           connected: true,
           owner,
-          backgroundReady: backgroundReady(env),
+          backgroundReady: await ready(),
+          credentialStorageReady: credentialStorageReady(env),
+          connection: await connections.status(),
           schedule: await repo.schedule(),
         });
+      } else if (
+        url.pathname === "/v1/connection" &&
+        request.method === "PUT"
+      ) {
+        if (!credentialStorageReady(env))
+          throw new HttpError(
+            503,
+            "Encrypted credential storage is not configured.",
+          );
+        const input = await body(request, 8192);
+        const config = backgroundConfigurationSchema.safeParse(input.config);
+        if (
+          input.confirm !== true ||
+          !Number.isSafeInteger(input.revision) ||
+          (input.revision as number) < 0 ||
+          Object.keys(input).some(
+            (key) => !["config", "revision", "confirm"].includes(key),
+          ) ||
+          !config.success
+        )
+          throw new HttpError(
+            400,
+            "Confirm syncing a valid current Ark configuration.",
+          );
+        response = json(
+          await connections.save(
+            config.data,
+            input.revision as number,
+            Date.now(),
+            fetcher,
+          ),
+        );
+      } else if (
+        url.pathname === "/v1/connection" &&
+        request.method === "DELETE"
+      ) {
+        const input = await body(request);
+        if (
+          input.confirm !== true ||
+          !Number.isSafeInteger(input.revision) ||
+          (input.revision as number) < 0 ||
+          Object.keys(input).some(
+            (key) => !["revision", "confirm"].includes(key),
+          )
+        )
+          throw new HttpError(
+            400,
+            "Confirm removing the uploaded configuration.",
+          );
+        response = json(await connections.remove(input.revision as number));
       } else if (url.pathname === "/v1/schedule" && request.method === "PUT") {
         const input = await body(request);
         if (
@@ -80,7 +163,7 @@ export async function handle(request: Request, env: Env): Promise<Response> {
         )
           throw new HttpError(400, "Invalid schedule settings.");
         validateTime(input.timezone, input.local_time);
-        if (input.enabled && (input.confirm !== true || !backgroundReady(env)))
+        if (input.enabled && (input.confirm !== true || !(await ready())))
           throw new HttpError(
             409,
             "Background authorization and explicit consent are required before enabling the schedule.",
@@ -94,6 +177,7 @@ export async function handle(request: Request, env: Env): Promise<Response> {
               revision: input.revision as number,
             },
             Date.now(),
+            input.enabled ? await binding() : undefined,
           ),
         );
       } else if (url.pathname === "/v1/runs" && request.method === "POST") {
@@ -106,7 +190,7 @@ export async function handle(request: Request, env: Env): Promise<Response> {
             400,
             "Confirm this background generation explicitly.",
           );
-        if (!backgroundReady(env))
+        if (!(await ready()))
           throw new HttpError(
             409,
             "Background MA access is not configured or is disabled.",
@@ -118,7 +202,13 @@ export async function handle(request: Request, env: Env): Promise<Response> {
             "Provide a stable Idempotency-Key for this action.",
           );
         response = json(
-          await repo.enqueue(`manual:${key}`, Date.now(), Date.now()),
+          await repo.enqueue(
+            `manual:${key}`,
+            Date.now(),
+            Date.now(),
+            false,
+            await binding(),
+          ),
           202,
         );
       } else if (url.pathname === "/v1/runs" && request.method === "GET") {
@@ -132,7 +222,7 @@ export async function handle(request: Request, env: Env): Promise<Response> {
         /^\/v1\/runs\/[\w-]{1,80}\/recheck$/.test(url.pathname) &&
         request.method === "POST"
       ) {
-        if ((await body(request)).confirm !== true || !backgroundReady(env))
+        if ((await body(request)).confirm !== true || !(await ready()))
           throw new HttpError(
             409,
             "Review and confirm before resuming checks.",
@@ -157,7 +247,7 @@ export async function handle(request: Request, env: Env): Promise<Response> {
     response.headers.set("Vary", "Origin");
     response.headers.set(
       "Access-Control-Allow-Methods",
-      "GET, POST, PUT, OPTIONS",
+      "GET, POST, PUT, DELETE, OPTIONS",
     );
     response.headers.set(
       "Access-Control-Allow-Headers",
@@ -169,7 +259,7 @@ export async function handle(request: Request, env: Env): Promise<Response> {
 }
 
 export default {
-  fetch: handle,
+  fetch: (request, env) => handle(request, env),
   async scheduled(_event, env) {
     await tick(env);
   },

@@ -7,13 +7,16 @@ import type {
   BackgroundStatus,
 } from "../shared/background";
 import { backgroundClient, type BackgroundClient } from "./background-client";
+import type { Client } from "./api";
 import { Markdown } from "./components";
 import "./background.css";
 
 export function BackgroundSettings({
   service = backgroundClient,
+  client,
 }: {
   service?: BackgroundClient;
+  client?: Pick<Client, "backgroundConfiguration" | "signedIn">;
 }) {
   const [connected, setConnected] = useState(false),
     [status, setStatus] = useState<BackgroundStatus>();
@@ -26,6 +29,8 @@ export function BackgroundSettings({
     [error, setError] = useState("");
   const [notice, setNotice] = useState(""),
     [dirty, setDirty] = useState(false);
+  const [uploadConsent, setUploadConsent] = useState(false),
+    [removeConsent, setRemoveConsent] = useState(false);
   const lock = useRef(false),
     alive = useRef(true),
     dirtyRef = useRef(false);
@@ -171,6 +176,104 @@ export function BackgroundSettings({
                   The server is connected, but background MA access is disabled
                   or not configured. No generation can start yet.
                 </p>
+              )}
+              {client && (
+                <div className="background-authorization">
+                  <h3>{"Use your current Ark workspace"}</h3>
+                  <p className="background-note">
+                    {
+                      "No second key or agent to configure. Sync the API key, project, agent version, environment, and memory-store IDs from this app. SSO and refresh credentials stay on-device. The service stores the configuration encrypted and decrypts it to call Ark while you are away. Its administrators remain trusted; this is not end-to-end encryption."
+                    }
+                  </p>
+                  <p className="background-note" role="status">
+                    {status?.connection?.configured
+                      ? `Configuration uploaded${status.connection.updatedAt ? ` · ${new Date(status.connection.updatedAt).toLocaleString()}` : ""}`
+                      : "No app configuration uploaded."}
+                    {status &&
+                      !status.credentialStorageReady &&
+                      "Encrypted storage is not available yet."}
+                  </p>
+                  <label className="background-consent">
+                    <input
+                      type="checkbox"
+                      checked={uploadConsent}
+                      disabled={
+                        busy ||
+                        !client.signedIn() ||
+                        !status?.credentialStorageReady
+                      }
+                      onChange={(event) =>
+                        setUploadConsent(event.target.checked)
+                      }
+                    />
+                    {
+                      "I authorize uploading this app's current Ark configuration to this private service for background Feed generation. Personal context will be read from Ark. Cloud calls may be billed."
+                    }
+                  </label>
+                  <div className="background-actions">
+                    <button
+                      className="button primary"
+                      disabled={
+                        busy ||
+                        !uploadConsent ||
+                        !client.signedIn() ||
+                        !status?.credentialStorageReady
+                      }
+                      onClick={() =>
+                        void action(async () => {
+                          await service.syncConfiguration(client);
+                          setUploadConsent(false);
+                          dirtyRef.current = false;
+                          setDirty(false);
+                          setConsent(false);
+                          await load();
+                          setNotice(
+                            "Current Ark configuration synced. A changed connection pauses the schedule; review it before enabling. Generation remains subject to the server's safety checks.",
+                          );
+                        })
+                      }
+                    >
+                      {"Sync current Ark configuration"}
+                    </button>
+                  </div>
+                  {status?.connection?.configured && (
+                    <>
+                      <label className="background-consent background-remove-consent">
+                        <input
+                          type="checkbox"
+                          checked={removeConsent}
+                          disabled={busy}
+                          onChange={(event) =>
+                            setRemoveConsent(event.target.checked)
+                          }
+                        />
+                        {
+                          "Remove the uploaded configuration and pause future runs. Already submitted MA work will not be cancelled."
+                        }
+                      </label>
+                      <button
+                        className="button secondary"
+                        disabled={busy || !removeConsent}
+                        onClick={() =>
+                          void action(async () => {
+                            await service.removeConfiguration();
+                            setRemoveConsent(false);
+                            setUploadConsent(false);
+                            dirtyRef.current = false;
+                            setDirty(false);
+                            setConsent(false);
+                            await load();
+                            setNotice(
+                              "Uploaded access removed and the schedule paused. Existing MA work may still run; the original Ark key remains valid until revoked in Ark. Older encrypted backups may remain.",
+                            );
+                          })
+                        }
+                      >
+                        {"Remove uploaded Ark access"}
+                      </button>
+                    </>
+                  )}
+                </div>
               )}
               {schedule && (
                 <form
@@ -378,6 +481,8 @@ export function BackgroundSettings({
                   dirtyRef.current = false;
                   setDirty(false);
                   setConsent(false);
+                  setUploadConsent(false);
+                  setRemoveConsent(false);
                 })
               }
             >

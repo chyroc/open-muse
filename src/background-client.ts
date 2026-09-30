@@ -3,6 +3,10 @@ import { backgroundOrigin } from "../shared/background-origin";
 import { digest, uuid } from "../shared/crypto";
 import { boundedSignal } from "../shared/abort";
 import { parseInspiration } from "../shared/inspiration";
+import {
+  backgroundConfigurationSchema,
+  type BackgroundConfiguration,
+} from "../shared/background-connection";
 import type {
   BackgroundPost,
   BackgroundRun,
@@ -34,6 +38,14 @@ const statusSchema = z.object({
   connected: z.literal(true),
   owner: z.string().min(1),
   backgroundReady: z.boolean(),
+  credentialStorageReady: z.boolean().optional(),
+  connection: z
+    .object({
+      configured: z.boolean(),
+      revision: z.number().int().nonnegative(),
+      updatedAt: z.number().nullable(),
+    })
+    .optional(),
   schedule: scheduleSchema,
 });
 const runSchema = z.object({
@@ -204,6 +216,65 @@ export class BackgroundClient {
       );
       this.assertCurrent(c);
       return result;
+    });
+  }
+  syncConfiguration(source: {
+    backgroundConfiguration(confirm: boolean): Promise<BackgroundConfiguration>;
+  }) {
+    return this.exclusive(async () => {
+      const status = await this.status(),
+        c = this.credentials();
+      if (!status.credentialStorageReady || !status.connection)
+        throw new Error(
+          "Encrypted credential storage is not available on this service.",
+        );
+      const value = backgroundConfigurationSchema.safeParse(
+        await source.backgroundConfiguration(true),
+      );
+      if (!value.success)
+        throw new Error(
+          "The current Ark workspace is incomplete. Refresh it before syncing.",
+        );
+      this.assertCurrent(c);
+      const result = await this.call("/v1/connection", c.token, {
+        method: "PUT",
+        body: JSON.stringify({
+          config: value.data,
+          revision: status.connection.revision,
+          confirm: true,
+        }),
+      });
+      this.assertCurrent(c);
+      return z
+        .object({
+          configured: z.literal(true),
+          revision: z.number().int().positive(),
+          updatedAt: z.number(),
+        })
+        .parse(result);
+    });
+  }
+  removeConfiguration() {
+    return this.exclusive(async () => {
+      const status = await this.status(),
+        c = this.credentials();
+      if (!status.connection)
+        throw new Error("Refresh the service before removing uploaded access.");
+      const result = await this.call("/v1/connection", c.token, {
+        method: "DELETE",
+        body: JSON.stringify({
+          revision: status.connection.revision,
+          confirm: true,
+        }),
+      });
+      this.assertCurrent(c);
+      return z
+        .object({
+          configured: z.literal(false),
+          revision: z.number().int().positive(),
+          updatedAt: z.number(),
+        })
+        .parse(result);
     });
   }
   generate() {

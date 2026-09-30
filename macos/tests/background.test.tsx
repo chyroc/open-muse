@@ -12,7 +12,7 @@ afterEach(async () => {
   host?.remove();
 });
 
-async function setup() {
+async function setup(withArk = false) {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
@@ -20,6 +20,8 @@ async function setup() {
     connected: true,
     owner: "private-owner",
     backgroundReady: true,
+    credentialStorageReady: true,
+    connection: { configured: true, revision: 1, updatedAt: 10 },
     schedule: {
       enabled: false,
       timezone: "UTC",
@@ -46,16 +48,30 @@ async function setup() {
     refresh: vi.fn(async () => ({ status, runs: [], items: [] })),
     saveSchedule: vi.fn(async (schedule) => ({ ...schedule, revision: 3 })),
     generate: vi.fn(async () => run),
+    syncConfiguration: vi.fn(async () => ({
+      configured: true,
+      revision: 2,
+      updatedAt: 20,
+    })),
+    removeConfiguration: vi.fn(async () => ({
+      configured: false,
+      revision: 2,
+      updatedAt: 20,
+    })),
     disconnect: vi.fn(async () => {
       service.connected.mockReturnValue(false);
     }),
   };
+  const client = { signedIn: () => true, backgroundConfiguration: vi.fn() };
   await act(async () => {
     root.render(
-      <BackgroundSettings service={service as unknown as BackgroundClient} />,
+      <BackgroundSettings
+        service={service as unknown as BackgroundClient}
+        client={withArk ? client : undefined}
+      />,
     );
   });
-  return { service, status, run };
+  return { service, status, run, client };
 }
 
 function button(label: string) {
@@ -76,6 +92,36 @@ async function input(selector: string, value: string) {
 }
 
 describe("Native background settings interactions", () => {
+  it("does not sync on mount, refresh, or before explicit upload consent", async () => {
+    const { service, client } = await setup(true);
+    expect(service.syncConfiguration).not.toHaveBeenCalled();
+    expect(button("Sync current Ark configuration").disabled).toBe(true);
+    await act(async () => button("Refresh").click());
+    expect(service.syncConfiguration).not.toHaveBeenCalled();
+    await act(async () =>
+      host
+        .querySelector<HTMLInputElement>(".background-authorization input")!
+        .click(),
+    );
+    await act(async () => button("Sync current Ark configuration").click());
+    expect(service.syncConfiguration).toHaveBeenCalledExactlyOnceWith(client);
+    expect(button("Sync current Ark configuration").disabled).toBe(true);
+    expect(host.textContent).toContain("Current Ark configuration synced");
+  });
+  it("separates remote revocation from device disconnection and requires confirmation", async () => {
+    const { service } = await setup(true);
+    expect(button("Remove uploaded Ark access").disabled).toBe(true);
+    expect(host.textContent).toContain("not end-to-end encryption");
+    await act(async () =>
+      host
+        .querySelector<HTMLInputElement>(".background-remove-consent input")!
+        .click(),
+    );
+    await act(async () => button("Remove uploaded Ark access").click());
+    expect(service.removeConfiguration).toHaveBeenCalledOnce();
+    expect(service.disconnect).not.toHaveBeenCalled();
+    expect(host.textContent).toContain("the original Ark key remains valid");
+  });
   it("requires explicit consent before enabling a daily schedule", async () => {
     const { service, status } = await setup();
     await act(async () => {

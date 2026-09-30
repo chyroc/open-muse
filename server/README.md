@@ -87,6 +87,16 @@ origin-scoped IndexedDB for offline reading, without device tokens. Cached posts
 remain on the device after disconnecting. Foreground and network-recovery events
 refresh results; native background timers are not needed.
 
+After connecting the private service, authorize **Sync current Ark configuration**
+in the settings card to upload the existing app login's data-plane API key and
+prepared workspace references. No key or resource ID needs to be entered again.
+The existing local workspace and personal memory must already be prepared;
+sync does not silently create cloud resources. Upload is not automatic on
+startup, refresh, login, or account switching. A replacement upload pauses the
+schedule; explicitly review and enable it again. Signing out locally does not
+remove uploaded access. Use **Remove uploaded Ark access** to revoke the server
+copy and pause the schedule; this is separate from removing the device token.
+
 This integration targets iOS and macOS. It has local client, UI, and build
 verification, but requires live origin/CORS, Keychain, and MA acceptance before
 use. In particular, a passing build does not prove that a configured service is
@@ -113,24 +123,61 @@ cookie-based authentication. Origin checks do not replace token authentication.
 
 ## Background authorization
 
-Configure `ARK_API_KEY` as a Worker secret and supply `ARK_PROJECT`,
-`ARK_AGENT_ID`, `ARK_AGENT_VERSION`, `ARK_ENVIRONMENT_ID`, and
-`ARK_MEMORY_STORE_ID` for one explicitly authorized workspace. These are server
-configuration, not fields accepted from devices. Changing connection bindings
-while a run is unresolved blocks reconciliation until the original binding is
-restored and the run is reviewed. Never repoint this deployment to another owner.
+The private API accepts the existing app's Ark API key, project, agent ID and
+version, environment ID, and memory-store ID through `PUT /v1/connection` with
+`{config, revision, confirm: true}`. Device authentication and exact origin checks
+apply. Upload performs only read-only Ark access checks; it never creates an MA
+resource or enables a schedule. SSO access/refresh credentials, vaults, tools,
+and arbitrary upstream URLs are not accepted. No separate Ark key or agent is
+required. Native opt-in integration is described above.
 
-The first version requires a dedicated agent with an explicit empty `tools`
-array. It verifies the configured agent ID/version and empty tools before
-generation and again before submission; administrators must not change this
-agent while runs exist. Sessions mount neither memories nor credential vaults.
+Configure `CREDENTIAL_ENCRYPTION_KEYS` as a Worker secret containing a keyring:
+`{"current":"v1","keys":{"v1":"<base64-encoded random 32-byte key>"}}`.
+The entire uploaded configuration is AES-256-GCM encrypted with a fresh 96-bit
+nonce and owner/revision-bound authenticated data. D1 stores only the encrypted
+envelope and non-secret revision/time metadata. The keyring never goes into D1,
+an app, a response, or Git. This is encryption at rest, **not end-to-end
+encryption**: the authorized Worker briefly decrypts the key to call Ark.
+Cloudflare administrators with runtime/secret access remain trusted. HTTPS
+protects uploads in transit; do not enable request-body logging or tracing.
+
+For rotation, add a new key ID and switch `current`, retaining previous keys
+until all retained envelopes/backups have been migrated or expired. Do not
+remove an old key prematurely. This version has no automated bulk re-encryption
+or backup purge. D1 Time Travel/backups can retain older ciphertext; removing
+the live row is not proof of physical erasure from backups.
+
+`DELETE /v1/connection` with `{revision, confirm: true}` removes the live encrypted
+configuration and leaves a revision tombstone. It atomically pauses future
+scheduling, invalidates job leases, and clears pending prompts. Unsubmitted
+local work stops; ambiguous submissions and already-running MA work require
+review and are **not cancelled** upstream. Loaded invocations check revocation
+before each further Ark request; an already in-flight request cannot be recalled.
+Existing Feed posts remain. Removing the upload does not revoke the original
+Ark key; use the Ark console to do that. Deletion is available even if the
+encryption keyring is unavailable. Unresolved submissions can only be reconciled
+after explicitly restoring the original connection and reviewing the run.
+
+Different credentials/workspaces cannot replace an unresolved run's connection.
+Unchanged syncs are deduplicated. Stale revisions fail instead of overwriting a
+newer device's upload. Older service-level `ARK_*` bindings remain supported for
+existing private deployments, but a revocation tombstone disables that fallback.
+
+The uploaded app agent is version-pinned and reused with per-session overrides:
+empty tools, MCP servers, and skills, plus a background-only system instruction.
+Coordinator agents are rejected. The Worker verifies the effective session's
+agent ID/version and empty execution capabilities before submitting any message.
+If Ark omits or ignores those restrictions, the job stops for review. No source
+agent is modified. This contract still requires live MA acceptance. Sessions
+mount neither memories nor credential vaults.
 The server reads bounded SOUL, MEMORY, GOALS, and FEED documents into the prompt.
 This mode produces personalized ideas, not web research or current news. It does
 not access device-local likes or main-chat selection. Tool access and public
 multi-user credential custody remain out of scope.
 
 Only set `BACKGROUND_ENABLED=true` after real-account policy and connectivity
-verification. No existing native credentials are copied automatically. This
+verification. Upload requires explicit native consent; local sign-out does not
+remove previously uploaded authorization. This
 service never accepts or stores the Cloudflare management token in its runtime.
 
 Creation/message markers are persisted before POST. Ambiguous results are

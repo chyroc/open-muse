@@ -25,6 +25,9 @@ export interface Run extends BackgroundRun {
   deadline_at: number;
 }
 const summary = "id, phase, session_id, error, created_at, scheduled_for";
+export type AuthorizationBinding = { revision: number | null; hash: string };
+const authorizationGuard = `(?=0 OR (? IS NULL AND NOT EXISTS(SELECT 1 FROM ark_connections WHERE owner_id=?))
+  OR EXISTS(SELECT 1 FROM ark_connections WHERE owner_id=? AND revision=? AND encrypted IS NOT NULL))`;
 export class Repository {
   constructor(
     readonly db: D1Database,
@@ -50,6 +53,7 @@ export class Repository {
   async saveSchedule(
     input: Omit<BackgroundSchedule, "next_run_at">,
     now: number,
+    authorization?: AuthorizationBinding,
   ) {
     const next = input.enabled
       ? nextDaily(now, input.timezone, input.local_time)
@@ -58,7 +62,7 @@ export class Repository {
     const out = await this.db
       .prepare(
         `INSERT INTO schedules(owner_id,enabled,timezone,local_time,next_run_at,revision,updated_at,consent_at)
-      SELECT ?,?,?,?,?,1,?,? WHERE ?=0 OR EXISTS(SELECT 1 FROM schedules WHERE owner_id=?)
+      SELECT ?,?,?,?,?,1,?,? WHERE (?=0 OR EXISTS(SELECT 1 FROM schedules WHERE owner_id=?)) AND ${authorizationGuard}
       ON CONFLICT(owner_id) DO UPDATE SET enabled=excluded.enabled,timezone=excluded.timezone,local_time=excluded.local_time,
       next_run_at=excluded.next_run_at,revision=schedules.revision+1,updated_at=excluded.updated_at,
       consent_at=CASE WHEN excluded.enabled=1 THEN excluded.consent_at ELSE schedules.consent_at END
@@ -74,6 +78,11 @@ export class Repository {
         input.enabled ? now : null,
         input.revision,
         this.owner,
+        +(input.enabled && authorization !== undefined),
+        authorization?.revision ?? null,
+        this.owner,
+        this.owner,
+        authorization?.revision ?? null,
         input.revision,
       )
       .run();
@@ -86,15 +95,17 @@ export class Repository {
     scheduledFor: number,
     now: number,
     automatic = false,
+    authorization?: AuthorizationBinding,
   ) {
     const id = crypto.randomUUID();
     await this.db
       .prepare(
-        `INSERT OR IGNORE INTO runs(id,owner_id,request_key,scheduled_for,phase,marker,event_id,next_check_at,created_at,updated_at,deadline_at)
-      SELECT ?,?,?,?,'queued',?,?,?,?,?,?
+        `INSERT OR IGNORE INTO runs(id,owner_id,request_key,scheduled_for,phase,marker,event_id,next_check_at,created_at,updated_at,deadline_at,connection_hash)
+      SELECT ?,?,?,?,'queued',?,?,?,?,?,?,?
       WHERE (SELECT count(*) FROM runs WHERE owner_id=? AND created_at>?) < ?
       AND NOT EXISTS(SELECT 1 FROM runs WHERE owner_id=? AND phase NOT IN ('complete','failed'))
-      AND (?=0 OR EXISTS(SELECT 1 FROM schedules WHERE owner_id=? AND enabled=1 AND next_run_at=?))`,
+      AND (?=0 OR EXISTS(SELECT 1 FROM schedules WHERE owner_id=? AND enabled=1 AND next_run_at=?))
+      AND ${authorizationGuard}`,
       )
       .bind(
         id,
@@ -107,6 +118,7 @@ export class Repository {
         now,
         now,
         now + RUN_DEADLINE,
+        authorization?.hash ?? null,
         this.owner,
         now - 86400000,
         DAILY_RUN_LIMIT,
@@ -114,6 +126,11 @@ export class Repository {
         +automatic,
         this.owner,
         scheduledFor,
+        +(authorization !== undefined),
+        authorization?.revision ?? null,
+        this.owner,
+        this.owner,
+        authorization?.revision ?? null,
       )
       .run();
     const row = await this.db
@@ -127,7 +144,7 @@ export class Repository {
       );
     return row;
   }
-  async dispatchDue(now: number) {
+  async dispatchDue(now: number, authorization?: AuthorizationBinding) {
     const s = await this.schedule();
     if (!s.enabled || s.next_run_at === null || s.next_run_at > now) return;
     try {
@@ -136,6 +153,7 @@ export class Repository {
         s.next_run_at,
         now,
         true,
+        authorization,
       );
     } catch (e) {
       if (!(e instanceof HttpError && e.status === 409)) throw e;

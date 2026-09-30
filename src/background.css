@@ -142,3 +142,14 @@
     grid-template-columns: 1fr;
   }
 }
+.background-authorization {
+  border-block: 1px solid #e6e2d9;
+  padding-block: 18px;
+  margin-block: 18px;
+  display: grid;
+  gap: 12px;
+}
+.background-authorization h3 {
+  margin: 0;
+  font-size: 15px;
+}

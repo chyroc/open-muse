@@ -12,7 +12,14 @@ const env = {
   ARK_MEMORY_STORE_ID: "mem-test",
 } as Env;
 function fixture(
-  options: { tools?: unknown[]; version?: number; duplicate?: boolean } = {},
+  options: {
+    tools?: unknown[];
+    version?: number;
+    duplicate?: boolean;
+    uploaded?: boolean;
+    sessionAgent?: Record<string, unknown>;
+    multiagent?: unknown;
+  } = {},
 ) {
   const calls: {
     url: string;
@@ -37,6 +44,18 @@ function fixture(
         id: "agent-test",
         version: options.version ?? 1,
         tools: options.tools ?? [],
+        multiagent: options.multiagent,
+      };
+    else if (path.endsWith("/sessions/session-new"))
+      result = {
+        id: "session-new",
+        agent: options.sessionAgent ?? {
+          id: "agent-test",
+          version: 1,
+          tools: [],
+          mcp_servers: [],
+          skills: [],
+        },
       };
     else if (path.endsWith("/memories"))
       result = {
@@ -56,7 +75,17 @@ function fixture(
     else result = { data: [] };
     return Response.json(result);
   });
-  return { remote: new ArkRemote(env, fetcher), calls, fetcher };
+  return {
+    remote: new ArkRemote(
+      {
+        ...env,
+        ...(options.uploaded ? { ARK_SESSION_OVERRIDES: "true" } : {}),
+      },
+      fetcher,
+    ),
+    calls,
+    fetcher,
+  };
 }
 describe("Constrained MA adapter", () => {
   it("rejects tools and changed agent versions before creating a session", async () => {
@@ -105,5 +134,56 @@ describe("Constrained MA adapter", () => {
     expect(() => fixture().remote.events("https://evil.example/key")).toThrow(
       "invalid",
     );
+  });
+  it("reuses the uploaded app agent with explicit per-session restrictions", async () => {
+    const f = fixture({
+      uploaded: true,
+      tools: [{ type: "agent_toolset_20260701" }],
+    });
+    await f.remote.create("unique-marker");
+    expect(f.calls.at(-1)?.body).toMatchObject({
+      agent: {
+        type: "agent_with_overrides",
+        id: "agent-test",
+        version: 1,
+        tools: [],
+        mcp_servers: [],
+        skills: [],
+      },
+      resources: [],
+      vault_ids: [],
+    });
+    await f.remote.send("session-new", "event-stable", "prompt");
+    expect(f.calls.at(-2)?.url).toContain("/sessions/session-new");
+    expect(f.calls.at(-1)?.method).toBe("POST");
+  });
+  it("does not trust ignored or incomplete overrides, changed versions, or child agents", async () => {
+    const safe = {
+      id: "agent-test",
+      version: 1,
+      tools: [],
+      mcp_servers: [],
+      skills: [],
+    };
+    for (const sessionAgent of [
+      { ...safe, tools: [{ type: "bash" }] },
+      { ...safe, mcp_servers: [{ url: "https://example.com" }] },
+      { ...safe, skills: [{ id: "skill-one" }] },
+      { ...safe, version: 2 },
+      { ...safe, tools: undefined },
+      { ...safe, multiagent: { type: "coordinator" } },
+    ]) {
+      const f = fixture({ uploaded: true, sessionAgent });
+      await expect(
+        f.remote.send("session-new", "event-stable", "prompt"),
+      ).rejects.toThrow("restrictions");
+      expect(f.calls.every((call) => call.method === "GET")).toBe(true);
+    }
+    await expect(
+      fixture({
+        uploaded: true,
+        multiagent: { type: "coordinator" },
+      }).remote.prepare(),
+    ).rejects.toThrow("restrictions");
   });
 });

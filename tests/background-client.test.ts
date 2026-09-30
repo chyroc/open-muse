@@ -79,6 +79,130 @@ function fixture() {
   return { client, vault, db, fetcher, read: () => value };
 }
 describe("Optional native background client", () => {
+  it("syncs only after explicit export, using the device token and a revision, without caching the key", async () => {
+    const f = fixture();
+    const config = {
+      apiKey: "test-existing-app-api-key",
+      project: "project",
+      agentId: "agent-one",
+      agentVersion: 2,
+      environmentId: "env-one",
+      memoryStoreId: "memory-one",
+    };
+    const source = { backgroundConfiguration: vi.fn(async () => config) };
+    const fetcher: typeof fetch = vi.fn(async (input, init) => {
+      if (String(input).endsWith("/v1/status"))
+        return Response.json({
+          ...status,
+          credentialStorageReady: true,
+          connection: { configured: false, revision: 4, updatedAt: null },
+        });
+      if (String(input).endsWith("/v1/connection")) {
+        expect(init?.method).toBe("PUT");
+        expect(new Headers(init?.headers).get("Authorization")).toBe(
+          `Bearer ${token}`,
+        );
+        expect(JSON.parse(String(init?.body))).toEqual({
+          config,
+          revision: 4,
+          confirm: true,
+        });
+        return Response.json({ configured: true, revision: 5, updatedAt: 10 });
+      }
+      return f.fetcher(input, init);
+    });
+    const client = new BackgroundClient(
+      "https://background.example",
+      f.vault,
+      f.db,
+      fetcher,
+    );
+    await client.connect(token);
+    expect(source.backgroundConfiguration).not.toHaveBeenCalled();
+    await client.syncConfiguration(source);
+    expect(source.backgroundConfiguration).toHaveBeenCalledExactlyOnceWith(
+      true,
+    );
+    expect(f.read()).not.toContain(config.apiKey);
+    expect(JSON.stringify(await client.cachedFeed())).not.toContain(
+      config.apiKey,
+    );
+  });
+  it("does not export the Ark key to an unsupported service or changed owner", async () => {
+    const f = fixture();
+    await f.client.connect(token);
+    const source = { backgroundConfiguration: vi.fn() };
+    await expect(f.client.syncConfiguration(source)).rejects.toThrow(
+      "Encrypted credential storage",
+    );
+    expect(source.backgroundConfiguration).not.toHaveBeenCalled();
+    vi.mocked(f.fetcher).mockResolvedValueOnce(
+      Response.json({ ...status, owner: "another-owner" }),
+    );
+    await expect(f.client.syncConfiguration(source)).rejects.toThrow(
+      "owner changed",
+    );
+    expect(source.backgroundConfiguration).not.toHaveBeenCalled();
+  });
+  it("does not retry an uncertain credential upload or echo secret upstream errors", async () => {
+    const f = fixture();
+    const config = {
+      apiKey: "test-existing-app-api-key",
+      project: "project",
+      agentId: "agent-one",
+      agentVersion: 2,
+      environmentId: "env-one",
+      memoryStoreId: "memory-one",
+    };
+    const fetcher = vi.fn<typeof fetch>(async (input, init) => {
+      if (init?.method === "PUT") throw new Error(config.apiKey);
+      return Response.json({
+        ...status,
+        credentialStorageReady: true,
+        connection: { configured: false, revision: 0, updatedAt: null },
+      });
+    });
+    const client = new BackgroundClient(
+      "https://background.example",
+      f.vault,
+      f.db,
+      fetcher,
+    );
+    await client.connect(token);
+    await expect(
+      client.syncConfiguration({ backgroundConfiguration: async () => config }),
+    ).rejects.toThrow("no request was retried");
+    expect(
+      fetcher.mock.calls.filter(([, init]) => init?.method === "PUT"),
+    ).toHaveLength(1);
+    expect(f.read()).not.toContain(config.apiKey);
+  });
+  it("removes remote access with revision/consent, retaining the local device token", async () => {
+    const f = fixture();
+    const fetcher = vi.fn<typeof fetch>(async (_input, init) => {
+      if (init?.method === "DELETE") {
+        expect(JSON.parse(String(init.body))).toEqual({
+          revision: 5,
+          confirm: true,
+        });
+        return Response.json({ configured: false, revision: 6, updatedAt: 10 });
+      }
+      return Response.json({
+        ...status,
+        connection: { configured: true, revision: 5, updatedAt: 1 },
+      });
+    });
+    const client = new BackgroundClient(
+      "https://background.example",
+      f.vault,
+      f.db,
+      fetcher,
+    );
+    await client.connect(token);
+    await client.removeConfiguration();
+    expect(client.connected()).toBe(true);
+    expect(JSON.parse(f.read()).token).toBe(token);
+  });
   it("does no networking when the build has no service", async () => {
     const f = fixture();
     const c = new BackgroundClient("", f.vault, f.db, f.fetcher);

@@ -4,6 +4,7 @@ import { eventText } from "../../shared/types";
 import { ArkRemote, type Remote } from "./ark";
 import { backgroundReady, HttpError, type Env } from "./env";
 import { Repository, type Run } from "./repository";
+import { ConnectionStore } from "./connection";
 
 export async function processRun(
   repo: Repository,
@@ -78,7 +79,7 @@ export async function processRun(
         await attention("The run is missing submission data.");
         return;
       }
-      await remote.verify();
+      await remote.verify(run.session_id);
       await repo.transition(run, "ready", { phase: "sending" }, clock());
       await remote.send(run.session_id, run.event_id, run.prompt);
       await repo.transition(
@@ -176,13 +177,19 @@ export async function processRun(
   }
 }
 
-export async function tick(
-  env: Env,
-  remote: Remote = new ArkRemote(env),
-  clock = Date.now,
-) {
-  if (!backgroundReady(env)) return;
+export async function tick(env: Env, remote?: Remote, clock = Date.now) {
+  if (env.BACKGROUND_ENABLED !== "true") return;
+  const store = new ConnectionStore(env);
+  const connection = await store.resolve();
+  if (!connection || !backgroundReady(connection.env)) return;
+  remote ??= new ArkRemote(
+    connection.env,
+    store.guardedFetch(connection.revision),
+  );
   const repo = new Repository(env.DB, env.OWNER_ID);
-  await repo.dispatchDue(clock());
+  await repo.dispatchDue(clock(), {
+    revision: connection.revision,
+    hash: await remote.fingerprint(),
+  });
   await processRun(repo, remote, clock);
 }

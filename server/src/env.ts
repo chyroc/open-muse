@@ -5,12 +5,17 @@ export interface Env {
   DEVICE_TOKEN_HASHES?: string;
   ALLOWED_ORIGINS?: string;
   BACKGROUND_ENABLED?: string;
+  // Worker secret: {"current":"v1","keys":{"v1":"<32-byte base64>"}}.
+  // This keyring must never be stored in D1 or sent to clients.
+  CREDENTIAL_ENCRYPTION_KEYS?: string;
   ARK_API_KEY?: string;
   ARK_PROJECT?: string;
   ARK_AGENT_ID?: string;
   ARK_AGENT_VERSION?: string;
   ARK_ENVIRONMENT_ID?: string;
   ARK_MEMORY_STORE_ID?: string;
+  // Internal flag for a verified, uploaded app connection. Not client input.
+  ARK_SESSION_OVERRIDES?: string;
 }
 
 export function backgroundReady(env: Env) {

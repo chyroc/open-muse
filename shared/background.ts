@@ -1,4 +1,5 @@
 import type { InspirationContent } from "./inspiration";
+import type { BackgroundConnectionStatus } from "./background-connection";
 
 export type BackgroundPhase =
   | "queued"
@@ -35,5 +36,7 @@ export interface BackgroundStatus {
   connected: true;
   owner: string;
   backgroundReady: boolean;
+  credentialStorageReady?: boolean;
+  connection?: BackgroundConnectionStatus;
   schedule: BackgroundSchedule;
 }

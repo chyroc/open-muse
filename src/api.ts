@@ -20,6 +20,7 @@ import { DirectAuth } from "./direct/auth";
 import { LocalDatabase, type CredentialStore } from "./direct/storage";
 import { ARK_BASE_URL, directFetch } from "./direct/transport";
 import { DirectWorkspace } from "./direct/workspace";
+import { exportBackgroundConfiguration } from "./direct/background-export";
 import { DirectIdentity, defaultIdentity } from "./direct/identity";
 import { DirectGoals } from "./direct/goals";
 import { DirectChoices } from "./direct/choices";
@@ -197,6 +198,14 @@ export class Client {
   }
   startWorkspace() {
     return this.context().workspace.start();
+  }
+  async backgroundConfiguration(confirm: boolean) {
+    const r = this.context();
+    const result = await exportBackgroundConfiguration(
+      confirm, this.identity, r.workspace, r.companion, r.ark,
+    );
+    r.abort.signal.throwIfAborted();
+    return result;
   }
   async companionIdentity() {
     return this.signedIn()

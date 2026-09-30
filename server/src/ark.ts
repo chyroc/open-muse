@@ -7,7 +7,7 @@ import { HttpError, type Env } from "./env";
 
 export interface Remote {
   fingerprint(): Promise<string>;
-  verify(): Promise<void>;
+  verify(session?: string): Promise<void>;
   prepare(): Promise<string>;
   create(marker: string): Promise<string>;
   find(marker: string): Promise<string[]>;
@@ -44,24 +44,74 @@ export class ArkRemote implements Remote {
         this.env.ARK_AGENT_VERSION,
         this.env.ARK_ENVIRONMENT_ID,
         this.env.ARK_MEMORY_STORE_ID,
+        this.env.ARK_SESSION_OVERRIDES ?? "",
       ]),
     );
   }
-  async verify() {
+  async verify(session?: string) {
     const agent = await this.ark.request<{
       id: string;
       version: number;
       tools?: unknown[];
+      multiagent?: unknown;
     }>(`/agents/${validId(this.env.ARK_AGENT_ID)}`);
     if (
       agent.id !== this.env.ARK_AGENT_ID ||
       String(agent.version) !== this.env.ARK_AGENT_VERSION ||
-      !Array.isArray(agent.tools) ||
-      agent.tools.length !== 0
+      (this.env.ARK_SESSION_OVERRIDES !== "true" &&
+        (!Array.isArray(agent.tools) || agent.tools.length !== 0)) ||
+      // Do not inherit child-agent execution. Until the upstream null override
+      // contract is accepted, source coordinators are not supported.
+      Boolean(agent.multiagent)
     )
       throw new HttpError(
         409,
-        "Background generation requires the configured, unchanged no-tools agent version.",
+        "Background generation requires the configured, unchanged no-tools agent version or verified session restrictions.",
+      );
+    if (session) await this.verifySession(session);
+  }
+  async verifyAccess() {
+    await this.verify();
+    for (const [collection, id] of [
+      ["environments", this.env.ARK_ENVIRONMENT_ID],
+      ["memory_stores", this.env.ARK_MEMORY_STORE_ID],
+    ]) {
+      const resource = await this.ark.request<{ id: string }>(
+        `/${collection}/${validId(id)}`,
+      );
+      if (resource.id !== id)
+        throw new HttpError(
+          422,
+          "The Ark workspace response did not match the requested resource.",
+        );
+    }
+  }
+  private async verifySession(session: string) {
+    if (this.env.ARK_SESSION_OVERRIDES !== "true") return;
+    const result = await this.ark.request<{
+      id: string;
+      agent?: {
+        id: string;
+        version: number;
+        tools?: unknown[];
+        mcp_servers?: unknown[];
+        skills?: unknown[];
+        multiagent?: unknown;
+      };
+    }>(`/sessions/${validId(session)}`);
+    const agent = result.agent;
+    if (
+      result.id !== session ||
+      agent?.id !== this.env.ARK_AGENT_ID ||
+      String(agent?.version) !== this.env.ARK_AGENT_VERSION ||
+      ![agent?.tools, agent?.mcp_servers, agent?.skills].every(
+        (items) => Array.isArray(items) && items.length === 0,
+      ) ||
+      agent?.multiagent
+    )
+      throw new HttpError(
+        409,
+        "The background session restrictions could not be verified. No message was sent.",
       );
   }
   private async collect<T>(path: string): Promise<T[]> {
@@ -138,7 +188,19 @@ export class ArkRemote implements Remote {
     const result = await this.ark.request<{ id: string }>("/sessions", {
       method: "POST",
       body: JSON.stringify({
-        agent: this.env.ARK_AGENT_ID,
+        agent:
+          this.env.ARK_SESSION_OVERRIDES === "true"
+            ? {
+                type: "agent_with_overrides",
+                id: this.env.ARK_AGENT_ID,
+                version: Number(this.env.ARK_AGENT_VERSION),
+                system:
+                  "Generate personalized Feed ideas from the provided context. You have no tools, skills, MCP servers, child agents, or mounted memory. Return only the requested JSON. Never claim to have researched news or performed actions.",
+                tools: [],
+                mcp_servers: [],
+                skills: [],
+              }
+            : this.env.ARK_AGENT_ID,
         environment_id: this.env.ARK_ENVIRONMENT_ID,
         title: marker,
         resources: [],
@@ -154,7 +216,7 @@ export class ArkRemote implements Remote {
     return rows.filter((s) => s.title === marker).map((s) => validId(s.id));
   }
   async send(session: string, event: string, prompt: string) {
-    await this.verify();
+    await this.verify(session);
     await this.ark.send(validId(session), {
       id: event,
       type: "user.message",

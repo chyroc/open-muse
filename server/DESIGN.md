@@ -107,7 +107,9 @@ deploying a Worker or writing a cron expression.
    marker; if the outcome is still unknown, retain that state and do not resend.
 6. Start with read-only research. A prompt alone is not a permission boundary:
    configure and verify a suitable MA tool policy for unattended work rather
-   than reusing the current app agent's broad tool permissions. Approval-required
+   than inheriting the current app agent's broad tool permissions. The private
+   implementation accepts an explicit encrypted upload and reuses its agent
+   only with verified no-tools session overrides. Approval-required
    actions must wait for the user. Do not enable autonomous memory maintenance
    or goal edits as a side effect of adding scheduled Feed generation.
 7. Read the authoritative MA documents and history to build context. Retain only
