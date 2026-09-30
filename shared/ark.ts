@@ -60,7 +60,12 @@ export class ArkClient {
   async create(
     title: string,
     category: Category,
-    selection?: { agent: string; environment_id: string },
+    selection?: {
+      agent: string;
+      environment_id: string;
+      memory_store_id?: string;
+      system?: string;
+    },
   ): Promise<Session> {
     if (
       !(selection?.agent ?? this.config.agentId) ||
@@ -73,9 +78,26 @@ export class ArkClient {
     const session = await this.request<Session>("/sessions", {
       method: "POST",
       body: JSON.stringify({
-        agent: selection?.agent ?? this.config.agentId,
+        agent:
+          selection?.system !== undefined
+            ? {
+                type: "agent_with_overrides",
+                id: selection.agent,
+                system: selection.system,
+              }
+            : (selection?.agent ?? this.config.agentId),
         environment_id: selection?.environment_id ?? this.config.environmentId,
         title,
+        ...(selection?.memory_store_id
+          ? {
+              resources: [
+                {
+                  type: "memory_store",
+                  memory_store_id: selection.memory_store_id,
+                },
+              ],
+            }
+          : {}),
       }),
     });
     if (!session.id)

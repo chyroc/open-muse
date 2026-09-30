@@ -163,12 +163,14 @@ export function exampleFor(id: string): Record<string, unknown> {
     },
     UpdateMemoryStore: { description: "Update the memory store description" },
     CreateMemory: {
-      path: "preferences.md",
+      path: "/preferences.md",
       content: "Please answer in English.",
     },
     UpdateMemory: { content: "Update memory content" },
     BatchCreateMemories: {
-      items: [{ path: "preferences.md", content: "Please answer in English." }],
+      items: [
+        { path: "/preferences.md", content: "Please answer in English." },
+      ],
       on_conflict: "fail",
     },
     SendSessionEvents: {

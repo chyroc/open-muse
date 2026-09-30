@@ -25,6 +25,9 @@ export interface AgentEvent {
   result?: "allow" | "deny";
   // Local audit marker; not sent to Ark.
   approval_source?: "automatic";
+  // Historical UI provenance only; never sent to MA as an event.
+  source_session_id?: string;
+  source_event_id?: string;
   is_error?: boolean;
   error?: { message?: string; type?: string };
   stop_reason?: { type: string; event_ids?: string[] };
