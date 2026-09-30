@@ -1007,9 +1007,10 @@ export const zhCN: Record<string, string> = {
   "Settings sections": "设置分类",
   General: "通用",
   Connectors: "连接器",
-  "Computer use": "电脑操作",
-  "File system access": "文件系统访问",
-  Dictation: "听写",
+  // The reference settings window leaves these three section names in English.
+  "Computer use": "Computer use",
+  "File system access": "File system access",
+  Dictation: "Dictation",
   Wallet: "钱包",
   "Secure storage": "安全存储",
   Permissions: "权限",
@@ -1049,14 +1050,20 @@ export const zhCN: Record<string, string> = {
   "Agent credential vaults": "智能体凭据保险库",
   "MA vault storage for your agent's own credentials is not connected in this Mac build.":
     "此 Mac 版本尚未接入 MA 为智能体保存凭据的保险库。",
-  "Permission requests are decided in the chat, not here. These are the rules this build actually applies.":
-    "权限请求在对话中决定，不在这里。以下是此版本实际执行的规则。",
+  "Your MA agent and environment decide what may run. This window reports those rules and the client's own handling; it changes neither.":
+    "可以执行什么由你的 MA 智能体与运行环境决定。此窗口只报告这些规则以及客户端自身的处理方式，两者都不会被它修改。",
+  "Built-in tools": "内置工具",
+  "The workspace this app provisions sets its agent toolset to always-allow, so MA runs those tools directly without asking. Cloud calls, external writes and billing can follow from one message.":
+    "本应用创建的工作区把智能体工具集设为「始终允许」，因此 MA 会直接执行这些工具，不会先询问。一条消息就可能触发云端调用、对外写入和计费。",
+  "When MA does ask": "MA 何时会询问",
+  "MA still sends a permission request for anything its own policy evaluates as ask, and the conversation shows it.":
+    "凡是 MA 自身策略判定为需要询问的操作，仍会发出权限请求，并显示在对话中。",
   "Automatically approved": "自动批准",
   "Only pending web_search and web_fetch requests, matched by exact protocol name. There is no setting that widens this.":
     "仅限按协议名精确匹配的待处理 web_search 与 web_fetch 请求，没有任何设置可以放宽。",
-  "Always asked": "始终询问",
-  "Every other tool, including file, memory and connector operations, waits for you in the conversation.":
-    "其他所有工具（包括文件、记忆与连接器操作）都会在对话中等待你确认。",
+  "Everything else waits": "其余请求等待你处理",
+  "Every other pending permission request stays in the conversation until you answer it.":
+    "其他所有待处理的权限请求都会留在对话中，直到你作出答复。",
   "Write requests": "写入请求",
   "A write is never retried automatically. If a result is unclear, the app reads history instead of repeating it.":
     "写入请求永不自动重试。结果不明确时，应用会先查询历史，而不是重复提交。",

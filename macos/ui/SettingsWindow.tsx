@@ -262,10 +262,22 @@ export function SettingsWindow({ client }: { client: Client }) {
           <>
             <p className="settings-lead">
               {t(
-                "Permission requests are decided in the chat, not here. These are the rules this build actually applies.",
+                "Your MA agent and environment decide what may run. This window reports those rules and the client's own handling; it changes neither.",
               )}
             </p>
             <div className="settings-group">
+              <Row
+                title={t("Built-in tools")}
+                detail={t(
+                  "The workspace this app provisions sets its agent toolset to always-allow, so MA runs those tools directly without asking. Cloud calls, external writes and billing can follow from one message.",
+                )}
+              />
+              <Row
+                title={t("When MA does ask")}
+                detail={t(
+                  "MA still sends a permission request for anything its own policy evaluates as ask, and the conversation shows it.",
+                )}
+              />
               <Row
                 title={t("Automatically approved")}
                 detail={t(
@@ -273,9 +285,9 @@ export function SettingsWindow({ client }: { client: Client }) {
                 )}
               />
               <Row
-                title={t("Always asked")}
+                title={t("Everything else waits")}
                 detail={t(
-                  "Every other tool, including file, memory and connector operations, waits for you in the conversation.",
+                  "Every other pending permission request stays in the conversation until you answer it.",
                 )}
               />
               <Row

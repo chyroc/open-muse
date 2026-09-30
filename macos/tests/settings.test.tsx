@@ -167,10 +167,31 @@ describe("Mac settings window", () => {
     await mount(<SettingsWindow client={await fixture()} />);
     await click("Permissions");
     expect(location.hash).toBe("#/settings/permissions");
+    // The provisioned agent toolset is always-allow, so the window must not
+    // promise that every tool asks first.
+    expect(host!.textContent).toContain("always-allow");
+    expect(host!.textContent).toContain("runs those tools directly");
     expect(host!.textContent).toContain("web_search");
+    expect(host!.textContent).toContain(
+      "Every other pending permission request",
+    );
+    expect(host!.textContent).not.toContain("Every other tool");
     expect(host!.textContent).toContain("never retried automatically");
     expect(host!.querySelectorAll("input[type=checkbox]")).toHaveLength(0);
     expect(host!.querySelectorAll("input[type=radio]")).toHaveLength(0);
+  });
+  it("matches the reference on the section names it leaves in English", async () => {
+    for (const label of ["Computer use", "File system access", "Dictation"])
+      expect(zhCN[label]).toBe(label);
+    vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", ["zh-CN"]);
+    await mount(<SettingsWindow client={await fixture()} />);
+    const names = [
+      ...host!.querySelectorAll(".settings-sidebar-items button"),
+    ].map((item) => item.textContent);
+    expect(names).toContain("Computer use");
+    expect(names).toContain("File system access");
+    expect(names).toContain("Dictation");
+    expect(names).toContain("通用");
   });
   it("explains unconnected sections without simulating them", async () => {
     await mount(<SettingsWindow client={await fixture()} />);
