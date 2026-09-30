@@ -27,3 +27,9 @@ export function viewIdeaLabel(title: string) {
     ? t("View an idea in the ideas tab: {title}", { title })
     : t("View idea: {title}", { title });
 }
+
+export function statusTabLabel(tab: "activity" | "approvals") {
+  const chinese = systemLanguage() === "zh-CN";
+  if (tab === "activity") return chinese ? t("Activity tab") : t("Activity");
+  return chinese ? t("Approvals tab") : t("Approvals");
+}

@@ -16,6 +16,7 @@ import type {
 import type { AgentEvent } from "../../shared/types";
 import { PermissionCard } from "../../src/PermissionCard";
 import { Avatar, Empty } from "./Chrome";
+import { statusTabLabel } from "./labels";
 import { activityEvents } from "./model";
 
 export type StatusTab = "activity" | "approvals" | "upcoming" | "identity";
@@ -66,7 +67,7 @@ export function IdentityCards({
             onClick={() => onOpen(name)}
           >
             <span>
-              <strong>{name === "SOUL.md" ? "SOUL" : "MEMORY"}</strong>
+              <strong>{name === "SOUL.md" ? t("SOUL") : t("MEMORY")}</strong>
               <small>{t("ACCESS WITH CARE")}</small>
             </span>
             <footer>
@@ -106,8 +107,8 @@ export function StatusPanel({
   onDocument: (name: IdentityDocumentName) => void;
 }) {
   const tabs = [
-    { id: "activity", label: t("Activity"), Icon: List },
-    { id: "approvals", label: t("Approvals"), Icon: ShieldCheck },
+    { id: "activity", label: statusTabLabel("activity"), Icon: List },
+    { id: "approvals", label: statusTabLabel("approvals"), Icon: ShieldCheck },
     { id: "upcoming", label: t("Upcoming"), Icon: Clock3 },
     { id: "identity", label: t("Identity"), Icon: Fingerprint },
   ] as const;
@@ -191,7 +192,7 @@ export function StatusPanel({
           ))}
         {tab === "activity" && (
           <>
-            <h3>{t("Activity")}</h3>
+            <h3>{statusTabLabel("activity")}</h3>
             {activityEvents(events)
               .slice(-30)
               .reverse()

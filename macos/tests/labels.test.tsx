@@ -3,7 +3,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { zhCN } from "../../shared/locales/zh-CN";
 import { navLabel } from "../ui/labels";
-import { refreshIdeasLabel, viewIdeaLabel } from "../ui/labels";
+import { refreshIdeasLabel, statusTabLabel, viewIdeaLabel } from "../ui/labels";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -11,6 +11,7 @@ afterEach(() => vi.unstubAllGlobals());
 // macos/, or another client would silently inherit the desktop wording.
 const renamed = [
   "Open chats and side chats",
+  "Upcoming",
   "Search Library",
   "Save reply to library",
   "Library navigation",
@@ -62,6 +63,15 @@ describe("Mac navigation labels", () => {
     vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", ["zh-CN"]);
     expect(refreshIdeasLabel()).toBe("刷新点子");
     expect(viewIdeaLabel("A title")).toBe("查看点子：A title");
+    expect([statusTabLabel("activity"), statusTabLabel("approvals")]).toEqual([
+      "动态",
+      "批准",
+    ]);
+    vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", ["en-US"]);
+    expect([statusTabLabel("activity"), statusTabLabel("approvals")]).toEqual([
+      "Activity",
+      "Approvals",
+    ]);
   });
   it("keeps the renamed catalog entries Mac-only", () => {
     const outside = [
@@ -94,6 +104,11 @@ describe("Mac navigation labels", () => {
       expect(zhCN[key], key).toContain("点子");
     for (const key of ["Open side-by-side chat", "Close side-by-side chat"])
       expect(zhCN[key], key).toContain("聊天");
+    // The status panel and the identity cards follow the same rule.
+    expect(zhCN.Upcoming).toBe("即将到来");
+    expect(zhCN.MEMORY).toBe("记忆");
+    expect(zhCN.SOUL).toBe("SOUL");
+    expect(zhCN["Open chats and side chats"]).toBe("打开聊天和旁聊");
     for (const [key, value] of Object.entries(shared))
       expect(zhCN[key], key).toBe(value);
     for (const key of ["Chat tab", "Ideas tab", "Library tab"])
