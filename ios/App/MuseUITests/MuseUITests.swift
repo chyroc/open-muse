@@ -827,15 +827,18 @@ final class MuseLiveUITests: XCTestCase {
     private func openPreview(file: String, content: String?, close: String = "Close preview") -> XCUIElement {
         let preview = app.otherElements["QLPreviewControllerView"]
         XCTAssertTrue(preview.waitForExistence(timeout: 60), "Quick Look must open the downloaded file")
+        let button = app.buttons["museFilePreviewClose"]
+        XCTAssertTrue(button.waitForExistence(timeout: 5), app.debugDescription)
         if let content = content {
             let text = app.textViews.matching(NSPredicate(format: "label == %@", content)).firstMatch
             XCTAssertTrue(text.waitForExistence(timeout: 30), "Quick Look must render the real file content")
+            XCTAssertFalse(text.frame.intersects(button.frame), "Close must not cover the first line")
         } else {
             XCTAssertTrue(preview.images.firstMatch.waitForExistence(timeout: 30), "Quick Look must render the real image")
             XCTAssertTrue(preview.images.allElementsBoundByIndex.contains { $0.frame.size == CGSize(width: 64, height: 64) }, app.debugDescription)
         }
-        let button = app.buttons["museFilePreviewClose"]
-        XCTAssertTrue(button.waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertGreaterThanOrEqual(preview.frame.minY, button.frame.maxY, "Preview content starts below the close bar")
+        XCTAssertTrue(app.staticTexts[file].exists, "The bar names the previewed file")
         XCTAssertEqual(button.label, close)
         XCTAssertTrue(button.isHittable, "Close must be visible and tappable")
         XCTAssertGreaterThanOrEqual(button.frame.width, 44)

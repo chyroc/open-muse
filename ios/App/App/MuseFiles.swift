@@ -80,14 +80,17 @@ private final class MuseFileDownload: NSObject, URLSessionDataDelegate {
 }
 
 // Quick Look hides its own controls in some modes (for example the black image
-// view), so the preview always keeps an app-owned, visible close control.
+// view), so the preview always keeps an app-owned bar with a visible close
+// control. The preview sits below the bar so the control never covers content.
 private final class MusePreviewContainer: UIViewController {
     private let preview: QLPreviewController
+    private let fileName: String
     private let closeLabel: String
     private var onDismiss: (() -> Void)?
 
-    init(preview: QLPreviewController, closeLabel: String, onDismiss: @escaping () -> Void) {
+    init(preview: QLPreviewController, fileName: String, closeLabel: String, onDismiss: @escaping () -> Void) {
         self.preview = preview
+        self.fileName = fileName
         self.closeLabel = closeLabel
         self.onDismiss = onDismiss
         super.init(nibName: nil, bundle: nil)
@@ -99,16 +102,23 @@ private final class MusePreviewContainer: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground
+        let bar = UIView()
+        bar.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(bar)
+        let divider = UIView()
+        divider.backgroundColor = .separator
+        divider.translatesAutoresizingMaskIntoConstraints = false
+        bar.addSubview(divider)
+
         addChild(preview)
-        preview.view.frame = view.bounds
-        preview.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        preview.view.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(preview.view)
         preview.didMove(toParent: self)
 
         let close = UIButton(type: .system)
         close.setImage(UIImage(systemName: "xmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 16, weight: .semibold)), for: .normal)
         close.tintColor = .label
-        close.backgroundColor = UIColor.secondarySystemBackground.withAlphaComponent(0.94)
+        close.backgroundColor = .secondarySystemBackground
         close.layer.cornerRadius = 22
         close.layer.borderWidth = 1
         close.layer.borderColor = UIColor.separator.cgColor
@@ -116,13 +126,38 @@ private final class MusePreviewContainer: UIViewController {
         close.accessibilityIdentifier = "museFilePreviewClose"
         close.addTarget(self, action: #selector(closePreview), for: .touchUpInside)
         close.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(close)
-        // Leading edge: Quick Look places its own title and actions on the trailing side.
+        bar.addSubview(close)
+
+        let title = UILabel()
+        title.text = fileName
+        title.font = .preferredFont(forTextStyle: .headline)
+        title.adjustsFontForContentSizeCategory = true
+        title.lineBreakMode = .byTruncatingMiddle
+        title.textAlignment = .center
+        title.accessibilityTraits = .header
+        title.translatesAutoresizingMaskIntoConstraints = false
+        bar.addSubview(title)
+
         NSLayoutConstraint.activate([
+            bar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            bar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            bar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            bar.heightAnchor.constraint(equalToConstant: 56),
+            divider.leadingAnchor.constraint(equalTo: bar.leadingAnchor),
+            divider.trailingAnchor.constraint(equalTo: bar.trailingAnchor),
+            divider.bottomAnchor.constraint(equalTo: bar.bottomAnchor),
+            divider.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale),
             close.widthAnchor.constraint(equalToConstant: 44),
             close.heightAnchor.constraint(equalToConstant: 44),
             close.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 16),
-            close.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 4),
+            close.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
+            title.centerXAnchor.constraint(equalTo: bar.centerXAnchor),
+            title.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
+            title.leadingAnchor.constraint(greaterThanOrEqualTo: close.trailingAnchor, constant: 12),
+            preview.view.topAnchor.constraint(equalTo: bar.bottomAnchor),
+            preview.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            preview.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            preview.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
     }
 
@@ -212,7 +247,7 @@ final class MuseFilesHandler: NSObject, WKScriptMessageHandlerWithReply, QLPrevi
                         guard QLPreviewController.canPreview(file as NSURL) else { throw MuseFileFailure.unavailable }
                         let preview = QLPreviewController()
                         preview.dataSource = self
-                        let container = MusePreviewContainer(preview: preview, closeLabel: closeLabel) { [weak self] in
+                        let container = MusePreviewContainer(preview: preview, fileName: filename, closeLabel: closeLabel) { [weak self] in
                             self?.cleanup()
                         }
                         presenter.present(container, animated: true) { replyHandler("opened", nil) }
