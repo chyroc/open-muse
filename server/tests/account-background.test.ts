@@ -25,10 +25,16 @@ const workspaces: BackgroundWorkspace[] = [0, 1].map((i) => ({
   environmentId: `env-${i}`,
   memoryStoreId: `memory-${i}`,
 }));
-// Ownership labels each account's own client assigns when provisioning. Tests
-// may change them to model a key holder tampering outside Open Muse.
-const labels = workspaces.map((_, i) =>
-  accountWorkspaceKey(sharedKey, "", owners[i]),
+// Ownership labels each account's own client assigns when provisioning.
+const labels = owners.map((owner) => accountWorkspaceKey(sharedKey, "", owner));
+// Resource ID -> current label. Tests change entries to model a key holder
+// relabelling resources outside Open Muse.
+const labelOf: Record<string, () => string> = {};
+const label = (id: string, i: number) => {
+  labelOf[id] = () => labels[i];
+};
+workspaces.forEach((w, i) =>
+  [w.agentId, w.environmentId, w.memoryStoreId].forEach((id) => label(id, i)),
 );
 
 // Auth verification plus a read-only Ark that knows both users' resources
@@ -48,24 +54,17 @@ const upstream = vi.fn<typeof fetch>(async (input, init) => {
   if (bearer !== sharedKey) return Response.json({}, { status: 401 });
   const path = url.pathname.replace("/api/v3", "");
   if (path === "/agents") return Response.json({ data: [] });
-  for (const [i, w] of workspaces.entries()) {
-    const workspace = { open_muse_workspace: labels[i] };
-    if (path === `/agents/${w.agentId}`)
-      return Response.json({
-        id: w.agentId,
-        version: 1,
-        tools: [],
-        metadata: workspace,
-      });
-    if (path === `/environments/${w.environmentId}`)
-      return Response.json({ id: w.environmentId, metadata: workspace });
-    if (path === `/memory_stores/${w.memoryStoreId}`)
-      return Response.json({
-        id: w.memoryStoreId,
-        metadata: { open_muse_identity: labels[i] },
-      });
-  }
-  return Response.json({}, { status: 404 });
+  const [, collection, id] = path.split("/");
+  if (!labelOf[id]) return Response.json({}, { status: 404 });
+  const metadata =
+    collection === "memory_stores"
+      ? { open_muse_identity: labelOf[id]() }
+      : { open_muse_workspace: labelOf[id]() };
+  return Response.json(
+    collection === "agents"
+      ? { id, version: 1, tools: [], metadata }
+      : { id, metadata },
+  );
 });
 const request = (i: number, path: string, body?: unknown, method = "GET") =>
   handle(
@@ -258,32 +257,147 @@ describe("Background work for Muse account workspaces", () => {
   });
 
   it("refuses to bind another account's workspace even though the key can read it", async () => {
-    const steal = () =>
+    const steal = (workspace: BackgroundWorkspace) =>
       request(
         1,
         "/v1/connection",
-        {
-          workspace: workspaces[0],
-          credentialRevision: 1,
-          revision: 1,
-          confirm: true,
-        },
+        { workspace, credentialRevision: 1, revision: 1, confirm: true },
         "PUT",
       );
-    const refused = await steal();
-    expect(refused.status).toBe(403);
+    expect((await steal(workspaces[0])).status).toBe(403);
+    // Mixing Bob's own resources with one of Alice's is refused per resource.
+    for (const mixed of [
+      { ...workspaces[1], memoryStoreId: workspaces[0].memoryStoreId },
+      { ...workspaces[1], environmentId: workspaces[0].environmentId },
+      { ...workspaces[1], agentId: workspaces[0].agentId },
+    ])
+      expect((await steal(mixed)).status).toBe(403);
     // Relabelling Alice's resources outside Open Muse still cannot move them:
     // the Worker already recorded Alice as their only owner.
-    const original = labels[0];
-    labels[0] = labels[1];
+    const alice = workspaces[0];
+    const ids = [alice.agentId, alice.environmentId, alice.memoryStoreId];
+    ids.forEach((id) => label(id, 1));
     try {
-      expect((await steal()).status).toBe(403);
+      expect((await steal(alice)).status).toBe(403);
+      expect(
+        (await steal({ ...workspaces[1], memoryStoreId: alice.memoryStoreId }))
+          .status,
+      ).toBe(403);
     } finally {
-      labels[0] = original;
+      ids.forEach((id) => label(id, 0));
     }
     const bob = await new ConnectionStore(env, owners[1]).resolve();
     expect(bob?.env.ARK_AGENT_ID).toBe(workspaces[1].agentId);
     expect(bob?.env.ARK_MEMORY_STORE_ID).toBe(workspaces[1].memoryStoreId);
+  });
+
+  it("records ownership at provisioning, before a binding could be preempted", async () => {
+    const fresh = {
+      agentId: "agent-alice-new",
+      agentVersion: 1,
+      environmentId: "env-alice-new",
+      memoryStoreId: "memory-alice-new",
+    };
+    const ids = [
+      ["agent", fresh.agentId],
+      ["environment", fresh.environmentId],
+      ["memory_store", fresh.memoryStoreId],
+    ] as const;
+    ids.forEach(([, id]) => label(id, 0));
+    // Alice's client records each resource as soon as it is created.
+    for (const [kind, id] of ids)
+      expect(
+        (await request(0, "/v1/account/resources", { kind, id }, "POST"))
+          .status,
+      ).toBe(200);
+    // Bob relabels them before Alice binds: neither claim nor binding works.
+    ids.forEach(([, id]) => label(id, 1));
+    for (const [kind, id] of ids)
+      expect(
+        (await request(1, "/v1/account/resources", { kind, id }, "POST"))
+          .status,
+      ).toBe(403);
+    expect(
+      (
+        await request(
+          1,
+          "/v1/connection",
+          {
+            workspace: fresh,
+            credentialRevision: 1,
+            revision: 1,
+            confirm: true,
+          },
+          "PUT",
+        )
+      ).status,
+    ).toBe(403);
+    // A resource labelled for someone else is never recorded.
+    label("agent-unlabelled", 0);
+    expect(
+      (
+        await request(
+          1,
+          "/v1/account/resources",
+          { kind: "agent", id: "agent-unlabelled" },
+          "POST",
+        )
+      ).status,
+    ).toBe(403);
+    expect(
+      await env.DB.prepare(
+        "SELECT owner_id FROM account_resources WHERE resource_id=?",
+      )
+        .bind("agent-unlabelled")
+        .first(),
+    ).toBeNull();
+  });
+
+  it("gives a contested resource to exactly one account", async () => {
+    let reads = 0;
+    // A racing relabel lets both accounts pass the label check.
+    labelOf["memory-contested"] = () => labels[reads++ % 2];
+    const results = await Promise.all(
+      [0, 1].map((i) =>
+        request(
+          i,
+          "/v1/account/resources",
+          { kind: "memory_store", id: "memory-contested" },
+          "POST",
+        ),
+      ),
+    );
+    expect(results.map((r) => r.status).sort()).toEqual([200, 403]);
+    const rows = await env.DB.prepare(
+      "SELECT owner_id FROM account_resources WHERE resource_id='memory-contested'",
+    ).all();
+    expect(rows.results).toHaveLength(1);
+  });
+
+  it("records nothing when a binding does not commit", async () => {
+    const unbound = {
+      agentId: "agent-bob-unbound",
+      agentVersion: 1,
+      environmentId: "env-bob-unbound",
+      memoryStoreId: "memory-bob-unbound",
+    };
+    [unbound.agentId, unbound.environmentId, unbound.memoryStoreId].forEach(
+      (id) => label(id, 1),
+    );
+    const stale = await request(
+      1,
+      "/v1/connection",
+      { workspace: unbound, credentialRevision: 1, revision: 0, confirm: true },
+      "PUT",
+    );
+    expect(stale.status).toBe(409);
+    expect(
+      (
+        await env.DB.prepare(
+          "SELECT count(*) AS n FROM account_resources WHERE resource_id LIKE '%-bob-unbound'",
+        ).first<{ n: number }>()
+      )?.n,
+    ).toBe(0);
   });
 
   it("schedules only accounts active under the configured issuer", async () => {
@@ -327,6 +441,9 @@ describe("Background work for Muse account workspaces", () => {
   });
 
   it("rotating one account's key stops only that account's background access", async () => {
+    const store = new ConnectionStore(env, owners[0]);
+    const before = (await store.resolve())!;
+    const inflight = store.guardedFetch(before.revision, upstream);
     const rotate = await request(
       0,
       "/v1/account/credential",
@@ -338,6 +455,14 @@ describe("Background work for Muse account workspaces", () => {
       "PUT",
     );
     expect(rotate.status).toBe(200);
+    // Work that resolved the old binding cannot send another MA request.
+    upstream.mockClear();
+    await expect(
+      inflight("https://ark.cn-beijing.volces.com/api/v3/sessions", {
+        method: "POST",
+      }),
+    ).rejects.toThrow("Background authorization changed");
+    expect(upstream).not.toHaveBeenCalled();
     expect(await (await request(0, "/v1/status")).json()).toMatchObject({
       backgroundReady: false,
       connection: { configured: false },

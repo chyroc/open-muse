@@ -61,11 +61,18 @@ also checked for ownership. The agent and environment must carry
 `metadata.open_muse_workspace`, and the memory store `metadata.open_muse_identity`,
 equal to `accountWorkspaceKey(apiKey, project, owner)` from
 `shared/workspace-key.ts`, which the account's own client assigns when it
-provisions them. The first binding records each resource ID for that account in
-`account_resources`; any other account that later submits the same ID receives
-403, even if the labels were changed outside Open Muse. A key holder can still
-reach any resource directly at Ark: this is an application boundary, not an Ark
-authorization boundary.
+provisions them. Ownership is recorded in `account_resources`: the account's
+client calls `POST /v1/account/resources` with `{kind, id}` right after it
+creates or adopts each resource, and a committed binding records its resources
+too. A record is written only for a resource labelled for the requesting
+account, and D1 serializes competing records so exactly one account wins. Any
+other account that later claims or binds the same ID receives 403, even if the
+labels were changed outside Open Muse. Records outlive bindings, so a revoked
+workspace cannot be taken over. Between creating a resource and recording it,
+a holder of the same Ark key could relabel it first and make it unusable for
+its creator. That holder can also read and change every resource directly at
+Ark: this is an application boundary, not an Ark authorization boundary. Use
+separate Ark keys when accounts must not reach each other's data.
 
 The scheduler only selects account owners whose key was stored under the
 currently configured issuer and that made a verified request within the last 30
@@ -215,6 +222,9 @@ deployed or that a real unattended generation can complete.
   sealed for this account. A stale revision from another device returns 409.
 - `DELETE /v1/account/credential`: `{revision, confirm: true}` leaves a
   tombstone for this account only.
+- `POST /v1/account/resources`: `{kind: "agent" | "environment" |
+  "memory_store", id}` records an account-labelled resource for this account;
+  403 if its label or existing record belongs to another account.
 
 ### Account Ark credentials
 

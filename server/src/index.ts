@@ -10,7 +10,11 @@ import {
 } from "../../shared/background-connection";
 import { ArkRemote } from "./ark";
 import { isSupabaseOwner } from "./supabase";
-import { AccountCredentials, rewrapRetiredKeys } from "./account";
+import {
+  AccountCredentials,
+  rewrapRetiredKeys,
+  type ResourceKind,
+} from "./account";
 import { accountCredentialSchema } from "../../shared/account-credential";
 import { accountWorkspaceKey } from "../../shared/workspace-key";
 
@@ -111,6 +115,33 @@ export async function handle(
           connection: await connections.status(),
           schedule: await repo.schedule(),
         });
+      } else if (
+        url.pathname === "/v1/account/resources" &&
+        request.method === "POST"
+      ) {
+        if (!account)
+          throw new HttpError(
+            403,
+            "Sign in with a Muse account to prepare a workspace.",
+          );
+        const input = await body(request);
+        if (
+          !["agent", "environment", "memory_store"].includes(
+            input.kind as string,
+          ) ||
+          typeof input.id !== "string" ||
+          !/^[\w-]{1,200}$/.test(input.id) ||
+          Object.keys(input).some((key) => !["kind", "id"].includes(key))
+        )
+          throw new HttpError(400, "Specify a valid workspace resource.");
+        response = json(
+          await new AccountCredentials(env, owner).claim(
+            input.kind as ResourceKind,
+            input.id,
+            Date.now(),
+            fetcher,
+          ),
+        );
       } else if (url.pathname === "/v1/account/credential") {
         if (!account)
           throw new HttpError(

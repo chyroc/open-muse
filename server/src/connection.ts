@@ -299,14 +299,6 @@ export class ConnectionStore {
     const mutation = crypto.randomUUID();
     const credential = `(? IS NULL OR EXISTS(SELECT 1 FROM account_credentials WHERE owner_id=? AND revision=? AND encrypted IS NOT NULL))`;
     const results = await this.env.DB.batch([
-      ...(account
-        ? resources.map(([kind, id]) =>
-            this.env.DB.prepare(
-              `INSERT INTO account_resources(kind,resource_id,owner_id,claimed_at) VALUES (?,?,?,?)
-              ON CONFLICT(kind,resource_id) DO NOTHING`,
-            ).bind(kind, id, this.owner, now),
-          )
-        : []),
       this.env.DB.prepare(
         `INSERT INTO ark_connections(owner_id,revision,encrypted,updated_at,mutation_id)
       SELECT ?,1,?,?,? WHERE (?=0 OR EXISTS(SELECT 1 FROM ark_connections WHERE owner_id=?))
@@ -342,8 +334,19 @@ export class ConnectionStore {
         `UPDATE schedules SET enabled=0,next_run_at=NULL,revision=revision+1,updated_at=? WHERE owner_id=?
         AND EXISTS(SELECT 1 FROM ark_connections WHERE owner_id=? AND mutation_id=?)`,
       ).bind(now, this.owner, this.owner, mutation),
+      // Record ownership only when this binding committed. Records outlive the
+      // binding, so a revoked workspace cannot be taken over by another account.
+      ...(account
+        ? resources.map(([kind, id]) =>
+            this.env.DB.prepare(
+              `INSERT INTO account_resources(kind,resource_id,owner_id,claimed_at)
+              SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM ark_connections WHERE owner_id=? AND mutation_id=?)
+              ON CONFLICT(kind,resource_id) DO NOTHING`,
+            ).bind(kind, id, this.owner, now, this.owner, mutation),
+          )
+        : []),
     ]);
-    if (!results[account ? resources.length : 0].meta.changes) {
+    if (!results[0].meta.changes) {
       if (
         account &&
         (await this.env.DB.prepare(`SELECT 1 AS hit WHERE NOT ${foreign}`)
