@@ -1,0 +1,56 @@
+.chat-choice > p {
+  margin: 0 0 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+.chat-choice-options {
+  display: grid;
+  gap: 8px;
+}
+.chat-choice-options button {
+  display: flex;
+  width: 100%;
+  min-height: 43px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 10px;
+  border: 1px solid #aaaeb2;
+  border-radius: 7px;
+  text-align: left;
+  line-height: 1.3;
+  color: #171719;
+  background: transparent;
+  overflow-wrap: anywhere;
+}
+.chat-choice-options button.inactive {
+  border-style: dashed;
+  color: #73767a;
+}
+.chat-choice-options button.selected {
+  border-color: #171719;
+}
+.chat-choice-options button:disabled {
+  opacity: 1;
+}
+.chat-choice-options button:not(:disabled):active {
+  background: #00000008;
+}
+.choice-check {
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  flex: 0 0 auto;
+  color: white;
+  background: #171719;
+  border-radius: 50%;
+}
+.chat-choice small,
+.choice-unavailable {
+  display: block;
+  margin-top: 10px;
+  color: #73767a;
+  font-size: 13px;
+  line-height: 1.4;
+}

@@ -28,6 +28,8 @@ export interface AgentEvent {
   // Historical UI provenance only; never sent to MA as an event.
   source_session_id?: string;
   source_event_id?: string;
+  // Device-local answer receipt, never trusted from upstream or sent to MA.
+  choice_reply?: import("./chat-choices").ChoiceReply;
   is_error?: boolean;
   error?: { message?: string; type?: string };
   stop_reason?: { type: string; event_ids?: string[] };
@@ -85,6 +87,20 @@ export function mergeEvents(
     (a.processed_at ?? a.created_at ?? "").localeCompare(
       b.processed_at ?? b.created_at ?? "",
     ),
+  );
+}
+
+// History is authoritative for persisted annotations. Preserve only SSE rows
+// that arrived while the read was in flight, not an entire stale local snapshot.
+export function mergeHistorySnapshot(
+  beforeRead: AgentEvent[],
+  current: AgentEvent[],
+  history: AgentEvent[],
+) {
+  const before = new Map(beforeRead.map((event) => [event.id, event]));
+  return mergeEvents(
+    history,
+    current.filter((event) => before.get(event.id) !== event),
   );
 }
 

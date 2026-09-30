@@ -326,9 +326,14 @@ body {
   right: auto;
   left: -26px;
 }
-.chat-bubble:hover .bubble-options,
 .bubble-options:focus-visible {
   opacity: 1;
+}
+/* Touch WebKit can consume the first tap when hover reveals another control. */
+@media (hover: hover) and (pointer: fine) {
+  .chat-bubble:hover .bubble-options {
+    opacity: 1;
+  }
 }
 .chat-typing {
   display: flex;

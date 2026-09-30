@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentEvent, Session } from "../shared/types";
-import { mergeEvents } from "../shared/types";
+import { mergeEvents, mergeHistorySnapshot } from "../shared/types";
 import type { Client } from "./api";
 import { AutoApprover } from "./autoApprove";
 
@@ -48,6 +48,7 @@ export function useTask(client: Client, id?: string) {
     const sync = async () => {
       if (syncing || signal.aborted) return;
       syncing = true;
+      const beforeRead = knownEvents;
       try {
         const [history, remote] = await Promise.all([
           client.events(id, signal),
@@ -55,7 +56,7 @@ export function useTask(client: Client, id?: string) {
         ]);
         if (signal.aborted) return;
         historyLoaded = true;
-        receive(mergeEvents(history, knownEvents));
+        receive(mergeHistorySnapshot(beforeRead, knownEvents, history));
         setSession(remote);
         setError("");
       } catch (err) {

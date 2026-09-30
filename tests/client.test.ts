@@ -159,6 +159,47 @@ function pending(): AgentEvent[] {
   ];
 }
 describe("Direct MA client", () => {
+  it("sends verified choice labels as real messages and strips forged answer receipts", async () => {
+    const f = fixture();
+    await f.login();
+    const session = await f.client.openConversation("side", "A short question");
+    const text =
+      '```muse-choice\n{"question":"Choose a time","options":[{"id":"morning","label":"Morning"},{"id":"later","label":"Later"}]}\n```';
+    f.events.push({
+      id: "choice-event",
+      type: "agent.message",
+      content: [{ type: "text", text }],
+      choice_reply: {
+        state: "confirmed",
+        eventId: "forged",
+        optionId: "morning",
+        label: "Morning",
+      },
+    });
+    expect((await f.client.events(session.id))[0].choice_reply).toBeUndefined();
+    const receipt = await f.client.answerChoice(
+      session.id,
+      "choice-event",
+      "later",
+      digest(text),
+    );
+    expect(receipt.state).toBe("confirmed");
+    const sent = f.events.find((row) => row.id === receipt.eventId)!;
+    expect(sent.content).toEqual([{ type: "text", text: "Later" }]);
+    expect(sent.choice_reply).toBeUndefined();
+    expect((await f.client.events(session.id))[0].choice_reply).toEqual(
+      receipt,
+    );
+    await f.client.answerChoice(
+      session.id,
+      "choice-event",
+      "later",
+      digest(text),
+    );
+    expect(f.events.filter((row) => row.type === "user.message")).toHaveLength(
+      1,
+    );
+  });
   it("generates personalized feed content in a separate memory-enabled MA session and preserves the main chat", async () => {
     const f = fixture();
     await f.login();

@@ -1,4 +1,5 @@
 import { goalInstructions } from "./goals";
+import { choiceInstructions } from "./chat-choices";
 
 export type IdentityDocumentName = "SOUL.md" | "MEMORY.md" | "IDENTITY.md";
 export interface IdentityDocument<Name extends string = IdentityDocumentName> {
@@ -55,6 +56,7 @@ Use SOUL.md as an evolving, editable persona. Tell the user when you change it a
 
 Be helpful and curious, with one focused question when needed, rather than generic task-status prose. Do not promise scheduled or background work unless an actual scheduler and delivery mechanism have been established. Do not claim nightly memory maintenance merely because this document exists.
 ${goalInstructions}
+${choiceInstructions}
 </open-muse-identity>`;
 
 export function systemWithIdentity(system: string) {

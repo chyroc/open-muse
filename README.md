@@ -130,6 +130,26 @@ and project. They are not cross-device preferences. Creation attempts are
 recorded before submission and recovered by a random marker after ambiguous
 failures, rather than creating another session automatically.
 
+### Inline questions
+
+New conversations can ask a focused question with two to six tappable answers
+inside an assistant message. Questions and options come from MA, not preset
+replies. Selecting an option sends only its visible label as an ordinary user
+message. Typing a different answer remains available. Older questions become
+read-only after the conversation moves on.
+
+Selections keep a device-local receipt tied to the exact MA event ID. A checked
+option means the message was confirmed, not merely tapped. Before submission,
+the app re-reads the question and rejects changed options. Duplicate taps and
+uncertain results do not repeat the request; history polling can confirm a lost
+response. Receipts survive relaunch on the same device but are not synchronized
+across devices. No choice is an implicit tool approval or hidden action.
+
+Only a validated `muse-choice` JSON block can create these controls. Ordinary
+Markdown, quoted examples, and HTML do not become interactive commands.
+Incomplete or malformed questions leave the message composer available. This
+does not yet implement an automatic first-run greeting or background check-ins.
+
 ## Personal identity and memory
 
 Tap the companion avatar to open Activity, Approvals, Desktop, Recent, or

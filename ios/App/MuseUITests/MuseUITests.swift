@@ -326,6 +326,69 @@ final class MuseLiveUITests: XCTestCase {
         capture("continued-main-after-relaunch")
     }
 
+    func testInlineChoicesUseRealMAAndSurviveRelaunch() {
+        let marker = "Choice-check-" + String(UUID().uuidString.prefix(6)).lowercased()
+        tap(app.buttons["Open sidebar"], timeout: 40)
+        tap(app.buttons["New side chat"])
+        let prompt = "\(marker): Ask me when to take a short walk. Offer Morning, After lunch, and Evening as tappable options. Do not use tools or save personal memory. After I choose, reply exactly: \(marker) / followed by my chosen label."
+        enterMessage(prompt)
+        tap(app.buttons["Send message"])
+        let option = app.switches["Choose After lunch"]
+        XCTAssertTrue(option.waitForExistence(timeout: 180), app.debugDescription)
+        expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: option)
+        waitForExpectations(timeout: 60)
+        XCTAssertFalse(contains("```muse-choice").exists)
+        capture("choice-real-ma-question")
+        tap(option)
+        XCTAssertTrue(app.staticTexts["After lunch"].waitForExistence(timeout: 20), "One tap must send the visible option as a user message")
+        XCTAssertTrue(app.staticTexts["\(marker) / After lunch"].waitForExistence(timeout: 180), app.debugDescription)
+        XCTAssertEqual(option.value as? String, "1")
+        XCTAssertFalse(option.isEnabled)
+        XCTAssertFalse(app.switches["Choose Morning"].isEnabled)
+        capture("choice-real-ma-confirmed")
+        app.terminate()
+        app.launch()
+        tap(app.buttons["Open sidebar"], timeout: 40)
+        tap(app.links[String(prompt.prefix(60))], timeout: 30)
+        XCTAssertTrue(option.waitForExistence(timeout: 40))
+        XCTAssertEqual(option.value as? String, "1")
+        XCTAssertFalse(option.isEnabled)
+        XCTAssertTrue(app.staticTexts["\(marker) / After lunch"].exists)
+        capture("choice-selection-after-relaunch")
+        enterMessage("Now ask which color I prefer. Offer Blue and Green as tappable choices. I may type another answer. Do not use tools or save memory. After I answer, reply exactly: \(marker) / followed by my answer.")
+        tap(app.buttons["Send message"])
+        let blue = app.switches["Choose Blue"]
+        XCTAssertTrue(blue.waitForExistence(timeout: 180), app.debugDescription)
+        expectation(for: NSPredicate(format: "isEnabled == true"), evaluatedWith: blue)
+        waitForExpectations(timeout: 60)
+        enterMessage("Violet")
+        tap(app.buttons["Send message"])
+        XCTAssertTrue(app.staticTexts["\(marker) / Violet"].waitForExistence(timeout: 180))
+        XCTAssertFalse(blue.isEnabled)
+        XCTAssertEqual(blue.value as? String, "0")
+        expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: app.buttons["Stop response"])
+        waitForExpectations(timeout: 60)
+        capture("choice-custom-answer-keeps-history")
+    }
+
+    func testInlineChoiceStateRestoresWithoutNewGeneration() {
+        tap(app.buttons["Open sidebar"], timeout: 40)
+        let saved = app.links.matching(NSPredicate(format: "label BEGINSWITH %@", "Choice-check-")).firstMatch
+        XCTAssertTrue(saved.waitForExistence(timeout: 30))
+        let marker = saved.label.components(separatedBy: ":")[0]
+        tap(saved)
+        XCTAssertTrue(app.staticTexts["\(marker) / Violet"].waitForExistence(timeout: 40))
+        XCTAssertEqual(app.switches["Choose After lunch"].value as? String, "1")
+        XCTAssertFalse(app.switches["Choose After lunch"].isEnabled)
+        XCTAssertFalse(app.switches["Choose Blue"].isEnabled)
+        XCTAssertFalse(app.buttons["Stop response"].exists)
+        capture("choice-restored-custom-answer")
+        app.staticTexts["\(marker) / Violet"].press(forDuration: 1.2)
+        XCTAssertTrue(app.buttons["Save reply"].waitForExistence(timeout: 10))
+        capture("choice-reply-long-press-actions")
+        tap(app.buttons["Close"])
+    }
+
     func testGoalStateSurvivesRelaunch() {
         tap(app.links["Goals"], timeout: 40)
         if !app.buttons["Goals options"].waitForExistence(timeout: 3) { tap(app.links["Goals"]) }

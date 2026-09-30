@@ -22,6 +22,7 @@ import { ARK_BASE_URL, directFetch } from "./direct/transport";
 import { DirectWorkspace } from "./direct/workspace";
 import { DirectIdentity, defaultIdentity } from "./direct/identity";
 import { DirectGoals } from "./direct/goals";
+import { DirectChoices } from "./direct/choices";
 import { goalCategoryInput, type GoalCategory } from "../shared/goals";
 import type { IdentityDocumentName } from "../shared/identity";
 import { DirectInspiration } from "./direct/inspiration";
@@ -71,6 +72,7 @@ type Runtime = {
   workspace: DirectWorkspace;
   companion: DirectIdentity;
   goals: DirectGoals;
+  choices?: DirectChoices;
   redact: (text: string) => string;
   abort: AbortController;
 };
@@ -81,7 +83,7 @@ const validId = (id: string) => {
 };
 
 // This client is the application runtime on every platform. Its only network
-// dependencies are public Volcano APIs; goals, saved replies and mappings are local.
+// dependencies are public Volcano APIs; saved replies and mappings are local.
 export class Client {
   readonly identity: DirectAuth;
   private db: LocalDatabase;
@@ -559,6 +561,31 @@ export class Client {
   private approvalKey(r: Runtime, id: string, tool: string) {
     return `${r.key}:approval:${digest(`${id}\0${tool}`)}`;
   }
+  private choiceService(r: Runtime) {
+    return (r.choices ??= new DirectChoices(r.key, this.db, {
+      history: (id) =>
+        this.collect<AgentEvent>(
+          r.ark,
+          `/sessions/${validId(id)}/events?order=asc&limit=200`,
+        ),
+      session: (id) => r.ark.get(validId(id)),
+      send: (id, text, eventId) =>
+        this.submit(id, { type: "user.message", text }, undefined, {
+          runtime: r,
+          eventId,
+        }),
+    }));
+  }
+  answerChoice(id: string, question: string, option: string, revision: string) {
+    validId(id);
+    validId(question);
+    return this.choiceService(this.context()).answer(
+      id,
+      question,
+      option,
+      revision,
+    );
+  }
   private async annotate(
     r: Runtime,
     id: string,
@@ -568,8 +595,13 @@ export class Client {
       approval_source: _ignored,
       source_session_id: _source,
       source_event_id: _sourceEvent,
+      choice_reply: _choice,
       ...original
     } = event;
+    if (event.type === "agent.message") {
+      const reply = await this.choiceService(r).reply(id, event.id);
+      return reply ? { ...original, choice_reply: reply } : original;
+    }
     if (event.type !== "user.tool_confirmation" || !event.tool_use_id)
       return original;
     const record = await this.db.get<Approval>(
@@ -589,6 +621,7 @@ export class Client {
         `/sessions/${validId(source)}/events?order=asc&limit=200`,
         signal,
       );
+      await this.choiceService(r).reconcile(source, rows);
       previous.push(
         ...(await Promise.all(
           rows.map(async (event) => ({
@@ -605,6 +638,7 @@ export class Client {
       `/sessions/${validId(id)}/events?order=asc&limit=200`,
       signal,
     );
+    await this.choiceService(r).reconcile(id, rows);
     await this.conversations(r).confirmSend(
       id,
       rows.map((event) => event.id),
@@ -614,13 +648,22 @@ export class Client {
       ...(await Promise.all(rows.map((event) => this.annotate(r, id, event)))),
     ];
   }
-  async send(
+  send(
     id: string,
     body: object,
     signal?: AbortSignal,
   ): Promise<Page<AgentEvent>> {
+    return this.submit(id, body, signal);
+  }
+  private async submit(
+    id: string,
+    body: object,
+    signal?: AbortSignal,
+    request?: { runtime: Runtime; eventId: string },
+  ): Promise<Page<AgentEvent>> {
     const input = messageInput.parse(body);
-    const r = this.context();
+    const r = request?.runtime ?? this.context();
+    r.abort.signal.throwIfAborted();
     validId(id);
     const lock = `${r.key}:${id}`;
     if (this.sends.has(lock))
@@ -634,7 +677,7 @@ export class Client {
     let mainWrite: string | undefined;
     try {
       let event: Partial<AgentEvent> = {
-        id: `evt-${uuid()}`,
+        id: request?.eventId ?? `evt-${uuid()}`,
         type: input.type,
       };
       if (input.type === "user.message")

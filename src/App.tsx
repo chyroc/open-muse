@@ -20,6 +20,9 @@ import { useTask } from "./useTask";
 import { discussionPrompt, type InspirationItem } from "../shared/inspiration";
 import { InspirationPage } from "./InspirationPages";
 import { GoalsPage } from "./GoalsPage";
+import { ChoiceMessage } from "./ChoiceMessage";
+import { currentChoiceEvent } from "../shared/chat-choices";
+import { digest } from "../shared/crypto";
 import { goalPrompt, goalStarter, type GoalCategory } from "../shared/goals";
 import { Activity, Markdown, MuseMark, PermissionCard } from "./components";
 import type {
@@ -527,7 +530,36 @@ function Workspace({
                       label={`${event.type === "agent.message" ? "Reply" : "Message"} options ${position + 1}`}
                       onOptions={() => setSelectedMessage(event)}
                     >
-                      <Markdown text={eventText(event)} />
+                      {event.type === "agent.message" ? (
+                        <ChoiceMessage
+                          text={eventText(event)}
+                          reply={event.choice_reply}
+                          active={
+                            !event.source_session_id &&
+                            currentChoiceEvent(events)?.id === event.id
+                          }
+                          busy={busy || task.loading}
+                          streaming={state === "running"}
+                          onChoose={(option) =>
+                            void action(async () => {
+                              if (!activeId) return;
+                              try {
+                                await client.answerChoice(
+                                  activeId,
+                                  event.id,
+                                  option,
+                                  digest(eventText(event)),
+                                );
+                                setAwayFromBottom(false);
+                              } finally {
+                                await task.refresh();
+                              }
+                            })
+                          }
+                        />
+                      ) : (
+                        <Markdown text={eventText(event)} />
+                      )}
                     </MessageBubble>
                   </div>
                 );
