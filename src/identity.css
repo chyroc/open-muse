@@ -1,0 +1,410 @@
+.companion-sheet,
+.identity-document {
+  color: #171719;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  border: 0;
+  padding: 0;
+  max-width: none;
+  max-height: none;
+  box-sizing: border-box;
+  background: var(--chat-paper);
+}
+.companion-sheet[open] {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  inset: 0;
+  top: var(--app-top, 0px);
+  width: min(100%, 780px);
+  height: var(--app-height, 100dvh);
+  margin: 0 auto;
+  overflow: hidden;
+}
+.companion-sheet::backdrop {
+  background: #0007;
+}
+.identity-header {
+  position: relative;
+  padding: calc(env(safe-area-inset-top) + 8px) 16px 12px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.identity-dismiss,
+.identity-refresh {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 4px);
+}
+.identity-dismiss {
+  left: 16px;
+}
+.identity-refresh {
+  right: 16px;
+}
+.identity-avatar {
+  width: 88px;
+  height: 88px;
+  margin: 0 auto 20px;
+  position: relative;
+}
+.identity-avatar > .companion-avatar {
+  width: 68px;
+  height: 68px;
+  transform: scale(1.294);
+  transform-origin: top left;
+}
+.identity-avatar > .glass-button {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 32px;
+  height: 32px;
+}
+.identity-header h1 {
+  font-size: 28px;
+  line-height: 34px;
+  margin: 0 0 5px;
+  font-weight: 650;
+  letter-spacing: -0.8px;
+}
+.identity-connection {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 28px;
+}
+.identity-connection svg {
+  color: #20b65a;
+}
+.companion-tabs {
+  display: flex;
+  flex-shrink: 0;
+  padding: 5px;
+  height: 48px;
+  border: 1px solid #e2e2e5;
+  border-radius: 30px;
+  background: #fff;
+  margin: 4px 16px 0;
+}
+.companion-tabs button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  border-radius: 24px;
+  min-width: 0;
+}
+.companion-tabs button[aria-selected="true"] {
+  background: #f2f2f5;
+}
+.companion-tab-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px 16px max(24px, env(safe-area-inset-bottom));
+}
+.companion-tab-content h2 {
+  font-size: 25px;
+  letter-spacing: -0.6px;
+  line-height: 32px;
+  font-weight: 650;
+  margin: 0 0 20px;
+}
+.identity-edit {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  height: 46px;
+  border-radius: 30px;
+  background: #f3f3f3;
+  width: 100%;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 8px 0 20px;
+}
+.identity-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.identity-card {
+  min-width: 0;
+  text-align: left;
+  height: 150px;
+  padding: 16px;
+  border-radius: 24px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+}
+.identity-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.14;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23fff' filter='url(%23n)' d='M0 0h140v140H0z'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+  z-index: -1;
+}
+.identity-card.soul {
+  background:
+    radial-gradient(ellipse at 84% 75%, #b8a273, transparent 80%),
+    radial-gradient(ellipse at 60% -15%, #946953, transparent 65%), #6f6a4b;
+}
+.identity-card.memory {
+  background:
+    radial-gradient(ellipse at 93% 80%, #2ac023, transparent 65%),
+    radial-gradient(ellipse at 6% 10%, #26ae3d, transparent 65%), #067526;
+}
+.identity-card strong {
+  font-size: 22px;
+  line-height: 28px;
+  letter-spacing: -0.3px;
+  font-weight: 750;
+}
+.identity-card > span {
+  font-size: 9px;
+  letter-spacing: 0.4px;
+  color: #fff9;
+  margin-top: 3px;
+}
+.identity-card footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  color: #fff8;
+}
+.identity-card time {
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+}
+.identity-note {
+  color: #78787e;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 22px 0 0;
+}
+.identity-note button {
+  display: block;
+  color: #2676cb;
+  margin-top: 10px;
+}
+.identity-note a {
+  color: #2676cb;
+}
+.companion-empty {
+  text-align: center;
+  max-width: 310px;
+  margin: 60px auto;
+  color: #79797d;
+}
+.companion-empty svg {
+  margin-bottom: 14px;
+}
+.companion-empty h2,
+.companion-empty h3 {
+  color: #1c1c1e;
+  font-size: 18px;
+  margin: 0 0 8px;
+}
+.companion-empty p {
+  font-size: 15px;
+  line-height: 1.55;
+}
+.companion-empty a {
+  display: inline-block;
+  color: #2476cc;
+  margin-top: 18px;
+  font-size: 15px;
+}
+.companion-recent a {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 18px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 16px;
+}
+.companion-recent a span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.companion-recent a svg {
+  flex-shrink: 0;
+}
+.identity-document[open] {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  margin: 0 auto;
+  inset: 0;
+  top: calc(var(--app-top, 0px) + env(safe-area-inset-top));
+  width: min(100%, 780px);
+  height: calc(var(--app-height, 100dvh) - env(safe-area-inset-top));
+  border-radius: 36px 36px 0 0;
+  overflow: hidden;
+  background: #fff;
+}
+.identity-document::backdrop {
+  background: #525b5261;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+.identity-document > header {
+  padding: 16px;
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.identity-document > header h2 {
+  text-align: center;
+  margin: 0;
+  font-size: 21px;
+  letter-spacing: -0.5px;
+}
+.identity-document-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 16px max(28px, env(safe-area-inset-bottom));
+}
+.document-about {
+  color: #737379;
+  font-size: 18px;
+  line-height: 1.4;
+  font-style: italic;
+  margin: 6px 14px 34px;
+}
+.identity-document .markdown {
+  font-size: 18px;
+  line-height: 1.5;
+  color: #171719;
+}
+.identity-document .markdown h1 {
+  font-size: 28px;
+  line-height: 1.25;
+  margin: 22px 0 12px;
+}
+.identity-document .markdown h2 {
+  font-size: 23px;
+}
+.identity-document .markdown ul {
+  padding-left: 28px;
+}
+.identity-document .markdown li {
+  margin: 12px 0;
+}
+.document-save {
+  color: #1475d5;
+  font-weight: 650;
+  min-height: 44px;
+  font-size: 16px;
+}
+.document-saved {
+  font-size: 14px;
+  color: #158744;
+  margin-bottom: 20px;
+}
+.document-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 550;
+}
+.document-field input,
+.document-field textarea {
+  padding: 14px;
+  width: 100%;
+  border: 1px solid #dedee2;
+  border-radius: 14px;
+  background: #fafafa;
+  color: #171719;
+  font-size: 17px;
+  line-height: 1.5;
+}
+.document-field textarea {
+  resize: vertical;
+  min-height: 160px;
+  height: max(160px, calc(var(--app-height, 100dvh) - 250px));
+  font-family: ui-monospace, monospace;
+  /* iOS zooms focused fields below 16px, displacing fixed modal controls. */
+  font-size: 16px;
+}
+.companion-sheet:focus,
+.identity-document:focus {
+  outline: none;
+}
+.companion-sheet :focus-visible,
+.identity-document :focus-visible {
+  outline-color: #84b9eb;
+}
+.document-cancel {
+  display: block;
+  margin: 20px auto;
+  padding: 10px 16px;
+  color: #68686e;
+  font-size: 15px;
+}
+.document-conflict {
+  border: 1px solid #dedee2;
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+.document-conflict pre {
+  max-height: 180px;
+  white-space: pre-wrap;
+  overflow: auto;
+  font-size: 12px;
+}
+.document-conflict button,
+.identity-document .inline-error button {
+  display: block;
+  color: #1768ba;
+  padding: 12px 0;
+}
+.document-discard {
+  flex-shrink: 0;
+  padding: 16px 16px max(20px, env(safe-area-inset-bottom));
+  background: #f4f4f6;
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+.document-discard p {
+  width: 100%;
+  font-weight: 600;
+  margin: 0;
+}
+.document-discard button {
+  color: #1768ba;
+  min-height: 40px;
+}
+.document-discard button:last-child {
+  color: #b93434;
+}
+.companion-sheet button:disabled,
+.identity-document button:disabled {
+  opacity: 0.45;
+}
+@media (max-height: 550px) {
+  .identity-document > header {
+    padding: 8px 16px;
+  }
+  .document-about {
+    font-size: 15px;
+    margin-bottom: 18px;
+  }
+}

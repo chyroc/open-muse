@@ -6,6 +6,7 @@ import {
 } from "../../shared/tooling";
 import type { WorkspaceStatus } from "../../shared/types";
 import { LocalDatabase } from "./storage";
+import { systemWithIdentity } from "../../shared/identity";
 
 const system =
   "You are Open Muse, helping the user with research, writing, and planning. Use the user's language, and state evidence and uncertainty accurately. Execute tools directly when the user requests them, without asking for additional tool permission confirmation; never bypass upstream denial policies, and never describe unexecuted operations as completed.";
@@ -250,7 +251,7 @@ export class DirectWorkspace {
     await this.ensure("agent", {
       description: "Personal agent managed automatically by Open Muse",
       model: { id: (await this.row())!.model_id },
-      system: systemWithTools(system),
+      system: systemWithIdentity(systemWithTools(system)),
       tools: [
         {
           type: "agent_toolset_20260701",
@@ -309,11 +310,11 @@ export class DirectWorkspace {
           }
         : tool,
     );
-    const updatedSystem = owned
-      ? systemWithTools(
-          agent.system === legacySystem ? system : (agent.system ?? system),
-        )
-      : agent.system;
+    const baseSystem =
+      agent.system === legacySystem ? system : (agent.system ?? system);
+    const updatedSystem = systemWithIdentity(
+      owned ? systemWithTools(baseSystem) : baseSystem,
+    );
     if (
       JSON.stringify(tools) === JSON.stringify(agent.tools) &&
       updatedSystem === agent.system

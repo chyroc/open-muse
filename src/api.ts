@@ -20,7 +20,18 @@ import { DirectAuth } from "./direct/auth";
 import { LocalDatabase, type CredentialStore } from "./direct/storage";
 import { ARK_BASE_URL, directFetch } from "./direct/transport";
 import { DirectWorkspace } from "./direct/workspace";
+import { DirectIdentity, defaultIdentity } from "./direct/identity";
+import type { IdentityDocumentName } from "../shared/identity";
+import {
+  conversationArchive,
+  withConversationHistory,
+} from "../shared/conversation-history";
 import { executeOperation } from "./direct/operations";
+import {
+  Conversations,
+  emptyConversations,
+  type ConversationKind,
+} from "./direct/conversations";
 
 const titleInput = z.string().trim().min(1).max(160);
 const messageInput = z.discriminatedUnion("type", [
@@ -48,6 +59,8 @@ type Runtime = {
   key: string;
   ark: ArkClient;
   workspace: DirectWorkspace;
+  companion: DirectIdentity;
+  redact: (text: string) => string;
   abort: AbortController;
 };
 const validId = (id: string) => {
@@ -111,6 +124,7 @@ export class Client {
       JSON.stringify([ARK_BASE_URL, c.apiKey, c.project ?? ""]),
     );
     if (this.runtime?.key !== key) {
+      const apiKey = c.apiKey;
       this.runtime?.abort.abort();
       this.runtime?.workspace.cancel();
       const abort = new AbortController();
@@ -128,6 +142,8 @@ export class Client {
         ark,
         abort,
         workspace: new DirectWorkspace(key, ark, this.db),
+        companion: new DirectIdentity(key, ark, this.db),
+        redact: (text) => text.replaceAll(apiKey, "[redacted]"),
       };
     }
     return this.runtime;
@@ -150,6 +166,30 @@ export class Client {
   }
   startWorkspace() {
     return this.context().workspace.start();
+  }
+  async companionIdentity() {
+    return this.signedIn()
+      ? this.context().companion.read()
+      : defaultIdentity();
+  }
+  saveIdentityDocument(
+    name: IdentityDocumentName,
+    content: string,
+    revision: string,
+  ) {
+    return this.context().companion.save(name, content, revision);
+  }
+  async identityMounted(id: string) {
+    const r = this.context();
+    const storeId = await r.companion.storeId();
+    if (!storeId) return false;
+    const rows = await this.collect<{ type: string; memory_store_id?: string }>(
+      r.ark,
+      `/sessions/${validId(id)}/resources?limit=100`,
+    );
+    return rows.some(
+      (row) => row.type === "memory_store" && row.memory_store_id === storeId,
+    );
   }
   async prepareWorkspace() {
     const { workspace } = this.context();
@@ -188,13 +228,14 @@ export class Client {
       `${runtime.key}:sessions`,
       (existing) => {
         const result = existing ?? {};
-        for (const row of rows)
+        for (const row of rows) {
           if (row.id)
             result[row.id] = {
               ...row,
               title: row.title || "Untitled task",
               category: row.category ?? result[row.id]?.category ?? "general",
             };
+        }
         return result;
       },
     );
@@ -226,9 +267,172 @@ export class Client {
     const r = this.context();
     const selection = await r.workspace.selection();
     await r.workspace.syncPolicy();
-    const row = await r.ark.create(input.title, input.category, selection);
+    const memory_store_id = await r.companion.ensure();
+    const row = await r.ark.create(input.title, input.category, {
+      ...selection,
+      memory_store_id,
+    });
     await this.remember(r, [row]);
     return row;
+  }
+  private conversations(r: Runtime) {
+    let selection:
+      | {
+          agent: string;
+          environment_id: string;
+          memory_store_id: string;
+          system?: string;
+        }
+      | undefined;
+    return new Conversations(r.key, this.db, {
+      list: () =>
+        this.collect<Session>(r.ark, "/sessions?limit=100&order=desc"),
+      get: (id) => r.ark.get(validId(id)),
+      needsContinuation: async (session) => {
+        if (["running", "rescheduling"].includes(session.status)) return false;
+        if (session.status === "terminated") return true;
+        const storeId = await r.companion.storeId();
+        if (!storeId) return true;
+        const resources = await this.collect<{
+          type: string;
+          memory_store_id?: string;
+        }>(r.ark, `/sessions/${validId(session.id)}/resources?limit=100`);
+        return !resources.some(
+          (resource) =>
+            resource.type === "memory_store" &&
+            resource.memory_store_id === storeId,
+        );
+      },
+      prepare: async (previous) => {
+        if ((await r.workspace.status()).state !== "ready") {
+          await r.workspace.start();
+          await r.workspace.wait();
+        }
+        await r.workspace.syncPolicy();
+        const memory_store_id = await r.companion.ensure();
+        selection = { ...(await r.workspace.selection()), memory_store_id };
+        if (previous) {
+          if (["running", "rescheduling"].includes(previous.status))
+            throw new ApiError(
+              409,
+              "Wait for the current response to finish before continuing this conversation.",
+            );
+          const index = await this.conversations(r).index();
+          const ids = [
+            ...(index.entries[previous.id]?.previousIds ?? []),
+            previous.id,
+          ];
+          if (new Set(ids).size !== ids.length)
+            throw new ApiError(
+              409,
+              "Conversation history links are inconsistent. No history was replaced.",
+            );
+          const chapters = [];
+          for (const id of ids)
+            chapters.push({
+              id,
+              events: await this.collect<AgentEvent>(
+                r.ark,
+                `/sessions/${validId(id)}/events?order=asc&limit=200`,
+              ),
+            });
+          const last = chapters.at(-1)!;
+          if (pendingPermissions(last.events).length)
+            throw new ApiError(
+              409,
+              "Resolve the pending tool approval before continuing this conversation.",
+            );
+          const snapshot = digest(JSON.stringify(last.events));
+          const archive = await r.companion.archive(
+            conversationArchive(chapters, r.redact),
+          );
+          const [fresh, history, agent] = await Promise.all([
+            r.ark.get(previous.id),
+            this.collect<AgentEvent>(
+              r.ark,
+              `/sessions/${validId(previous.id)}/events?order=asc&limit=200`,
+            ),
+            r.ark.request<{ system?: string }>(
+              `/agents/${validId(selection.agent)}`,
+            ),
+          ]);
+          if (
+            ["running", "rescheduling"].includes(fresh.status) ||
+            digest(JSON.stringify(history)) !== snapshot
+          )
+            throw new ApiError(
+              409,
+              "The previous conversation changed while preparing. Its history is intact; resume to include the latest messages.",
+            );
+          if (typeof agent.system !== "string")
+            throw new ApiError(
+              502,
+              "The agent instructions could not be read. No replacement conversation was created.",
+            );
+          selection.system = withConversationHistory(
+            agent.system,
+            archive.store,
+            archive.manifest,
+          );
+        }
+        r.abort.signal.throwIfAborted();
+      },
+      create: async (title, category) => {
+        if (!selection)
+          throw new ApiError(
+            400,
+            "Conversation preparation did not finish. No session was created.",
+          );
+        return r.ark.create(title, category, selection);
+      },
+      rename: (id, title) =>
+        r.ark.request(`/sessions/${validId(id)}`, {
+          method: "POST",
+          body: JSON.stringify({ title }),
+        }),
+    });
+  }
+  async conversationIndex() {
+    return this.signedIn()
+      ? this.conversations(this.context()).index()
+      : emptyConversations();
+  }
+  async openConversation(
+    kind: ConversationKind,
+    title = "Main chat",
+    category: Category = "general",
+  ) {
+    const input = z
+      .object({
+        kind: z.enum(["main", "side"]),
+        title: titleInput.max(100),
+        category: z.enum(["general", "research", "writing", "life", "code"]),
+      })
+      .parse({ kind, title, category });
+    const r = this.context();
+    const index = await this.conversations(r).index();
+    if (index.sending) {
+      const history = await this.collect<AgentEvent>(
+        r.ark,
+        `/sessions/${validId(index.sending.session)}/events?order=asc&limit=200`,
+      );
+      await this.conversations(r).confirmSend(
+        index.sending.session,
+        history.map((event) => event.id),
+      );
+    }
+    const session = await this.conversations(r).create(
+      input.kind,
+      input.title,
+      input.category,
+    );
+    await this.remember(r, [session]);
+    return session;
+  }
+  async archiveConversation(id: string, archived: boolean) {
+    const r = this.context();
+    const session = (await this.remember(r, [await r.ark.get(validId(id))]))[0];
+    return this.conversations(r).archive(session, z.boolean().parse(archived));
   }
   private approvalKey(r: Runtime, id: string, tool: string) {
     return `${r.key}:approval:${digest(`${id}\0${tool}`)}`;
@@ -238,7 +442,12 @@ export class Client {
     id: string,
     event: AgentEvent,
   ): Promise<AgentEvent> {
-    const { approval_source: _ignored, ...original } = event;
+    const {
+      approval_source: _ignored,
+      source_session_id: _source,
+      source_event_id: _sourceEvent,
+      ...original
+    } = event;
     if (event.type !== "user.tool_confirmation" || !event.tool_use_id)
       return original;
     const record = await this.db.get<Approval>(
@@ -250,12 +459,38 @@ export class Client {
   }
   async events(id: string, signal?: AbortSignal) {
     const r = this.context();
+    const index = await this.conversations(r).index();
+    const previous: AgentEvent[] = [];
+    for (const source of index.entries[id]?.previousIds ?? []) {
+      const rows = await this.collect<AgentEvent>(
+        r.ark,
+        `/sessions/${validId(source)}/events?order=asc&limit=200`,
+        signal,
+      );
+      previous.push(
+        ...(await Promise.all(
+          rows.map(async (event) => ({
+            ...(await this.annotate(r, source, event)),
+            id: `history-${source}-${event.id}`,
+            source_session_id: source,
+            source_event_id: event.id,
+          })),
+        )),
+      );
+    }
     const rows = await this.collect<AgentEvent>(
       r.ark,
       `/sessions/${validId(id)}/events?order=asc&limit=200`,
       signal,
     );
-    return Promise.all(rows.map((event) => this.annotate(r, id, event)));
+    await this.conversations(r).confirmSend(
+      id,
+      rows.map((event) => event.id),
+    );
+    return [
+      ...previous,
+      ...(await Promise.all(rows.map((event) => this.annotate(r, id, event)))),
+    ];
   }
   async send(
     id: string,
@@ -274,6 +509,7 @@ export class Client {
     this.sends.add(lock);
     let autoKey: string | undefined;
     let autoRecord: Approval | undefined;
+    let mainWrite: string | undefined;
     try {
       let event: Partial<AgentEvent> = {
         id: `evt-${uuid()}`,
@@ -281,6 +517,11 @@ export class Client {
       };
       if (input.type === "user.message")
         event.content = [{ type: "text", text: input.text }];
+      if (
+        input.type === "user.message" &&
+        (await this.conversations(r).claimSend(id, event.id!))
+      )
+        mainWrite = event.id;
       if (input.type === "user.tool_confirmation") {
         const history = await this.collect<AgentEvent>(
           r.ark,
@@ -348,6 +589,7 @@ export class Client {
         { method: "POST", body: JSON.stringify({ events: [event] }), signal },
       );
       const rows = Array.isArray(result.data) ? result.data : [];
+      if (mainWrite) await this.conversations(r).confirmSend(id, [mainWrite]);
       if (autoKey && autoRecord) {
         autoRecord.state = "confirmed";
         autoRecord.event =
@@ -366,6 +608,12 @@ export class Client {
         data: await Promise.all(rows.map((e) => this.annotate(r, id, e))),
       };
     } catch (error) {
+      if (
+        mainWrite &&
+        error instanceof ApiError &&
+        [400, 401, 403, 404, 413, 429].includes(error.status)
+      )
+        await this.conversations(r).confirmSend(id, [mainWrite]);
       if (autoKey && autoRecord && autoRecord.state !== "confirmed")
         await this.db.set(autoKey, { ...autoRecord, state: "failed" });
       throw error;

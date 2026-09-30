@@ -1,47 +1,30 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowDownToLine,
-  Bookmark,
-  History,
-  Menu,
+  Archive,
   ArrowLeft,
-  ArrowRight,
+  Bookmark,
   Check,
-  ChevronRight,
-  Compass,
+  Copy,
   ExternalLink,
-  House,
-  Layers3,
-  Blocks,
   LoaderCircle,
-  MessageCircle,
-  Plus,
   RefreshCw,
-  Search,
   Settings2,
   ShieldCheck,
   Unplug,
   X,
 } from "lucide-react";
 import { Client } from "./api";
+import { CompanionSheet } from "./CompanionSheet";
+import { defaultIdentity } from "./direct/identity";
 import { useTask } from "./useTask";
-import { categories, templates } from "./content";
-import {
-  Activity,
-  Artwork,
-  CategoryIcon,
-  Composer,
-  dateLabel,
-  Markdown,
-  MuseMark,
-  PermissionCard,
-} from "./components";
+import { templates } from "./content";
+import { Activity, Markdown, MuseMark, PermissionCard } from "./components";
 import type {
   AgentEvent,
   AppConfig,
   Category,
-  Session,
   Goal,
+  Session,
 } from "../shared/types";
 import { eventText, pendingPermissions, taskState } from "../shared/types";
 import { canAutoApprove } from "../shared/approval-policy";
@@ -49,47 +32,37 @@ import { AuthPanel } from "./AuthPanel";
 import { Studio } from "./Studio";
 import { exportText } from "./platform";
 import {
-  ChatWelcome,
   FeedPage,
-  GoalsPage,
   IdeasPage,
+  GoalsPage,
   LibraryPage,
-  MoreMenu,
+  Sheet,
   primaryNavigation,
   goalPrompt,
 } from "./MusePages";
+import {
+  ChatActions,
+  ChatComposer,
+  ChatHeader,
+  CompanionAvatar,
+  ConversationSidebar,
+  MessageBubble,
+  ScrollToLatest,
+} from "./ChatUI";
+import {
+  emptyConversations,
+  currentConversation,
+  type ConversationIndex,
+} from "./direct/conversations";
 
-type Tab =
-  | "home"
-  | "tasks"
-  | "discover"
-  | "settings"
-  | "studio"
-  | "feed"
-  | "goals"
-  | "library";
-const navItems = [
-  ...primaryNavigation,
-  { id: "tasks", path: "/tasks", label: "All conversations", icon: History },
-  { id: "studio", path: "/studio", label: "MA Studio", icon: Blocks },
-  { id: "settings", path: "/settings", label: "Settings", icon: Settings2 },
-] as const;
 function navigate(path: string) {
   location.hash = path;
 }
-const statusNames = {
-  idle: "Idle",
-  running: "Running",
-  complete: "Turn complete",
-  attention: "Needs approval",
-  error: "Error",
-  stopped: "Stopped",
-};
 
 export default function App() {
   const [revision, setRevision] = useState(0);
   const client = useMemo(() => new Client(), []);
-  const [restored, setRestored] = useState<Client>();
+  const [restored, setRestored] = useState(false);
   const [restoreError, setRestoreError] = useState("");
   const [restoreAttempt, setRestoreAttempt] = useState(0);
   useEffect(() => {
@@ -98,7 +71,7 @@ export default function App() {
     void client
       .restore()
       .then(() => {
-        if (active) setRestored(client);
+        if (active) setRestored(true);
       })
       .catch((error: Error) => {
         if (active) setRestoreError(error.message);
@@ -107,10 +80,10 @@ export default function App() {
       active = false;
     };
   }, [client, restoreAttempt]);
-  // Do not make anonymous requests before native identity restoration.
-  if (restored !== client)
+  if (!restored)
     return (
-      <main className="settings-card" aria-live="polite">
+      <main className="restore-screen" aria-live="polite">
+        <CompanionAvatar />
         <p>{restoreError || "Restoring connection…"}</p>
         {restoreError && (
           <button
@@ -128,7 +101,7 @@ export default function App() {
       client={client}
       onConnection={() => {
         setRevision((value) => value + 1);
-        navigate("/settings");
+        navigate(client.signedIn() ? "/" : "/settings");
       }}
     />
   );
@@ -142,48 +115,78 @@ function Workspace({
   onConnection: () => void;
 }) {
   const [route, setRoute] = useState(location.hash.slice(1) || "/");
-  const activeId = route.startsWith("/task/") ? route.slice(6) : undefined;
-  const tab: Tab = activeId
-    ? "home"
-    : (navItems.find((item) => item.path === route)?.id ?? "home");
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [index, setIndex] = useState<ConversationIndex>(emptyConversations);
+  const isSideDraft = route === "/new";
+  const taskRoute = route.startsWith("/task/") ? route.slice(6) : undefined;
+  const tab =
+    taskRoute || isSideDraft
+      ? "home"
+      : route === "/settings"
+        ? "settings"
+        : route === "/studio"
+          ? "studio"
+          : (primaryNavigation.find((item) => item.path === route)?.id ??
+            "home");
+  const activeId =
+    tab === "home"
+      ? taskRoute
+        ? currentConversation(index, taskRoute)
+        : isSideDraft
+          ? undefined
+          : index.mainId
+      : undefined;
+  const [sidebarOpen, setSidebarOpen] = useState(route === "/tasks");
+  const [panel, setPanel] = useState<"actions" | "status">();
+  const [selectedMessage, setSelectedMessage] = useState<AgentEvent>();
   const [goalDraft, setGoalDraft] = useState<Goal>();
   const [config, setConfig] = useState<AppConfig>();
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [companion, setCompanion] = useState(defaultIdentity);
   const [loadError, setLoadError] = useState("");
   const [actionError, setActionError] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
-  const [draft, setDraft] = useState("");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [category, setCategory] = useState<Category>("general");
-  const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<"all" | "running" | "idle">("all");
+  const draftKey = activeId ?? (isSideDraft ? "new-side" : "new-main");
+  const draft = drafts[draftKey] ?? "";
   const task = useTask(client, activeId);
-  const pendingTools = pendingPermissions(task.events);
+  const events = task.session?.id === activeId ? task.events : [];
+  const currentEvents = events.filter(
+    (event) => !event.source_session_id || event.source_session_id === activeId,
+  );
+  const pendingTools = pendingPermissions(currentEvents);
   const permissions = pendingTools.filter(
     (event) =>
       !canAutoApprove(event) || task.autoApprovalFailures.includes(event.id),
   );
   const automaticCount = pendingTools.length - permissions.length;
   const state =
-    automaticCount > 0 && permissions.length === 0
+    automaticCount > 0 && !permissions.length
       ? "running"
-      : taskState(task.events, task.session?.status);
+      : taskState(
+          currentEvents,
+          task.session?.id === activeId ? task.session?.status : undefined,
+        );
   const alive = useRef(true);
   const [toast, setToast] = useState("");
-  const lastEventId = task.events.at(-1)?.id;
-  const lastStatusId = [...task.events]
+  const [awayFromBottom, setAwayFromBottom] = useState(false);
+  const initialScroll = useRef<string | undefined>(undefined);
+  const lastEventId = events.at(-1)?.id;
+  const lastStatusId = [...events]
     .reverse()
     .find((event) => event.type.startsWith("session.status_"))?.id;
   const conversationBody = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onRoute = () => {
-      setRoute(location.hash.slice(1) || "/");
+      const next = location.hash.slice(1) || "/";
+      setRoute(next);
+      if (next === "/tasks") setSidebarOpen(true);
       setActionError("");
-      window.scrollTo({ top: 0 });
+      setSelectedMessage(undefined);
+      setPanel(undefined);
     };
     window.addEventListener("hashchange", onRoute);
     return () => window.removeEventListener("hashchange", onRoute);
@@ -195,12 +198,17 @@ function Workspace({
       setConfig(conf);
       if (conf.mode !== "ark") {
         setSessions([]);
+        setIndex(emptyConversations());
         setLoadError("");
         return;
       }
-      const result = await client.sessions();
+      const [result, conversations] = await Promise.all([
+        client.sessions(),
+        client.conversationIndex(),
+      ]);
       if (!alive.current) return;
       setSessions(result.data);
+      setIndex(conversations);
       setLoadError("");
     } catch (error) {
       if (alive.current) setLoadError((error as Error).message);
@@ -223,14 +231,27 @@ function Workspace({
     if (lastStatusId) void reload();
   }, [lastStatusId, reload]);
   useEffect(() => {
+    let active = true;
+    void client
+      .companionIdentity()
+      .then((value) => {
+        if (active) setCompanion(value);
+      })
+      .catch(() => {
+        /* The identity sheet exposes read failures without blocking chat history. */
+      });
+    return () => {
+      active = false;
+    };
+  }, [client, lastStatusId]);
+  useEffect(() => {
     const body = conversationBody.current;
-    if (
-      body &&
-      (body.scrollHeight - body.clientHeight - body.scrollTop < 350 ||
-        permissions.length > 0)
-    )
+    if (!body || task.loading) return;
+    if (initialScroll.current !== activeId || !awayFromBottom) {
       body.scrollTop = body.scrollHeight;
-  }, [lastEventId, permissions.length]);
+      initialScroll.current = activeId;
+    }
+  }, [activeId, lastEventId, task.loading, awayFromBottom]);
   useEffect(() => {
     if (!toast) return;
     const timeout = setTimeout(() => setToast(""), 3000);
@@ -244,48 +265,61 @@ function Workspace({
     setActionError("");
     try {
       await fn();
-      await reload();
+      if (alive.current) await reload();
     } catch (error) {
       if (alive.current)
         setActionError(
           (error as Error).message +
-            " If the submission is unconfirmed, refresh the history first to avoid doing it twice.",
+            " If submission is unconfirmed, refresh history before trying again.",
         );
     } finally {
       busyRef.current = false;
       if (alive.current) setBusy(false);
     }
   }
-  const createTask = () =>
+  function newSideChat() {
+    setGoalDraft(undefined);
+    setCategory("general");
+    navigate("/new");
+  }
+  function setDraft(value: string) {
+    setDrafts((current) => ({ ...current, [draftKey]: value }));
+  }
+  const sendMessage = () =>
     action(async () => {
       const text = draft.trim();
       if (!text) return;
-      await client.prepareWorkspace();
-      const session = await client.create(
-        goalDraft ? goalDraft.title.slice(0, 100) : text.slice(0, 60),
-        category,
-      );
-      if (!alive.current) return;
-      setSessions((current) => [session, ...current]);
-      setDrafts((current) => ({ ...current, [session.id]: text }));
-      navigate(`/task/${session.id}`);
-      if (goalDraft) {
-        await client.updateGoal(goalDraft.id, { session_id: session.id });
-        setGoalDraft(undefined);
+      let sessionId = activeId;
+      if (!sessionId || sessionId === index.mainId) {
+        const session = await client.openConversation(
+          isSideDraft ? "side" : "main",
+          isSideDraft ? (goalDraft?.title ?? text).slice(0, 60) : "Main chat",
+          category,
+        );
+        if (!alive.current) return;
+        sessionId = session.id;
+        const conversations = await client.conversationIndex();
+        if (!alive.current) return;
+        setIndex(conversations);
+        setDrafts((current) => ({
+          ...current,
+          [draftKey]: "",
+          [session.id]: text,
+        }));
+        if (isSideDraft) navigate(`/task/${session.id}`);
+        else if (taskRoute && taskRoute !== session.id) navigate("/");
+        if (goalDraft) {
+          await client.updateGoal(goalDraft.id, { session_id: session.id });
+          setGoalDraft(undefined);
+        }
       }
-      setDraft("");
-      await client.send(session.id, { type: "user.message", text });
-      if (alive.current)
-        setDrafts((current) => ({ ...current, [session.id]: "" }));
-    });
-  const sendMessage = () =>
-    action(async () => {
-      if (!activeId || !drafts[activeId]?.trim()) return;
-      const text = drafts[activeId].trim();
-      await client.send(activeId, { type: "user.message", text });
-      if (alive.current)
-        setDrafts((current) => ({ ...current, [activeId]: "" }));
-      await task.refresh();
+      if (!alive.current) return;
+      await client.send(sessionId, { type: "user.message", text });
+      if (alive.current) {
+        setDrafts((current) => ({ ...current, [sessionId!]: "" }));
+        setAwayFromBottom(false);
+        await task.refresh();
+      }
     });
   const stop = () =>
     action(async () => {
@@ -307,25 +341,20 @@ function Workspace({
     });
   function useTemplate(template: (typeof templates)[number]) {
     setGoalDraft(undefined);
-    setDraft(template.prompt);
     setCategory(template.category);
-    navigate("/");
-    requestAnimationFrame(() =>
-      document
-        .querySelector<HTMLTextAreaElement>(".composer textarea")
-        ?.focus(),
-    );
+    setDrafts((current) => ({ ...current, "new-side": template.prompt }));
+    navigate("/new");
   }
-  async function exportTask() {
+  async function exportConversation() {
     const text =
-      `# ${task.session?.title ?? "Muse task"}\n\n` +
-      task.events
+      `# ${index.entries[activeId ?? ""]?.title ?? task.session?.title ?? "Main chat"}\n\n` +
+      events
         .filter((event) =>
           ["user.message", "agent.message"].includes(event.type),
         )
         .map(
           (event) =>
-            `## ${event.type === "user.message" ? "Me" : "Muse"}\n\n${eventText(event)}`,
+            `## ${event.type === "user.message" ? "Me" : companion.name}\n\n${eventText(event)}`,
         )
         .join("\n\n");
     try {
@@ -334,355 +363,152 @@ function Workspace({
       setActionError((error as Error).message);
     }
   }
-  const runningCount = sessions.filter((session) =>
-    ["running", "rescheduling"].includes(session.status),
-  ).length;
-  const visibleSessions = sessions.filter(
-    (session) =>
-      (!query || session.title.toLowerCase().includes(query.toLowerCase())) &&
-      (filter === "all" ||
-        (filter === "running"
-          ? ["running", "rescheduling"].includes(session.status)
-          : !["running", "rescheduling"].includes(session.status))),
+  const sideTitle = isSideDraft
+    ? "New side chat"
+    : taskRoute && activeId !== index.mainId
+      ? (index.entries[taskRoute]?.title ?? task.session?.title)
+      : undefined;
+  const status =
+    config?.mode !== "ark"
+      ? "Not connected"
+      : state === "running"
+        ? "Replying"
+        : permissions.length
+          ? "Waiting for approval"
+          : task.error || loadError
+            ? "Connection interrupted"
+            : "Connected";
+  const messageEvents = events.filter(
+    (event) =>
+      ["user.message", "agent.message"].includes(event.type) &&
+      eventText(event),
   );
-
+  const isChat = tab === "home";
   return (
-    <div
-      className={`app-shell muse-shell ${tab === "home" && !activeId ? "welcome-shell" : ""}`}
-    >
-      <aside className="sidebar">
-        <a className="brand" href="#/">
-          <MuseMark />
-          <span>
-            muse<span className="brand-dot">.</span>
-          </span>
-          <small>OPEN</small>
-        </a>
-        <button
-          className="new-task button primary"
-          onClick={() => {
-            setDraft("");
-            setGoalDraft(undefined);
-            setCategory("general");
-            navigate("/");
-          }}
-        >
-          <Plus size={18} />
-          New conversation
-        </button>
-        <nav aria-label="Main navigation">
-          {navItems.map((item) => (
-            <a
-              key={item.id}
-              className={tab === item.id ? "active" : ""}
-              aria-current={tab === item.id ? "page" : undefined}
-              href={`#${item.path}`}
-            >
-              <item.icon size={19} strokeWidth={1.7} />
-              {item.label}
-              {item.id === "tasks" && runningCount > 0 && (
-                <span className="nav-count">{runningCount}</span>
-              )}
+    <div className="app-shell muse-shell companion-shell">
+      <main
+        className={`companion-main ${isChat ? "chat-page" : "content-page"}`}
+      >
+        {tab !== "settings" && tab !== "studio" ? (
+          <ChatHeader
+            name={companion.name}
+            onSidebar={() => setSidebarOpen(true)}
+            onStatus={() => setPanel("status")}
+            onMore={() => setPanel("actions")}
+            status={status}
+            sideTitle={sideTitle}
+          />
+        ) : (
+          <header className="utility-header">
+            <a className="glass-button" href="#/" aria-label="Back to chat">
+              <ArrowLeft size={22} />
             </a>
-          ))}
-        </nav>
-        <div className="sidebar-recents">
-          <span className="eyebrow">Recent conversations</span>
-          {sessions.slice(0, 5).map((session) => (
-            <a
-              key={session.id}
-              href={`#/task/${session.id}`}
-              className={activeId === session.id ? "selected" : ""}
-            >
-              <MessageCircle size={14} />
-              <span>{session.title}</span>
+            <strong>{tab === "settings" ? "Settings" : "MA Studio"}</strong>
+            <span />
+          </header>
+        )}
+        <div className="connection-notices">
+          {config?.mode === "disconnected" && tab !== "settings" && (
+            <a className="connect-notice" href="#/settings">
+              <Unplug size={16} />
+              <span>Connect with SSO or API Key to start chatting</span>
             </a>
-          ))}
-          {!sessions.length && (
-            <p>
-              Every passing thought can
-              <br />
-              start with a single conversation.
-            </p>
+          )}
+          {(loadError || actionError) && (
+            <div className="error-banner" role="alert">
+              <span>{actionError || loadError}</span>
+              <button
+                aria-label="Refresh history"
+                onClick={() => {
+                  setActionError("");
+                  void reload();
+                  void task.refresh();
+                }}
+              >
+                <RefreshCw size={18} />
+              </button>
+            </div>
           )}
         </div>
-        <div className="sidebar-bottom">
-          <div className="small-note">
-            <span className="little-star">✳</span>
-            <p>
-              Fewer little chores,
-              <br />
-              more time for yourself.
-            </p>
-          </div>
-          <a className="account" href="#/settings">
-            <span className="avatar">Me</span>
-            <div>
-              <strong>My Space</strong>
-              <small>Personal AI studio</small>
-            </div>
-            <Settings2 size={17} />
-          </a>
-        </div>
-      </aside>
-      <main className={`main ${activeId ? "task-main" : ""}`}>
-        <header className="topbar">
-          <button
-            className="icon-button menu-trigger"
-            aria-label="Open sidebar"
-            onClick={() => setMoreOpen(true)}
-          >
-            <Menu size={25} />
-          </button>
-          <a className="mobile-brand" href="#/">
-            <span>muse</span>
-          </a>
-          <div className="breadcrumb">
-            <span>My Space</span>
-            <ChevronRight size={13} />
-            <span>
-              {activeId
-                ? "Let's do this together"
-                : navItems.find((item) => item.id === tab)?.label}
-            </span>
-          </div>
-          <a
-            href="#/settings"
-            className={`mode-badge ${config?.mode === "ark" ? "live" : ""}`}
-          >
-            <span />
-            {config
-              ? config.mode === "ark"
-                ? "Ark Managed Agents"
-                : "Connect to Ark MA"
-              : "Waiting to connect"}
-          </a>
-        </header>
-        {config?.mode === "disconnected" && tab !== "settings" && (
-          <div className="info-note" role="status">
-            <Unplug size={18} />
-            <span>Connect to Ark MA to start a real conversation.</span>
-            <a href="#/settings">Connect with SSO or API Key</a>
-          </div>
-        )}
-        {(loadError || actionError) && (
-          <div className="error-banner" role="alert">
-            <Unplug size={18} />
-            <span>{actionError || loadError}</span>
-            <button
-              aria-label="Retry connection"
-              onClick={() => {
-                setActionError("");
-                void reload();
-                void task.refresh();
+        {isChat && (
+          <>
+            <div
+              className="chat-timeline"
+              ref={conversationBody}
+              onScroll={(event) => {
+                const body = event.currentTarget;
+                setAwayFromBottom(
+                  body.scrollHeight - body.scrollTop - body.clientHeight > 100,
+                );
               }}
             >
-              <RefreshCw size={17} />
-            </button>
-            <a href="#/settings">Connection settings</a>
-          </div>
-        )}
-
-        {tab === "home" && !activeId && (
-          <ChatWelcome
-            sessions={sessions}
-            onTemplate={useTemplate}
-            goal={goalDraft}
-            onClearGoal={() => setGoalDraft(undefined)}
-            composer={
-              <Composer
-                value={draft}
-                setValue={setDraft}
-                onSend={createTask}
-                busy={busy}
-                category={category}
-                setCategory={setCategory}
-                disabled={config?.mode !== "ark" || Boolean(loadError)}
-              />
-            }
-          />
-        )}
-        {tab === "discover" && <IdeasPage onTemplate={useTemplate} />}
-        {tab === "feed" && <FeedPage sessions={sessions} loading={loading} />}
-        {tab === "goals" && (
-          <GoalsPage
-            client={client}
-            onStart={(goal) => {
-              setGoalDraft(goal);
-              setCategory("general");
-              setDraft(goalPrompt(goal));
-              navigate("/");
-            }}
-          />
-        )}
-        {tab === "library" && <LibraryPage client={client} />}
-
-        {tab === "tasks" && !activeId && (
-          <div className="page-content page-in">
-            <div className="page-title">
-              <span className="eyebrow">YOUR IDEAS, IN MOTION</span>
-              <h1>All conversations</h1>
-              <p>
-                {runningCount
-                  ? `${runningCount} task${runningCount === 1 ? "" : "s"} in progress — check back anytime.`
-                  : "Pick up a conversation, review progress, and revisit ideas still in motion."}
-              </p>
-            </div>
-            <div className="task-toolbar">
-              <div className="segmented">
-                {(
-                  [
-                    { id: "all", label: "All" },
-                    { id: "running", label: "Running" },
-                    { id: "idle", label: "Idle" },
-                  ] as const
-                ).map((item) => (
-                  <button
-                    key={item.id}
-                    className={filter === item.id ? "selected" : ""}
-                    onClick={() => setFilter(item.id)}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-              <label className="search-box">
-                <Search size={17} />
-                <input
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search tasks"
-                  aria-label="Search tasks"
-                />
-              </label>
-            </div>
-            {loading ? (
-              <Loading />
-            ) : visibleSessions.length ? (
-              <div className="task-list full">
-                {visibleSessions.map((session) => (
-                  <SessionRow key={session.id} session={session} />
-                ))}
-              </div>
-            ) : (
-              <div className="empty-state">
-                <Layers3 size={34} />
-                <h2>
-                  {query || filter !== "all"
-                    ? "No matching tasks"
-                    : "Start your first thing here"}
-                </h2>
-                <p>
-                  {query || filter !== "all"
-                    ? "Try a different keyword or filter."
-                    : "Hand an idea to Muse and it'll be saved here."}
-                </p>
-                <button
-                  className="button primary"
-                  onClick={() => navigate("/")}
-                >
-                  <Plus size={17} />
-                  New task
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeId && (
-          <div className="conversation page-in" key={activeId}>
-            <header className="conversation-header">
-              <a
-                className="icon-button"
-                aria-label="Back to conversations"
-                href="#/tasks"
-              >
-                <ArrowLeft size={20} />
-              </a>
-              <div>
-                <h1>{task.session?.title ?? "Loading task…"}</h1>
-                <span className={`task-state ${state}`}>
-                  <span />
-                  {statusNames[state]}
-                </span>
-                <span className="stream-status">
-                  {task.connected
-                    ? "Live connection"
-                    : "History sync / reconnecting"}
-                </span>
-              </div>
-              <button
-                className="icon-button"
-                aria-label="Export conversation"
-                title="Export conversation"
-                disabled={
-                  !task.events.some((event) => event.type === "agent.message")
-                }
-                onClick={exportTask}
-              >
-                <ArrowDownToLine size={19} />
-              </button>
-            </header>
-            <div className="conversation-body" ref={conversationBody}>
               {task.error && (
                 <div className="inline-error" role="alert">
                   {task.error}
                   <button onClick={() => void task.refresh()}>Retry</button>
                 </div>
               )}
-              {task.loading && <Loading />}
-              {!task.loading && !task.events.length && !task.error && (
-                <div className="empty-state">
-                  <MuseMark large />
-                  <h2>Tell me what's on your mind</h2>
-                  <p>
-                    Start with one line, and we'll turn it into the next step
-                    together.
-                  </p>
+              {loading || task.loading ? (
+                <div className="chat-loading" role="status">
+                  <LoaderCircle size={22} className="spin" />
+                  <span>Loading conversation…</span>
                 </div>
-              )}
-              {task.events
-                .filter((event) =>
-                  ["user.message", "agent.message"].includes(event.type),
+              ) : (
+                !messageEvents.length &&
+                !task.error && (
+                  <div className="main-chat-empty">
+                    <h1>
+                      {isSideDraft ? "Start a side chat" : "Your main chat"}
+                    </h1>
+                    <p>
+                      {isSideDraft
+                        ? "A little space for a new topic."
+                        : "One conversation you can always come back to."}
+                    </p>
+                  </div>
                 )
-                .map((event) => (
-                  <article
-                    className={`message ${event.type === "user.message" ? "user-message" : "assistant-message"}`}
+              )}
+              {messageEvents.map((event, position) => {
+                const date = event.created_at ?? event.processed_at;
+                const previousDate =
+                  messageEvents[position - 1]?.created_at ??
+                  messageEvents[position - 1]?.processed_at;
+                const timestamp = date ? Date.parse(date) : NaN;
+                const showTime =
+                  Number.isFinite(timestamp) &&
+                  (!previousDate ||
+                    timestamp - Date.parse(previousDate) > 5 * 60 * 1000);
+                return (
+                  <div
                     key={event.id}
+                    className={`chat-message-group ${event.type === "user.message" ? "from-user" : "from-assistant"}`}
                   >
-                    {event.type === "agent.message" && (
-                      <div className="assistant-label">
-                        <MuseMark />
-                        <strong>Muse</strong>
-                        <span>with you</span>
-                      </div>
+                    {showTime && (
+                      <time className="chat-time" dateTime={date}>
+                        {new Date(timestamp).toLocaleString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </time>
                     )}
-                    <Markdown text={eventText(event)} />
-                    {event.type === "agent.message" && (
-                      <button
-                        className="save-reply text-button"
-                        disabled={busy}
-                        onClick={() =>
-                          void action(async () => {
-                            await client.saveReply(activeId, event.id);
-                            setToast("Saved to Library");
-                          })
-                        }
-                      >
-                        <Bookmark size={16} />
-                        Save
-                      </button>
-                    )}
-                  </article>
-                ))}
-              <Activity events={task.events} running={state === "running"} />
+                    <MessageBubble
+                      label={`${event.type === "agent.message" ? "Reply" : "Message"} options ${position + 1}`}
+                      onOptions={() => setSelectedMessage(event)}
+                    >
+                      <Markdown text={eventText(event)} />
+                    </MessageBubble>
+                  </div>
+                );
+              })}
+              <Activity events={events} running={state === "running"} />
               {permissions.some((event) =>
                 task.autoApprovalFailures.includes(event.id),
               ) && (
                 <div className="inline-error" role="alert">
-                  Automatic approval of web tools didn't finish. Refresh the
-                  history first, then handle it manually to avoid duplicate
-                  submissions.
+                  Automatic approval did not finish. Refresh history before
+                  handling it manually.
                   <button onClick={() => void task.refresh()}>
                     Refresh history
                   </button>
@@ -697,104 +523,236 @@ function Workspace({
                 />
               ))}
               {state === "running" && (
-                <div className="working-note">
-                  <span className="working-dots">
-                    <i />
-                    <i />
-                    <i />
-                  </span>
-                  Muse is working — come back and check in a little later.
+                <div
+                  className="chat-typing"
+                  role="status"
+                  aria-label={`${companion.name} is replying`}
+                >
+                  <i />
+                  <i />
+                  <i />
                 </div>
               )}
               {state === "error" && (
                 <div className="inline-error">
-                  Something went wrong this turn. Expand the activity log to see
-                  the cause, then decide whether to continue.
+                  This response could not finish. Check the execution log before
+                  continuing.
                 </div>
               )}
             </div>
-            <div className="conversation-composer">
-              {pendingTools.length > 0 ? (
-                <p className="approval-hint">
-                  <span>
-                    {automaticCount > 0 ? (
-                      <LoaderCircle
-                        size={14}
-                        className="spin"
-                        aria-hidden="true"
-                      />
-                    ) : (
-                      <ShieldCheck size={14} aria-hidden="true" />
-                    )}
-                    {automaticCount > 0
-                      ? "Automatically approving web searches and reads…"
-                      : "Muse is waiting for your approval"}
-                  </span>
-                  {permissions.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        conversationBody.current
-                          ?.querySelector(".permission-card")
-                          ?.scrollIntoView({
-                            block: "start",
-                            behavior: "smooth",
-                          })
-                      }
-                    >
-                      View {permissions.length} pending approval
-                      {permissions.length === 1 ? "" : "s"}
-                    </button>
-                  )}
-                </p>
-              ) : (
-                <Composer
-                  value={drafts[activeId] ?? ""}
-                  setValue={(value) =>
-                    setDrafts((current) => ({ ...current, [activeId]: value }))
-                  }
-                  onSend={sendMessage}
-                  busy={busy}
-                  running={state === "running"}
-                  onStop={stop}
-                  category={task.session?.category ?? "general"}
-                  compact
-                  disabled={
-                    config?.mode !== "ark" ||
-                    !task.session ||
-                    task.session.status === "terminated"
-                  }
+            <div className="chat-input-dock">
+              {awayFromBottom && (
+                <ScrollToLatest
+                  onClick={() => {
+                    conversationBody.current?.scrollTo({
+                      top: conversationBody.current.scrollHeight,
+                      behavior: "smooth",
+                    });
+                    setAwayFromBottom(false);
+                  }}
                 />
               )}
-              <p className="fine-print">
-                AI can make mistakes. Please verify important information.
-              </p>
+              {goalDraft && (
+                <div className="goal-context">
+                  <span>{goalDraft.title}</span>
+                  <button
+                    className="icon-button"
+                    aria-label="Unlink goal"
+                    onClick={() => setGoalDraft(undefined)}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              )}
+              {pendingTools.length > 0 && (
+                <button
+                  className="approval-notice"
+                  onClick={() =>
+                    conversationBody.current
+                      ?.querySelector(".permission-card")
+                      ?.scrollIntoView({ block: "center", behavior: "smooth" })
+                  }
+                >
+                  {automaticCount ? (
+                    <LoaderCircle size={15} className="spin" />
+                  ) : (
+                    <ShieldCheck size={15} />
+                  )}
+                  {automaticCount
+                    ? "Approving web reads…"
+                    : `${permissions.length} action${permissions.length === 1 ? "" : "s"} need approval`}
+                </button>
+              )}
+              <ChatComposer
+                name={companion.name}
+                value={draft}
+                setValue={setDraft}
+                onSend={sendMessage}
+                onStop={stop}
+                running={state === "running"}
+                busy={busy}
+                disabled={
+                  loading ||
+                  config?.mode !== "ark" ||
+                  Boolean(
+                    activeId &&
+                    (!task.session ||
+                      (task.session.status === "terminated" &&
+                        activeId !== index.mainId)),
+                  ) ||
+                  pendingTools.length > 0
+                }
+                onActions={() => setPanel("actions")}
+              />
             </div>
+          </>
+        )}
+        {!isChat && (
+          <div className="companion-content">
+            {tab === "feed" && (
+              <FeedPage sessions={sessions} loading={loading} />
+            )}
+            {tab === "discover" && <IdeasPage onTemplate={useTemplate} />}
+            {tab === "goals" && (
+              <GoalsPage
+                client={client}
+                onStart={(goal) => {
+                  setGoalDraft(goal);
+                  setCategory("general");
+                  setDrafts((current) => ({
+                    ...current,
+                    "new-side": goalPrompt(goal),
+                  }));
+                  navigate("/new");
+                }}
+              />
+            )}
+            {tab === "library" && <LibraryPage client={client} />}
+            {tab === "studio" && <Studio client={client} config={config} />}
+            {tab === "settings" && (
+              <Settings client={client} onConnection={onConnection} />
+            )}
           </div>
         )}
-
-        {tab === "studio" && !activeId && (
-          <Studio client={client} config={config} />
-        )}
-        {tab === "settings" && !activeId && (
-          <Settings client={client} onConnection={onConnection} />
-        )}
       </main>
-      <nav className="mobile-nav" aria-label="Mobile navigation">
+      <nav className="glass-tab-bar" aria-label="Main navigation">
         {primaryNavigation.map((item) => (
           <a
             key={item.id}
             href={`#${item.path}`}
             aria-label={item.label}
             aria-current={tab === item.id ? "page" : undefined}
-            className={tab === item.id ? "active" : ""}
+            className={tab === item.id ? "selected" : ""}
           >
-            <item.icon size={28} strokeWidth={1.8} />
+            <item.icon size={25} strokeWidth={1.9} />
+            <span>{item.label}</span>
           </a>
         ))}
       </nav>
-      {moreOpen && (
-        <MoreMenu sessions={sessions} onClose={() => setMoreOpen(false)} />
+      {sidebarOpen && (
+        <ConversationSidebar
+          name={companion.name}
+          sessions={sessions}
+          index={index}
+          activeId={activeId}
+          onClose={() => {
+            setSidebarOpen(false);
+            if (route === "/tasks") navigate("/");
+          }}
+          onNew={newSideChat}
+          busy={busy}
+          error={actionError}
+          onArchive={(id, archived) =>
+            void action(async () => {
+              setIndex(await client.archiveConversation(id, archived));
+            })
+          }
+        />
+      )}
+      {panel === "actions" && (
+        <ChatActions
+          onClose={() => setPanel(undefined)}
+          onNew={newSideChat}
+          onExport={() => void exportConversation()}
+          canExport={Boolean(activeId && messageEvents.length)}
+        >
+          {activeId && activeId !== index.mainId && (
+            <button
+              disabled={busy}
+              onClick={() =>
+                void action(async () => {
+                  setIndex(await client.archiveConversation(activeId, true));
+                  setPanel(undefined);
+                  navigate("/");
+                })
+              }
+            >
+              <Archive size={22} />
+              Archive side chat
+            </button>
+          )}
+          <a href="#/settings" onClick={() => setPanel(undefined)}>
+            <Settings2 size={22} />
+            Settings
+          </a>
+        </ChatActions>
+      )}
+      {panel === "status" && (
+        <CompanionSheet
+          client={client}
+          identity={companion}
+          onIdentity={setCompanion}
+          onClose={() => setPanel(undefined)}
+          status={status}
+          isMain={activeId === index.mainId}
+          sessionId={activeId}
+          sessions={sessions.filter(
+            (session) => !index.entries[session.id]?.continuedBy,
+          )}
+          events={events}
+          permissions={permissions}
+          busy={busy || automaticCount > 0}
+          onConfirm={confirm}
+          onNew={newSideChat}
+        />
+      )}
+      {selectedMessage && (
+        <Sheet title="Message" onClose={() => setSelectedMessage(undefined)}>
+          <div className="chat-action-list">
+            <button
+              onClick={() =>
+                void action(async () => {
+                  await navigator.clipboard.writeText(
+                    eventText(selectedMessage),
+                  );
+                  setSelectedMessage(undefined);
+                  setToast("Copied");
+                })
+              }
+            >
+              <Copy size={21} />
+              Copy text
+            </button>
+            {selectedMessage.type === "agent.message" && activeId && (
+              <button
+                disabled={busy}
+                onClick={() =>
+                  void action(async () => {
+                    await client.saveReply(
+                      selectedMessage.source_session_id ?? activeId,
+                      selectedMessage.source_event_id ?? selectedMessage.id,
+                    );
+                    setSelectedMessage(undefined);
+                    setToast("Saved to Library");
+                  })
+                }
+              >
+                <Bookmark size={21} />
+                Save reply
+              </button>
+            )}
+          </div>
+        </Sheet>
       )}
       {toast && (
         <div className="toast" role="status">
@@ -802,45 +760,6 @@ function Workspace({
           {toast}
         </div>
       )}
-    </div>
-  );
-}
-
-function SessionRow({ session }: { session: Session }) {
-  const running = ["running", "rescheduling"].includes(session.status);
-  return (
-    <a className="session-row" href={`#/task/${session.id}`}>
-      <span className={`session-icon ${session.category}`}>
-        <CategoryIcon category={session.category} />
-      </span>
-      <div className="session-copy">
-        <h3>{session.title}</h3>
-        <p>{session.preview ?? categories[session.category]}</p>
-      </div>
-      <div className="session-meta">
-        <span className={running ? "running-text" : ""}>
-          {running ? (
-            <>
-              <span className="status-dot" />
-              Running
-            </>
-          ) : session.status === "terminated" ? (
-            "Ended"
-          ) : (
-            "Ready to continue"
-          )}
-        </span>
-        <time>{dateLabel(session.updated_at)}</time>
-      </div>
-      <ChevronRight size={16} />
-    </a>
-  );
-}
-function Loading() {
-  return (
-    <div className="loading" role="status">
-      <LoaderCircle className="spin" size={22} />
-      Loading…
     </div>
   );
 }
@@ -853,31 +772,27 @@ function Settings({
   onConnection: () => void;
 }) {
   return (
-    <div className="page-content settings-page page-in">
-      <div className="page-title">
-        <span className="eyebrow">MAKE YOURSELF AT HOME</span>
-        <h1>Settings</h1>
-        <p>Pick an Ark project and leave the rest of the setup to Muse.</p>
-      </div>
+    <div className="page-content settings-page">
       <AuthPanel client={client} onChanged={onConnection} />
+      <a className="settings-studio-link" href="#/studio">
+        MA Studio <ExternalLink size={16} />
+      </a>
       <section className="privacy-grid">
         <div>
           <ShieldCheck size={22} />
           <h3>Every step is visible</h3>
           <p>
-            Tools in new tasks run directly by default and may send data to
-            external services, perform writes or deletions, and incur charges.
-            Explicit upstream denials still apply, and execution records stay
-            inside the task.
+            Tools run directly by default and may send data to external
+            services, change files, or incur charges. Upstream denials still
+            apply. Execution records stay in the conversation.
           </p>
         </div>
         <div>
           <Unplug size={22} />
-          <h3>No connection, no pretend completion</h3>
+          <h3>A real connection</h3>
           <p>
-            Conversations require a real Ark connection. If sign-in expires or a
-            request fails, Muse reports the error instead of generating a
-            simulated reply.
+            If sign-in expires or a request fails, Muse reports the error
+            instead of generating simulated replies.
           </p>
         </div>
       </section>
@@ -891,7 +806,7 @@ function Settings({
           target="_blank"
           rel="noreferrer"
         >
-          Learn about Volcano Ark
+          Volcano Ark
           <ExternalLink size={13} />
         </a>
       </div>

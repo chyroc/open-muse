@@ -34,7 +34,13 @@ export function useTask(client: Client, id?: string) {
       if (signal.aborted) return;
       knownEvents = mergeEvents(knownEvents, incoming);
       setEvents(knownEvents);
-      if (historyLoaded) approver.observe(knownEvents);
+      if (historyLoaded)
+        approver.observe(
+          knownEvents.filter(
+            (event) =>
+              !event.source_session_id || event.source_session_id === id,
+          ),
+        );
     };
     const approver = new AutoApprover(client, id, signal, receive, (toolId) => {
       setAutoApprovalFailures((current) => [...new Set([...current, toolId])]);

@@ -27,6 +27,8 @@ import {
   X,
   Blocks,
   Rss,
+  PanelsTopLeft,
+  SquareCheckBig,
 } from "lucide-react";
 import type { Client } from "./api";
 import type { Goal, LibraryItem, Session } from "../shared/types";
@@ -36,9 +38,9 @@ import { exportText } from "./platform";
 
 export const primaryNavigation = [
   { id: "home", path: "/", label: "Chat", icon: MessageCircle },
-  { id: "feed", path: "/feed", label: "Activity", icon: Rss },
-  { id: "discover", path: "/discover", label: "Inspiration", icon: Lightbulb },
-  { id: "goals", path: "/goals", label: "Goals", icon: Target },
+  { id: "feed", path: "/feed", label: "Feed", icon: PanelsTopLeft },
+  { id: "discover", path: "/discover", label: "Ideas", icon: Lightbulb },
+  { id: "goals", path: "/goals", label: "Goals", icon: SquareCheckBig },
   { id: "library", path: "/library", label: "Library", icon: Shapes },
 ] as const;
 

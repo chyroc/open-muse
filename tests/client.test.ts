@@ -37,8 +37,11 @@ function fixture() {
     agents: [],
     environments: [],
     sessions: [],
+    memory_stores: [],
   };
+  const documents: Record<string, Record<string, unknown>[]> = {};
   const events: AgentEvent[] = [];
+  const sessionEvents = new Map<string, AgentEvent[]>();
   const fetcher = vi.fn<typeof fetch>(async (input, init = {}) => {
     const url = new URL(String(input));
     expect(url.origin).toBe("https://ark.cn-beijing.volces.com");
@@ -46,6 +49,33 @@ function fixture() {
       /^Bearer test-/,
     );
     const path = url.pathname.slice("/api/v3".length);
+    const memoryPath = path.match(
+      /^\/memory_stores\/([^/]+)\/memories(?:\/([^/]+))?$/,
+    );
+    if (memoryPath) {
+      const [, store, id] = memoryPath;
+      const docs = (documents[store] ??= []);
+      if (init.method === "POST") {
+        const body = JSON.parse(String(init.body));
+        if (id)
+          Object.assign(
+            docs.find((doc) => doc.id === id)!,
+            body,
+          );
+        else docs.push({ ...body, id: `memory-${docs.length + 1}` });
+        return Response.json({ ok: true });
+      }
+      return Response.json(
+        id ? docs.find((doc) => doc.id === id) : { data: docs },
+      );
+    }
+    const resourcePath = path.match(/^\/sessions\/([^/]+)\/resources$/);
+    if (resourcePath)
+      return Response.json({
+        data:
+          resources.sessions.find((row) => row.id === resourcePath[1])
+            ?.resources ?? [],
+      });
     if (path === "/models")
       return Response.json({
         data: [
@@ -62,12 +92,13 @@ function fixture() {
         { headers: { "Content-Type": "text/event-stream" } },
       );
     if (path.endsWith("/events")) {
+      const rows = sessionEvents.get(path.split("/")[2]) ?? events;
       if (init.method === "POST") {
         const incoming = JSON.parse(String(init.body)).events;
-        events.push(...incoming);
+        rows.push(...incoming);
         return Response.json({ data: incoming });
       }
-      return Response.json({ data: events });
+      return Response.json({ data: rows });
     }
     const [, group, id] = path.split("/");
     if (!resources[group]) return Response.json({ data: [] });
@@ -100,7 +131,16 @@ function fixture() {
   const client = new Client({ vault, database: db, fetcher });
   const login = () =>
     client.auth("api-key", { apiKey: key, project: "", confirm: true });
-  return { client, vault, db, resources, events, fetcher, login };
+  return {
+    client,
+    vault,
+    db,
+    resources,
+    events,
+    sessionEvents,
+    fetcher,
+    login,
+  };
 }
 function pending(): AgentEvent[] {
   return [
@@ -119,6 +159,186 @@ function pending(): AgentEvent[] {
   ];
 }
 describe("Direct MA client", () => {
+  it("continues a legacy main chat with memory, a scoped history archive and source-preserving UI events", async () => {
+    const f = fixture();
+    await f.login();
+    const original = await f.client.openConversation("main");
+    f.resources.sessions[0].resources = [];
+    f.events.push(
+      {
+        id: "old-user",
+        type: "user.message",
+        content: [{ type: "text", text: "My previous marker is woodland-42" }],
+      },
+      {
+        id: "old-answer",
+        type: "agent.message",
+        content: [{ type: "text", text: "The result is 42" }],
+      },
+    );
+    const next = await f.client.openConversation("main");
+    expect(next.id).not.toBe(original.id);
+    expect(f.resources.sessions).toHaveLength(2);
+    const override = f.resources.sessions[1].agent as Record<string, unknown>;
+    expect(override.type).toBe("agent_with_overrides");
+    expect(String(override.system)).toContain(
+      "<open-muse-conversation-history>",
+    );
+    expect(String(override.system)).toContain("<open-muse-identity>");
+    expect(
+      (await f.client.conversationIndex()).entries[next.id].previousIds,
+    ).toEqual([original.id]);
+    f.sessionEvents.set(next.id, []);
+    const history = await f.client.events(next.id);
+    expect(history).toHaveLength(2);
+    expect(history[1]).toMatchObject({
+      source_session_id: original.id,
+      source_event_id: "old-answer",
+    });
+    expect(history[1].id).not.toBe("old-answer");
+    const saved = await f.client.saveReply(
+      history[1].source_session_id!,
+      history[1].source_event_id!,
+    );
+    expect(saved.session_id).toBe(original.id);
+    await expect(
+      f.client.send(original.id, {
+        type: "user.message",
+        text: "Do not send to the older chapter",
+      }),
+    ).rejects.toThrow("has continued");
+    await f.client.send(next.id, {
+      type: "user.message",
+      text: "Continue the same conversation",
+    });
+    expect(f.sessionEvents.get(next.id)).toHaveLength(1);
+    expect(
+      f.fetcher.mock.calls.some(([, init]) => init?.method === "DELETE"),
+    ).toBe(false);
+  });
+  it("keeps a changed source history intact and resumes with a fresh archive", async () => {
+    const f = fixture();
+    await f.login();
+    const original = await f.client.openConversation("main");
+    f.resources.sessions[0].resources = [];
+    const handler = f.fetcher.getMockImplementation()!;
+    let mutated = false;
+    f.fetcher.mockImplementation(async (input, init) => {
+      const result = await handler(input, init);
+      if (
+        !mutated &&
+        init?.method === "POST" &&
+        String(input).endsWith("/memories")
+      ) {
+        mutated = true;
+        f.events.push({
+          id: "late",
+          type: "user.message",
+          content: [{ type: "text", text: "Arrived during preparation" }],
+        });
+      }
+      return result;
+    });
+    await expect(f.client.openConversation("main")).rejects.toThrow(
+      "changed while preparing",
+    );
+    expect((await f.client.conversationIndex()).mainId).toBe(original.id);
+    expect(f.resources.sessions).toHaveLength(1);
+    const next = await f.client.openConversation("main");
+    expect(next.id).not.toBe(original.id);
+    expect(f.resources.sessions).toHaveLength(2);
+  });
+  it("requires history evidence before another main message after an ambiguous submission", async () => {
+    const f = fixture();
+    await f.login();
+    const main = await f.client.openConversation("main");
+    const handler = f.fetcher.getMockImplementation()!;
+    f.fetcher.mockImplementation(async (input, init) => {
+      if (init?.method === "POST" && String(input).endsWith("/events"))
+        throw new TypeError("Submission lost");
+      return handler(input, init);
+    });
+    await expect(
+      f.client.send(main.id, { type: "user.message", text: "One message" }),
+    ).rejects.toThrow("Submission lost");
+    await expect(
+      f.client.send(main.id, { type: "user.message", text: "Another message" }),
+    ).rejects.toThrow("unconfirmed");
+    const pending = (await f.client.conversationIndex()).sending!;
+    f.events.push({
+      id: pending.event,
+      type: "user.message",
+      content: [{ type: "text", text: "One message" }],
+    });
+    await f.client.events(main.id);
+    expect((await f.client.conversationIndex()).sending).toBeUndefined();
+    f.fetcher.mockImplementation(handler);
+    await f.client.send(main.id, {
+      type: "user.message",
+      text: "Now confirmed",
+    });
+    expect(f.events).toHaveLength(2);
+  });
+  it("does not mark a session creation as ambiguous when memory preparation fails first", async () => {
+    const f = fixture();
+    await f.login();
+    const original = f.fetcher.getMockImplementation()!;
+    f.fetcher.mockImplementation((input, init) =>
+      String(input).endsWith("/memory_stores") && init?.method === "POST"
+        ? Promise.resolve(Response.json({}, { status: 503 }))
+        : original(input, init),
+    );
+    await expect(f.client.openConversation("main")).rejects.toThrow("503");
+    expect((await f.client.conversationIndex()).pending).toBeUndefined();
+    expect(f.resources.sessions).toHaveLength(0);
+  });
+  it("restores one main conversation and locally archives side chats through the direct client", async () => {
+    const f = fixture();
+    await f.login();
+    const main = await f.client.openConversation("main");
+    const side = await f.client.openConversation("side", "A separate topic");
+    await f.client.archiveConversation(side.id, true);
+    const restored = new Client({
+      vault: f.vault,
+      database: f.db,
+      fetcher: f.fetcher,
+    });
+    await restored.restore();
+    expect((await restored.openConversation("main")).id).toBe(main.id);
+    expect((await restored.conversationIndex()).entries[side.id].archived).toBe(
+      true,
+    );
+    expect(f.resources.sessions).toHaveLength(2);
+    expect(f.resources.memory_stores).toHaveLength(1);
+    expect(
+      f.resources.sessions.every(
+        (row) =>
+          JSON.stringify(row.resources) ===
+          JSON.stringify([
+            { type: "memory_store", memory_store_id: "memory_stores-1" },
+          ]),
+      ),
+    ).toBe(true);
+    expect(await f.client.identityMounted(main.id)).toBe(true);
+    expect(String(f.resources.agents[0].system)).toContain(
+      "<open-muse-identity>",
+    );
+    expect(
+      f.fetcher.mock.calls.some(([, request]) => request?.method === "DELETE"),
+    ).toBe(false);
+    expect((await restored.sessions()).data.map((row) => row.id)).toContain(
+      side.id,
+    );
+  });
+  it("keeps conversation navigation read-only while signed out", async () => {
+    const f = fixture();
+    expect(await f.client.conversationIndex()).toEqual({ entries: {} });
+    expect((await f.client.companionIdentity()).name).toBe("Muse");
+    await expect(f.client.openConversation("main")).rejects.toThrow(
+      "Connect to Ark MA",
+    );
+    expect(f.fetcher).not.toHaveBeenCalled();
+  });
   it.each(
     operations.filter(
       (op) =>
