@@ -1,133 +1,129 @@
 # Open Muse
 
-A personal AI task assistant built on Volcano Ark Managed Agents (MA), with iOS, macOS, and mobile-first web interfaces, plus a retained Android project.
+A personal AI task assistant built on Volcano Ark Managed Agents (MA). The web,
+iOS, Android, and macOS apps connect directly to Volcano APIs. No Open Muse
+backend, local API service, app access token, or server URL is required.
 
-Supports continuous conversations, tool approvals, execution records, goal management, saved replies, and Markdown export. Conversations require a real MA connection through SSO, an in-app API key, or a server-side API key. Without a connection, Muse prompts you to sign in and never generates simulated replies. Cloud calls may incur charges.
+Conversations use real MA responses. Without an Ark connection the app stays
+signed out; network failures never produce simulated replies. Cloud calls and
+cloud environments may incur charges.
 
-## Quick start
+## Run and build
 
-Requires Node.js 22.21+. Building for native Apple platforms requires Xcode.
+Requires Node.js 22.21+ for development. Apple builds require Xcode; Android
+builds require JDK 21 and Android SDK 36.
 
 ```bash
 npm ci
-npm run dev           # Web on 4310, server on 4311
-npm run check         # Type checks and automated tests
-npm run build         # Production web build
-npm run macos:build   # Standalone macOS app
+npm run dev           # Static frontend development on port 4310
+npm run check         # Type checks and regression tests
+npm run build         # Static site in dist/
+npm start             # Preview the static site on port 4310
+npm run macos:build   # .build/macos/Open Muse.app
 npm run ios:build     # iOS Simulator app
+npm run native:sync   # Build and sync the iOS and Android bundles
 ```
 
-Dev page: [http://127.0.0.1:4310](http://127.0.0.1:4310). For production mode, run `npm run build && npm start` and visit [http://127.0.0.1:4311](http://127.0.0.1:4311).
+Open [http://127.0.0.1:4310](http://127.0.0.1:4310). Deploy `dist/` to any
+trusted HTTPS static host. The static host serves assets only; it never receives
+Ark credentials or proxies API requests. Native apps bundle these same assets.
+Do not place credentials in build-time environment variables or source files.
 
 ## Connect to Ark
 
-### SSO login
+Open **Settings → Connect to Ark MA**, then choose either:
 
-1. Open **Settings → Connect to Ark MA → Volcano SSO**, then click **Start SSO login**.
-2. Complete authorization on the Volcano website, then paste the authorization code or full callback URL back into the app.
-3. Select a project, review the permissions and billing notes, then click **Connect project and get started**.
-4. Wait for the workspace to become ready, then start a conversation.
+- **Volcano SSO:** authorize on the Volcano website, paste the authorization
+  code or callback, select a project, and connect. OAuth PKCE and STS request
+  signing happen on this device. The app creates a dedicated key with access to
+  the project's Ark resources and no source-IP restriction. The authorization
+  transaction expires after ten minutes and is single-use.
+- **API Key:** enter an existing key, optionally specifying its project. A
+  read-only MA request verifies access before the key is saved. Control-plane
+  operations requiring STS still require SSO.
 
-The server exchanges the code for STS via OAuth + PKCE and creates a project API key. This key can access all Ark resources in the selected project and is not restricted by source IP. The authorization transaction is valid for 10 minutes and can be exchanged only once; the app login session is valid for 7 days.
+On first use, Muse prepares an agent and environment automatically. Their
+mapping is stored in IndexedDB, isolated by API-key digest and project. Reusing
+the same connection recovers app-owned cloud resources by ownership metadata,
+including resources created by the earlier server-backed version. Uncertain
+creation results are checked before another write; they are never blindly retried.
 
-### Enter an API key manually
+Existing agents retain their model. New agents use the public tool-calling model
+`doubao-seed-2-0-pro-260215`; the Ark project must have access to it. Model access
+errors remain visible. The inference `/models` endpoint currently has invalid
+CORS responses, so neither sign-in nor workspace preparation depends on it.
 
-1. Open **Settings → Connect to Ark MA → API Key**.
-2. Paste an existing key; the project name is optional — leave it blank and Ark determines the project from the key.
-3. Click **Connect API key**. The server first validates it via `/models`, then stores the credentials encrypted.
-4. The agent and environment are created automatically when you first send a task or click **Prepare workspace**.
+## Storage and security
 
-The Agent/Environment mapping is stored in local SQLite, isolated by upstream address, key digest, and project. Reconnecting with the same configuration reuses the mapping, so users do not need to enter resource IDs. If creation fails, completed steps are retained; when the result is unclear, the server queries first rather than blindly creating duplicates.
+- iOS and macOS keep API keys and SSO credentials in Keychain. Android encrypts
+  credentials with an Android Keystore-backed AES-GCM key and disables backup.
+- The web app keeps credentials in `sessionStorage`, not persistent local
+  storage. A page reload preserves the browser session; signing out clears it.
+  Browser extensions or injected scripts can still access browser-held secrets:
+  use a trusted host, avoid shared profiles, and revoke compromised keys in Ark.
+- Workspace mappings, session metadata, goals, saved replies, and local approval
+  records live in IndexedDB. They contain no raw API keys, but conversation
+  content is not encrypted by the app. Protect the device/browser profile.
+- Goals and saved replies are device-local, not automatically synced across
+  devices. Conversations and execution history are read directly from MA.
+- Signing out removes local credentials, not cloud resources or keys. Revoke
+  keys in the Ark console when needed. Sign out before switching accounts.
+- Only fixed public Volcano API origins are allowed. Redirects carrying
+  credentials are rejected. Production assets include a restrictive CSP; CORS
+  remains enforced rather than bypassed.
 
-The client holds only the app session token. iOS and macOS restore the token via Keychain; web stores it only in the current `sessionStorage`. Logging out removes the login credentials saved by the app but does not revoke the cloud API key; revocation must be done in the Ark console.
+Upgrading from the backend version requires signing in again. Old `.data/`,
+SQLite mappings, and backend credential files are left untouched. Old local
+goals and saved replies are not imported automatically; retain those files if
+you need their contents. Cloud conversations remain accessible with the same key.
 
-Both login methods use the production data plane by default. A server administrator can set a trusted upstream via `MUSE_SSO_ARK_BASE_URL`; clients cannot submit arbitrary upstream addresses. API keys do not provide STS, so control-plane operations that require STS still need SSO.
+## Native apps
 
-### Server configuration
+**iOS:** `ios/App/App.xcodeproj`, scheme `App`, bundle ID
+`app.openmuse.mobile`. Run `npm run ios` to open Xcode. The app needs only
+internet access, not a reachable Mac or service URL. Simulator builds use ad-hoc
+signing for Keychain access. Physical-device builds require a local development
+identity and provisioning profile; keep team/device identifiers untracked.
 
-Create a local `.env` from `.env.example`. To use a server-side key directly, configure:
+**macOS:** the AppKit/WKWebView shell loads bundled assets through `muse://app/`.
+The package contains no Node executable or server bundle and opens no listening
+port. The build targets macOS 14+ and is not notarized.
 
-```dotenv
-MUSE_MODE=ark
-ARK_BASE_URL=https://ark.cn-beijing.volces.com/api/v3
-ARK_API_KEY=fill-in-your-key-locally
-```
+**Android:** the Capacitor app uses the same direct client and includes a native
+credential-storage plugin. Open with `npm run android`; build the Gradle project
+with JDK 21 and SDK 36. See verification notes for platform coverage.
 
-Optionally set `ARK_PROJECT_NAME` to specify the project via `X-Project-Name`. `ARK_MODEL_ID` selects the model; leave it blank to automatically pick a text model that supports tool calls. `ARK_AGENT_ID` and `ARK_ENVIRONMENT_ID` exist for compatibility with existing deployments and are not shown in the regular UI.
+## Capabilities
 
-## Native clients
+Conversations support streamed events, history backfill, interruption, tool
+approvals, Markdown export, goals, and saving real replies with source links.
+MA Studio retains 52 operations covering agents, environments, sessions, memory,
+connections, skills, and files. Studio writes require confirmation; deletion
+requires checking the target ID. See [MA coverage](docs/ma-coverage.md).
 
-### iOS
+App-managed agents default to `always_allow` tool permissions. Tools can send
+data, perform writes/deletions, and incur charges. Explicit upstream denials
+remain in force. For pending approvals in older sessions, only exact
+`web_search` and `web_fetch` tool names are auto-approved, with local audit
+records and protection against duplicate submissions.
 
-The project is `ios/App/App.xcodeproj`, the scheme is `App`, and the bundle ID is `app.openmuse.mobile`. It uses Capacitor and Swift Package Manager; run `npm run ios` to open it in Xcode.
+Cloud setup includes Chrome, a small CDP driver, and Lark CLI/skills. See
+[environment toolbox](docs/environment-toolbox.md). No cloud setup commands run
+on the phone, browser, or Mac itself.
 
-On first run, enter the **Open Muse server root URL**, not the Ark API URL. The simulator can use `http://127.0.0.1:4311`; a physical device needs a reachable HTTPS server, since a loopback address on the phone cannot reach the Mac.
-
-iOS does not embed the server. SSO external links use the system browser, and exports use the system share sheet. Simulator builds use ad-hoc signing; do not disable signing, or Keychain may return permission errors.
-
-Device builds require a valid local Apple development identity and provisioning profile. Run `npm run ios:build:device -- DEVELOPMENT_TEAM=your-team-id -allowProvisioningUpdates`; the output is at `.build/ios-device/Build/Products/Debug-iphoneos/App.app`. Team and device identifiers are passed only locally and are never committed. Install with `xcrun devicectl device install app --device <device-id> .build/ios-device/Build/Products/Debug-iphoneos/App.app`.
-
-### macOS
-
-The build output is `.build/macos/Open Muse.app`, which opens directly without a separate server terminal. The native AppKit/WKWebView shell embeds the server and listens only on a random loopback port.
-
-Local data is stored in the user's `Library/Application Support/Open Muse/`. Build artifacts contain no personal credentials or existing tasks. This is currently a local-architecture development build for macOS 14+, not yet notarized or configured for automatic updates.
-
-### Android
-
-The Capacitor project and platform resources are retained. There are currently no Android build or device acceptance results.
-
-## Features and permissions
-
-- Mobile navigation includes conversations, activity, inspiration, goals, and library; settings, all conversations, and MA Studio live in the sidebar.
-- Goals support steps, status, and conversation links; pausing a goal does not stop a running session. Goals do not run on an automatic schedule.
-- The library saves real agent replies, with source viewing and export. Activity comes from sessions; inspiration uses preset suggestions.
-- MA Studio provides 52 adapted operations covering agents, environments, sessions, memory, connections, skills, and files. Advanced management is collapsed by default, write operations require confirmation, and deletion requires verifying the target ID.
-
-Conversations receive events via SSE, backfilling history on subscribe, reconnect, and foreground restore, with deduplication by event ID. Write requests are not automatically retried; after a timeout, check history for the result first.
-
-When the app creates an agent, it sets `tools[].default_config.permission_policy.type` to `always_allow`, so MA executes tools directly without per-call client approval. Tool calls may send data to external services, perform writes or deletions, and incur costs. The environment's `config.networking.type=unrestricted` controls outbound network access only and is separate from tool permissions.
-
-For existing agents, permissions and the app's default prompt are synced when preparing the workspace or creating a new task. Only agents marked by this app are modified; custom prompts, other tool configurations, and explicit deny policies are preserved, and no replacement resources are created. Old sessions may retain a snapshot of the previous permissions, so creating a new task is recommended. Confirmations for advanced management operations are unaffected.
-
-When old sessions or custom tools still produce pending-approval events, the legacy compatibility flow applies: only the built-in `web_search` and `web_fetch` are auto-approved; everything else requires manual confirmation. Auto-approval preserves submission status and audit records; when the result is unclear, the manual path is restored rather than blindly re-approving. This compatibility flow relies on the task page being open and is not a background scheduling service.
-
-[MA integration coverage](docs/ma-coverage.md) describes the adaptation scope and limitations. [MuseAI-Skills assessment](docs/skills.md) describes the dependencies and licensing boundaries required for skills.
-
-The minimal [cloud environment toolbox](docs/environment-toolbox.md) adds Chrome/CDP and Lark CLI with official skills through an observable background setup script. Other tools are installed only when a task needs them. The agent receives a tool guide and checks readiness before using the installed software.
-
-## Deployment and security boundaries
-
-This project is intended for personal local use or a controlled single-user deployment, not a publicly operated multi-tenant service. For remote deployment, configure at minimum:
-
-```dotenv
-HOST=0.0.0.0
-MUSE_ACCESS_TOKEN=set-a-random-token-of-at-least-24-characters
-MUSE_ALLOWED_ORIGINS=https://your-web-domain,capacitor://localhost,https://localhost
-```
-
-Use an HTTPS reverse proxy and disable SSE buffering. The app access token protects the entire BFF; it is not an Ark API key and is not a public registration system.
-
-Ark credentials use AES-256-GCM, with ciphertext and key files at `0600` permissions; both are stored on the same machine and cannot protect against an attacker who already has file access as that user. SQLite stores resource mappings, not raw API keys; tasks and saved items are plaintext JSON. The data directory and backups must be protected.
-
-When there is no login session, the configured default workspace is used; do not treat a shared access token as strict tenant isolation. The current storage is suited to a single process; public deployment still requires rate limiting, auditing, backups, and data retention policies.
-
-## Verification and development
-
-Automated tests and real MA conversations, web tools, saved items, and restart recovery on the iOS simulator have passed. See the [verification record](docs/verification.md) for detailed results and uncovered areas.
-
-For commit conventions, see [CONTRIBUTING](CONTRIBUTING.md); for third-party license notices, see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+## Development
 
 ```text
-src/         UI and client adaptation
-shared/      Event types, approval policies, and the API catalog
-server/      OAuth, encrypted credentials, Ark adaptation, and BFF
-ios/         iOS project
-macos/       macOS native shell
-android/     Android project
-tests/       Unit, API, and frontend tests
-scripts/     Build and resource generation
-docs/        Integration notes and verification records
-.build/      Local build and test artifacts, not committed
-.data/       Local data and credentials, not committed
+src/                  UI and the direct, device-local application runtime
+shared/               Ark/OAuth adapters, signing, API catalog, tool payloads
+ios/                  iOS shell and UI tests
+macos/                Serverless macOS shell
+android/              Android shell and Keystore plugin
+tests/                Direct-client, protocol, UI, and migration tests
+tests/legacy-server/  Test-only migration harness; never shipped or started
+scripts/              Builds and asset generation
+.build/               Ignored local builds and test artifacts
 ```
+
+See [verification](docs/verification.md), [contribution conventions](CONTRIBUTING.md),
+and [third-party notices](THIRD_PARTY_NOTICES.md).

@@ -10,23 +10,22 @@
 
 Open Muse is a personal AI task assistant built on Volcano Ark Managed Agents (MA). It ships a mobile-first web app, an iOS app, a macOS native shell, and a retained Android project.
 
-- `src/` — React UI and client adapters
+- `src/` — React UI and direct MA client; `src/direct/` owns local auth, storage, and provisioning
 - `shared/` — event types, approval policy, and the MA API catalog/contract
-- `server/` — OAuth, encrypted credentials, Ark adapter, and the BFF (Express)
 - `ios/` — Capacitor + SwiftPM iOS project
-- `macos/` — AppKit/WKWebView shell embedding the server
+- `macos/` — AppKit/WKWebView shell loading bundled static assets, with no server or Node runtime
 - `android/` — retained Capacitor project (no build/device verification yet)
 - `tests/` — unit, API, and frontend tests (Vitest)
 - `scripts/` — build and asset generation
 - `docs/` — integration notes and verification records
 
-The app requires a real Ark connection through SSO, an in-app API key, or a server-side API key. Without credentials it stays disconnected and never generates simulated replies. Real calls may incur cloud costs. Mock responses belong only in test fixtures, never the application runtime.
+All four platforms connect directly to public Volcano APIs through SSO or an in-app API key. There is no Open Muse backend or service URL. Without credentials the app stays disconnected and never generates simulated replies. Real calls may incur cloud costs. Mock responses and the old server migration harness belong only in tests and must never be bundled.
 
 ## Commands
 
 ```bash
 npm ci
-npm run dev          # web on 4310, server on 4311
+npm run dev          # frontend only, on 4310
 npm run check        # tsc --noEmit + vitest run
 npm test             # vitest run
 npm run build        # type-check + production web build
@@ -47,7 +46,8 @@ Requires Node.js 22.21+. Native Apple builds require Xcode.
 
 ## Safety boundaries
 
-- The project is meant for personal local use or controlled single-user deployment, not public multi-tenant hosting.
-- Ark credentials are encrypted with AES-256-GCM (`0600` perms); encryption does not protect against an attacker with filesystem access.
+- Each client owns its credentials and local data. The static web host must never receive credentials or proxy MA traffic.
+- Native credentials use Keychain or Android Keystore-backed encryption. Web credentials stay in sessionStorage; all remain sensitive to a compromised client.
+- Non-secret records live in identity-scoped IndexedDB. Preserve legacy local data on upgrades; do not silently migrate credentials or delete old files.
 - Auto-approval only covers pending `web_search` / `web_fetch` requests matched by exact protocol name; everything else stays manual.
 - Write requests are never auto-retried; when a result is ambiguous, query history first instead of repeating creation or approval.
