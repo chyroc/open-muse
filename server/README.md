@@ -287,6 +287,9 @@ deployed or that a real unattended generation can complete.
   `{code: "unconfirmed"}` and keep the record held. Settings that reference
   resources an account cannot use, or that are too large to seal, are never
   sealed; the record is held for review (409 `{code: "settings_review"}`).
+  Whenever a change enters review, the account's background binding is revoked
+  and its schedule paused in the same batch, because background sessions would
+  use Ark's live values.
   A confirmed agent change
   rebinds allowed background work to the new version, which pauses its
   schedule; the response reports `background: "rebound" | "stale" |

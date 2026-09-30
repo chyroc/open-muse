@@ -122,6 +122,9 @@ export const zhAccount: Record<string, string> = {
   "You kept the saved settings, but the agent or environment in Ark may differ from them. Background work stays paused until they are checked.":
     "你保留了已保存的设置，但 Ark 中的智能体或环境可能与之不同。在检查之前，后台任务保持暂停。",
   "Check the settings again": "重新检查设置",
+  "Needs review": "需要确认",
+  "The workspace settings need your review: they reference resources an account cannot use or differ from what Open Muse saved. Background work stays paused until you decide.":
+    "工作区设置需要你确认：它们引用了账号无法使用的资源，或与 Open Muse 保存的设置不一致。在你做出选择之前，后台任务保持暂停。",
   "Keep the saved settings": "保留已保存的设置",
   "Check the last change": "检查上次更改",
   "Save the current settings": "保存当前设置",

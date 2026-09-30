@@ -642,6 +642,8 @@ export class AccountWorkspaces {
     const tooLarge = JSON.stringify(settings).length > 100_000;
     if (!usable(kind, settings) || tooLarge) {
       // Left for the user's review; the user can keep the saved settings.
+      // Background work would use these live values, so it stops in the same
+      // batch.
       if (pending && "op" in pending)
         await this.write(
           workspaceKey,
@@ -649,6 +651,8 @@ export class AccountWorkspaces {
           workspace,
           { ...pending, state: "review" },
           now,
+          undefined,
+          true,
         );
       throw new HttpError(
         409,
@@ -766,6 +770,8 @@ export class AccountWorkspaces {
         throw unconfirmed("Ark could not be read. Nothing was changed.");
       });
     const review = async (message: string) => {
+      // Ark's live values are not the saved ones, so background work, which
+      // uses the live environment, stops in the same batch.
       if (update && update.state !== "review")
         await this.write(
           workspaceKey,
@@ -773,6 +779,8 @@ export class AccountWorkspaces {
           workspace,
           { ...update, state: "review" },
           now,
+          undefined,
+          true,
         );
       throw new HttpError(409, message, "settings_review");
     };

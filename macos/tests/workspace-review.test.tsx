@@ -47,6 +47,10 @@ async function press(label: string) {
 describe("Workspace settings review", () => {
   it("offers both explicit decisions for a change it could not confirm", async () => {
     const client = await setup("en-US", "settings");
+    const badge = () => host.querySelector(".small-badge")!.textContent;
+    // A workspace awaiting a decision is never shown as simply ready.
+    expect(badge()).toBe("Needs review");
+    expect(host.textContent).toContain("Background work stays paused");
     expect(buttons()).toEqual([
       "Save the current settings",
       "Keep the saved settings",
@@ -54,6 +58,7 @@ describe("Workspace settings review", () => {
     await press("Keep the saved settings");
     expect(client.checkWorkspaceSettings).toHaveBeenCalledWith("discard");
     // Kept settings are shown as possibly different from Ark, never as in sync.
+    expect(badge()).toBe("Needs review");
     expect(host.textContent).toContain(
       "the agent or environment in Ark may differ from them",
     );
@@ -64,10 +69,12 @@ describe("Workspace settings review", () => {
     await press("Check the settings again");
     expect(client.checkWorkspaceSettings).toHaveBeenLastCalledWith();
     expect(buttons()).toEqual([]);
+    expect(badge()).toBe("Ready");
   });
 
   it("shows the same decisions in Simplified Chinese", async () => {
     await setup("zh-CN", "settings");
+    expect(host.querySelector(".small-badge")!.textContent).toBe("需要确认");
     expect(buttons()).toEqual(["保存当前设置", "保留已保存的设置"]);
     await press("保留已保存的设置");
     expect(host.textContent).toContain("Ark 中的智能体或环境可能与之不同");

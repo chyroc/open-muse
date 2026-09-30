@@ -102,7 +102,8 @@ flight per workspace. If its result is unconfirmed (a timeout or lost
 response), nothing else is changed until the app checks Ark read-only. An
 agent still at its earlier version is reported as not applied yet; any other
 result Open Muse cannot prove asks the user to review it and either save the
-current settings or keep the saved ones. Keeping the saved settings marks that
+current settings or keep the saved ones; background work pauses as soon as a
+review is needed. Keeping the saved settings marks that
 Ark may differ from them and pauses background work until a later check finds
 them matching again. Ownership labels cannot be changed
 this way. If background work is allowed, it is rebound to the new agent version

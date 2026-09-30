@@ -386,6 +386,55 @@ describe("Account workspace settings changes", () => {
     expect((await reconcile("adopt")).status).toBe(200);
   });
 
+  it("stops background work as soon as a change needs review", async () => {
+    const saved = await record();
+    const connections = new ConnectionStore(env, owner);
+    const bind = async () =>
+      call(
+        "/v1/connection",
+        {
+          workspace: {
+            agentId: saved.workspace.agentId,
+            agentVersion: ark.agents[saved.workspace.agentId].version,
+            environmentId: saved.workspace.environmentId,
+            memoryStoreId: saved.workspace.memoryStoreId,
+          },
+          credentialRevision: 1,
+          revision: (await connections.status()).revision,
+          confirm: true,
+        },
+        "PUT",
+      );
+    expect((await bind()).status).toBe(200);
+    expect(await connections.status()).toMatchObject({ configured: true });
+    nextUpdate = "network-after";
+    expect((await change("environment", config("lost reply"))).status).toBe(
+      503,
+    );
+    // An unconfirmed change only ever carries values an account may use.
+    expect(await connections.status()).toMatchObject({ configured: true });
+    // Someone with the key points the environment at storage meanwhile.
+    ark.environments[saved.workspace.environmentId].config = {
+      type: "cloud",
+      tos: { bucket: "someone", prefix: "" },
+    };
+    const before = updates();
+    expect((await reconcile()).status).toBe(409);
+    expect(updates()).toBe(before);
+    // Background sessions would use the live environment, so they stop.
+    expect(await connections.status()).toMatchObject({ configured: false });
+    expect((await record()).workspace.environment).toEqual(
+      saved.workspace.environment,
+    );
+    const refused = await bind();
+    expect(refused.status).toBe(409);
+    expect(await refused.json()).toMatchObject({ code: "settings_review" });
+    ark.environments[saved.workspace.environmentId].config = config("fixed");
+    expect(await (await reconcile("adopt")).json()).toMatchObject({
+      change: "adopted",
+    });
+  });
+
   it("reports an agent change missing at read time as not applied yet and catches a late arrival", async () => {
     const saved = (await record()).workspace.agent!;
     const agent = ark.agents[(await record()).workspace.agentId];
@@ -468,6 +517,8 @@ describe("Account workspace settings changes", () => {
       settings: "review",
       workspace: { environment: saved.workspace.environment },
     });
+    // The live values differ from the saved ones, so background work stops.
+    expect(await connections.status()).toMatchObject({ configured: false });
     // Too large to adopt: the user keeps the saved settings instead.
     expect((await reconcile("adopt")).status).toBe(409);
     expect(await (await reconcile("discard")).json()).toMatchObject({

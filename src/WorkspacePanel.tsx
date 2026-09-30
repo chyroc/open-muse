@@ -4,6 +4,25 @@ import { Check, LoaderCircle, RefreshCw } from "lucide-react";
 import type { Client } from "./api";
 import type { WorkspaceStatus } from "../shared/types";
 
+// A workspace that needs a decision is never shown as simply ready.
+function reviewNote(review: NonNullable<WorkspaceStatus["review"]>) {
+  return review === "drift"
+    ? t(
+        "You kept the saved settings, but the agent or environment in Ark may differ from them. Background work stays paused until they are checked.",
+      )
+    : review === "unconfirmed"
+      ? t(
+          "A workspace settings change is unconfirmed. Open Muse checks it before anything else is changed.",
+        )
+      : review === "rebuild"
+        ? t(
+            "A deleted agent or environment cannot be restored because its saved settings reference resources an account cannot use. The saved settings are kept; recreate it with default settings to continue.",
+          )
+        : t(
+            "The workspace settings need your review: they reference resources an account cannot use or differ from what Open Muse saved. Background work stays paused until you decide.",
+          );
+}
+
 export function WorkspacePanel({ client }: { client: Client }) {
   const [status, setStatus] = useState<WorkspaceStatus>();
   const [error, setError] = useState("");
@@ -88,15 +107,20 @@ export function WorkspacePanel({ client }: { client: Client }) {
         <span className="small-badge">
           {preparing
             ? t("Preparing")
-            : status?.state === "ready"
-              ? t("Ready")
-              : status?.state === "disconnected"
-                ? t("Not connected")
-                : t("Needs setup")}
+            : status?.review
+              ? t("Needs review")
+              : status?.state === "ready"
+                ? t("Ready")
+                : status?.state === "disconnected"
+                  ? t("Not connected")
+                  : t("Needs setup")}
         </span>
       </div>
       <p role="status">
-        {error || status?.message || t("Reading workspace status…")}
+        {error ||
+          (status?.review && reviewNote(status.review)) ||
+          status?.message ||
+          t("Reading workspace status…")}
       </p>
       {status?.state === "ready" ? (
         <a className="button primary" href="#/">
@@ -126,13 +150,6 @@ export function WorkspacePanel({ client }: { client: Client }) {
       )}
       {!busy && status?.review && (
         <div className="background-actions">
-          {status.review === "drift" && (
-            <p className="background-note" role="status">
-              {t(
-                "You kept the saved settings, but the agent or environment in Ark may differ from them. Background work stays paused until they are checked.",
-              )}
-            </p>
-          )}
           {(status.review === "unconfirmed" || status.review === "drift") && (
             <button
               className="button secondary"
