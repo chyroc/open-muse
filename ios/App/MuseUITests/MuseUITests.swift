@@ -326,6 +326,112 @@ final class MuseLiveUITests: XCTestCase {
         capture("continued-main-after-relaunch")
     }
 
+    func testPersonalizedFeedAndIdeasUseRealMA() {
+        tap(app.links["Feed"])
+        tap(app.buttons["Edit feed instructions"])
+        let field = app.textViews["Feed instructions text"]
+        XCTAssertTrue(field.waitForExistence(timeout: 40))
+        let original = field.value as? String ?? ""
+        XCTAssertFalse(original.isEmpty)
+        let marker = "field-guide-" + String(UUID().uuidString.prefix(6)).lowercased()
+        func replaceInstructions(_ value: String) {
+            tap(field)
+            if !app.keyboards.firstMatch.waitForExistence(timeout: 3) { field.tap() }
+            XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 10))
+            field.press(forDuration: 1.2)
+            if app.menuItems["Select All"].waitForExistence(timeout: 3) { tap(app.menuItems["Select All"]) }
+            else { field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: (field.value as? String ?? "").count)) }
+            field.typeText(value)
+            XCTAssertEqual(field.value as? String, value)
+            XCTAssertTrue(app.buttons["Save"].isHittable)
+            tap(app.buttons["Save"])
+            expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: field)
+            waitForExpectations(timeout: 90)
+        }
+        replaceInstructions("Write in English. Include \(marker) in every post title. Use web_fetch to read https://example.com and write exactly two concise posts about its purpose. Include that page as a source. Do not invent personal facts or take external actions.")
+        app.terminate()
+        app.launch()
+        tap(app.links["Feed"])
+        tap(app.buttons["Edit feed instructions"])
+        XCTAssertTrue(field.waitForExistence(timeout: 40))
+        XCTAssertTrue((field.value as? String ?? "").contains(marker))
+        tap(app.buttons["Close feed instructions"])
+        // The instruction card can place the first-generation button below the fold.
+        for _ in 0..<4 {
+            if app.buttons["Find new posts"].isHittable { break }
+            app.swipeUp()
+        }
+        expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: app.buttons["Find new posts"])
+        waitForExpectations(timeout: 300)
+        tap(app.buttons["Find new posts"])
+        let generatedPost = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "Feed post:", marker)).firstMatch
+        XCTAssertTrue(generatedPost.waitForExistence(timeout: 300), app.debugDescription)
+        let liked = app.switches["Like post"].firstMatch
+        // Restore cloud preferences before asserting generated content details.
+        tap(app.buttons["Edit feed instructions"])
+        XCTAssertTrue(field.waitForExistence(timeout: 40))
+        replaceInstructions(original)
+        for _ in 0..<4 { app.swipeUp() }
+        capture("personalized-feed-real-ma")
+        XCTAssertTrue(contains(marker).exists, app.debugDescription)
+        if !liked.isHittable { app.swipeDown() }
+        tap(liked)
+        XCTAssertTrue(app.switches["Unlike post"].firstMatch.waitForExistence(timeout: 20))
+        app.terminate()
+        app.launch()
+        tap(app.links["Feed"])
+        XCTAssertTrue(app.switches["Unlike post"].firstMatch.waitForExistence(timeout: 30))
+        if app.buttons["Got it"].exists { tap(app.buttons["Got it"]) }
+        tap(app.buttons["Discuss"].firstMatch)
+        let message = app.textViews["Message Muse"]
+        XCTAssertTrue(message.waitForExistence(timeout: 30))
+        XCTAssertTrue((message.value as? String ?? "").contains(marker))
+        XCTAssertTrue((message.value as? String ?? "").contains("example.com"))
+        tap(app.buttons["Send message"])
+        XCTAssertTrue(app.buttons["Stop response"].waitForExistence(timeout: 30))
+        expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: app.buttons["Stop response"])
+        waitForExpectations(timeout: 240)
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Reply options")).firstMatch.exists)
+        capture("feed-discussion-real-ma")
+        tap(app.links["Ideas"])
+        tap(app.buttons["Find new ideas"])
+        let idea = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "View idea")).firstMatch
+        XCTAssertTrue(idea.waitForExistence(timeout: 300), app.debugDescription)
+        tap(idea)
+        XCTAssertTrue(app.buttons["Talk about this"].waitForExistence(timeout: 20))
+        capture("personalized-idea-detail")
+        tap(app.buttons["Close"])
+    }
+
+    func testInspirationPersistsWithoutNewGeneration() {
+        tap(app.links["Feed"])
+        if !app.buttons["Edit feed instructions"].waitForExistence(timeout: 3) {
+            // Confirm navigation after the initial WKWebView activation.
+            tap(app.links["Feed"])
+        }
+        XCTAssertTrue(app.buttons["Edit feed instructions"].waitForExistence(timeout: 20), app.debugDescription)
+        XCTAssertTrue(app.switches["Unlike post"].firstMatch.waitForExistence(timeout: 40), app.debugDescription)
+        XCTAssertFalse(app.buttons["Got it"].exists, "Dismissed instruction card must stay dismissed")
+        capture("feed-after-relaunch")
+        tap(app.buttons["Edit feed instructions"])
+        let field = app.textViews["Feed instructions text"]
+        XCTAssertTrue(field.waitForExistence(timeout: 40))
+        XCTAssertFalse((field.value as? String ?? "").contains("field-guide-"), "Synthetic test preferences must be restored")
+        tap(app.buttons["Close feed instructions"])
+        tap(app.links["Ideas"])
+        let idea = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "View idea:")).firstMatch
+        XCTAssertTrue(idea.waitForExistence(timeout: 40))
+        let title = idea.label
+        capture("ideas-after-relaunch")
+        tap(idea)
+        XCTAssertTrue(app.buttons["Talk about this"].waitForExistence(timeout: 15))
+        capture("idea-detail-after-relaunch")
+        tap(app.buttons["Close"])
+        app.terminate()
+        app.launch()
+        tap(app.links["Ideas"])
+        XCTAssertTrue(app.buttons[title].waitForExistence(timeout: 40))
+    }
 }
 #endif
 

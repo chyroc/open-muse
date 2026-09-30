@@ -22,6 +22,14 @@ import { ARK_BASE_URL, directFetch } from "./direct/transport";
 import { DirectWorkspace } from "./direct/workspace";
 import { DirectIdentity, defaultIdentity } from "./direct/identity";
 import type { IdentityDocumentName } from "../shared/identity";
+import { DirectInspiration } from "./direct/inspiration";
+import {
+  defaultFeedInstructions,
+  inspirationPrompt,
+  recentInspirationContext,
+  type InspirationKind,
+  type InspirationSnapshot,
+} from "../shared/inspiration";
 import {
   conversationArchive,
   withConversationHistory,
@@ -179,6 +187,110 @@ export class Client {
   ) {
     return this.context().companion.save(name, content, revision);
   }
+  private inspirationService(r: Runtime) {
+    let selection:
+      | { agent: string; environment_id: string; memory_store_id: string }
+      | undefined;
+    return new DirectInspiration(r.key, this.db, {
+      instructions: () => r.companion.feedInstructions(),
+      prepare: async (kind, state) => {
+        if ((await r.workspace.status()).state !== "ready") {
+          await r.workspace.start();
+          await r.workspace.wait();
+        }
+        await r.workspace.syncPolicy();
+        const memory_store_id = await r.companion.ensure();
+        selection = { ...(await r.workspace.selection()), memory_store_id };
+        const index = await this.conversations(r).index();
+        const events = index.mainId ? await this.events(index.mainId) : [];
+        const goals = (await this.db.get<Goal[]>(`${r.key}:goals`)) ?? [];
+        const instructions = await r.companion.feedInstructions();
+        r.abort.signal.throwIfAborted();
+        return r.redact(
+          inspirationPrompt(kind, {
+            instructions: instructions.content,
+            recent: recentInspirationContext(events),
+            goals: JSON.stringify(
+              goals
+                .filter((g) => g.status === "active")
+                .slice(0, 8)
+                .map((g) => ({
+                  title: g.title,
+                  description: g.description.slice(0, 400),
+                })),
+            ).slice(0, 2000),
+            liked: state.items
+              .filter((i) => i.liked)
+              .slice(0, 6)
+              .map((i) => i.title),
+            previous: state.items
+              .filter((i) => i.kind === kind)
+              .slice(0, 12)
+              .map((i) => i.title),
+          }),
+        );
+      },
+      list: () =>
+        this.collect<Session>(r.ark, "/sessions?limit=100&order=desc"),
+      create: async (title) => {
+        if (!selection)
+          throw new ApiError(400, "Generation preparation did not finish.");
+        const session = await r.ark.create(title, "research", selection);
+        await this.remember(r, [session]);
+        return session;
+      },
+      events: (id) =>
+        this.collect<AgentEvent>(
+          r.ark,
+          `/sessions/${validId(id)}/events?order=asc&limit=200`,
+        ),
+      send: (id, event) =>
+        r.ark.request(`/sessions/${validId(id)}/events`, {
+          method: "POST",
+          body: JSON.stringify({ events: [event] }),
+        }),
+    });
+  }
+  async inspiration(): Promise<InspirationSnapshot> {
+    if (!this.signedIn())
+      return {
+        items: [],
+        runs: {},
+        instructionsDismissed: false,
+        instructions: {
+          content: defaultFeedInstructions,
+          revision: digest(defaultFeedInstructions),
+        },
+      };
+    return this.inspirationService(this.context()).snapshot();
+  }
+  async refreshInspiration(kind: InspirationKind) {
+    const service = this.inspirationService(this.context());
+    await service.refresh(z.enum(["feed", "ideas"]).parse(kind));
+    return service.snapshot();
+  }
+  async generateInspiration(kind: InspirationKind) {
+    const service = this.inspirationService(this.context());
+    await service.generate(z.enum(["feed", "ideas"]).parse(kind));
+    return service.snapshot();
+  }
+  saveFeedInstructions(content: string, revision: string) {
+    return this.context().companion.saveFeedInstructions(content, revision);
+  }
+  dismissFeedInstructions() {
+    return this.inspirationService(this.context()).dismissInstructions();
+  }
+  likeInspiration(id: string, liked: boolean) {
+    return this.inspirationService(this.context()).like(
+      z.string().max(200).parse(id),
+      z.boolean().parse(liked),
+    );
+  }
+  async linkInspirationDiscussion(id: string, session: string) {
+    const r = this.context();
+    await r.ark.get(validId(session));
+    return this.inspirationService(r).link(id, session);
+  }
   async identityMounted(id: string) {
     const r = this.context();
     const storeId = await r.companion.storeId();
@@ -229,10 +341,15 @@ export class Client {
       (existing) => {
         const result = existing ?? {};
         for (const row of rows) {
+          const generation = row.title?.match(
+            /^open-muse-(feed|ideas)-[a-f0-9-]{36}$/,
+          );
           if (row.id)
             result[row.id] = {
               ...row,
-              title: row.title || "Untitled task",
+              title: generation
+                ? `${generation[1] === "feed" ? "Feed" : "Ideas"} generation`
+                : row.title || "Untitled task",
               category: row.category ?? result[row.id]?.category ?? "general",
             };
         }

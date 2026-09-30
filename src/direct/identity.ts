@@ -10,6 +10,7 @@ import {
 import type { Page } from "../../shared/types";
 import type { conversationArchive } from "../../shared/conversation-history";
 import { LocalDatabase } from "./storage";
+import { defaultFeedInstructions } from "../../shared/inspiration";
 
 type Store = { id: string; metadata?: Record<string, string> };
 type Memory = {
@@ -184,6 +185,39 @@ export class DirectIdentity {
   }
   storeId() {
     return this.store(false);
+  }
+  async feedInstructions() {
+    const store = await this.store(false);
+    const doc = store ? await this.document(store, "FEED.md") : undefined;
+    return (
+      doc ?? {
+        content: defaultFeedInstructions,
+        revision: digest(defaultFeedInstructions),
+      }
+    );
+  }
+  async saveFeedInstructions(content: string, revision: string) {
+    content = canonicalDocument(
+      z.string().trim().min(1).max(4000).parse(content),
+    );
+    z.string()
+      .regex(/^[a-f0-9]{64}$/)
+      .parse(revision);
+    const store = await this.ensure();
+    const current = await this.document(store, "FEED.md");
+    if (await this.db.get<Write | null>(this.writeKey(store, "FEED.md")))
+      throw new ApiError(
+        409,
+        "The previous feed-instructions write is unconfirmed. Reload to check its result before saving again.",
+      );
+    if ((current?.revision ?? digest(defaultFeedInstructions)) !== revision)
+      throw new ApiError(
+        409,
+        "Feed instructions changed since you opened them. Your draft is preserved; reload and review before saving.",
+      );
+    if (!current || current.content !== content)
+      await this.write(store, "FEED.md", content, current);
+    return this.feedInstructions();
   }
   private async readStore(store: string) {
     const result = defaultIdentity();

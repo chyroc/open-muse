@@ -159,6 +159,82 @@ function pending(): AgentEvent[] {
   ];
 }
 describe("Direct MA client", () => {
+  it("generates personalized feed content in a separate memory-enabled MA session and preserves the main chat", async () => {
+    const f = fixture();
+    await f.login();
+    const main = await f.client.openConversation("main");
+    f.sessionEvents.set(main.id, [
+      {
+        id: "interest",
+        type: "user.message",
+        content: [{ type: "text", text: "I enjoy urban nature walks" }],
+      },
+    ]);
+    await f.client.createGoal("Walk every weekend", "Choose quiet routes");
+    const initial = await f.client.inspiration();
+    await f.client.saveFeedInstructions(
+      "Focus on nearby nature",
+      initial.instructions.revision,
+    );
+    const result = await f.client.generateInspiration("feed");
+    const run = result.runs.feed!;
+    expect(run.session_id).not.toBe(main.id);
+    expect((await f.client.session(run.session_id!)).title).toBe(
+      "Feed generation",
+    );
+    expect((await f.client.conversationIndex()).mainId).toBe(main.id);
+    const request = f.events.find((e) => e.id === run.event_id)!;
+    expect(request.content?.[0].text).toContain("urban nature walks");
+    expect(request.content?.[0].text).toContain("Walk every weekend");
+    expect(request.content?.[0].text).toContain("Focus on nearby nature");
+    expect(
+      f.resources.sessions.find((s) => s.id === run.session_id)?.resources,
+    ).toEqual([{ type: "memory_store", memory_store_id: "memory_stores-1" }]);
+    expect(result.items).toEqual([]);
+    f.events.push(
+      {
+        id: "generated",
+        type: "agent.message",
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              items: [
+                {
+                  title: "Explore a nearby greenway",
+                  body: "Plan a short walk.",
+                  emoji: "🌳",
+                  category: "Outdoors",
+                  reason: "You enjoy nature walks.",
+                  prompt: "Help plan a nature walk",
+                  sources: [],
+                },
+              ],
+            }),
+          },
+        ],
+      },
+      {
+        id: "finished",
+        type: "session.status_idle",
+        stop_reason: { type: "end_turn" },
+      },
+    );
+    const refreshed = await f.client.refreshInspiration("feed");
+    expect(refreshed.items[0]).toMatchObject({
+      title: "Explore a nearby greenway",
+      event_id: "generated",
+      session_id: run.session_id,
+    });
+  });
+  it("keeps signed-out feed reads empty and does not make network calls", async () => {
+    const f = fixture();
+    expect((await f.client.inspiration()).items).toEqual([]);
+    expect(f.fetcher).not.toHaveBeenCalled();
+    await expect(f.client.generateInspiration("ideas")).rejects.toThrow(
+      "Connect to Ark MA",
+    );
+  });
   it("continues a legacy main chat with memory, a scoped history archive and source-preserving UI events", async () => {
     const f = fixture();
     await f.login();

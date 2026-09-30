@@ -17,7 +17,8 @@ import { Client } from "./api";
 import { CompanionSheet } from "./CompanionSheet";
 import { defaultIdentity } from "./direct/identity";
 import { useTask } from "./useTask";
-import { templates } from "./content";
+import { discussionPrompt, type InspirationItem } from "../shared/inspiration";
+import { InspirationPage } from "./InspirationPages";
 import { Activity, Markdown, MuseMark, PermissionCard } from "./components";
 import type {
   AgentEvent,
@@ -32,8 +33,6 @@ import { AuthPanel } from "./AuthPanel";
 import { Studio } from "./Studio";
 import { exportText } from "./platform";
 import {
-  FeedPage,
-  IdeasPage,
   GoalsPage,
   LibraryPage,
   Sheet,
@@ -139,6 +138,8 @@ function Workspace({
   const [panel, setPanel] = useState<"actions" | "status">();
   const [selectedMessage, setSelectedMessage] = useState<AgentEvent>();
   const [goalDraft, setGoalDraft] = useState<Goal>();
+  const [inspirationDraft, setInspirationDraft] = useState<InspirationItem>();
+  const [feedEditor, setFeedEditor] = useState(false);
   const [config, setConfig] = useState<AppConfig>();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [companion, setCompanion] = useState(defaultIdentity);
@@ -279,6 +280,7 @@ function Workspace({
   }
   function newSideChat() {
     setGoalDraft(undefined);
+    setInspirationDraft(undefined);
     setCategory("general");
     navigate("/new");
   }
@@ -312,6 +314,13 @@ function Workspace({
           await client.updateGoal(goalDraft.id, { session_id: session.id });
           setGoalDraft(undefined);
         }
+        if (inspirationDraft) {
+          await client.linkInspirationDiscussion(
+            inspirationDraft.id,
+            session.id,
+          );
+          setInspirationDraft(undefined);
+        }
       }
       if (!alive.current) return;
       await client.send(sessionId, { type: "user.message", text });
@@ -339,10 +348,18 @@ function Workspace({
         await task.refresh();
       }
     });
-  function useTemplate(template: (typeof templates)[number]) {
+  function discussInspiration(item: InspirationItem) {
+    if (item.discussion_id) {
+      navigate(`/task/${item.discussion_id}`);
+      return;
+    }
     setGoalDraft(undefined);
-    setCategory(template.category);
-    setDrafts((current) => ({ ...current, "new-side": template.prompt }));
+    setInspirationDraft(item);
+    setCategory("general");
+    setDrafts((current) => ({
+      ...current,
+      "new-side": discussionPrompt(item),
+    }));
     navigate("/new");
   }
   async function exportConversation() {
@@ -394,7 +411,12 @@ function Workspace({
             name={companion.name}
             onSidebar={() => setSidebarOpen(true)}
             onStatus={() => setPanel("status")}
-            onMore={() => setPanel("actions")}
+            onMore={() =>
+              tab === "feed" ? setFeedEditor(true) : setPanel("actions")
+            }
+            feed={tab === "feed"}
+            showSidebar={isChat}
+            showMore={tab !== "discover"}
             status={status}
             sideTitle={sideTitle}
           />
@@ -610,13 +632,28 @@ function Workspace({
         {!isChat && (
           <div className="companion-content">
             {tab === "feed" && (
-              <FeedPage sessions={sessions} loading={loading} />
+              <InspirationPage
+                key="feed"
+                client={client}
+                kind="feed"
+                onDiscuss={discussInspiration}
+                editInstructions={feedEditor}
+                onEditorClose={() => setFeedEditor(false)}
+              />
             )}
-            {tab === "discover" && <IdeasPage onTemplate={useTemplate} />}
+            {tab === "discover" && (
+              <InspirationPage
+                key="ideas"
+                client={client}
+                kind="ideas"
+                onDiscuss={discussInspiration}
+              />
+            )}
             {tab === "goals" && (
               <GoalsPage
                 client={client}
                 onStart={(goal) => {
+                  setInspirationDraft(undefined);
                   setGoalDraft(goal);
                   setCategory("general");
                   setDrafts((current) => ({

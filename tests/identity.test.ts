@@ -71,6 +71,45 @@ function fixture() {
 }
 
 describe("Personal identity documents", () => {
+  it("stores feed instructions in a separate cloud document and rejects stale drafts", async () => {
+    const f = fixture();
+    const initial = await f.client.feedInstructions();
+    expect(f.writes()).toHaveLength(0);
+    const saved = await f.client.saveFeedInstructions(
+      "Research nature walks",
+      initial.revision,
+    );
+    expect(saved.content).toBe("Research nature walks");
+    expect(
+      f.docs.get("store-1")?.find((doc) => doc.path === "/FEED.md")?.content,
+    ).toBe(saved.content);
+    const before = f.writes().length;
+    await expect(
+      f.client.saveFeedInstructions("stale", initial.revision),
+    ).rejects.toThrow("changed since");
+    expect(f.writes()).toHaveLength(before);
+    expect((await f.client.read()).documents["MEMORY.md"].content).toBe(
+      identityDefaults["MEMORY.md"].trim(),
+    );
+  });
+  it("does not claim a successful no-op save while a different feed write is unconfirmed", async () => {
+    const f = fixture();
+    const initial = await f.client.feedInstructions();
+    const saved = await f.client.saveFeedInstructions(
+      "Original",
+      initial.revision,
+    );
+    await f.db.set("owner:identity:v1:store-1:FEED.md:write", {
+      token: "uncertain",
+      content: "Pending change",
+      before: saved.revision,
+    });
+    const count = f.writes().length;
+    await expect(
+      f.client.saveFeedInstructions("Original", saved.revision),
+    ).rejects.toThrow("unconfirmed");
+    expect(f.writes()).toHaveLength(count);
+  });
   it("waits for update propagation using reads only", async () => {
     const f = fixture();
     await f.client.ensure();

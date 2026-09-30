@@ -1,13 +1,30 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { ChatWelcome, primaryNavigation, goalPrompt } from "../src/MusePages";
 import {
-  ChatWelcome,
-  FeedPage,
-  IdeasPage,
-  primaryNavigation,
-  goalPrompt,
-} from "../src/MusePages";
+  InspirationPage,
+  InspirationPost,
+  InspirationIdea,
+} from "../src/InspirationPages";
+import { Client } from "../src/api";
+import type { InspirationItem } from "../shared/inspiration";
+
+const post: InspirationItem = {
+  id: "post",
+  kind: "feed",
+  title: "An idea for your weekend",
+  body: "Compare two nearby trails.",
+  emoji: "🌿",
+  category: "Outdoors",
+  reason: "You mentioned walking.",
+  prompt: "Help compare these trails.",
+  sources: [{ title: "Trail map", url: "https://example.com/map" }],
+  session_id: "generation",
+  event_id: "answer",
+  created_at: "2026-09-30T00:00:00Z",
+  liked: true,
+};
 
 describe("Muse iOS navigation and real status", () => {
   it("the planning request includes the goal description, existing steps, and completion status", () => {
@@ -40,36 +57,37 @@ describe("Muse iOS navigation and real status", () => {
   });
   it("the dynamic empty state shows no fabricated results", () => {
     const html = renderToStaticMarkup(
-      <FeedPage sessions={[]} loading={false} />,
-    );
-    expect(html).toContain("No new activity yet");
-    expect(html).toContain(
-      "Scheduled pushes and proactive recommendations are not available",
-    );
-  });
-  it("dynamically shows real session links and running status", () => {
-    const html = renderToStaticMarkup(
-      <FeedPage
-        sessions={[
-          {
-            id: "my-session",
-            title: "Test",
-            status: "running",
-            category: "general",
-            created_at: "2026-09-29",
-            updated_at: "2026-09-29",
-          },
-        ]}
-        loading={false}
+      <InspirationPage
+        client={new Client()}
+        kind="feed"
+        onDiscuss={() => {}}
       />,
     );
-    expect(html).toContain("#/task/my-session");
-    expect(html).toContain("Processing");
+    expect(html).toContain("Background delivery is not enabled");
+    expect(html).not.toContain("inspiration-post");
+    expect(html).toContain('disabled=""');
   });
-  it("preset ideas never masquerade as personalized recommendations", () => {
-    expect(renderToStaticMarkup(<IdeasPage onTemplate={() => {}} />)).toContain(
-      "These are preset suggestions",
+  it("shows source links, like state, discussion and post information", () => {
+    const html = renderToStaticMarkup(
+      <InspirationPost
+        item={post}
+        onLike={() => {}}
+        onDiscuss={() => {}}
+        busy={false}
+      />,
     );
+    expect(html).toContain('href="https://example.com/map"');
+    expect(html).toContain('aria-pressed="true"');
+    expect(html).toContain("Discuss");
+    expect(html).toContain('aria-label="Post information"');
+  });
+  it("ideas display generated content, not fixed template tiles", () => {
+    const html = renderToStaticMarkup(
+      <InspirationIdea item={post} onOpen={() => {}} />,
+    );
+    expect(html).toContain(post.title);
+    expect(html).toContain(post.body);
+    expect(html).not.toContain("idea-symbol");
   });
   it("the chat input and its linked goal are visible", () => {
     const html = renderToStaticMarkup(
