@@ -151,7 +151,7 @@ describe("Supabase end-user authentication trial", () => {
     ).toBe(503);
     expect(never).not.toHaveBeenCalled();
   });
-  it("does not borrow service Ark access or accept uploads before end-user workspace migration", async () => {
+  it("does not borrow service Ark access for an account without its own key", async () => {
     const response = await handle(
       request(),
       {
@@ -168,13 +168,16 @@ describe("Supabase end-user authentication trial", () => {
       owner: supabaseOwner(origin, ids[0]),
       backgroundReady: false,
       credentialStorageReady: false,
-      account: { provider: "supabase", workspaceReady: false },
+      account: {
+        provider: "supabase",
+        credential: { configured: false, revision: 0 },
+      },
     });
     const upstream = verifier();
     expect(
       (await handle(request("/v1/connection", token, "PUT", {}), env, upstream))
         .status,
-    ).toBe(409);
+    ).toBe(503);
     expect(upstream).toHaveBeenCalledTimes(1);
     expect(
       (

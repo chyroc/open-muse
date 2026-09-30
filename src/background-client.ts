@@ -67,7 +67,11 @@ const statusSchema = z.object({
   account: z
     .object({
       provider: z.literal("supabase"),
-      workspaceReady: z.literal(false),
+      credential: z.object({
+        configured: z.boolean(),
+        revision: z.number().int().nonnegative(),
+        updatedAt: z.number().nullable(),
+      }),
     })
     .optional(),
   connection: z

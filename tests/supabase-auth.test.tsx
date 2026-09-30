@@ -30,7 +30,10 @@ const status = (owner = supabaseOwner(origin, subject)) => ({
   owner,
   backgroundReady: false,
   credentialStorageReady: false,
-  account: { provider: "supabase", workspaceReady: false },
+  account: {
+    provider: "supabase",
+    credential: { configured: false, revision: 0, updatedAt: null },
+  },
   connection: { configured: false, revision: 0, updatedAt: null },
   schedule: {
     enabled: false,

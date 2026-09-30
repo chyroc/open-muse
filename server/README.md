@@ -32,9 +32,9 @@ label-only device maps are rejected rather than silently sharing one account.
 Never use an Ark API key or Cloudflare API token as a device token.
 Device tokens must start with `muse_device_` and contain a random suffix.
 
-## Supabase Auth trial
+## Muse accounts
 
-The API also accepts end-user access tokens from one explicitly configured
+The API accepts end-user access tokens from one explicitly configured
 Supabase Auth provider, including the Volcano-hosted Supabase service. Configure
 `SUPABASE_AUTH_URL` as its public HTTPS origin and `SUPABASE_ANON_KEY` as its anon
 or publishable key. Never configure a service-role key. The Worker verifies each
@@ -45,19 +45,23 @@ The stable Muse owner is derived from the configured issuer and verified user
 UUID, so different devices retain one identity and different accounts remain
 separate even if they share an Ark key.
 
-This is an authentication-only trial. Supabase users cannot upload Ark
-credentials, enable background generation, or inherit the old private owner's
-data. The status response identifies the account provider and reports
-`workspaceReady: false`. The direct client's existing workspace and memory
-selection has not been migrated to Muse accounts; local Ark login still works
-independently. Do not claim complete account-based native data isolation from
-this login trial. No existing data or private-device bindings are migrated.
+An account uses only the Ark key it stored through
+`/v1/account/credential`; it never inherits the service-level `ARK_*`
+configuration or the private owner's data. The status response reports
+`account: {provider, credential: {configured, revision, updatedAt}}`. To allow
+background work, an account sends only its workspace resource IDs to
+`PUT /v1/connection` as `{workspace, credentialRevision, revision, confirm}`.
+The Worker pairs them with the account's stored key, verifies them read-only,
+and seals the result. A binding prepared for an older key revision returns 409.
+Schedules and runs then work as for private devices, and the scheduler resolves
+each account's own sealed binding.
 
 Only one configured issuer is accepted. Device-token enrollment remains available
-independently. Public signup policy, provider rate limiting, email verification,
-SMTP, and abuse protection are configured at Supabase. The Worker never needs
-an Auth administrative key, password, provider refresh token, or database
-connection string. CORS and native connectivity require live acceptance.
+independently, and device owners cannot claim account owner IDs. Public signup
+policy, provider rate limiting, email verification, SMTP, and abuse protection
+are configured at Supabase. The Worker never needs an Auth administrative key,
+password, provider refresh token, or database connection string. CORS and
+native connectivity require live acceptance.
 
 ### Native email login
 

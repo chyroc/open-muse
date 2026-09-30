@@ -4,7 +4,10 @@ import { Repository } from "./repository";
 import { validateTime } from "./schedule";
 import { tick } from "./jobs";
 import { ConnectionStore, credentialStorageReady } from "./connection";
-import { backgroundConfigurationSchema } from "../../shared/background-connection";
+import {
+  backgroundConfigurationSchema,
+  backgroundWorkspaceSchema,
+} from "../../shared/background-connection";
 import { ArkRemote } from "./ark";
 import { isSupabaseOwner } from "./supabase";
 import { AccountCredentials, rewrapRetiredKeys } from "./account";
@@ -66,11 +69,10 @@ export async function handle(
       response = json({ ok: true, service: "open-muse-server" });
     } else {
       const owner = await authenticate(request, env, fetcher);
-      const accountTrial = isSupabaseOwner(owner);
+      const account = isSupabaseOwner(owner);
       const repo = new Repository(env.DB, owner);
       const connections = new ConnectionStore(env, owner);
       const ready = async () => {
-        if (accountTrial) return false;
         try {
           const connection = await connections.resolve();
           return Boolean(connection && backgroundReady(connection.env));
@@ -95,15 +97,20 @@ export async function handle(
           connected: true,
           owner,
           backgroundReady: await ready(),
-          credentialStorageReady: !accountTrial && credentialStorageReady(env),
-          ...(accountTrial
-            ? { account: { provider: "supabase", workspaceReady: false } }
+          credentialStorageReady: credentialStorageReady(env),
+          ...(account
+            ? {
+                account: {
+                  provider: "supabase",
+                  credential: await new AccountCredentials(env, owner).status(),
+                },
+              }
             : {}),
           connection: await connections.status(),
           schedule: await repo.schedule(),
         });
       } else if (url.pathname === "/v1/account/credential") {
-        if (!accountTrial)
+        if (!account)
           throw new HttpError(
             403,
             "Sign in with a Muse account to store an Ark API key.",
@@ -153,39 +160,78 @@ export async function handle(
         url.pathname === "/v1/connection" &&
         request.method === "PUT"
       ) {
-        if (accountTrial)
-          throw new HttpError(
-            409,
-            "Account login is ready, but per-user Ark workspace migration is not enabled. No credentials were uploaded.",
-          );
         if (!credentialStorageReady(env))
           throw new HttpError(
             503,
             "Encrypted credential storage is not configured.",
           );
         const input = await body(request, 8192);
-        const config = backgroundConfigurationSchema.safeParse(input.config);
-        if (
-          input.confirm !== true ||
-          !Number.isSafeInteger(input.revision) ||
-          (input.revision as number) < 0 ||
-          Object.keys(input).some(
-            (key) => !["config", "revision", "confirm"].includes(key),
-          ) ||
-          !config.success
-        )
-          throw new HttpError(
-            400,
-            "Confirm syncing a valid current Ark configuration.",
+        if (account) {
+          const workspace = backgroundWorkspaceSchema.safeParse(
+            input.workspace,
           );
-        response = json(
-          await connections.save(
-            config.data,
-            input.revision as number,
-            Date.now(),
-            fetcher,
-          ),
-        );
+          if (
+            input.confirm !== true ||
+            !Number.isSafeInteger(input.revision) ||
+            (input.revision as number) < 0 ||
+            !Number.isSafeInteger(input.credentialRevision) ||
+            Object.keys(input).some(
+              (key) =>
+                ![
+                  "workspace",
+                  "credentialRevision",
+                  "revision",
+                  "confirm",
+                ].includes(key),
+            ) ||
+            !workspace.success
+          )
+            throw new HttpError(
+              400,
+              "Confirm allowing background work for a valid workspace.",
+            );
+          const stored = await new AccountCredentials(env, owner).read();
+          if (
+            !stored.credential ||
+            stored.revision !== input.credentialRevision
+          )
+            throw new HttpError(
+              409,
+              "Your Ark API key changed. Refresh before allowing background work.",
+            );
+          response = json(
+            await connections.save(
+              { ...stored.credential, ...workspace.data },
+              input.revision as number,
+              Date.now(),
+              fetcher,
+              stored.revision,
+            ),
+          );
+        } else {
+          const config = backgroundConfigurationSchema.safeParse(input.config);
+          if (
+            input.confirm !== true ||
+            !Number.isSafeInteger(input.revision) ||
+            (input.revision as number) < 0 ||
+            Object.keys(input).some(
+              (key) => !["config", "revision", "confirm"].includes(key),
+            ) ||
+            !config.success
+          )
+            throw new HttpError(
+              400,
+              "Confirm syncing a valid current Ark configuration.",
+            );
+          response = json(
+            await connections.save(
+              config.data,
+              input.revision as number,
+              Date.now(),
+              fetcher,
+            ),
+          );
+        }
       } else if (
         url.pathname === "/v1/connection" &&
         request.method === "DELETE"

@@ -1,5 +1,6 @@
 import type { InspirationContent } from "./inspiration";
 import type { BackgroundConnectionStatus } from "./background-connection";
+import type { AccountCredentialStatus } from "./account-credential";
 
 export type BackgroundPhase =
   | "queued"
@@ -37,7 +38,7 @@ export interface BackgroundStatus {
   owner: string;
   backgroundReady: boolean;
   credentialStorageReady?: boolean;
-  account?: { provider: "supabase"; workspaceReady: false };
+  account?: { provider: "supabase"; credential: AccountCredentialStatus };
   connection?: BackgroundConnectionStatus;
   schedule: BackgroundSchedule;
 }

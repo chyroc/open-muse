@@ -6,6 +6,7 @@ import { backgroundReady, HttpError, type Env } from "./env";
 import { Repository, type Run } from "./repository";
 import { ConnectionStore } from "./connection";
 import { authorizedOwners } from "./auth";
+import { isSupabaseOwner } from "../../shared/supabase-auth";
 
 export async function processRun(
   repo: Repository,
@@ -194,18 +195,28 @@ export async function tick(
   clock = Date.now,
 ) {
   if (env.BACKGROUND_ENABLED !== "true") return;
-  const owners = authorizedOwners(env);
+  let owners: string[] = [];
+  try {
+    owners = authorizedOwners(env);
+  } catch {
+    // Account-only deployments have no private device bindings.
+  }
+  // Account owners only exist after a verified session created their rows.
+  // Each owner still resolves only its own sealed connection below.
+  const accounts = env.SUPABASE_AUTH_URL ? 1 : 0;
   // Bounded, oldest-due-first tenant selection. An error in one tenant cannot
   // cause its key to be reused for another tenant or starve all other owners.
   const due = await env.DB.prepare(
     `SELECT owner_id FROM (
     SELECT owner_id,next_check_at AS due_at FROM runs WHERE phase NOT IN ('complete','failed','needs_attention') AND next_check_at<=?
     UNION ALL SELECT owner_id,next_run_at AS due_at FROM schedules WHERE enabled=1 AND next_run_at<=?
-  ) WHERE owner_id IN (SELECT value FROM json_each(?)) GROUP BY owner_id ORDER BY min(due_at),owner_id LIMIT 20`,
+  ) WHERE owner_id IN (SELECT value FROM json_each(?)) OR (?=1 AND owner_id GLOB 'muse_user_*')
+  GROUP BY owner_id ORDER BY min(due_at),owner_id LIMIT 20`,
   )
-    .bind(clock(), clock(), JSON.stringify(owners))
+    .bind(clock(), clock(), JSON.stringify(owners), accounts)
     .all<{ owner_id: string }>();
   for (const { owner_id: owner } of due.results) {
+    if (!owners.includes(owner) && !isSupabaseOwner(owner)) continue;
     try {
       const store = new ConnectionStore(env, owner);
       const connection = await store.resolve();

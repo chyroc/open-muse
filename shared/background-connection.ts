@@ -25,6 +25,17 @@ export const backgroundConfigurationSchema = z
 export type BackgroundConfiguration = z.infer<
   typeof backgroundConfigurationSchema
 >;
+// Account workspaces send only resource IDs. The Worker pairs them with the
+// Ark key already stored for the same verified account.
+export const backgroundWorkspaceSchema = backgroundConfigurationSchema
+  .pick({
+    agentId: true,
+    agentVersion: true,
+    environmentId: true,
+    memoryStoreId: true,
+  })
+  .strict();
+export type BackgroundWorkspace = z.infer<typeof backgroundWorkspaceSchema>;
 export interface BackgroundConnectionStatus {
   configured: boolean;
   revision: number;
