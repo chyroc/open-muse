@@ -3,6 +3,26 @@ import { mkdir, copyFile, cp, mkdtemp, rename } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 const root = path.resolve(import.meta.dirname, "..");
+// The Mac workspace has its own entry point and never packages the mobile UI.
+execFileSync(
+  process.execPath,
+  [
+    path.join(root, "node_modules/typescript/bin/tsc"),
+    "--project",
+    path.join(root, "macos/tsconfig.json"),
+  ],
+  { stdio: "inherit" },
+);
+execFileSync(
+  process.execPath,
+  [
+    path.join(root, "node_modules/vite/bin/vite.js"),
+    "build",
+    "--config",
+    path.join(root, "macos/vite.config.ts"),
+  ],
+  { stdio: "inherit" },
+);
 const output = path.join(root, ".build/macos");
 await mkdir(output, { recursive: true });
 const staging = await mkdtemp(path.join(output, "direct-build-"));
@@ -35,7 +55,7 @@ await copyFile(
   path.join(root, "macos/Info.plist"),
   path.join(contents, "Info.plist"),
 );
-await cp(path.join(root, "dist"), path.join(resources, "web"), {
+await cp(path.join(root, ".build/macos-ui"), path.join(resources, "web"), {
   recursive: true,
 });
 const iconset = path.join(root, ".build/macos/AppIcon.iconset");
