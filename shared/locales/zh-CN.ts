@@ -324,7 +324,12 @@ export const zhCN: Record<string, string> = {
   "AI-generated content may be inaccurate": "AI 生成的内容可能不准确",
   "Save useful replies and come back to them anytime.":
     "保存有用的回复，随时回来查看。",
-  "Search Library": "搜索资料库",
+  "Search Library": "搜索资源库",
+  // Mac navigation names follow the desktop app this client mirrors. The web
+  // and iOS keys above keep their own wording.
+  "Chat tab": "聊天",
+  "Ideas tab": "点子",
+  "Library tab": "资源库",
   "Saved replies": "已保存的回复",
   "No matching items": "没有匹配的内容",
   "Keep content worth saving": "留下值得保存的内容",
@@ -474,7 +479,7 @@ export const zhCN: Record<string, string> = {
   "Copy message": "复制消息",
   "Message copied": "已复制消息",
   "Reply to message": "回复消息",
-  "Save reply to library": "将回复保存到资料库",
+  "Save reply to library": "将回复保存到资源库",
   "Waiting for your approval": "等待批准",
   "Jump to latest message": "跳转到最新消息",
   "Remove quoted post": "移除引用动态",
@@ -934,9 +939,9 @@ export const zhCN: Record<string, string> = {
   "I want to create a document about ": "我想创建一份文档，主题是",
   "I want to create an image of ": "我想创建一张图片，内容是",
   "I want to create a video of ": "我想创建一段视频，内容是",
-  "Library navigation": "资料库导航",
+  "Library navigation": "资源库导航",
   "Search results": "搜索结果",
-  "Choose Library section": "选择资料库分类",
+  "Choose Library section": "选择资源库分类",
   "Sort artifacts": "排序构件",
   "Last opened": "最近打开",
   "Last created": "最近创建",
@@ -954,11 +959,11 @@ export const zhCN: Record<string, string> = {
   "Select {title}": "选择 {title}",
   "Open {title}": "打开 {title}",
   Remove: "移除",
-  "Remove from Library": "从资料库移除",
-  "Remove from Library?": "从资料库移除？",
+  "Remove from Library": "从资源库移除",
+  "Remove from Library?": "从资源库移除？",
   "Remove {count} saved documents from this Mac? Their cloud conversations are kept. You can undo this while Library stays open.":
-    "从此 Mac 移除 {count} 份已保存的文档？云端对话会保留。在关闭资料库前，可以撤销此次移除。",
-  "{count} removed from Library": "已从资料库移除 {count} 项",
+    "从此 Mac 移除 {count} 份已保存的文档？云端对话会保留。在关闭资源库前，可以撤销此次移除。",
+  "{count} removed from Library": "已从资源库移除 {count} 项",
   "Document options": "文档选项",
   "Download as Markdown": "下载为 Markdown",
   "Open source conversation": "打开来源对话",
@@ -970,15 +975,15 @@ export const zhCN: Record<string, string> = {
     "这里显示你的 MA 记忆文档，尚未接入沙箱文件浏览功能。",
   "MA media and executable artifact indexing are not connected in this Mac build. Creating starts an unsent chat draft; no output is invented.":
     "此 Mac 版本尚未接入 MA 媒体及可执行构件索引。创建操作仅填入未发送的对话草稿，不会生成模拟内容。",
-  "Connect to view your Library": "连接后查看资料库",
+  "Connect to view your Library": "连接后查看资源库",
   "No results for “{query}”": "找不到匹配“{query}”的结果",
   "Clear search": "清除搜索内容",
-  "Loading Library…": "正在加载资料库…",
-  "Opening Library…": "正在打开资料库…",
-  "Library could not load": "无法加载资料库",
+  "Loading Library…": "正在加载资源库…",
+  "Opening Library…": "正在打开资源库…",
+  "Library could not load": "无法加载资源库",
   "Refresh Library": "刷新资料库",
   "The connection changed. Reopen Library before continuing.":
-    "连接已变更。请重新打开资料库后继续。",
+    "连接已变更。请重新打开资源库后继续。",
   "Document saved": "文档已保存",
   "Native document export is unavailable. Reopen the Mac app.":
     "原生文档导出不可用。请重新打开 Mac 应用。",
@@ -1056,7 +1061,7 @@ export const zhCN: Record<string, string> = {
     "Open Muse 没有自己的服务器，不收集任何数据，也不会把分析或崩溃报告发送出这台 Mac。",
   "On this Mac": "在此 Mac 上",
   "Conversation index, goals, ideas, feed preferences and saved Library replies live in a local database scoped to the connected account and project.":
-    "对话索引、目标、想法、动态偏好和已保存的资料库回复，存放在按账户与项目隔离的本地数据库中。",
+    "对话索引、目标、想法、动态偏好和已保存的资源库回复，存放在按账户与项目隔离的本地数据库中。",
   "In your Ark project": "在你的 Ark 项目中",
   "Sessions, events, memory documents and agent configuration stay in the cloud project you connected, under its own retention rules.":
     "会话、事件、记忆文档和智能体配置保留在你连接的云端项目中，遵循该项目自身的保留规则。",
@@ -1070,7 +1075,7 @@ export const zhCN: Record<string, string> = {
   "This Mac build cannot let an agent control your computer. Nothing on this Mac is exposed to MA.":
     "此 Mac 版本无法让智能体操作你的电脑，这台 Mac 上的任何内容都不会开放给 MA。",
   "Sandbox file browsing is not connected. Library's System files only opens your MA memory documents.":
-    "尚未接入沙箱文件浏览。资料库的「系统文件」只能打开你的 MA 记忆文档。",
+    "尚未接入沙箱文件浏览。资源库的「系统文件」只能打开你的 MA 记忆文档。",
   "This client holds no payment method and performs no billing. Cloud usage is billed by your Ark account.":
     "此客户端不保存任何支付方式，也不进行计费；云端用量由你的 Ark 账户结算。",
   "There is no Open Muse service to deliver messages from, so no email, SMS or chat channel can be connected.":

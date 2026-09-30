@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import type { Page } from "./model";
+import { navLabel } from "./labels";
 
 export function Avatar({ large = false }: { large?: boolean }) {
   return (
@@ -45,11 +46,11 @@ export function Rail({
   onStatus: () => void;
 }) {
   const items = [
-    { id: "chat", label: t("Chat"), Icon: MessageCircle },
+    { id: "chat", label: navLabel("chat"), Icon: MessageCircle },
     { id: "feed", label: t("Feed"), Icon: BookOpen },
-    { id: "ideas", label: t("Ideas"), Icon: Lightbulb },
+    { id: "ideas", label: navLabel("ideas"), Icon: Lightbulb },
     { id: "goals", label: t("Goals"), Icon: CheckSquare },
-    { id: "library", label: t("Library"), Icon: Shapes },
+    { id: "library", label: navLabel("library"), Icon: Shapes },
   ] as const;
   return (
     <nav className="rail" aria-label={t("Main navigation")}>

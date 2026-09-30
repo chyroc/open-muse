@@ -31,6 +31,7 @@ import type {
 import type { Client } from "../../src/api";
 import { Markdown } from "../../src/components";
 import { Empty, Modal } from "./Chrome";
+import { navLabel as sectionName } from "./labels";
 import {
   emptyLibraryPresentation,
   exportLibraryDocument,
@@ -334,7 +335,7 @@ export function LibraryPage({
   return (
     <section
       className={`library-page ${split ? "split" : ""}`}
-      aria-label={t("Library")}
+      aria-label={sectionName("library")}
     >
       {!split && !preview && (
         <aside className="library-sidebar" aria-label={t("Library navigation")}>

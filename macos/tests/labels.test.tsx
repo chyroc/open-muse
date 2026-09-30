@@ -1,0 +1,80 @@
+import { readFileSync, readdirSync } from "node:fs";
+import path from "node:path";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { zhCN } from "../../shared/locales/zh-CN";
+import { navLabel } from "../ui/labels";
+
+afterEach(() => vi.unstubAllGlobals());
+
+// Keys this Mac build renamed in place. Each must have no consumer outside
+// macos/, or another client would silently inherit the desktop wording.
+const renamed = [
+  "Search Library",
+  "Save reply to library",
+  "Library navigation",
+  "Choose Library section",
+  "Remove from Library",
+  "Remove from Library?",
+  "{count} removed from Library",
+  "Connect to view your Library",
+  "Loading Library…",
+  "Opening Library…",
+  "Library could not load",
+  "The connection changed. Reopen Library before continuing.",
+];
+// Keys other clients share. Their wording must not move with the Mac rail.
+const shared: Record<string, string> = {
+  Chat: "对话",
+  Ideas: "灵感",
+  Library: "资料库",
+  "Saved to Library": "已保存到资料库",
+  "Refresh Library": "刷新资料库",
+};
+
+function sources(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const file = path.join(directory, entry.name);
+    if (entry.isDirectory())
+      return entry.name === "node_modules" ? [] : sources(file);
+    return /\.tsx?$/.test(file) ? [file] : [];
+  });
+}
+
+describe("Mac navigation labels", () => {
+  it("reads as the desktop wording in Chinese and the source wording in English", () => {
+    vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", ["zh-CN"]);
+    expect([navLabel("chat"), navLabel("ideas"), navLabel("library")]).toEqual([
+      "聊天",
+      "点子",
+      "资源库",
+    ]);
+    vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", ["en-US"]);
+    // Never a disambiguation key such as "Chat tab".
+    expect([navLabel("chat"), navLabel("ideas"), navLabel("library")]).toEqual([
+      "Chat",
+      "Ideas",
+      "Library",
+    ]);
+  });
+  it("keeps the renamed catalog entries Mac-only", () => {
+    const outside = [
+      ...sources("src"),
+      ...sources("ios"),
+      ...sources("shared"),
+      ...sources("tests"),
+    ].map((file) => [file, readFileSync(file, "utf8")] as const);
+    for (const key of renamed) {
+      expect(Object.hasOwn(zhCN, key), key).toBe(true);
+      const consumers = outside
+        .filter(([, text]) => text.includes(`t("${key}"`))
+        .map(([file]) => file);
+      expect(consumers, key).toEqual([]);
+    }
+  });
+  it("leaves the wording the other clients depend on untouched", () => {
+    for (const [key, value] of Object.entries(shared))
+      expect(zhCN[key], key).toBe(value);
+    for (const key of ["Chat tab", "Ideas tab", "Library tab"])
+      expect(Object.hasOwn(zhCN, key), key).toBe(true);
+  });
+});

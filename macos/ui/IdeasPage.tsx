@@ -21,6 +21,7 @@ import type { InspirationItem } from "../../shared/inspiration";
 import { Markdown } from "../../src/components";
 import { useTask } from "../../src/useTask";
 import { Modal } from "./Chrome";
+import { navLabel } from "./labels";
 import {
   MacIdeas,
   ideaDetail,
@@ -530,7 +531,7 @@ export function IdeasPage({
     </div>
   );
   return (
-    <section className="desktop-ideas" aria-label={t("Ideas")}>
+    <section className="desktop-ideas" aria-label={navLabel("ideas")}>
       <button
         className="ideas-split-toggle icon-button"
         aria-label={
@@ -543,7 +544,7 @@ export function IdeasPage({
       </button>
       <div className="ideas-column">
         <header className="ideas-heading">
-          <h1>{t("Ideas")}</h1>
+          <h1>{navLabel("ideas")}</h1>
         </header>
         <p className="ideas-description">
           {t(
