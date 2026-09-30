@@ -5,7 +5,10 @@ import type {
   AccountCredential,
   AccountCredentialResponse,
 } from "../../shared/account-credential";
-import type { AccountWorkspaceResponse } from "../../shared/account-workspace";
+import type {
+  AccountWorkspaceComparison,
+  AccountWorkspaceResponse,
+} from "../../shared/account-workspace";
 import { credentials as defaultVault, type CredentialStore } from "./storage";
 import { ARK_BASE_URL, directFetch } from "./transport";
 
@@ -65,7 +68,12 @@ export interface AccountProvider {
     revision: number,
     credentialRevision: number,
     mode?: "adopt" | "discard",
+    expected?: string,
   ): Promise<AccountWorkspaceResponse>;
+  compareAccountWorkspace(
+    revision: number,
+    credentialRevision: number,
+  ): Promise<AccountWorkspaceComparison>;
   updateAccountWorkspace(
     kind: "agent" | "environment",
     changes: Record<string, unknown>,

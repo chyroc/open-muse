@@ -126,6 +126,19 @@ export const zhAccount: Record<string, string> = {
   "Ark matched the saved settings when checked. An earlier unconfirmed environment change may still arrive, so they stay marked as possibly different.":
     "检查时 Ark 与已保存的设置一致。之前一次未确认的环境更改仍可能稍后生效，因此仍标记为可能不同。",
   "Check the settings again": "重新检查设置",
+  "Agent settings": "智能体设置",
+  "Environment settings": "环境设置",
+  "In Ark now": "Ark 当前值",
+  "Not set": "未设置",
+  "Ark's current settings match the saved ones at the time of this check.":
+    "本次检查时，Ark 的当前设置与已保存的设置一致。",
+  "{field} in Ark references resources an account cannot use, so Ark's current settings cannot be saved.":
+    "Ark 中的 {field} 引用了账号无法使用的资源，因此无法保存 Ark 的当前设置。",
+  "Ark's current settings are too large to save.":
+    "Ark 的当前设置过大，无法保存。",
+  "Reading Ark's current settings…": "正在读取 Ark 的当前设置…",
+  "Ark's settings changed after you reviewed them. Review them again; nothing was saved.":
+    "你查看之后 Ark 的设置又发生了变化。请重新查看；未保存任何内容。",
   "Needs review": "需要确认",
   "The workspace settings need your review: they reference resources an account cannot use or differ from what Open Muse saved. Background work stays paused until you decide.":
     "工作区设置需要你确认：它们引用了账号无法使用的资源，或与 Open Muse 保存的设置不一致。在你做出选择之前，后台任务保持暂停。",

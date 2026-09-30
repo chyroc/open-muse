@@ -515,8 +515,15 @@ describe("Muse accounts end to end", () => {
     expect(await alice.account.status()).toMatchObject({
       backgroundReady: false,
     });
-    // Only the user's explicit acceptance ends it.
-    expect(await alice.client.checkWorkspaceSettings("adopt")).toMatchObject({
+    // Only the user's explicit acceptance of the values shown ends it.
+    const shown = await alice.client.compareWorkspaceSettings();
+    expect(shown).toMatchObject({ kind: "environment", differs: [] });
+    await expect(
+      alice.client.checkWorkspaceSettings("adopt"),
+    ).rejects.toThrow();
+    expect(
+      await alice.client.checkWorkspaceSettings("adopt", shown.expected),
+    ).toMatchObject({
       change: "adopted",
     });
     expect((await alice.client.workspaceStatus()).review).toBeUndefined();

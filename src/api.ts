@@ -476,7 +476,11 @@ export class Client {
   // Resolves an unconfirmed agent or environment change by reading Ark on the
   // service; nothing is sent to Ark. adopt saves the current values and is
   // only for an explicit user decision after review.
-  async checkWorkspaceSettings(mode?: "adopt" | "discard") {
+  async checkWorkspaceSettings(
+    mode?: "adopt" | "discard",
+    // Adopting names the values the user reviewed in compareWorkspaceSettings.
+    expected?: string,
+  ) {
     const account = this.identity.account!;
     const current = await account.accountWorkspace();
     if (!current.settings) return current;
@@ -484,6 +488,17 @@ export class Client {
       current.revision,
       this.identity.value!.revision!,
       mode,
+      expected,
+    );
+  }
+  // Ark's current values for the settings under review next to the saved
+  // ones. Read on the service; nothing is changed.
+  async compareWorkspaceSettings() {
+    const account = this.identity.account!;
+    const current = await account.accountWorkspace();
+    return account.compareAccountWorkspace(
+      current.revision,
+      this.identity.value!.revision!,
     );
   }
   async backgroundConfiguration(confirm: boolean) {

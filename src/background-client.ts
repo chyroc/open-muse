@@ -10,7 +10,10 @@ import {
   accountCredentialResponseSchema,
   type AccountCredential,
 } from "../shared/account-credential";
-import { accountWorkspaceResponseSchema } from "../shared/account-workspace";
+import {
+  accountWorkspaceComparisonSchema,
+  accountWorkspaceResponseSchema,
+} from "../shared/account-workspace";
 
 // Carries the service's machine-readable reason so callers can act on it.
 export class BackgroundRequestError extends Error {
@@ -33,6 +36,9 @@ const reasons = (): Record<string, string> => ({
   ),
   unconfirmed: t(
     "The change was sent but its result is unconfirmed. Open Muse checks it before anything else is changed; it was not repeated.",
+  ),
+  settings_changed: t(
+    "Ark's settings changed after you reviewed them. Review them again; nothing was saved.",
   ),
 });
 const RENEW_MARGIN = 120_000;
@@ -470,7 +476,8 @@ export class BackgroundClient {
       | "/v1/account/credential"
       | "/v1/account/workspace"
       | "/v1/account/workspace/settings"
-      | "/v1/account/workspace/reconcile",
+      | "/v1/account/workspace/reconcile"
+      | "/v1/account/workspace/compare",
     schema: z.ZodType<T>,
     init?: RequestInit,
     messages?: Partial<Record<number, string>>,
@@ -553,6 +560,8 @@ export class BackgroundClient {
     revision: number,
     credentialRevision: number,
     mode?: "adopt" | "discard",
+    // Adopting names the reviewed values, from compareAccountWorkspace.
+    expected?: string,
   ) {
     return this.accountRequest(
       "/v1/account/workspace/reconcile",
@@ -563,8 +572,21 @@ export class BackgroundClient {
           revision,
           credentialRevision,
           ...(mode ? { mode } : {}),
+          ...(expected ? { expected } : {}),
           confirm: true,
         }),
+      },
+    );
+  }
+  // Reads Ark's current values for the settings under review, next to the
+  // saved ones, on the service; nothing is changed.
+  compareAccountWorkspace(revision: number, credentialRevision: number) {
+    return this.accountRequest(
+      "/v1/account/workspace/compare",
+      accountWorkspaceComparisonSchema,
+      {
+        method: "POST",
+        body: JSON.stringify({ revision, credentialRevision, confirm: true }),
       },
     );
   }

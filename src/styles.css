@@ -280,6 +280,33 @@
 .auth-connected .workspace-card {
   background: #f8f9f3;
 }
+.workspace-comparison {
+  font-size: 12px;
+  color: #596847;
+}
+.workspace-comparison h4 {
+  margin: 12px 0 4px;
+  font-size: 13px;
+  color: #30362b;
+}
+.workspace-comparison summary {
+  cursor: pointer;
+  padding: 4px 0;
+}
+.workspace-comparison p {
+  margin: 6px 0 2px;
+}
+.workspace-comparison pre {
+  margin: 0;
+  max-height: 240px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 8px;
+  border-radius: 8px;
+  background: #f3f4ec;
+  color: #30362b;
+}
 .advanced-workbench > summary,
 .advanced-connection > summary,
 .auth-key-details > summary {

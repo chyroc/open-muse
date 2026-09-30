@@ -165,17 +165,36 @@ const change = async (
     },
     "PUT",
   );
-const reconcile = async (mode?: "adopt" | "discard") =>
+const compare = async () =>
   call(
+    "/v1/account/workspace/compare",
+    {
+      revision: (await record()).revision,
+      credentialRevision: 1,
+      confirm: true,
+    },
+    "POST",
+  );
+// Adopting names the values the user reviewed, as the app does.
+const reconcile = async (mode?: "adopt" | "discard", expected?: string) => {
+  if (mode === "adopt" && expected === undefined) {
+    const reviewed = await compare();
+    expected = reviewed.ok
+      ? ((await reviewed.json()) as { expected: string }).expected
+      : "0".repeat(64);
+  }
+  return call(
     "/v1/account/workspace/reconcile",
     {
       revision: (await record()).revision,
       credentialRevision: 1,
       ...(mode ? { mode } : {}),
+      ...(expected ? { expected } : {}),
       confirm: true,
     },
     "POST",
   );
+};
 const config = (networking: string) => ({
   config: { type: "cloud", networking: { type: networking } },
 });
@@ -489,6 +508,70 @@ describe("Account workspace settings changes", () => {
       change: "adopted",
       workspace: { agent: { system: "arrives late" } },
     });
+  });
+
+  it("shows what adopting would save and saves only the values the user reviewed", async () => {
+    const saved = await record();
+    const id = saved.workspace.environmentId;
+    // Nothing to review: nothing to compare.
+    expect((await compare()).status).toBe(409);
+    nextUpdate = "network-before";
+    expect((await change("environment", config("reviewed"))).status).toBe(503);
+    ark.environments[id].config = config("from elsewhere").config;
+    expect((await reconcile()).status).toBe(409);
+    const before = updates();
+    const shown = await compare();
+    expect(shown.status).toBe(200);
+    const comparison = (await shown.json()) as Record<string, unknown>;
+    expect(comparison).toMatchObject({
+      kind: "environment",
+      saved: saved.workspace.environment,
+      current: { config: config("from elsewhere").config },
+      differs: ["config"],
+      unusable: [],
+      tooLarge: false,
+    });
+    // Adopting requires naming the reviewed values.
+    expect(
+      (
+        await call(
+          "/v1/account/workspace/reconcile",
+          {
+            revision: (await record()).revision,
+            credentialRevision: 1,
+            mode: "adopt",
+            confirm: true,
+          },
+          "POST",
+        )
+      ).status,
+    ).toBe(400);
+    // Ark changes after the user looked: nothing is saved.
+    ark.environments[id].config = config("changed again").config;
+    const stale = await reconcile("adopt", comparison.expected as string);
+    expect(stale.status).toBe(409);
+    expect(await stale.json()).toMatchObject({ code: "settings_changed" });
+    expect(await record()).toMatchObject({
+      settings: "review",
+      workspace: { environment: saved.workspace.environment },
+    });
+    expect(updates()).toBe(before);
+    // Values an account may not use are shown with the reason.
+    ark.environments[id].config = {
+      type: "cloud",
+      tos: { bucket: "someone", prefix: "" },
+    };
+    expect(await (await compare()).json()).toMatchObject({
+      unusable: ["config"],
+    });
+    expect((await reconcile("adopt")).status).toBe(409);
+    ark.environments[id].config = config("changed again").config;
+    expect(await (await reconcile("adopt")).json()).toMatchObject({
+      change: "adopted",
+      workspace: { environment: { config: config("changed again").config } },
+    });
+    expect(updates()).toBe(before);
+    expect((await record()).settings).toBeUndefined();
   });
 
   it("never builds an agent change on a version Open Muse did not save", async () => {

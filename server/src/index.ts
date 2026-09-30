@@ -128,11 +128,19 @@ export async function handle(
           !Number.isSafeInteger(input.credentialRevision) ||
           (input.mode !== undefined &&
             !["adopt", "discard"].includes(input.mode as string)) ||
+          // Adopting names the values the user reviewed.
+          (input.mode === "adopt") !==
+            (typeof input.expected === "string" &&
+              /^[a-f0-9]{64}$/.test(input.expected)) ||
           Object.keys(input).some(
             (key) =>
-              !["revision", "credentialRevision", "mode", "confirm"].includes(
-                key,
-              ),
+              ![
+                "revision",
+                "credentialRevision",
+                "mode",
+                "expected",
+                "confirm",
+              ].includes(key),
           )
         )
           throw new HttpError(400, "Confirm checking the workspace settings.");
@@ -141,6 +149,34 @@ export async function handle(
             input.revision as number,
             input.credentialRevision as number,
             (input.mode as "adopt" | "discard" | undefined) ?? "check",
+            Date.now(),
+            input.expected as string | undefined,
+          ),
+        );
+      } else if (
+        url.pathname === "/v1/account/workspace/compare" &&
+        request.method === "POST"
+      ) {
+        if (!account)
+          throw new HttpError(
+            403,
+            "Sign in with a Muse account to change the workspace.",
+          );
+        const input = await body(request);
+        if (
+          input.confirm !== true ||
+          !Number.isSafeInteger(input.revision) ||
+          !Number.isSafeInteger(input.credentialRevision) ||
+          Object.keys(input).some(
+            (key) =>
+              !["revision", "credentialRevision", "confirm"].includes(key),
+          )
+        )
+          throw new HttpError(400, "Confirm checking the workspace settings.");
+        response = json(
+          await new AccountWorkspaces(env, owner, fetcher).compare(
+            input.revision as number,
+            input.credentialRevision as number,
           ),
         );
       } else if (

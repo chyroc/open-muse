@@ -750,6 +750,61 @@ export class AccountWorkspaces {
       }
     return { ...(await this.read()), background };
   }
+  // Shows what adopting would save: Ark's current values for the resource
+  // under review next to the saved ones, which fields differ, and whether an
+  // account may use them. Reads Ark only and changes nothing; the values go
+  // only to this account's verified session, like its sealed settings.
+  async compare(revision: number, credentialRevision: number) {
+    const { workspaceKey, ark } = await this.context(credentialRevision);
+    const row = await this.row(workspaceKey);
+    if ((row?.revision ?? 0) !== revision)
+      throw new HttpError(
+        409,
+        "The workspace settings changed on another device. Refresh before saving.",
+      );
+    const pending = this.pending(row);
+    const workspace = await this.decode(workspaceKey, row);
+    const update = pending && "op" in pending ? pending : undefined;
+    const kind =
+      update?.kind ??
+      (Object.keys(workspace.drift ?? {})[0] as
+        "agent" | "environment" | undefined);
+    if (!kind) throw new HttpError(409, "There is no change to review.");
+    const { collection, field, label } = kinds[kind];
+    const id = workspace[field] as string;
+    const current = await ark
+      .request<Record<string, unknown> & { metadata?: Record<string, string> }>(
+        `/${collection}/${encodeURIComponent(id)}`,
+      )
+      .catch(() => {
+        throw unconfirmed("Ark could not be read. Nothing was changed.");
+      });
+    if (current.id !== id || current.metadata?.[label] !== workspaceKey)
+      throw new HttpError(
+        409,
+        "A workspace resource was changed outside Open Muse. Review it in the Ark console.",
+        "settings_review",
+      );
+    const fields = settingsFields[kind];
+    const values = pick(current, fields);
+    const saved = (workspace[kind] ?? {}) as Record<string, unknown>;
+    return {
+      revision: row!.revision,
+      kind,
+      current: values,
+      saved,
+      differs: fields.filter(
+        (key) =>
+          canonicalJson(values[key] ?? null) !==
+          canonicalJson(saved[key] ?? null),
+      ),
+      unusable: usable(kind, values)
+        ? []
+        : [kind === "agent" ? "skills" : "config"],
+      tooLarge: JSON.stringify(values).length > 100_000,
+      expected: fingerprint(current, fields),
+    };
+  }
   // Resolves an unconfirmed change or a drift by reading Ark only; nothing is
   // sent to Ark. "adopt" seals Ark's current values and "discard" keeps the
   // saved settings; both are explicit user decisions.
@@ -758,6 +813,8 @@ export class AccountWorkspaces {
     credentialRevision: number,
     mode: "check" | "adopt" | "discard" = "check",
     now = Date.now(),
+    // The fingerprint of Ark's values the user reviewed before adopting.
+    expected?: string,
   ) {
     const { workspaceKey, ark } = await this.context(credentialRevision);
     const row = await this.row(workspaceKey);
@@ -826,6 +883,15 @@ export class AccountWorkspaces {
       return review(
         "A workspace resource was changed outside Open Muse. Review it in the Ark console.",
       );
+    const fields = settingsFields[kind];
+    // Adopting saves only the values the user reviewed. If Ark changed since,
+    // nothing is saved and the user reviews again.
+    if (mode === "adopt" && fingerprint(current, fields) !== expected)
+      throw new HttpError(
+        409,
+        "Ark's settings changed after you reviewed them. Review them again; nothing was saved.",
+        "settings_changed",
+      );
     const seal = async (
       change: "applied" | "adopted" | "drift_cleared" | "matches_now",
     ) => ({
@@ -842,7 +908,6 @@ export class AccountWorkspaces {
       )),
       change,
     });
-    const fields = settingsFields[kind];
     if (!update) {
       // An agent's drift ends when Ark matches the saved settings, version
       // included: a late write would change the version. An environment has

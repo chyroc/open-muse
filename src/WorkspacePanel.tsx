@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Check, LoaderCircle, RefreshCw } from "lucide-react";
 import type { Client } from "./api";
 import type { WorkspaceStatus } from "../shared/types";
+import type { AccountWorkspaceComparison } from "../shared/account-workspace";
 
 // A workspace that needs a decision is never shown as simply ready.
 function reviewNote(review: NonNullable<WorkspaceStatus["review"]>) {
@@ -23,11 +24,65 @@ function reviewNote(review: NonNullable<WorkspaceStatus["review"]>) {
           );
 }
 
+// Settings values are the user's own and shown as they are, shortened.
+function shown(value: unknown) {
+  if (value === undefined || value === null) return t("Not set");
+  const text =
+    typeof value === "string" ? value : JSON.stringify(value, null, 2);
+  return text.length > 4000 ? `${text.slice(0, 4000)}…` : text;
+}
+
+// Ark's current values next to the saved ones, so adopting saves only what
+// the user has seen.
+function Comparison({ value }: { value: AccountWorkspaceComparison }) {
+  return (
+    <div className="workspace-comparison">
+      <h4>
+        {value.kind === "agent"
+          ? t("Agent settings")
+          : t("Environment settings")}
+      </h4>
+      {value.differs.length ? (
+        value.differs.map((key) => (
+          <details key={key}>
+            <summary>
+              <code>{key}</code>
+            </summary>
+            <p>{t("Saved")}</p>
+            <pre>{shown(value.saved[key])}</pre>
+            <p>{t("In Ark now")}</p>
+            <pre>{shown(value.current[key])}</pre>
+          </details>
+        ))
+      ) : (
+        <p>
+          {t(
+            "Ark's current settings match the saved ones at the time of this check.",
+          )}
+        </p>
+      )}
+      {value.unusable.map((key) => (
+        <p key={key} role="alert">
+          {t(
+            "{field} in Ark references resources an account cannot use, so Ark's current settings cannot be saved.",
+            { field: key },
+          )}
+        </p>
+      ))}
+      {value.tooLarge && (
+        <p role="alert">{t("Ark's current settings are too large to save.")}</p>
+      )}
+    </div>
+  );
+}
+
 export function WorkspacePanel({ client }: { client: Client }) {
   const [status, setStatus] = useState<WorkspaceStatus>();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [comparison, setComparison] = useState<AccountWorkspaceComparison>();
+  const [comparisonError, setComparisonError] = useState("");
   useEffect(() => {
     const abort = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
@@ -50,6 +105,22 @@ export function WorkspacePanel({ client }: { client: Client }) {
       clearTimeout(timer);
     };
   }, [client, busy]);
+  const reviewing =
+    !busy && (status?.review === "settings" || status?.review === "drift");
+  // Read again whenever a decision is due, so the values shown are current.
+  useEffect(() => {
+    setComparison(undefined);
+    setComparisonError("");
+    if (!reviewing) return;
+    let active = true;
+    client.compareWorkspaceSettings().then(
+      (value) => active && setComparison(value),
+      (e) => active && setComparisonError((e as Error).message),
+    );
+    return () => {
+      active = false;
+    };
+  }, [client, reviewing, status]);
   const preparing = busy || status?.state === "preparing";
   // A decision the user made about a change or a rebuild that needed review.
   async function decide(action: () => Promise<object>) {
@@ -91,6 +162,8 @@ export function WorkspacePanel({ client }: { client: Client }) {
       setBusy(false);
     }
   }
+  const adoptable =
+    comparison && !comparison.unusable.length && !comparison.tooLarge;
   return (
     <section className="workspace-card" aria-label={t("Personal workspace")}>
       <div className="workspace-heading">
@@ -130,45 +203,54 @@ export function WorkspacePanel({ client }: { client: Client }) {
           status?.message ||
           t("Reading workspace status…")}
       </p>
-      {status?.state === "ready" ? (
-        <a className="button primary" href="#/">
-          {t("Start something new")}
-        </a>
-      ) : (
-        status?.state !== "disconnected" && (
-          <button
-            className="button secondary"
-            disabled={busy || (preparing && !error)}
-            onClick={() => void prepare()}
-          >
-            {preparing ? (
-              <LoaderCircle className="spin" size={16} />
-            ) : (
-              <RefreshCw size={16} />
-            )}
-            {error
-              ? t("Read status again")
-              : preparing
-                ? t("Setting up automatically…")
-                : status?.state === "error"
-                  ? t("Continue setup")
-                  : t("Set up workspace")}
-          </button>
-        )
-      )}
+      {status?.state === "ready"
+        ? // Starting work is offered once no decision is pending.
+          !status.review && (
+            <a className="button primary" href="#/">
+              {t("Start something new")}
+            </a>
+          )
+        : status?.state !== "disconnected" && (
+            <button
+              className="button secondary"
+              disabled={busy || (preparing && !error)}
+              onClick={() => void prepare()}
+            >
+              {preparing ? (
+                <LoaderCircle className="spin" size={16} />
+              ) : (
+                <RefreshCw size={16} />
+              )}
+              {error
+                ? t("Read status again")
+                : preparing
+                  ? t("Setting up automatically…")
+                  : status?.state === "error"
+                    ? t("Continue setup")
+                    : t("Set up workspace")}
+            </button>
+          )}
       {notice && (
         <p className="background-note" role="status">
           {notice}
         </p>
       )}
-      {!busy &&
-        (status?.review === "settings" || status?.review === "drift") && (
+      {reviewing && (
+        <>
+          {comparison ? (
+            <Comparison value={comparison} />
+          ) : (
+            <p className="background-note">
+              {comparisonError || t("Reading Ark's current settings…")}
+            </p>
+          )}
           <p className="background-note">
             {t(
               "Saving the current settings accepts Ark's values as they are when you save them. An earlier unconfirmed change may still arrive later.",
             )}
           </p>
-        )}
+        </>
+      )}
       {!busy && status?.review && (
         <div className="background-actions">
           {(status.review === "unconfirmed" || status.review === "drift") && (
@@ -181,11 +263,15 @@ export function WorkspacePanel({ client }: { client: Client }) {
                 : t("Check the last change")}
             </button>
           )}
-          {(status.review === "settings" || status.review === "drift") && (
+          {reviewing && (
             <button
               className="button secondary"
+              disabled={!adoptable}
               onClick={() =>
-                void decide(() => client.checkWorkspaceSettings("adopt"))
+                comparison &&
+                void decide(() =>
+                  client.checkWorkspaceSettings("adopt", comparison.expected),
+                )
               }
             >
               {t("Save the current settings")}

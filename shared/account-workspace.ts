@@ -112,3 +112,21 @@ export const accountWorkspaceResponseSchema = z
 export type AccountWorkspaceResponse = z.infer<
   typeof accountWorkspaceResponseSchema
 >;
+// What adopting would save: Ark's current values for the resource under
+// review next to the saved ones. `expected` names these exact values when the
+// user adopts them.
+export const accountWorkspaceComparisonSchema = z
+  .object({
+    revision: z.number().int().nonnegative(),
+    kind: z.enum(["agent", "environment"]),
+    current: z.record(z.string(), z.unknown()),
+    saved: z.record(z.string(), z.unknown()),
+    differs: z.array(z.string().max(40)).max(20),
+    unusable: z.array(z.string().max(40)).max(20),
+    tooLarge: z.boolean(),
+    expected: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict();
+export type AccountWorkspaceComparison = z.infer<
+  typeof accountWorkspaceComparisonSchema
+>;

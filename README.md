@@ -101,8 +101,9 @@ resource and seals the result with the account. Only one change can be in
 flight per workspace. If its result is unconfirmed (a timeout or lost
 response), nothing else is changed until the app checks Ark read-only. An
 agent still at its earlier version is reported as not applied yet; any other
-result Open Muse cannot prove asks the user to review it and either save the
-current settings or keep the saved ones; background work pauses as soon as a
+result Open Muse cannot prove asks the user to review it: Settings shows each
+field that differs, saved and in Ark now, and either saves exactly the values
+shown or keeps the saved ones; background work pauses as soon as a
 review is needed. Keeping the saved settings marks that Ark may differ from
 them and keeps background work paused. For the agent, whose versions show a
 late change, that ends once a check finds it matching again; an environment has

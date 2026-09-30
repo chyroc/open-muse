@@ -294,9 +294,17 @@ deployed or that a real unattended generation can complete.
   rebinds allowed background work to the new version, which pauses its
   schedule; the response reports `background: "rebound" | "stale" |
   "unchanged"`. At most 60 changes per account per hour.
+- `POST /v1/account/workspace/compare`: `{revision, credentialRevision,
+  confirm: true}` reads Ark's current values for the resource under review
+  (a held change or a drift) and returns `{revision, kind, current, saved,
+  differs, unusable, tooLarge, expected}`: the settings fields Open Muse seals,
+  which of them differ from the saved ones, which reference resources an
+  account cannot use, and a fingerprint of exactly these values. Nothing is
+  changed. The values go only to the account's verified session, like its
+  sealed settings.
 - `POST /v1/account/workspace/reconcile`: `{revision, credentialRevision,
-  mode?: "adopt" | "discard", confirm: true}` resolves a held change or a drift
-  by reading Ark only; nothing is sent to Ark. Without `mode` it reports
+  mode?: "adopt" | "discard", expected?, confirm: true}` resolves a held change
+  or a drift by reading Ark only; nothing is sent to Ark. Without `mode` it reports
   `change: "applied"` when the agent shows the change at exactly the next
   version, which proves this one write executed. For an environment, which has
   no version, Ark showing the requested values is sealed but reported as
@@ -306,8 +314,11 @@ deployed or that a real unattended generation can complete.
   and if the change arrives later the agent's version has moved, so the next
   change is refused and checked again instead of overwriting it. Any other
   result is 409 `{code: "settings_review"}`. After review, `mode: "adopt"`
-  seals Ark's current values if an account may use them (the user accepts them
-  as they are; an earlier unconfirmed write may still arrive), and `mode:
+  with the `expected` fingerprint from `compare` seals Ark's current values if
+  an account may use them and they are still exactly the values the user
+  reviewed; otherwise it returns 409 `{code: "settings_changed"}` and saves
+  nothing (the user accepts the values as they are; an earlier unconfirmed
+  write may still arrive), and `mode:
   "discard"` keeps the saved settings, reports `change: "discarded"` and
   `settings: "drift"` (Ark may differ from them), and in the same batch revokes
   background work and pauses its schedule; binding background work is refused
