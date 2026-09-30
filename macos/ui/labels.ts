@@ -13,3 +13,17 @@ export function navLabel(section: NavSection) {
   if (section === "ideas") return chinese ? t("Ideas tab") : t("Ideas");
   return chinese ? t("Library tab") : t("Library");
 }
+
+// Wording the other clients also use, where only the Mac names the feature the
+// way the desktop app does. English keeps the shared source string.
+export function refreshIdeasLabel() {
+  return systemLanguage() === "zh-CN"
+    ? t("Refresh the ideas tab")
+    : t("Refresh ideas");
+}
+
+export function viewIdeaLabel(title: string) {
+  return systemLanguage() === "zh-CN"
+    ? t("View an idea in the ideas tab: {title}", { title })
+    : t("View idea: {title}", { title });
+}

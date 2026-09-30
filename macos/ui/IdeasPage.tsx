@@ -21,7 +21,7 @@ import type { InspirationItem } from "../../shared/inspiration";
 import { Markdown } from "../../src/components";
 import { useTask } from "../../src/useTask";
 import { Modal } from "./Chrome";
-import { navLabel } from "./labels";
+import { navLabel, refreshIdeasLabel, viewIdeaLabel } from "./labels";
 import {
   MacIdeas,
   ideaDetail,
@@ -75,7 +75,7 @@ function IdeaRow({
       <button
         className="idea-open"
         onClick={onOpen}
-        aria-label={t("View idea: {title}", { title: item.title })}
+        aria-label={viewIdeaLabel(item.title)}
       >
         <h3>{item.title}</h3>
         <p>{item.body}</p>
@@ -674,7 +674,7 @@ export function IdeasPage({
             </button>
             <button
               className="icon-button"
-              aria-label={t("Refresh ideas")}
+              aria-label={refreshIdeasLabel()}
               disabled={busy}
               onClick={() => void refresh()}
             >

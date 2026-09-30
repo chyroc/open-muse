@@ -3,6 +3,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { zhCN } from "../../shared/locales/zh-CN";
 import { navLabel } from "../ui/labels";
+import { refreshIdeasLabel, viewIdeaLabel } from "../ui/labels";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -56,6 +57,11 @@ describe("Mac navigation labels", () => {
       "Ideas",
       "Library",
     ]);
+    expect(refreshIdeasLabel()).toBe("Refresh ideas");
+    expect(viewIdeaLabel("A title")).toBe("View idea: A title");
+    vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", ["zh-CN"]);
+    expect(refreshIdeasLabel()).toBe("刷新点子");
+    expect(viewIdeaLabel("A title")).toBe("查看点子：A title");
   });
   it("keeps the renamed catalog entries Mac-only", () => {
     const outside = [
@@ -75,6 +81,19 @@ describe("Mac navigation labels", () => {
   it("leaves the wording the other clients depend on untouched", () => {
     // The main chat pill names the same section as the rail that opens it.
     expect(zhCN["Open chats and side chats"]).toContain("聊天");
+    // The feature keeps one name across its own surfaces.
+    for (const key of [
+      "Opening ideas…",
+      "Loading ideas",
+      "No ideas yet.",
+      "Featured ideas",
+      "Idea dismissed",
+      "More ideas",
+      "Idea feedback",
+    ])
+      expect(zhCN[key], key).toContain("点子");
+    for (const key of ["Open side-by-side chat", "Close side-by-side chat"])
+      expect(zhCN[key], key).toContain("聊天");
     for (const [key, value] of Object.entries(shared))
       expect(zhCN[key], key).toBe(value);
     for (const key of ["Chat tab", "Ideas tab", "Library tab"])
