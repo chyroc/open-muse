@@ -63,6 +63,14 @@ export const accountWorkspaceSchema = z
       .object({ agent: snapshot.optional(), environment: snapshot.optional() })
       .strict()
       .optional(),
+    // When the user kept the saved settings although Ark may differ from them.
+    drift: z
+      .object({
+        agent: z.number().int().optional(),
+        environment: z.number().int().optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 export type AccountWorkspace = z.infer<typeof accountWorkspaceSchema>;
@@ -72,7 +80,8 @@ export const accountWorkspaceResponseSchema = z
     workspace: accountWorkspaceSchema.optional(),
     unconfirmed: z.boolean(),
     // A settings change whose result is unconfirmed or needs the user's review.
-    settings: z.enum(["unconfirmed", "review"]).optional(),
+    // "drift": the user kept the saved settings although Ark may differ.
+    settings: z.enum(["unconfirmed", "review", "drift"]).optional(),
     // How a deleted agent or environment was created again.
     rebuilt: z
       .object({
@@ -82,7 +91,16 @@ export const accountWorkspaceResponseSchema = z
       .strict()
       .optional(),
     // How an unconfirmed change was resolved.
-    change: z.enum(["applied", "adopted", "not_applied"]).optional(),
+    change: z
+      .enum([
+        "applied",
+        "adopted",
+        "not_applied_yet",
+        "discarded",
+        "drift_cleared",
+        "drift_kept",
+      ])
+      .optional(),
     // After a settings change: whether background work was rebound to the
     // new agent version (which pauses the schedule) or needs review.
     background: z.enum(["unchanged", "rebound", "stale"]).optional(),

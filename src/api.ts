@@ -450,7 +450,22 @@ export class Client {
         message:
           "Sign in and connect an Ark project to prepare your workspace.",
       };
-    return this.context().workspace.status();
+    const status = await this.context().workspace.status();
+    if (!this.identity.accountOwner()) return status;
+    // The account's settings state is shown whenever it needs attention, so a
+    // kept-but-possibly-different setting is never reported as in sync.
+    const settings = (await this.identity.account!.accountWorkspace()).settings;
+    return settings
+      ? {
+          ...status,
+          review:
+            settings === "review"
+              ? "settings"
+              : settings === "drift"
+                ? "drift"
+                : "unconfirmed",
+        }
+      : status;
   }
   // Both options only from an explicit user action in Settings.
   startWorkspace(
@@ -461,14 +476,14 @@ export class Client {
   // Resolves an unconfirmed agent or environment change by reading Ark on the
   // service; nothing is sent to Ark. adopt saves the current values and is
   // only for an explicit user decision after review.
-  async checkWorkspaceSettings(adopt = false) {
+  async checkWorkspaceSettings(mode?: "adopt" | "discard") {
     const account = this.identity.account!;
     const current = await account.accountWorkspace();
     if (!current.settings) return current;
     return account.reconcileAccountWorkspace(
       current.revision,
       this.identity.value!.revision!,
-      adopt,
+      mode,
     );
   }
   async backgroundConfiguration(confirm: boolean) {
@@ -1555,9 +1570,9 @@ export class Client {
       if (checked.change === "applied") return checked;
       throw new ApiError(
         409,
-        checked.change === "not_applied"
+        checked.change === "not_applied_yet"
           ? t(
-              "The change was not applied. Nothing else was sent; make the change again if you still want it.",
+              "The change had not taken effect when Open Muse checked. It may still arrive later; Open Muse notices that at the next change. Nothing was sent again.",
             )
           : t(
               "The change was sent but its result is unconfirmed. Open Muse checks it before anything else is changed; it was not repeated.",

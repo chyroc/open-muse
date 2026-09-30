@@ -552,7 +552,7 @@ export class BackgroundClient {
   reconcileAccountWorkspace(
     revision: number,
     credentialRevision: number,
-    adopt = false,
+    mode?: "adopt" | "discard",
   ) {
     return this.accountRequest(
       "/v1/account/workspace/reconcile",
@@ -562,7 +562,7 @@ export class BackgroundClient {
         body: JSON.stringify({
           revision,
           credentialRevision,
-          ...(adopt ? { adopt } : {}),
+          ...(mode ? { mode } : {}),
           confirm: true,
         }),
       },

@@ -198,7 +198,12 @@ export class AccountWorkspaces {
       ? pendingSchema.parse(JSON.parse(row.pending))
       : undefined;
   }
-  async read() {
+  async read(): Promise<{
+    revision: number;
+    workspace?: AccountWorkspace;
+    unconfirmed: boolean;
+    settings?: "unconfirmed" | "review" | "drift";
+  }> {
     const { workspaceKey } = await this.context();
     const row = await this.row(workspaceKey);
     const pending = this.pending(row);
@@ -211,9 +216,15 @@ export class AccountWorkspaces {
       ...(pending && "op" in pending
         ? {
             settings:
-              pending.state === "sending" ? "unconfirmed" : pending.state,
+              pending.state === "sending"
+                ? ("unconfirmed" as const)
+                : pending.state,
           }
-        : {}),
+        : row?.encrypted &&
+            Object.keys((await this.decode(workspaceKey, row)).drift ?? {})
+              .length
+          ? { settings: "drift" as const }
+          : {}),
     };
   }
   // Compare-and-swap on the record revision; the owner and workspace key are
@@ -406,6 +417,13 @@ export class AccountWorkspaces {
             : environmentSpec();
       const next = { ...workspace };
       delete next[field];
+      // A recreated resource starts from the saved settings, so any drift
+      // for it ends; the result reports that the saved settings were used.
+      if (kind !== "memory_store" && next.drift?.[kind] !== undefined) {
+        const drift = { ...next.drift };
+        delete drift[kind];
+        next.drift = Object.keys(drift).length ? drift : undefined;
+      }
       if (kind !== "memory_store" && workspace[kind]) {
         const saved = pick(workspace[kind]!, restoredFields[kind]);
         if (usable(kind, saved)) {
@@ -457,7 +475,9 @@ export class AccountWorkspaces {
       } catch (error) {
         if (
           error instanceof ApiError &&
-          REJECTED.filter((status) => status !== 409).includes(error.status)
+          REJECTED.filter(
+            (status) => status !== 409 && status !== 429,
+          ).includes(error.status)
         ) {
           await this.write(workspaceKey, revision, workspace, null, now);
           throw new HttpError(
@@ -619,7 +639,9 @@ export class AccountWorkspaces {
     const settings = pick(current, settingsFields[kind]);
     const row = await this.row(workspaceKey);
     const pending = this.pending(row);
-    if (!usable(kind, settings)) {
+    const tooLarge = JSON.stringify(settings).length > 100_000;
+    if (!usable(kind, settings) || tooLarge) {
+      // Left for the user's review; the user can keep the saved settings.
       if (pending && "op" in pending)
         await this.write(
           workspaceKey,
@@ -630,19 +652,23 @@ export class AccountWorkspaces {
         );
       throw new HttpError(
         409,
-        "The current settings reference resources an account cannot use, so they were not saved. Edit them in Studio.",
+        tooLarge
+          ? "The current settings are too large to save. Keep the saved settings or reduce them in Studio."
+          : "The current settings reference resources an account cannot use, so they were not saved. Keep the saved settings or edit them in Studio.",
         "settings_review",
       );
     }
-    if (JSON.stringify(settings).length > 100_000)
-      throw new HttpError(413, "The workspace settings are too large to save.");
     const model = (settings.model as { id?: unknown } | undefined)?.id;
+    // Sealing what Ark confirms also ends any drift for this resource.
+    const drift = { ...workspace.drift };
+    delete drift[kind];
     await this.write(
       workspaceKey,
       held,
       {
         ...workspace,
         [kind]: settings,
+        drift: Object.keys(drift).length ? drift : undefined,
         ...(kind === "agent" && typeof model === "string" ? { model } : {}),
       },
       null,
@@ -682,13 +708,13 @@ export class AccountWorkspaces {
       }
     return { ...(await this.read()), background };
   }
-  // Resolves an unconfirmed change by reading Ark only; nothing is sent. The
-  // result is sealed only when it is certain, or when the user explicitly
-  // adopts the current values of a change left for review.
+  // Resolves an unconfirmed change or a drift by reading Ark only; nothing is
+  // sent to Ark. "adopt" seals Ark's current values and "discard" keeps the
+  // saved settings; both are explicit user decisions.
   async reconcile(
     revision: number,
     credentialRevision: number,
-    adopt = false,
+    mode: "check" | "adopt" | "discard" = "check",
     now = Date.now(),
   ) {
     const { workspaceKey, ark } = await this.context(credentialRevision);
@@ -699,16 +725,38 @@ export class AccountWorkspaces {
         409,
         "The workspace settings changed on another device. Refresh before saving.",
       );
-    // A change still being sent on another device is left alone; a Worker
-    // request cannot outlive this window.
-    if (
-      !pending ||
-      !("op" in pending) ||
-      (pending.state === "sending" && now - pending.startedAt < SENDING_WINDOW)
-    )
-      throw new HttpError(409, "There is no unconfirmed change to check.");
     const workspace = await this.decode(workspaceKey, row);
-    const { collection, field, label } = kinds[pending.kind];
+    const held = row!.revision;
+    const update = pending && "op" in pending ? pending : undefined;
+    // A change still being sent on another device is left alone.
+    if (update?.state === "sending" && now - update.startedAt < SENDING_WINDOW)
+      throw new HttpError(
+        409,
+        "A change is still being sent. Check again shortly.",
+      );
+    const drifted = Object.keys(workspace.drift ?? {}) as (
+      "agent" | "environment"
+    )[];
+    const kind = update?.kind ?? drifted[0];
+    if (!kind)
+      throw new HttpError(409, "There is no unconfirmed change to check.");
+    if (mode === "discard") {
+      if (!update)
+        throw new HttpError(409, "There is no unconfirmed change to discard.");
+      // Keeps the saved settings, records that Ark may differ from them, and
+      // stops background work until the user checks them. Nothing is sent.
+      await this.write(
+        workspaceKey,
+        held,
+        { ...workspace, drift: { ...workspace.drift, [kind]: now } },
+        null,
+        now,
+        undefined,
+        true,
+      );
+      return { ...(await this.read()), change: "discarded" as const };
+    }
+    const { collection, field, label } = kinds[kind];
     const id = workspace[field] as string;
     const current = await ark
       .request<Record<string, unknown> & { metadata?: Record<string, string> }>(
@@ -717,59 +765,63 @@ export class AccountWorkspaces {
       .catch(() => {
         throw unconfirmed("Ark could not be read. Nothing was changed.");
       });
-    const held = row!.revision;
-    if (current.id !== id || current.metadata?.[label] !== workspaceKey) {
-      await this.write(
-        workspaceKey,
-        held,
-        workspace,
-        { ...pending, state: "review" },
-        now,
-      );
-      throw new HttpError(
-        409,
-        "A workspace resource was changed outside Open Muse. Review it in the Ark console.",
-        "settings_review",
-      );
-    }
-    const matches = fingerprint(current, pending.keys) === pending.hash;
-    const applied =
-      matches &&
-      (pending.kind !== "agent" || current.version === (pending.base ?? 0) + 1);
-    const untouched =
-      pending.kind === "agent"
-        ? current.version === pending.base
-        : fingerprint(current, pending.keys) ===
-          fingerprint(workspace.environment ?? {}, pending.keys);
-    if (applied || (adopt && pending.state === "review"))
-      return {
-        ...(await this.settle(
+    const review = async (message: string) => {
+      if (update && update.state !== "review")
+        await this.write(
           workspaceKey,
           held,
           workspace,
-          pending.kind,
-          id,
-          current,
-          credentialRevision,
+          { ...update, state: "review" },
           now,
-        )),
-        change: applied ? "applied" : "adopted",
-      };
-    if (untouched && !matches) {
-      await this.write(workspaceKey, held, workspace, null, now);
-      return { ...(await this.read()), change: "not_applied" };
+        );
+      throw new HttpError(409, message, "settings_review");
+    };
+    if (current.id !== id || current.metadata?.[label] !== workspaceKey)
+      return review(
+        "A workspace resource was changed outside Open Muse. Review it in the Ark console.",
+      );
+    const seal = async (change: "applied" | "adopted" | "drift_cleared") => ({
+      ...(await this.settle(
+        workspaceKey,
+        held,
+        workspace,
+        kind,
+        id,
+        current,
+        credentialRevision,
+        now,
+      )),
+      change,
+    });
+    if (!update) {
+      // Drift ends only when Ark matches the saved settings or the user
+      // adopts Ark's usable values.
+      if (mode === "adopt") return seal("adopted");
+      const fields = settingsFields[kind];
+      if (
+        fingerprint(current, fields) ===
+        fingerprint(workspace[kind] ?? {}, fields)
+      )
+        return seal("drift_cleared");
+      return { ...(await this.read()), change: "drift_kept" as const };
     }
-    await this.write(
-      workspaceKey,
-      held,
-      workspace,
-      { ...pending, state: "review" },
-      now,
-    );
-    throw new HttpError(
-      409,
-      "The current settings differ from both the saved settings and the change. Review them, then choose to save the current settings.",
-      "settings_review",
+    const matches = fingerprint(current, update.keys) === update.hash;
+    if (
+      matches &&
+      (kind !== "agent" || current.version === (update.base ?? 0) + 1)
+    )
+      return seal("applied");
+    if (mode === "adopt" && update.state === "review") return seal("adopted");
+    // An agent still at the base version had not taken the change when read.
+    // A later arrival would change the version, so the next change based on
+    // it fails and is checked again instead of being overwritten.
+    if (kind === "agent" && current.version === update.base && !matches) {
+      await this.write(workspaceKey, held, workspace, null, now);
+      return { ...(await this.read()), change: "not_applied_yet" as const };
+    }
+    // Environments have no version: nothing proves a change did not apply.
+    return review(
+      "Ark's current settings could not be matched to the change. Review them, then save the current settings or keep the saved settings.",
     );
   }
 }

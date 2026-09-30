@@ -35,9 +35,12 @@ type Failure =
   | "unparseable-after"
   | "empty-body-after"
   | "version-conflict"
-  | "rejected-400";
+  | "rejected-400"
+  | "late";
 let nextUpdate: Failure | undefined;
 let failNextRead = false;
+// A request Ark received but applies only after the client gave up waiting.
+let late: (() => void) | undefined;
 const updates = () =>
   upstream.mock.calls.filter(
     ([input, init]) =>
@@ -78,6 +81,18 @@ const upstream = vi.fn<typeof fetch>(async (input, init) => {
     const failure = nextUpdate;
     nextUpdate = undefined;
     if (!row) return Response.json({}, { status: 404 });
+    const changes = JSON.parse(String(init!.body));
+    // Agent updates are optimistic: they must name the current version.
+    if (collection === "agents" && changes.version !== row.version)
+      return Response.json({ error: "version" }, { status: 409 });
+    if (failure === "late") {
+      // Lost before Ark applied it; the test applies it later.
+      late = () => {
+        Object.assign(row, changes);
+        if (collection === "agents") row.version = Number(row.version) + 1;
+      };
+      throw new TypeError("timed out");
+    }
     if (failure === "network-before") throw new TypeError("network down");
     if (failure === "status-408") return Response.json({}, { status: 408 });
     if (failure === "status-429") return Response.json({}, { status: 429 });
@@ -150,13 +165,13 @@ const change = async (
     },
     "PUT",
   );
-const reconcile = async (adopt = false) =>
+const reconcile = async (mode?: "adopt" | "discard") =>
   call(
     "/v1/account/workspace/reconcile",
     {
       revision: (await record()).revision,
       credentialRevision: 1,
-      ...(adopt ? { adopt } : {}),
+      ...(mode ? { mode } : {}),
       confirm: true,
     },
     "POST",
@@ -219,10 +234,10 @@ describe("Account workspace settings changes", () => {
     );
   });
 
-  it.each<[Failure, "applied" | "not_applied"]>([
-    ["network-before", "not_applied"],
-    ["status-408", "not_applied"],
-    ["status-429", "not_applied"],
+  it.each<[Failure, "applied" | "review"]>([
+    ["network-before", "review"],
+    ["status-408", "review"],
+    ["status-429", "review"],
     ["network-after", "applied"],
     ["status-500-after", "applied"],
     ["unparseable-after", "applied"],
@@ -253,21 +268,43 @@ describe("Account workspace settings changes", () => {
       ).toBe(409);
       expect(updates()).toBe(before + 1);
       const resolved = await reconcile();
-      expect(resolved.status).toBe(200);
-      expect(await resolved.json()).toMatchObject({ change: outcome });
       expect(updates()).toBe(before + 1);
-      const after = await record();
-      expect(after.settings).toBeUndefined();
-      expect(after.workspace.environment).toEqual(
-        outcome === "applied"
-          ? expect.objectContaining({
-              config: {
-                type: "cloud",
-                networking: { type: `after-${failure}` },
-              },
-            })
-          : saved,
-      );
+      if (outcome === "applied") {
+        expect(resolved.status).toBe(200);
+        expect(await resolved.json()).toMatchObject({ change: "applied" });
+        expect((await record()).workspace.environment).toEqual(
+          expect.objectContaining({
+            config: {
+              type: "cloud",
+              networking: { type: `after-${failure}` },
+            },
+          }),
+        );
+        expect((await record()).settings).toBeUndefined();
+        return;
+      }
+      // An environment has no version: Ark still showing the saved values
+      // does not prove the change will not arrive, so it is not released.
+      expect(resolved.status).toBe(409);
+      expect(await resolved.json()).toMatchObject({ code: "settings_review" });
+      expect(await record()).toMatchObject({
+        settings: "review",
+        workspace: { environment: saved },
+      });
+      // The user keeps the saved settings; Open Muse keeps saying Ark may
+      // differ until a read shows it does not.
+      expect(await (await reconcile("discard")).json()).toMatchObject({
+        change: "discarded",
+        settings: "drift",
+      });
+      expect(updates()).toBe(before + 1);
+      expect(await (await reconcile()).json()).toMatchObject({
+        change: "drift_cleared",
+      });
+      expect(await record()).toMatchObject({
+        workspace: { environment: saved },
+      });
+      expect((await record()).settings).toBeUndefined();
     },
   );
 
@@ -319,7 +356,7 @@ describe("Account workspace settings changes", () => {
     expect(review.status).toBe(409);
     expect(await review.json()).toMatchObject({ code: "settings_review" });
     expect((await record()).settings).toBe("review");
-    expect((await reconcile(true)).status).toBe(200);
+    expect((await reconcile("adopt")).status).toBe(200);
     expect((await record()).workspace.agent).toMatchObject({
       version: agent.version,
     });
@@ -341,12 +378,138 @@ describe("Account workspace settings changes", () => {
     agent.skills = [{ type: "custom", skill_id: "skill-of-someone" }];
     const posts = updates();
     expect((await reconcile()).status).toBe(409);
-    const adopt = await reconcile(true);
+    const adopt = await reconcile("adopt");
     expect(adopt.status).toBe(409);
     expect((await record()).workspace.agent).toEqual(saved.workspace.agent);
     expect(updates()).toBe(posts);
     delete agent.skills;
-    expect((await reconcile(true)).status).toBe(200);
+    expect((await reconcile("adopt")).status).toBe(200);
+  });
+
+  it("reports an agent change missing at read time as not applied yet and catches a late arrival", async () => {
+    const saved = (await record()).workspace.agent!;
+    const agent = ark.agents[(await record()).workspace.agentId];
+    const base = agent.version as number;
+    nextUpdate = "late";
+    expect(
+      (await change("agent", { version: base, system: "arrives late" })).status,
+    ).toBe(503);
+    // At read time the agent still has the base version.
+    expect(await (await reconcile()).json()).toMatchObject({
+      change: "not_applied_yet",
+    });
+    expect((await record()).workspace.agent).toEqual(saved);
+    // The earlier request is applied after all.
+    late!();
+    const before = updates();
+    const next = await change("agent", {
+      version: base,
+      system: "a later change",
+    });
+    // Based on the old version, the next change is refused by Ark, which is
+    // checked, so the late values are never silently overwritten or sealed.
+    expect(next.status).toBe(503);
+    expect(updates()).toBe(before + 1);
+    const review = await reconcile();
+    expect(review.status).toBe(409);
+    expect(await review.json()).toMatchObject({ code: "settings_review" });
+    expect((await record()).workspace.agent).toEqual(saved);
+    expect(agent.system).toBe("arrives late");
+    expect(await (await reconcile("adopt")).json()).toMatchObject({
+      change: "adopted",
+      workspace: { agent: { system: "arrives late" } },
+    });
+  });
+
+  it("can always leave a change it could not save, and keeps saying Ark may differ", async () => {
+    const saved = await record();
+    const connections = new ConnectionStore(env, owner);
+    const agent = ark.agents[saved.workspace.agentId];
+    // Allow background work with a schedule.
+    expect(
+      (
+        await call(
+          "/v1/connection",
+          {
+            workspace: {
+              agentId: saved.workspace.agentId,
+              agentVersion: agent.version,
+              environmentId: saved.workspace.environmentId,
+              memoryStoreId: saved.workspace.memoryStoreId,
+            },
+            credentialRevision: 1,
+            revision: (await connections.status()).revision,
+            confirm: true,
+          },
+          "PUT",
+        )
+      ).status,
+    ).toBe(200);
+    const repo = new Repository(env.DB, owner);
+    await repo.saveSchedule(
+      {
+        enabled: true,
+        timezone: "UTC",
+        local_time: "09:00",
+        revision: (await repo.schedule()).revision,
+      },
+      Date.now(),
+      { revision: (await connections.status()).revision, hash: "h" },
+    );
+    expect((await repo.schedule()).enabled).toBe(true);
+    // Ark returns settings too large to save.
+    const before = updates();
+    const huge = config("x".repeat(110_000));
+    const response = await change("environment", huge);
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ code: "settings_review" });
+    expect(updates()).toBe(before + 1);
+    expect(await record()).toMatchObject({
+      settings: "review",
+      workspace: { environment: saved.workspace.environment },
+    });
+    // Too large to adopt: the user keeps the saved settings instead.
+    expect((await reconcile("adopt")).status).toBe(409);
+    expect(await (await reconcile("discard")).json()).toMatchObject({
+      change: "discarded",
+      settings: "drift",
+      workspace: { environment: saved.workspace.environment },
+    });
+    expect(updates()).toBe(before + 1);
+    // Background sessions would use Ark's live environment, so they stop.
+    expect(await connections.status()).toMatchObject({ configured: false });
+    expect((await repo.schedule()).enabled).toBe(false);
+    const rebind = await call(
+      "/v1/connection",
+      {
+        workspace: {
+          agentId: saved.workspace.agentId,
+          agentVersion: agent.version,
+          environmentId: saved.workspace.environmentId,
+          memoryStoreId: saved.workspace.memoryStoreId,
+        },
+        credentialRevision: 1,
+        revision: (await connections.status()).revision,
+        confirm: true,
+      },
+      "PUT",
+    );
+    expect(rebind.status).toBe(409);
+    // Still different from the saved settings: the drift stays.
+    expect(await (await reconcile()).json()).toMatchObject({
+      change: "drift_kept",
+      settings: "drift",
+    });
+    // Values an account may not use are never adopted.
+    ark.environments[saved.workspace.environmentId].config = {
+      type: "cloud",
+      tos: { bucket: "someone", prefix: "" },
+    };
+    expect((await reconcile("adopt")).status).toBe(409);
+    expect((await record()).settings).toBe("drift");
+    // A confirmed change ends the drift.
+    expect((await change("environment", config("settled"))).status).toBe(200);
+    expect((await record()).settings).toBeUndefined();
   });
 
   it("recreates a deleted agent and environment from the saved settings", async () => {
@@ -382,11 +545,18 @@ describe("Account workspace settings changes", () => {
       "PUT",
     );
     expect(bound.status).toBe(200);
-    await new Repository(env.DB, owner).saveSchedule(
-      { enabled: true, timezone: "UTC", local_time: "09:00", revision: 0 },
+    const repo = new Repository(env.DB, owner);
+    await repo.saveSchedule(
+      {
+        enabled: true,
+        timezone: "UTC",
+        local_time: "09:00",
+        revision: (await repo.schedule()).revision,
+      },
       Date.now(),
       { revision: (await connections.status()).revision, hash: "h" },
     );
+    expect((await repo.schedule()).enabled).toBe(true);
     delete ark.agents[saved.workspace.agentId];
     delete ark.environments[saved.workspace.environmentId];
     const before = creates();

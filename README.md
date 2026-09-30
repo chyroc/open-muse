@@ -99,9 +99,12 @@ In an account build, changes to the agent or environment — Studio's
 sent to the Open Muse service, which applies them once to the account's own
 resource and seals the result with the account. Only one change can be in
 flight per workspace. If its result is unconfirmed (a timeout or lost
-response), nothing else is changed until the app checks Ark read-only; when Ark
-shows neither the saved nor the new values, Settings asks the user to review
-and explicitly save the current settings. Ownership labels cannot be changed
+response), nothing else is changed until the app checks Ark read-only. An
+agent still at its earlier version is reported as not applied yet; any other
+result Open Muse cannot prove asks the user to review it and either save the
+current settings or keep the saved ones. Keeping the saved settings marks that
+Ark may differ from them and pauses background work until a later check finds
+them matching again. Ownership labels cannot be changed
 this way. If background work is allowed, it is rebound to the new agent version
 and the schedule pauses until it is enabled again. If the agent or environment
 is deleted at Ark, preparing the workspace creates it again with the saved

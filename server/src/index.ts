@@ -126,10 +126,11 @@ export async function handle(
           input.confirm !== true ||
           !Number.isSafeInteger(input.revision) ||
           !Number.isSafeInteger(input.credentialRevision) ||
-          (input.adopt !== undefined && typeof input.adopt !== "boolean") ||
+          (input.mode !== undefined &&
+            !["adopt", "discard"].includes(input.mode as string)) ||
           Object.keys(input).some(
             (key) =>
-              !["revision", "credentialRevision", "adopt", "confirm"].includes(
+              !["revision", "credentialRevision", "mode", "confirm"].includes(
                 key,
               ),
           )
@@ -139,7 +140,7 @@ export async function handle(
           await new AccountWorkspaces(env, owner, fetcher).reconcile(
             input.revision as number,
             input.credentialRevision as number,
-            input.adopt === true,
+            (input.mode as "adopt" | "discard" | undefined) ?? "check",
           ),
         );
       } else if (
@@ -302,6 +303,16 @@ export async function handle(
             throw new HttpError(
               409,
               "Your Ark API key changed. Refresh before allowing background work.",
+            );
+          // Background sessions use the live agent and environment, so they
+          // wait until the saved settings are confirmed again.
+          if (
+            (await new AccountWorkspaces(env, owner, fetcher).read()).settings
+          )
+            throw new HttpError(
+              409,
+              "Check the workspace settings before allowing background work.",
+              "settings_review",
             );
           response = json(
             await connections.save(

@@ -70,7 +70,7 @@ export interface WorkspaceStatus {
   state: "disconnected" | "idle" | "preparing" | "ready" | "error";
   message: string;
   // Why an account workspace needs the user's decision, if it does.
-  review?: "settings" | "rebuild" | "unconfirmed";
+  review?: "settings" | "rebuild" | "unconfirmed" | "drift";
 }
 
 export function eventText(event: AgentEvent): string {

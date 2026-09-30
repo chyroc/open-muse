@@ -285,16 +285,30 @@ deployed or that a real unattended generation can complete.
   applied (422). Timeouts, 408, 429, other statuses, network errors, unparsable
   responses, and a result that cannot be read back return 503
   `{code: "unconfirmed"}` and keep the record held. Settings that reference
-  resources an account cannot use are never sealed. A confirmed agent change
+  resources an account cannot use, or that are too large to seal, are never
+  sealed; the record is held for review (409 `{code: "settings_review"}`).
+  A confirmed agent change
   rebinds allowed background work to the new version, which pauses its
   schedule; the response reports `background: "rebound" | "stale" |
   "unchanged"`. At most 60 changes per account per hour.
 - `POST /v1/account/workspace/reconcile`: `{revision, credentialRevision,
-  adopt?, confirm: true}` resolves a held change by reading Ark only. It reports
-  `change: "applied"` (sealed), `"not_applied"` (released, saved settings kept),
-  or 409 `{code: "settings_review"}` when Ark's values match neither, in which
-  case only `adopt: true` after the user's review seals the current values. A
-  change still being sent is left alone for two minutes.
+  mode?: "adopt" | "discard", confirm: true}` resolves a held change or a drift
+  by reading Ark only; nothing is sent to Ark. Without `mode` it reports
+  `change: "applied"` when Ark shows the change (for an agent, at exactly the
+  next version), and `"not_applied_yet"` only when the agent is still at the
+  change's base version; the record is released with the saved settings kept,
+  and if the change arrives later the agent's version has moved, so the next
+  change is refused by Ark and checked again instead of overwriting it. An
+  environment has no version, so nothing proves its change did not apply: any
+  other result is 409 `{code: "settings_review"}`. After review, `mode:
+  "adopt"` seals Ark's current values if an account may use them, and `mode:
+  "discard"` keeps the saved settings, reports `change: "discarded"` and
+  `settings: "drift"` (Ark may differ from them), and in the same batch revokes
+  background work and pauses its schedule; binding background work is refused
+  while a drift or review is open. A drift ends only when a later check finds
+  Ark matching the saved settings (`"drift_cleared"`, otherwise
+  `"drift_kept"`), when the user adopts usable values, or when a change is
+  confirmed. A change still being sent is left alone for two minutes.
 
 When a recorded agent or environment was deleted at Ark, `POST
 /v1/account/workspace` creates it again from the account's saved settings and

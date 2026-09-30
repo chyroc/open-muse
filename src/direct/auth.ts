@@ -64,7 +64,7 @@ export interface AccountProvider {
   reconcileAccountWorkspace(
     revision: number,
     credentialRevision: number,
-    adopt?: boolean,
+    mode?: "adopt" | "discard",
   ): Promise<AccountWorkspaceResponse>;
   updateAccountWorkspace(
     kind: "agent" | "environment",

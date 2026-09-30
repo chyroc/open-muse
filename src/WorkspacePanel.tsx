@@ -38,7 +38,7 @@ export function WorkspacePanel({ client }: { client: Client }) {
     setError("");
     try {
       await action();
-      setStatus(await client.startWorkspace());
+      setStatus(await client.workspaceStatus());
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -126,22 +126,41 @@ export function WorkspacePanel({ client }: { client: Client }) {
       )}
       {!busy && status?.review && (
         <div className="background-actions">
-          {status.review === "unconfirmed" && (
+          {status.review === "drift" && (
+            <p className="background-note" role="status">
+              {t(
+                "You kept the saved settings, but the agent or environment in Ark may differ from them. Background work stays paused until they are checked.",
+              )}
+            </p>
+          )}
+          {(status.review === "unconfirmed" || status.review === "drift") && (
             <button
               className="button secondary"
               onClick={() => void decide(() => client.checkWorkspaceSettings())}
             >
-              {t("Check the last change")}
+              {status.review === "drift"
+                ? t("Check the settings again")
+                : t("Check the last change")}
+            </button>
+          )}
+          {(status.review === "settings" || status.review === "drift") && (
+            <button
+              className="button secondary"
+              onClick={() =>
+                void decide(() => client.checkWorkspaceSettings("adopt"))
+              }
+            >
+              {t("Save the current settings")}
             </button>
           )}
           {status.review === "settings" && (
             <button
               className="button secondary"
               onClick={() =>
-                void decide(() => client.checkWorkspaceSettings(true))
+                void decide(() => client.checkWorkspaceSettings("discard"))
               }
             >
-              {t("Save the current settings")}
+              {t("Keep the saved settings")}
             </button>
           )}
           {status.review === "rebuild" && (

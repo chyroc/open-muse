@@ -117,8 +117,12 @@ export const zhAccount: Record<string, string> = {
     "已删除的智能体或环境无法恢复，因为保存的设置引用了账号无法使用的资源。已保存的设置会保留；如需继续，请使用默认设置重新创建。",
   "The change was sent but its result is unconfirmed. Open Muse checks it before anything else is changed; it was not repeated.":
     "更改已发送，但结果尚未确认。Open Muse 会先检查它，再进行其他更改；未重复提交。",
-  "The change was not applied. Nothing else was sent; make the change again if you still want it.":
-    "更改未生效。未发送其他请求；如仍需要，请重新更改。",
+  "The change had not taken effect when Open Muse checked. It may still arrive later; Open Muse notices that at the next change. Nothing was sent again.":
+    "Open Muse 检查时这次更改尚未生效。它仍可能稍后生效；下次更改时 Open Muse 会发现。未重复发送。",
+  "You kept the saved settings, but the agent or environment in Ark may differ from them. Background work stays paused until they are checked.":
+    "你保留了已保存的设置，但 Ark 中的智能体或环境可能与之不同。在检查之前，后台任务保持暂停。",
+  "Check the settings again": "重新检查设置",
+  "Keep the saved settings": "保留已保存的设置",
   "Check the last change": "检查上次更改",
   "Save the current settings": "保存当前设置",
   "Recreate with default settings": "使用默认设置重新创建",

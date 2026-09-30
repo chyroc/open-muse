@@ -98,12 +98,17 @@ function arkServer() {
   const memories: Record<string, Row[]> = {};
   let next = 0;
   const created = vi.fn();
-  const state: { beforeReply?: () => Promise<void> } = {};
+  const state: { beforeReply?: () => Promise<void>; lostWrite?: boolean } = {};
   const fetcher = vi.fn<typeof fetch>(async (input, init = {}) => {
     // Lets a test act between two requests of one client operation.
     const hook = state.beforeReply;
     state.beforeReply = undefined;
     await hook?.();
+    // The next write is lost on the way to Ark: nothing is applied.
+    if (init.method === "POST" && state.lostWrite) {
+      state.lostWrite = false;
+      throw new TypeError("connection reset");
+    }
     const url = new URL(String(input));
     expect(url.origin).toBe(ark);
     if (
@@ -440,6 +445,69 @@ describe("Muse accounts end to end", () => {
         other.client.accountCredentialRevision()!,
       ),
     ).rejects.toThrow("another device");
+    expect(posts()).toBe(before);
+  });
+
+  it("keeps saved settings only by the user's choice and then reports that Ark may differ", async () => {
+    const alice = device();
+    await alice.client.restore();
+    await alice.signIn("alice@example.com");
+    const own = workspaces["alice@example.com"];
+    const posts = () =>
+      upstream.fetcher.mock.calls.filter(
+        ([, init]) => (init?.method ?? "GET") === "POST",
+      ).length;
+    const saved = (await alice.account.accountWorkspace()).workspace!;
+    let before = posts();
+    upstream.state.lostWrite = true;
+    await expect(
+      alice.client.ma("UpdateEnvironment", {
+        params: { id: own.environmentId },
+        body: { description: "never arrives" },
+        confirm: true,
+      }),
+    ).rejects.toThrow("need your review");
+    expect(posts()).toBe(before + 1);
+    // The client checked the change once by reading Ark. An environment has
+    // no version, so that cannot prove the change did not apply: the user
+    // decides.
+    expect(await alice.client.workspaceStatus()).toMatchObject({
+      review: "settings",
+    });
+    // Nothing else is sent while the change needs review.
+    before = posts();
+    await expect(
+      alice.client.ma("UpdateEnvironment", {
+        params: { id: own.environmentId },
+        body: { description: "second" },
+        confirm: true,
+      }),
+    ).rejects.toThrow();
+    await expect(alice.client.checkWorkspaceSettings()).rejects.toThrow();
+    expect(await alice.client.workspaceStatus()).toMatchObject({
+      review: "settings",
+    });
+    expect(await alice.client.checkWorkspaceSettings("discard")).toMatchObject({
+      change: "discarded",
+      settings: "drift",
+    });
+    expect(posts()).toBe(before);
+    expect((await alice.account.accountWorkspace()).workspace).toEqual({
+      ...saved,
+      drift: { environment: expect.any(Number) },
+    });
+    // Kept settings are never reported as in sync, and background work stops.
+    expect(await alice.client.workspaceStatus()).toMatchObject({
+      review: "drift",
+    });
+    expect(await alice.account.status()).toMatchObject({
+      backgroundReady: false,
+    });
+    // Ark still matches the saved settings, so a check ends the drift.
+    expect(await alice.client.checkWorkspaceSettings()).toMatchObject({
+      change: "drift_cleared",
+    });
+    expect((await alice.client.workspaceStatus()).review).toBeUndefined();
     expect(posts()).toBe(before);
   });
 
