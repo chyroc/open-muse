@@ -391,7 +391,15 @@ export class Client {
         key,
         ark,
         abort,
-        workspace: new DirectWorkspace(key, ark, this.db, provision),
+        workspace: new DirectWorkspace(
+          key,
+          ark,
+          this.db,
+          provision,
+          provision
+            ? async () => (await account!.accountWorkspace()).workspace
+            : undefined,
+        ),
         companion,
         goals: new DirectGoals(key, this.db, companion),
         redact: (text) => text.replaceAll(apiKey, "[redacted]"),

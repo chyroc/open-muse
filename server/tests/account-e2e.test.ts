@@ -232,7 +232,8 @@ describe("Muse accounts end to end", () => {
     const vault = memoryVault(),
       accountVault = memoryVault();
     vault.value = legacy;
-    const db = new LocalDatabase(`e2e-${crypto.randomUUID()}`);
+    const dbName = `e2e-${crypto.randomUUID()}`;
+    const db = new LocalDatabase(dbName);
     const account = new BackgroundClient(
       service,
       accountVault,
@@ -252,6 +253,21 @@ describe("Muse accounts end to end", () => {
     });
     return {
       account,
+      db,
+      // Every record key on this device, read straight from IndexedDB.
+      keys: () =>
+        new Promise<string[]>((resolve, reject) => {
+          const open = indexedDB.open(dbName);
+          open.onerror = () => reject(open.error);
+          open.onsuccess = () => {
+            const request = open.result
+              .transaction("records")
+              .objectStore("records")
+              .getAllKeys();
+            request.onsuccess = () => resolve(request.result.map(String));
+            request.onerror = () => reject(request.error);
+          };
+        }),
       client,
       vault,
       accountVault,
@@ -359,6 +375,57 @@ describe("Muse accounts end to end", () => {
     expect((await shared.prepare()).agentId).toBe(
       workspaces["bob@example.com"].agentId,
     );
+  });
+
+  it("replaces a device's earlier workspace mapping with the service's record", async () => {
+    const upgraded = device();
+    await upgraded.client.restore();
+    await upgraded.signIn("alice@example.com");
+    const owner = upgraded.account.accountOwner()!;
+    const key = accountWorkspaceKey(sharedKey, "", owner);
+    // An earlier release created or adopted these by label on this device;
+    // the service never recorded them.
+    upstream.rows.agents.push({
+      id: "agents-label-era",
+      version: 1,
+      metadata: { open_muse_workspace: key },
+    });
+    upstream.rows.memory_stores.push({
+      id: "memory-label-era",
+      metadata: { open_muse_identity: key },
+    });
+    const earlier = {
+      agent_id: "agents-label-era",
+      environment_id: "environments-label-era",
+      model_id: "earlier-model",
+      resource_name: "open-muse-earlier",
+      agent_pending: false,
+      environment_pending: false,
+      state: "ready",
+      message: "",
+    };
+    await upgraded.db.set(`${key}:workspace`, earlier);
+    await upgraded.db.set(`${key}:identity:v1`, {
+      store_id: "memory-label-era",
+    });
+    const config = await upgraded.client.backgroundConfiguration(true);
+    expect(config.agentId).toBe(workspaces["alice@example.com"].agentId);
+    expect(config.memoryStoreId).toBe(
+      workspaces["alice@example.com"].memoryStoreId,
+    );
+    expect(
+      upstream.fetcher.mock.calls.some(([input]) =>
+        /label-era/.test(String(input)),
+      ),
+    ).toBe(false);
+    // The earlier mapping is kept on the device, not deleted.
+    const kept = await Promise.all(
+      (await upgraded.keys())
+        .filter((name) => name.includes(":unrecorded:"))
+        .sort()
+        .map((name) => upgraded.db.get(name)),
+    );
+    expect(kept).toEqual([{ store_id: "memory-label-era" }, earlier]);
   });
 
   it("keeps an upgraded device's saved key unused until the user saves it to the account", async () => {

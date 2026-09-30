@@ -51,6 +51,7 @@ export function defaultIdentity(): CompanionIdentity {
 export class DirectIdentity {
   private key: string;
   private provisioning?: Promise<string>;
+  private checked = false;
   constructor(
     private owner: string,
     private ark: ArkClient,
@@ -91,6 +92,17 @@ export class DirectIdentity {
   }
   private async store(create: boolean): Promise<string | undefined> {
     let mapping = await this.db.get<Mapping>(this.key);
+    // Once per runtime the service's record replaces a local mapping that
+    // predates it; a differing mapping is kept aside and never used.
+    if (this.resolve && !this.checked) {
+      const recorded = await this.resolve(false);
+      if (mapping?.store_id && mapping.store_id !== recorded) {
+        await this.db.set(`${this.key}:unrecorded:${Date.now()}`, mapping);
+        mapping = recorded ? { store_id: recorded } : {};
+        await this.db.set<Mapping>(this.key, mapping);
+      }
+      this.checked = true;
+    }
     if (this.resolve && !mapping?.store_id) {
       const id = await this.resolve(create);
       if (!id) return;

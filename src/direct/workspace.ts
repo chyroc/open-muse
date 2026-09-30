@@ -48,6 +48,10 @@ export class DirectWorkspace {
     private provision?: (
       replaceUnconfirmed: boolean,
     ) => Promise<{ agentId: string; environmentId: string; model: string }>,
+    // The account's sealed workspace record, read without creating anything.
+    private lookup?: () => Promise<
+      { agentId?: string; environmentId?: string; model: string } | undefined
+    >,
   ) {
     this.storageKey = `${key}:workspace`;
   }
@@ -73,7 +77,41 @@ export class DirectWorkspace {
       return row;
     });
   }
+  // An account's local row can predate service-created workspaces or come from
+  // another key holder's relabelled resource. Once per runtime it is replaced
+  // by the service's record; a differing row is kept aside, never used.
+  private checked?: Promise<void>;
+  private reconcile() {
+    if (!this.lookup) return Promise.resolve();
+    return (this.checked ??= (async () => {
+      const record = await this.lookup!();
+      const row = await this.row();
+      const same =
+        row?.agent_id === (record?.agentId ?? "") &&
+        row?.environment_id === (record?.environmentId ?? "");
+      if (same || (!row?.agent_id && !row?.environment_id && !record)) return;
+      if (row?.agent_id || row?.environment_id)
+        await this.db.set(`${this.storageKey}:unrecorded:${Date.now()}`, row);
+      const complete = Boolean(record?.agentId && record.environmentId);
+      await this.db.set<Mapping>(this.storageKey, {
+        agent_id: record?.agentId ?? "",
+        environment_id: record?.environmentId ?? "",
+        model_id: record?.model ?? "",
+        resource_name: `open-muse-${this.key.slice(0, 18)}`,
+        agent_pending: false,
+        environment_pending: false,
+        state: complete ? "ready" : "idle",
+        message: complete
+          ? "Your personal workspace is ready; you can start a task."
+          : "",
+      });
+    })().catch((error) => {
+      this.checked = undefined;
+      throw error;
+    }));
+  }
   async status(): Promise<WorkspaceStatus> {
+    if (!this.job) await this.reconcile();
     const row = await this.row();
     if (this.job)
       return {
@@ -100,6 +138,7 @@ export class DirectWorkspace {
         };
   }
   async selection() {
+    await this.reconcile();
     const row = await this.row();
     if (!row?.agent_id || !row.environment_id || row.state !== "ready")
       throw new ApiError(
@@ -244,6 +283,7 @@ export class DirectWorkspace {
       row.message = "Checking your personal workspace…";
     });
     if (this.provision) {
+      await this.reconcile();
       const created = await this.provision(replaceUnconfirmed);
       await this.update((r) => {
         r.agent_id = created.agentId;
