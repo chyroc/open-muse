@@ -5,12 +5,18 @@ import { ArkRemote, type Remote } from "./ark";
 import { backgroundReady, HttpError, type Env } from "./env";
 import { Repository, type Run } from "./repository";
 import { ConnectionStore } from "./connection";
+import { authorizedOwners } from "./auth";
 
 export async function processRun(
   repo: Repository,
   remote: Remote,
   clock = Date.now,
 ) {
+  if (remote.owner !== repo.owner)
+    throw new HttpError(
+      409,
+      "The task and Ark credentials belong to different users. No MA request was sent.",
+    );
   const run = await repo.claim(clock());
   if (!run) return;
   let error: string | null = null;
@@ -177,19 +183,46 @@ export async function processRun(
   }
 }
 
-export async function tick(env: Env, remote?: Remote, clock = Date.now) {
+export async function tick(
+  env: Env,
+  remoteFactory: (
+    owner: string,
+    connection: Env,
+    fetcher: typeof fetch,
+  ) => Remote = (_owner, connection, fetcher) =>
+    new ArkRemote(connection, fetcher),
+  clock = Date.now,
+) {
   if (env.BACKGROUND_ENABLED !== "true") return;
-  const store = new ConnectionStore(env);
-  const connection = await store.resolve();
-  if (!connection || !backgroundReady(connection.env)) return;
-  remote ??= new ArkRemote(
-    connection.env,
-    store.guardedFetch(connection.revision),
-  );
-  const repo = new Repository(env.DB, env.OWNER_ID);
-  await repo.dispatchDue(clock(), {
-    revision: connection.revision,
-    hash: await remote.fingerprint(),
-  });
-  await processRun(repo, remote, clock);
+  const owners = authorizedOwners(env);
+  // Bounded, oldest-due-first tenant selection. An error in one tenant cannot
+  // cause its key to be reused for another tenant or starve all other owners.
+  const due = await env.DB.prepare(
+    `SELECT owner_id FROM (
+    SELECT owner_id,next_check_at AS due_at FROM runs WHERE phase NOT IN ('complete','failed','needs_attention') AND next_check_at<=?
+    UNION ALL SELECT owner_id,next_run_at AS due_at FROM schedules WHERE enabled=1 AND next_run_at<=?
+  ) WHERE owner_id IN (SELECT value FROM json_each(?)) GROUP BY owner_id ORDER BY min(due_at),owner_id LIMIT 20`,
+  )
+    .bind(clock(), clock(), JSON.stringify(owners))
+    .all<{ owner_id: string }>();
+  for (const { owner_id: owner } of due.results) {
+    try {
+      const store = new ConnectionStore(env, owner);
+      const connection = await store.resolve();
+      if (!connection || !backgroundReady(connection.env)) continue;
+      const remote = remoteFactory(
+        owner,
+        connection.env,
+        store.guardedFetch(connection.revision),
+      );
+      const repo = new Repository(env.DB, owner);
+      await repo.dispatchDue(clock(), {
+        revision: connection.revision,
+        hash: await remote.fingerprint(),
+      });
+      await processRun(repo, remote, clock);
+    } catch {
+      /* Fail closed for this owner. Do not log private upstream state. */
+    }
+  }
 }

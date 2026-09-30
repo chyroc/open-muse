@@ -36,6 +36,7 @@ describe("Durable background Feed", () => {
     sessions = [];
     events = [];
     remote = {
+      owner: repo.owner,
       fingerprint: vi.fn(async () => "connection"),
       verify: vi.fn(async () => {}),
       prepare: vi.fn(async () => "Generate a Feed"),
@@ -196,7 +197,11 @@ describe("Durable background Feed", () => {
     expect(remote.send).toHaveBeenCalledTimes(1);
   });
   it("does not start any remote work when the deployment is disabled", async () => {
-    await tick({ DB: fixture.db, OWNER_ID: repo.owner }, remote, () => now);
+    await tick(
+      { DB: fixture.db, OWNER_ID: repo.owner },
+      () => remote,
+      () => now,
+    );
     expect(remote.prepare).not.toHaveBeenCalled();
   });
   it("enforces schedule revisions and deduplicates concurrent cron ticks", async () => {

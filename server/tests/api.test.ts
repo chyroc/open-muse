@@ -14,7 +14,10 @@ describe("Private native API", () => {
       DB: fixture.db,
       OWNER_ID: "test-owner",
       DEVICE_TOKEN_HASHES: JSON.stringify({
-        [await tokenHash(token)]: "test-device",
+        [await tokenHash(token)]: {
+          ownerId: "test-owner",
+          deviceLabel: "test-device",
+        },
       }),
       ALLOWED_ORIGINS: "capacitor://localhost,muse://app",
     };
@@ -95,16 +98,27 @@ describe("Private native API", () => {
       },
       body: JSON.stringify(value),
     });
-  const configured = () => ({
-    ...env,
-    OWNER_ID: crypto.randomUUID(),
-    BACKGROUND_ENABLED: "true",
-    ARK_API_KEY: "test-key",
-    ARK_AGENT_ID: "agent-test",
-    ARK_AGENT_VERSION: "1",
-    ARK_ENVIRONMENT_ID: "env-test",
-    ARK_MEMORY_STORE_ID: "mem-test",
-  });
+  const configured = () => {
+    const ownerId = crypto.randomUUID();
+    return {
+      ...env,
+      OWNER_ID: ownerId,
+      DEVICE_TOKEN_HASHES: JSON.stringify(
+        Object.fromEntries(
+          Object.entries(JSON.parse(env.DEVICE_TOKEN_HASHES!)).map(([hash]) => [
+            hash,
+            { ownerId, deviceLabel: "test-device" },
+          ]),
+        ),
+      ),
+      BACKGROUND_ENABLED: "true",
+      ARK_API_KEY: "test-key",
+      ARK_AGENT_ID: "agent-test",
+      ARK_AGENT_VERSION: "1",
+      ARK_ENVIRONMENT_ID: "env-test",
+      ARK_MEMORY_STORE_ID: "mem-test",
+    };
+  };
   it("requires configured MA and consent before enabling a schedule", async () => {
     const value = {
       enabled: true,

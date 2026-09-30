@@ -65,12 +65,13 @@ describe("Encrypted app connection custody", () => {
   });
   afterAll(async () => fixture.dispose());
   beforeEach(async () => {
+    const ownerId = crypto.randomUUID();
     env = {
       DB: fixture.db,
-      OWNER_ID: crypto.randomUUID(),
+      OWNER_ID: ownerId,
       CREDENTIAL_ENCRYPTION_KEYS: ring(),
       DEVICE_TOKEN_HASHES: JSON.stringify({
-        [await tokenHash(token)]: "test-device",
+        [await tokenHash(token)]: { ownerId, deviceLabel: "test-device" },
       }),
       BACKGROUND_ENABLED: "true",
     };

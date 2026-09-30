@@ -1,7 +1,7 @@
 export interface Env {
   DB: D1Database;
   OWNER_ID: string;
-  // JSON object mapping SHA-256 device-token hashes to non-secret device labels.
+  // Trusted device-token hash -> {ownerId, deviceLabel}. Never client-selected.
   DEVICE_TOKEN_HASHES?: string;
   ALLOWED_ORIGINS?: string;
   BACKGROUND_ENABLED?: string;

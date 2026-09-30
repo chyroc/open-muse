@@ -5,6 +5,8 @@ import {
   type BackgroundConnectionStatus,
 } from "../../shared/background-connection";
 import { ArkRemote } from "./ark";
+import { ApiError } from "../../shared/ark";
+import { authorizedOwners } from "./auth";
 import { backgroundReady, HttpError, type Env } from "./env";
 
 type Row = { revision: number; encrypted: string | null; updated_at: number };
@@ -157,15 +159,16 @@ export class ConnectionStore {
     // Retain existing private deployments. A revocation tombstone disables this
     // fallback, so old service-level credentials can never resurrect access.
     if (!row)
-      return backgroundReady(this.env)
+      return this.owner === this.env.OWNER_ID &&
+        authorizedOwners(this.env).length === 1 &&
+        authorizedOwners(this.env)[0] === this.owner &&
+        backgroundReady(this.env)
         ? { env: this.env, revision: null }
         : undefined;
     if (!row.encrypted) return;
+    const config = await decryptConfiguration(this.env, this.owner, row);
     return {
-      env: configurationEnv(
-        this.env,
-        await decryptConfiguration(this.env, this.owner, row),
-      ),
+      env: configurationEnv({ ...this.env, OWNER_ID: this.owner }, config),
       revision: row.revision,
     };
   }
@@ -209,13 +212,20 @@ export class ConnectionStore {
       return this.status();
     // Only read-only validation is performed here. Uploading must never create
     // an agent, session, memory store, or generation as a side effect.
-    const remote = new ArkRemote(configurationEnv(this.env, config), fetcher);
+    const remote = new ArkRemote(
+      configurationEnv({ ...this.env, OWNER_ID: this.owner }, config),
+      fetcher,
+    );
     try {
       await remote.verifyAccess();
-    } catch {
+    } catch (error) {
       throw new HttpError(
         422,
-        "The current Ark workspace could not be verified. Refresh the local workspace and retry.",
+        error instanceof ApiError
+          ? `Ark workspace verification failed (HTTP ${error.status}). Check the key's permissions and Worker-to-Ark access.`
+          : error instanceof HttpError
+            ? error.message
+            : "The current Ark workspace could not be verified. Refresh the local workspace and retry.",
       );
     }
     const fingerprint = await remote.fingerprint();

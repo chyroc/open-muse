@@ -6,6 +6,7 @@ import { tokenHash } from "./auth";
 import { HttpError, type Env } from "./env";
 
 export interface Remote {
+  readonly owner: string;
   fingerprint(): Promise<string>;
   verify(session?: string): Promise<void>;
   prepare(): Promise<string>;
@@ -21,11 +22,13 @@ const validId = (value: unknown) => {
 };
 const base = "https://ark.cn-beijing.volces.com/api/v3";
 export class ArkRemote implements Remote {
+  readonly owner: string;
   private ark: ArkClient;
   constructor(
     private env: Env,
     fetcher: typeof fetch = fetch,
   ) {
+    this.owner = env.OWNER_ID;
     this.ark = new ArkClient(
       {
         arkBaseUrl: base,
@@ -38,6 +41,7 @@ export class ArkRemote implements Remote {
   fingerprint() {
     return tokenHash(
       JSON.stringify([
+        this.owner,
         this.env.ARK_API_KEY,
         this.env.ARK_PROJECT ?? "",
         this.env.ARK_AGENT_ID,

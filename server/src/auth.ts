@@ -10,31 +10,60 @@ export async function tokenHash(token: string) {
     .join("");
 }
 
-export async function authenticate(request: Request, env: Env) {
-  if (!env.OWNER_ID || !env.DEVICE_TOKEN_HASHES)
+export interface DeviceIdentity {
+  ownerId: string;
+  deviceLabel: string;
+}
+export function deviceIdentities(env: Env): Record<string, DeviceIdentity> {
+  if (!env.DEVICE_TOKEN_HASHES)
     throw new HttpError(503, "Device access is not configured.");
-  let hashes: Record<string, string>;
   try {
-    hashes = JSON.parse(env.DEVICE_TOKEN_HASHES);
+    const hashes = JSON.parse(env.DEVICE_TOKEN_HASHES);
     if (
       !hashes ||
       Array.isArray(hashes) ||
       typeof hashes !== "object" ||
       !Object.keys(hashes).length ||
-      Object.entries(hashes).some(
-        ([k, v]) => !/^[a-f0-9]{64}$/.test(k) || typeof v !== "string",
-      )
+      Object.keys(hashes).length > 200 ||
+      Object.entries(hashes).some(([k, v]) => {
+        const identity = v as DeviceIdentity;
+        return (
+          !/^[a-f0-9]{64}$/.test(k) ||
+          !identity ||
+          typeof identity !== "object" ||
+          Array.isArray(identity) ||
+          Object.keys(identity).length !== 2 ||
+          !Object.hasOwn(identity, "ownerId") ||
+          !Object.hasOwn(identity, "deviceLabel") ||
+          typeof identity.ownerId !== "string" ||
+          !/^[\w-]{1,128}$/.test(identity.ownerId) ||
+          typeof identity.deviceLabel !== "string" ||
+          !/^[^\r\n]{1,80}$/.test(identity.deviceLabel)
+        );
+      })
     )
       throw new Error();
+    return hashes;
   } catch {
     throw new HttpError(503, "Device access is not configured.");
   }
+}
+export function authorizedOwners(env: Env) {
+  return [
+    ...new Set(
+      Object.values(deviceIdentities(env)).map((device) => device.ownerId),
+    ),
+  ];
+}
+export async function authenticate(request: Request, env: Env) {
+  const hashes = deviceIdentities(env);
   const match = /^Bearer (muse_device_[A-Za-z0-9_-]{32,128})$/.exec(
     request.headers.get("Authorization") ?? "",
   );
-  if (!match || !Object.hasOwn(hashes, await tokenHash(match[1])))
+  const hash = match ? await tokenHash(match[1]) : "";
+  if (!Object.hasOwn(hashes, hash))
     throw new HttpError(401, "Connect with an authorized device token.");
-  return env.OWNER_ID;
+  return hashes[hash].ownerId;
 }
 
 export function checkOrigin(request: Request, env: Env) {

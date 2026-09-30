@@ -21,9 +21,14 @@ hour of monitoring, a run requires explicit review; this does not stop MA or
 guarantee a model-spend cap. Pausing a schedule stops future automatic dispatch,
 not already queued or running work.
 
-This is a single-owner private deployment, not a public registration service.
-Each authorized device uses a different random token. Only SHA-256 token hashes
-are configured on the server; all tokens map to the deployment's `OWNER_ID`.
+This is a privately provisioned, user-isolated deployment, not a public
+registration service. Each authorized device uses a different random token.
+Only SHA-256 token hashes are configured on the server; each hash maps to a
+trusted `{ownerId, deviceLabel}` record. Different devices belonging to the same
+user share that user's stable, opaque `ownerId`. Different users must receive
+different IDs and tokens. The service derives ownership from this trusted
+binding, never from a submitted name, query string, or resource ID. Old
+label-only device maps are rejected rather than silently sharing one account.
 Never use an Ark API key or Cloudflare API token as a device token.
 Device tokens must start with `muse_device_` and contain a random suffix.
 
@@ -45,7 +50,8 @@ mocked upstream calls. Development listens on port 4311.
 
 Configure local bindings in ignored `.dev.vars`:
 
-- `DEVICE_TOKEN_HASHES`: a JSON object from SHA-256 device-token hashes to labels.
+- `DEVICE_TOKEN_HASHES`: a JSON object from SHA-256 device-token hashes to
+  `{ownerId, deviceLabel}` records (maximum 200 devices).
   Missing or malformed configuration disables authenticated endpoints.
 - `ALLOWED_ORIGINS`: comma-separated exact origins for the native WebViews,
   typically `capacitor://localhost,muse://app`. Verify the actual app origins.
@@ -72,11 +78,11 @@ background connection and make no requests to this service. Existing Ark
 requests still go directly to the existing allowlisted Volcano endpoints.
 
 Enter a separate device token in each app. iOS and macOS store it in a dedicated
-Keychain namespace, separate from Ark authentication. They do not copy or upload
-existing Ark credentials. Signing out of Ark or removing the local background
-connection does not pause the server schedule. Pause the schedule explicitly
-before disconnecting if future automatic runs should stop. Revocation requires
-removing the corresponding token hash on the server.
+Keychain namespace, separate from Ark authentication. Connecting a device token
+alone does not upload Ark credentials. Signing out of Ark or removing the local
+background connection does not pause the server schedule. Pause the schedule
+explicitly before disconnecting if future automatic runs should stop. Revocation
+requires removing the corresponding token hash on the server.
 
 The settings card supports revision-checked schedule changes with explicit
 consent, one-off generation, reviewed reconciliation, and recent runs. A pending
@@ -158,10 +164,65 @@ Ark key; use the Ark console to do that. Deletion is available even if the
 encryption keyring is unavailable. Unresolved submissions can only be reconciled
 after explicitly restoring the original connection and reviewing the run.
 
+Credentials, schedules, job claims, run limits, results, and revocation are
+scoped to the authenticated user. Cron selects up to 20 oldest-due authorized
+users per invocation and creates a separate Ark adapter from each user's own
+encrypted configuration. The adapter owner must match the task owner before
+claiming work. A missing or unreadable user configuration cannot borrow another
+user's key, and a failure for one user does not change another user's results.
+
+The owner is an Open Muse end user, not an Ark account or API-key owner. Multiple
+users may explicitly upload the same Ark key. Each still has a separate
+owner-bound encrypted configuration, schedule, job state, result set, and
+revocation operation. There is no global key-ownership registry and no
+deduplication of users or connections by key. Revoking one user's upload does
+not revoke another user's upload; revoking the key at Ark affects everyone
+using it. Device enrollment is a trusted administrative operation. Public
+sign-up and end-user login are not implemented.
+
+### End-user identity and rollout prerequisite
+
+Device tokens identify users only through the trusted server-side enrollment
+binding. A random client UUID, a person's name, an Ark key, an API-key digest,
+an Apple device ID, or a claimed user ID is not authentication. Multiple devices
+share one owner only after trusted enrollment; a new device is not automatically
+recognized as the same person.
+
+The current direct iOS/macOS client derives workspace and personal-memory
+metadata from the Ark endpoint/key/project digest, not from a separate Muse
+account. Two people using the same key/project can therefore discover the same
+MA memory store and workspace. Server-side D1 isolation does not repair this
+upstream sharing. Do not enable unattended multi-user generation until client
+identity, resource provisioning, and legacy-data migration have been addressed.
+Tests cover separate per-user resources, including users sharing a key; they
+do not establish end-to-end native account isolation.
+
+For native account onboarding, the proposed default is Sign in with Apple on
+both iOS and macOS. Verify Apple's token signature, issuer, allowed app audience,
+expiry, and login-challenge nonce on the Worker, then map the verified provider
+subject to a server-issued stable Muse user ID. Do not trust a client-submitted
+subject or use an email/name as the identifier. Configure the app identifiers
+for shared Apple identity before linking iOS/macOS accounts. Issue separate
+revocable device sessions stored in Keychain and derive every request's owner
+from the verified session. Apple login and its signing/capability setup are
+proposed, not implemented by this private-token service.
+
+Client workspace metadata and memory-store provisioning must use that Muse user
+ID (plus a separate connection/workspace ID), not the key digest. Personal
+memory, session selection, local caches, and pending actions must remain scoped
+to that identity. Preserve legacy records; do not automatically assign a
+previously shared memory store to a newly logged-in user. A shared Ark key can
+grant direct upstream access to both users' resources: application partitioning
+is not an Ark authorization boundary. Use separately scoped Ark credentials if
+the users must not be able to access one another's data outside Open Muse.
+
 Different credentials/workspaces cannot replace an unresolved run's connection.
 Unchanged syncs are deduplicated. Stale revisions fail instead of overwriting a
 newer device's upload. Older service-level `ARK_*` bindings remain supported for
-existing private deployments, but a revocation tombstone disables that fallback.
+existing private deployments **only** when there is exactly one authorized
+owner matching `OWNER_ID`. They are never a shared multi-user fallback.
+A revocation tombstone also disables the fallback. `OWNER_ID` no longer selects
+an HTTP request's owner. Migrate device-token maps before deploying this version.
 
 The uploaded app agent is version-pinned and reused with per-session overrides:
 empty tools, MCP servers, and skills, plus a background-only system instruction.
