@@ -100,6 +100,19 @@ function fixture() {
       }
       return Response.json({ data: rows });
     }
+    if (path === "/files" && init.method === "POST") {
+      const form = init.body as FormData;
+      const file = form.get("file") as File;
+      const uploaded = {
+        id: `file-upload-${files.length + 1}`,
+        purpose: String(form.get("purpose")),
+        filename: file.name,
+        bytes: file.size,
+        status: "active",
+      };
+      files.push(uploaded);
+      return Response.json(uploaded);
+    }
     if (path === "/files")
       return Response.json({
         object: "list",
@@ -972,6 +985,68 @@ describe("Direct MA client", () => {
       confirm: true,
     });
     expect((await f.client.libraryFiles()).data).toEqual([]);
+  });
+  it("uploads images as user data and sends text documents inline", async () => {
+    const f = fixture();
+    await f.login();
+    await f.client.prepareWorkspace();
+    const session = await f.client.create("Attachment task", "general");
+    const image = await f.client.uploadAttachment(
+      new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" }),
+      "cat.png",
+      0,
+    );
+    const note = await f.client.uploadAttachment(
+      new Blob(["# Notes"], { type: "" }),
+      "notes.md",
+      1,
+    );
+    if (!("file_id" in image) || !("text" in note))
+      throw new Error("Unexpected attachment shape");
+    // MA's file store rejects plain text, so only the image is uploaded.
+    expect(f.files.map((file) => file.purpose)).toEqual(["user_data"]);
+    expect(note.text).toBe("# Notes");
+    expect(await f.client.attachmentNames()).toEqual({
+      [image.file_id]: "cat.png",
+    });
+    await expect(
+      f.client.send(session.id, { type: "user.message", text: "  " }),
+    ).rejects.toThrow("Write a message or attach a file.");
+    await f.client.send(session.id, {
+      type: "user.message",
+      text: "",
+      attachments: [image, note],
+    });
+    expect(f.events.at(-1)?.content).toEqual([
+      { type: "image", source: { type: "file", file_id: image.file_id } },
+      {
+        type: "document",
+        source: { type: "text", media_type: "text/plain", data: "# Notes" },
+        title: "notes.md",
+      },
+    ]);
+    await f.client.send(session.id, {
+      type: "user.message",
+      text: "Compare them",
+      attachments: [image],
+    });
+    expect(f.events.at(-1)?.content?.at(-1)).toEqual({
+      type: "text",
+      text: "Compare them",
+    });
+    await expect(
+      f.client.send(session.id, {
+        type: "user.message",
+        text: "x",
+        attachments: Array(5).fill(image),
+      }),
+    ).rejects.toThrow();
+    await f.client.auth("logout", {});
+    await f.client.auth("api-key", {
+      apiKey: "test-other-account-key-123456789",
+      confirm: true,
+    });
+    expect(await f.client.attachmentNames()).toEqual({});
   });
   it("serializes concurrent cloud goal updates without losing records", async () => {
     const f = fixture();

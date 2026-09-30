@@ -26,7 +26,7 @@ import { WelcomeStatus } from "./WelcomeStatus";
 import type { WelcomeState } from "./direct/welcome";
 import { isWelcomeReply } from "../shared/welcome";
 import { currentChoiceEvent } from "../shared/chat-choices";
-import { digest } from "../shared/crypto";
+import { digest, uuid } from "../shared/crypto";
 import { goalPrompt, goalStarter, type GoalCategory } from "../shared/goals";
 import { Activity, Markdown, MuseMark, PermissionCard } from "./components";
 import type {
@@ -44,6 +44,13 @@ import { exportText } from "./platform";
 import { backgroundClient } from "./background-client";
 import { Sheet, primaryNavigation } from "./MusePages";
 import { LibraryPage } from "./LibraryPage";
+import {
+  MessageAttachments,
+  StagedAttachments,
+  imagePreview,
+  type StagedAttachment,
+} from "./Attachments";
+import { checkAttachment, messageAttachments } from "../shared/attachments";
 import {
   ChatActions,
   ChatComposer,
@@ -187,6 +194,72 @@ function Workspace({
   const [category, setCategory] = useState<Category>("general");
   const draftKey = activeId ?? (isSideDraft ? "new-side" : "new-main");
   const draft = drafts[draftKey] ?? "";
+  // Staged attachments belong to the conversation being written; switching
+  // conversations drops them (the uploaded copies simply expire in MA).
+  const [staged, setStaged] = useState<StagedAttachment[]>([]);
+  const [attachmentNames, setAttachmentNames] = useState<
+    Record<string, string>
+  >({});
+  const carryStaged = useRef<string>(undefined);
+  useEffect(() => {
+    // Creating the conversation for this message moves the draft with it.
+    if (carryStaged.current === draftKey) carryStaged.current = undefined;
+    else setStaged([]);
+  }, [draftKey]);
+  useEffect(() => {
+    void client.attachmentNames().then(setAttachmentNames, () => {});
+  }, [client]);
+  const readyAttachments = staged.filter((item) => item.state === "ready");
+  const stagedCount = useRef(0);
+  stagedCount.current = staged.length;
+  const attachFiles = (files: File[]) => {
+    let count = stagedCount.current;
+    for (const file of files) {
+      const key = uuid();
+      let kind: StagedAttachment["kind"];
+      try {
+        kind = checkAttachment(file.name, file.type, file.size, count).kind;
+      } catch (error) {
+        setStaged((current) => [
+          ...current,
+          {
+            key,
+            name: file.name,
+            kind: file.type.startsWith("image/") ? "image" : "document",
+            state: "failed",
+            error: (error as Error).message,
+          },
+        ]);
+        continue;
+      }
+      setStaged((current) => [
+        ...current,
+        { key, name: file.name, kind, state: "uploading" },
+      ]);
+      const position = count++;
+      const update = (patch: Partial<StagedAttachment>) =>
+        setStaged((current) =>
+          current.map((item) =>
+            item.key === key ? { ...item, ...patch } : item,
+          ),
+        );
+      if (kind === "image")
+        void imagePreview(file).then(
+          (preview) => preview && update({ preview }),
+        );
+      client.uploadAttachment(file, file.name, position).then(
+        (item) => {
+          update({ state: "ready", value: item, name: item.name });
+          if ("file_id" in item)
+            setAttachmentNames((names) => ({
+              ...names,
+              [item.file_id]: item.name,
+            }));
+        },
+        (error: Error) => update({ state: "failed", error: error.message }),
+      );
+    }
+  };
   const task = useTask(client, activeId);
   const events = task.session?.id === activeId ? task.events : [];
   const currentEvents = events.filter(
@@ -384,14 +457,21 @@ function Workspace({
   const sendMessage = () =>
     action(async () => {
       const text = draft.trim();
-      if (!text) return;
+      const attachments = readyAttachments.flatMap((item) =>
+        item.value ? [item.value] : [],
+      );
+      if (!text && !attachments.length) return;
+      if (staged.some((item) => item.state !== "ready"))
+        throw new Error(
+          t("Wait for uploads to finish or remove failed attachments."),
+        );
       if (goalInitiation || goalDraft) await client.prepareGoals();
       let sessionId = activeId;
       if (!sessionId || sessionId === index.mainId) {
         const session = await client.openConversation(
           isSideDraft ? "side" : "main",
           isSideDraft
-            ? (goalDraft?.title ?? text).slice(0, 60)
+            ? (goalDraft?.title ?? (text || attachments[0].name)).slice(0, 60)
             : t("Main chat"),
           category,
         );
@@ -405,6 +485,7 @@ function Workspace({
           [draftKey]: "",
           [session.id]: text,
         }));
+        carryStaged.current = session.id;
         if (isSideDraft) navigate(`/task/${session.id}`);
         else if (taskRoute && taskRoute !== session.id) navigate("/");
         if (goalDraft) {
@@ -420,10 +501,15 @@ function Workspace({
         }
       }
       if (!alive.current) return;
-      await client.send(sessionId, { type: "user.message", text });
+      await client.send(sessionId, {
+        type: "user.message",
+        text,
+        ...(attachments.length ? { attachments } : {}),
+      });
       if (alive.current) {
         setGoalInitiation(false);
         setDrafts((current) => ({ ...current, [sessionId!]: "" }));
+        setStaged([]);
         setAwayFromBottom(false);
         await task.refresh();
       }
@@ -500,7 +586,7 @@ function Workspace({
     (event) =>
       ["user.message", "agent.message"].includes(event.type) &&
       !event.app_initiation &&
-      eventText(event),
+      (eventText(event) || messageAttachments(event).length),
   );
   const isChat = tab === "home";
   return (
@@ -689,7 +775,12 @@ function Workspace({
                         })}
                         onOptions={() => setSelectedMessage(event)}
                       >
-                        <Markdown text={eventText(event)} />
+                        <MessageAttachments
+                          items={messageAttachments(event, attachmentNames)}
+                        />
+                        {eventText(event) && (
+                          <Markdown text={eventText(event)} />
+                        )}
                       </MessageBubble>
                     )}
                   </div>
@@ -811,7 +902,21 @@ function Workspace({
                   ) ||
                   pendingTools.length > 0
                 }
-                onActions={() => setPanel("actions")}
+                onAttach={attachFiles}
+                attachments={
+                  <StagedAttachments
+                    items={staged}
+                    onRemove={(key) =>
+                      setStaged((current) =>
+                        current.filter((item) => item.key !== key),
+                      )
+                    }
+                  />
+                }
+                attachmentsReady={readyAttachments.length > 0}
+                attachmentsPending={staged.some(
+                  (item) => item.state !== "ready",
+                )}
               />
             </div>
           </>

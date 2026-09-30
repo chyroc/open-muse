@@ -1059,6 +1059,74 @@ final class MuseLiveUITests: XCTestCase {
         tap(app.buttons["预览文件"])
         closePreview(openPreview(file: name, content: "# Library check \((name as NSString).deletingPathExtension)", close: "关闭预览"), detail: "预览文件")
     }
+
+    // Picks a synthetic fixture from "On My iPhone" through the system picker.
+    // Setup: put attachment-check.png (a solid teal square) and attachment-check.md
+    // (containing "The verification word is juniper-4821.") in the simulator's
+    // On My iPhone storage. Never use personal photos or documents.
+    private func chooseFixture(_ identifier: String) {
+        tap(app.buttons["Add attachment"], timeout: 30)
+        tap(app.buttons["Choose Files"])
+        let search = app.searchFields["Search"]
+        tap(search, timeout: 20)
+        search.typeText("attachment-check")
+        tap(app.cells[identifier], timeout: 20)
+        if app.buttons["Open"].waitForExistence(timeout: 3) { app.buttons["Open"].tap() }
+        XCTAssertTrue(app.navigationBars["FullDocumentManagerViewControllerNavigationBar"].waitForNonExistence(timeout: 15))
+    }
+
+    private func waitForReadyAttachments(_ count: Int) {
+        let ready = app.staticTexts.matching(NSPredicate(format: "label == %@", "Ready to send"))
+        for _ in 0..<60 where ready.count != count { sleep(1) }
+        XCTAssertEqual(ready.count, count, app.debugDescription)
+    }
+
+    func testAttachmentsReachRealMA() {
+        let marker = "attach-" + String(UUID().uuidString.prefix(6)).lowercased()
+        relaunch()
+        tap(app.buttons["Open sidebar"], timeout: 40)
+        tap(app.buttons["New side chat"])
+        chooseFixture("attachment-check, png")
+        waitForReadyAttachments(1)
+        tap(app.buttons["Remove attachment: attachment-check.png"])
+        XCTAssertTrue(app.buttons["Remove attachment: attachment-check.png"].waitForNonExistence(timeout: 5))
+        chooseFixture("attachment-check, png")
+        chooseFixture("attachment-check, md")
+        waitForReadyAttachments(2)
+        capture("attachments-staged")
+        let prompt = "\(marker): reply in one line with the main color of the attached image and the verification word from the attached document. Do not use tools."
+        enterMessage(prompt)
+        tap(app.buttons["Send message"])
+        XCTAssertTrue(app.buttons["Remove attachment: attachment-check.md"].waitForNonExistence(timeout: 30), "Staged files clear after sending")
+        XCTAssertTrue(app.staticTexts["attachment-check.png"].waitForExistence(timeout: 30), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["attachment-check.md"].exists)
+        let reply = app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "juniper-4821")).firstMatch
+        XCTAssertTrue(reply.waitForExistence(timeout: 240), "MA must read the attached document: \(app.debugDescription)")
+        XCTAssertNotNil(reply.label.lowercased().range(of: "teal|cyan|turquoise|green", options: .regularExpression), "MA must see the attached image: \(reply.label)")
+        capture("attachments-real-reply")
+        relaunch()
+        tap(app.buttons["Open sidebar"], timeout: 40)
+        tap(app.links[String(prompt.prefix(60))], timeout: 30)
+        XCTAssertTrue(app.staticTexts["attachment-check.png"].waitForExistence(timeout: 40), app.debugDescription)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "juniper-4821")).firstMatch.exists)
+        capture("attachments-after-relaunch")
+    }
+
+    // Reopens the conversation from a previous real run; sends nothing to MA.
+    func testAttachmentsRestoreWithoutGeneration() {
+        relaunch()
+        tap(app.buttons["Open sidebar"], timeout: 40)
+        let link = app.links.matching(NSPredicate(format: "label BEGINSWITH %@ AND label CONTAINS %@", "attach-", "reply in one line")).firstMatch
+        tap(link, timeout: 30)
+        XCTAssertTrue(app.staticTexts["attachment-check.png"].waitForExistence(timeout: 40), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["attachment-check.md"].exists)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "juniper-4821")).firstMatch.exists)
+        XCTAssertTrue(app.buttons["Add attachment"].exists)
+        capture("attachments-restored")
+        relaunch(language: "zh-Hans,en", locale: "zh_CN")
+        XCTAssertTrue(app.buttons["添加附件"].waitForExistence(timeout: 40), app.debugDescription)
+        capture("attachments-chinese")
+    }
 }
 #endif
 

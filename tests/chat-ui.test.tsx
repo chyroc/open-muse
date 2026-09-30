@@ -12,7 +12,7 @@ describe("Conversation controls", () => {
         setValue={() => {}}
         onSend={() => {}}
         onStop={() => {}}
-        onActions={() => {}}
+        onAttach={() => {}}
         busy={false}
         running={false}
         disabled={false}
@@ -29,7 +29,7 @@ describe("Conversation controls", () => {
       setValue() {},
       onSend() {},
       onStop() {},
-      onActions() {},
+      onAttach() {},
       busy: false,
       disabled: true,
     };

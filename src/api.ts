@@ -28,6 +28,13 @@ import { DirectGoals } from "./direct/goals";
 import { DirectChoices } from "./direct/choices";
 import { DirectWelcome } from "./direct/welcome";
 import { DirectLibrary } from "./direct/library";
+import { DirectAttachments } from "./direct/attachments";
+import {
+  attachmentBlocks,
+  attachmentInput,
+  maxAttachments,
+  type Attachment,
+} from "../shared/attachments";
 import { identityDefaults } from "../shared/identity";
 import {
   agentSnapshot,
@@ -65,7 +72,8 @@ const messageInput = z.discriminatedUnion("type", [
   z
     .object({
       type: z.literal("user.message"),
-      text: z.string().trim().min(1).max(16000),
+      text: z.string().trim().max(16000),
+      attachments: z.array(attachmentInput).max(maxAttachments).optional(),
     })
     .strict(),
   z.object({ type: z.literal("user.interrupt") }).strict(),
@@ -1063,6 +1071,12 @@ export class Client {
     request?: { runtime: Runtime; eventId: string },
   ): Promise<Page<AgentEvent>> {
     const input = messageInput.parse(body);
+    if (
+      input.type === "user.message" &&
+      !input.text &&
+      !input.attachments?.length
+    )
+      throw new ApiError(400, t("Write a message or attach a file."));
     const r = request?.runtime ?? this.context();
     r.abort.signal.throwIfAborted();
     validId(id);
@@ -1099,7 +1113,10 @@ export class Client {
         type: input.type,
       };
       if (input.type === "user.message")
-        event.content = [{ type: "text", text: input.text }];
+        event.content = [
+          ...attachmentBlocks(input.attachments ?? []),
+          ...(input.text ? [{ type: "text", text: input.text }] : []),
+        ];
       if (
         input.type === "user.message" &&
         (await this.conversations(r).claimSend(id, event.id!))
@@ -1383,6 +1400,30 @@ export class Client {
     const result = await this.fileLibrary(r).download(id);
     r.abort.signal.throwIfAborted();
     return result;
+  }
+  async uploadAttachment(file: Blob, name: string, staged: number) {
+    const r = this.context();
+    const item = await new DirectAttachments(r.ark).upload(
+      file,
+      name,
+      staged,
+      r.abort.signal,
+    );
+    // MA image blocks carry no name; remember it on this device for history.
+    if ("file_id" in item)
+      await this.db.update<Record<string, string>>(
+        `${r.key}:attachment-names`,
+        (names) => ({ ...names, [item.file_id]: item.name }),
+      );
+    return item;
+  }
+  async attachmentNames(): Promise<Record<string, string>> {
+    if (!this.signedIn()) return {};
+    return (
+      (await this.db.get<Record<string, string>>(
+        `${this.context().key}:attachment-names`,
+      )) ?? {}
+    );
   }
   async saveReply(session_id: string, event_id: string) {
     const r = this.context();

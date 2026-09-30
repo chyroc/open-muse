@@ -75,7 +75,7 @@ describe("Localized mobile UI", () => {
           setValue={() => {}}
           onSend={() => {}}
           onStop={() => {}}
-          onActions={() => {}}
+          onAttach={() => {}}
           running={false}
           busy={false}
           disabled

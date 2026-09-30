@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import type { Session } from "../shared/types";
+import { attachmentAccept } from "../shared/attachments";
 import type { ConversationIndex } from "./direct/conversations";
 import { Sheet } from "./MusePages";
 
@@ -180,7 +181,10 @@ export function ChatComposer({
   running,
   busy,
   disabled,
-  onActions,
+  onAttach,
+  attachments,
+  attachmentsReady = false,
+  attachmentsPending = false,
   name = "Muse",
 }: {
   value: string;
@@ -190,11 +194,17 @@ export function ChatComposer({
   running: boolean;
   busy: boolean;
   disabled: boolean;
-  onActions: () => void;
+  onAttach: (files: File[]) => void;
+  attachments?: ReactNode;
+  attachmentsReady?: boolean;
+  attachmentsPending?: boolean;
   name?: string;
 }) {
   const input = useRef<HTMLTextAreaElement>(null);
+  const picker = useRef<HTMLInputElement>(null);
   const [dictationHint, setDictationHint] = useState(false);
+  const sendable =
+    (Boolean(value.trim()) || attachmentsReady) && !attachmentsPending;
   useEffect(() => {
     const element = input.current;
     if (!element) return;
@@ -214,18 +224,33 @@ export function ChatComposer({
           </button>
         </div>
       )}
+      {attachments}
       <form
         className="chat-composer"
         onSubmit={(event) => {
           event.preventDefault();
-          if (value.trim() && !busy && !disabled && !running) onSend();
+          if (sendable && !busy && !disabled && !running) onSend();
         }}
       >
+        <input
+          ref={picker}
+          type="file"
+          multiple
+          hidden
+          accept={attachmentAccept}
+          onChange={(event) => {
+            const files = [...(event.target.files ?? [])];
+            // Reset so choosing the same file again still fires a change.
+            event.target.value = "";
+            if (files.length) onAttach(files);
+          }}
+        />
         <button
           type="button"
           className="composer-action"
-          aria-label={t("Chat actions")}
-          onClick={onActions}
+          aria-label={t("Add attachment")}
+          disabled={disabled || busy}
+          onClick={() => picker.current?.click()}
         >
           <Plus size={24} strokeWidth={1.5} />
         </button>
@@ -244,7 +269,7 @@ export function ChatComposer({
               !event.nativeEvent.isComposing
             ) {
               event.preventDefault();
-              if (value.trim() && !busy && !disabled && !running) onSend();
+              if (sendable && !busy && !disabled && !running) onSend();
             }
           }}
         />
@@ -258,12 +283,12 @@ export function ChatComposer({
           >
             <Square size={14} fill="currentColor" />
           </button>
-        ) : value.trim() || busy ? (
+        ) : value.trim() || attachmentsReady || attachmentsPending || busy ? (
           <button
             className="composer-action composer-send"
             type="submit"
             aria-label={t("Send message")}
-            disabled={busy || disabled || !value.trim()}
+            disabled={busy || disabled || !sendable}
           >
             {busy ? (
               <LoaderCircle size={18} className="spin" />
