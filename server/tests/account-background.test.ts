@@ -4,7 +4,9 @@ import { handle } from "../src/index";
 import { tick } from "../src/jobs";
 import { ConnectionStore } from "../src/connection";
 import { ArkRemote, type Remote } from "../src/ark";
+import { Repository } from "../src/repository";
 import { supabaseOwner } from "../../shared/supabase-auth";
+import { accountWorkspaceKey } from "../../shared/workspace-key";
 import type { Env } from "../src/env";
 import type { AgentEvent } from "../../shared/types";
 import type { BackgroundWorkspace } from "../../shared/background-connection";
@@ -23,6 +25,11 @@ const workspaces: BackgroundWorkspace[] = [0, 1].map((i) => ({
   environmentId: `env-${i}`,
   memoryStoreId: `memory-${i}`,
 }));
+// Ownership labels each account's own client assigns when provisioning. Tests
+// may change them to model a key holder tampering outside Open Muse.
+const labels = workspaces.map((_, i) =>
+  accountWorkspaceKey(sharedKey, "", owners[i]),
+);
 
 // Auth verification plus a read-only Ark that knows both users' resources
 // under one shared key, as a real Ark account would.
@@ -41,13 +48,22 @@ const upstream = vi.fn<typeof fetch>(async (input, init) => {
   if (bearer !== sharedKey) return Response.json({}, { status: 401 });
   const path = url.pathname.replace("/api/v3", "");
   if (path === "/agents") return Response.json({ data: [] });
-  for (const w of workspaces) {
+  for (const [i, w] of workspaces.entries()) {
+    const workspace = { open_muse_workspace: labels[i] };
     if (path === `/agents/${w.agentId}`)
-      return Response.json({ id: w.agentId, version: 1, tools: [] });
+      return Response.json({
+        id: w.agentId,
+        version: 1,
+        tools: [],
+        metadata: workspace,
+      });
     if (path === `/environments/${w.environmentId}`)
-      return Response.json({ id: w.environmentId });
+      return Response.json({ id: w.environmentId, metadata: workspace });
     if (path === `/memory_stores/${w.memoryStoreId}`)
-      return Response.json({ id: w.memoryStoreId });
+      return Response.json({
+        id: w.memoryStoreId,
+        metadata: { open_muse_identity: labels[i] },
+      });
   }
   return Response.json({}, { status: 404 });
 });
@@ -239,6 +255,75 @@ describe("Background work for Muse account workspaces", () => {
         `Private idea ${i}`,
       ]);
     }
+  });
+
+  it("refuses to bind another account's workspace even though the key can read it", async () => {
+    const steal = () =>
+      request(
+        1,
+        "/v1/connection",
+        {
+          workspace: workspaces[0],
+          credentialRevision: 1,
+          revision: 1,
+          confirm: true,
+        },
+        "PUT",
+      );
+    const refused = await steal();
+    expect(refused.status).toBe(403);
+    // Relabelling Alice's resources outside Open Muse still cannot move them:
+    // the Worker already recorded Alice as their only owner.
+    const original = labels[0];
+    labels[0] = labels[1];
+    try {
+      expect((await steal()).status).toBe(403);
+    } finally {
+      labels[0] = original;
+    }
+    const bob = await new ConnectionStore(env, owners[1]).resolve();
+    expect(bob?.env.ARK_AGENT_ID).toBe(workspaces[1].agentId);
+    expect(bob?.env.ARK_MEMORY_STORE_ID).toBe(workspaces[1].memoryStoreId);
+  });
+
+  it("schedules only accounts active under the configured issuer", async () => {
+    for (let i = 0; i < 2; i++) {
+      const connection = (await new ConnectionStore(env, owners[i]).resolve())!;
+      await new Repository(env.DB, owners[i]).enqueue(
+        `manual:activity-${i}`,
+        1,
+        Date.now(),
+        false,
+        {
+          revision: connection.revision,
+          hash: await new ArkRemote(connection.env).fingerprint(),
+        },
+      );
+    }
+    // Only records which owners are selected; the run itself is not needed.
+    const seen = vi.fn((_owner: string): Remote => {
+      throw new Error("selected");
+    });
+    await env.DB.prepare(
+      "UPDATE account_credentials SET last_seen_at=0 WHERE owner_id=?",
+    )
+      .bind(owners[0])
+      .run();
+    await tick(env, seen, () => Date.now() + 1000);
+    expect(seen.mock.calls.map(([owner]) => owner)).toEqual([owners[1]]);
+    seen.mockClear();
+    await tick(
+      { ...env, SUPABASE_AUTH_URL: "https://other-auth.example.com" },
+      seen,
+      () => Date.now() + 1000,
+    );
+    expect(seen).not.toHaveBeenCalled();
+    // A verified request renews Alice's activity.
+    expect((await request(0, "/v1/status")).status).toBe(200);
+    await tick(env, seen, () => Date.now() + 1000);
+    expect(seen.mock.calls.map(([owner]) => owner).sort()).toEqual(
+      [...owners].sort(),
+    );
   });
 
   it("rotating one account's key stops only that account's background access", async () => {

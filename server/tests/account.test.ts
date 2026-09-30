@@ -17,8 +17,9 @@ const users: Record<string, string> = {
   "alice-access-token-000000001": "159c19ab-cfba-4436-9038-87f5fca38a4b",
   "alice-other-device-token-0001": "159c19ab-cfba-4436-9038-87f5fca38a4b",
   "bob-access-token-00000000001": "316c004b-07b0-4675-9b8d-deb5a740f03b",
+  "carol-access-token-000000001": "9b1f0c8e-5d2a-4c3e-8f7a-1e2d3c4b5a69",
 };
-const [alice, , bob] = Object.keys(users);
+const [alice, , bob, carol] = Object.keys(users);
 const ring = (current: string, keys: Record<string, string>) =>
   JSON.stringify({ current, keys });
 const v1 = btoa("a".repeat(32)),
@@ -263,6 +264,22 @@ describe("Per-account encrypted Ark credentials", () => {
       revision: 1,
       credential: { apiKey: sharedKey },
     });
+  });
+
+  it("limits how many keys one account can test with Ark", async () => {
+    const checks = provider(401);
+    for (let i = 0; i < 10; i++)
+      expect(
+        (await put(env, carol, `${rotatedKey}-${i}`, 0, checks)).status,
+      ).toBe(422);
+    const limited = await put(env, carol, sharedKey, 0, checks);
+    expect(limited.status).toBe(429);
+    expect(await limited.text()).not.toContain(sharedKey);
+    // Ten Ark calls plus eleven session verifications; the eleventh key never
+    // reached Ark.
+    expect(
+      checks.mock.calls.filter(([input]) => String(input).includes("/api/v3/")),
+    ).toHaveLength(10);
   });
 
   it("refuses device-token owners and unauthenticated callers", async () => {

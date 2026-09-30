@@ -6,7 +6,8 @@ import { backgroundReady, HttpError, type Env } from "./env";
 import { Repository, type Run } from "./repository";
 import { ConnectionStore } from "./connection";
 import { authorizedOwners } from "./auth";
-import { isSupabaseOwner } from "../../shared/supabase-auth";
+import { isSupabaseOwner, supabaseOrigin } from "../../shared/supabase-auth";
+import { ACCOUNT_ACTIVITY_WINDOW } from "./account";
 
 export async function processRun(
   repo: Repository,
@@ -202,18 +203,32 @@ export async function tick(
     // Account-only deployments have no private device bindings.
   }
   // Account owners only exist after a verified session created their rows.
-  // Each owner still resolves only its own sealed connection below.
-  const accounts = env.SUPABASE_AUTH_URL ? 1 : 0;
+  // They are scheduled only while their key was stored under the configured
+  // issuer and they recently made a verified request. Each owner still
+  // resolves only its own sealed connection below.
+  let issuer = "";
+  try {
+    issuer = supabaseOrigin(env.SUPABASE_AUTH_URL);
+  } catch {
+    // An invalid issuer disables account scheduling.
+  }
   // Bounded, oldest-due-first tenant selection. An error in one tenant cannot
   // cause its key to be reused for another tenant or starve all other owners.
   const due = await env.DB.prepare(
     `SELECT owner_id FROM (
     SELECT owner_id,next_check_at AS due_at FROM runs WHERE phase NOT IN ('complete','failed','needs_attention') AND next_check_at<=?
     UNION ALL SELECT owner_id,next_run_at AS due_at FROM schedules WHERE enabled=1 AND next_run_at<=?
-  ) WHERE owner_id IN (SELECT value FROM json_each(?)) OR (?=1 AND owner_id GLOB 'muse_user_*')
+  ) WHERE owner_id IN (SELECT value FROM json_each(?)) OR (owner_id GLOB 'muse_user_*' AND owner_id IN (
+    SELECT owner_id FROM account_credentials WHERE encrypted IS NOT NULL AND issuer=? AND last_seen_at>=?))
   GROUP BY owner_id ORDER BY min(due_at),owner_id LIMIT 20`,
   )
-    .bind(clock(), clock(), JSON.stringify(owners), accounts)
+    .bind(
+      clock(),
+      clock(),
+      JSON.stringify(owners),
+      issuer,
+      clock() - ACCOUNT_ACTIVITY_WINDOW,
+    )
     .all<{ owner_id: string }>();
   for (const { owner_id: owner } of due.results) {
     if (!owners.includes(owner) && !isSupabaseOwner(owner)) continue;

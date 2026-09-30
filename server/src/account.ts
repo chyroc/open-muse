@@ -6,10 +6,16 @@ import {
 } from "../../shared/account-credential";
 import { currentKeyId, revokeBackground, seal, unseal } from "./connection";
 import { HttpError, type Env } from "./env";
+import { supabaseOrigin } from "../../shared/supabase-auth";
 
 type Row = { revision: number; encrypted: string | null; updated_at: number };
 const base = "https://ark.cn-beijing.volces.com/api/v3";
 const purpose = "open-muse-account-ark";
+const KEY_CHECK_WINDOW = 3_600_000,
+  KEY_CHECK_LIMIT = 10;
+// Background work for an account stops when it has not made a verified request
+// for this long, bounding work for deleted or suspended provider accounts.
+export const ACCOUNT_ACTIVITY_WINDOW = 30 * 86_400_000;
 
 // One encrypted Ark credential per verified account owner. Every device of the
 // account reads the same record; other accounts cannot address it, even when
@@ -19,6 +25,14 @@ export class AccountCredentials {
     private env: Env,
     private owner: string,
   ) {}
+  // Called after the provider verified this account's session.
+  seen(now: number) {
+    return this.env.DB.prepare(
+      "UPDATE account_credentials SET last_seen_at=? WHERE owner_id=? AND COALESCE(last_seen_at,0)<?",
+    )
+      .bind(now, this.owner, now - 3_600_000)
+      .run();
+  }
   row() {
     return this.env.DB.prepare(
       "SELECT revision,encrypted,updated_at FROM account_credentials WHERE owner_id=?",
@@ -77,6 +91,29 @@ export class AccountCredentials {
       JSON.stringify(await this.decrypt(current)) === JSON.stringify(credential)
     )
       return this.status(current);
+    // Each check reveals whether a key is valid, so accounts get a small
+    // hourly budget. Provider signup limits bound how many accounts exist.
+    const quota = await this.env.DB.prepare(
+      `INSERT INTO account_key_checks(owner_id,window_start,count) VALUES (?,?,1)
+      ON CONFLICT(owner_id) DO UPDATE SET
+        count=CASE WHEN account_key_checks.window_start<=? THEN 1 ELSE account_key_checks.count+1 END,
+        window_start=CASE WHEN account_key_checks.window_start<=? THEN excluded.window_start ELSE account_key_checks.window_start END
+      WHERE account_key_checks.window_start<=? OR account_key_checks.count<?`,
+    )
+      .bind(
+        this.owner,
+        now,
+        now - KEY_CHECK_WINDOW,
+        now - KEY_CHECK_WINDOW,
+        now - KEY_CHECK_WINDOW,
+        KEY_CHECK_LIMIT,
+      )
+      .run();
+    if (!quota.meta.changes)
+      throw new HttpError(
+        429,
+        "Too many API key checks for this account. Try again in an hour.",
+      );
     // Read-only check. Saving a key never creates cloud resources.
     try {
       await new ArkClient(
@@ -114,15 +151,18 @@ export class AccountCredentials {
     const mutation = crypto.randomUUID();
     const results = await this.env.DB.batch([
       this.env.DB.prepare(
-        `INSERT INTO account_credentials(owner_id,revision,encrypted,updated_at,mutation_id)
-        SELECT ?,1,?,?,? WHERE ?=0 OR EXISTS(SELECT 1 FROM account_credentials WHERE owner_id=?)
-        ON CONFLICT(owner_id) DO UPDATE SET revision=account_credentials.revision+1,encrypted=excluded.encrypted,updated_at=excluded.updated_at,mutation_id=excluded.mutation_id
+        `INSERT INTO account_credentials(owner_id,revision,encrypted,updated_at,mutation_id,issuer,last_seen_at)
+        SELECT ?,1,?,?,?,?,? WHERE ?=0 OR EXISTS(SELECT 1 FROM account_credentials WHERE owner_id=?)
+        ON CONFLICT(owner_id) DO UPDATE SET revision=account_credentials.revision+1,encrypted=excluded.encrypted,updated_at=excluded.updated_at,
+        mutation_id=excluded.mutation_id,issuer=excluded.issuer,last_seen_at=excluded.last_seen_at
         WHERE account_credentials.revision=?`,
       ).bind(
         this.owner,
         encrypted,
         now,
         mutation,
+        supabaseOrigin(this.env.SUPABASE_AUTH_URL),
+        now,
         revision,
         this.owner,
         revision,

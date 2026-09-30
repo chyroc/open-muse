@@ -12,6 +12,7 @@ import { ArkRemote } from "./ark";
 import { isSupabaseOwner } from "./supabase";
 import { AccountCredentials, rewrapRetiredKeys } from "./account";
 import { accountCredentialSchema } from "../../shared/account-credential";
+import { accountWorkspaceKey } from "../../shared/workspace-key";
 
 async function body(
   request: Request,
@@ -70,6 +71,7 @@ export async function handle(
     } else {
       const owner = await authenticate(request, env, fetcher);
       const account = isSupabaseOwner(owner);
+      if (account) await new AccountCredentials(env, owner).seen(Date.now());
       const repo = new Repository(env.DB, owner);
       const connections = new ConnectionStore(env, owner);
       const ready = async () => {
@@ -205,7 +207,14 @@ export async function handle(
               input.revision as number,
               Date.now(),
               fetcher,
-              stored.revision,
+              {
+                credentialRevision: stored.revision,
+                workspaceKey: accountWorkspaceKey(
+                  stored.credential.apiKey,
+                  stored.credential.project,
+                  owner,
+                ),
+              },
             ),
           );
         } else {

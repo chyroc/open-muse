@@ -56,6 +56,25 @@ and seals the result. A binding prepared for an older key revision returns 409.
 Schedules and runs then work as for private devices, and the scheduler resolves
 each account's own sealed binding.
 
+Read access proves nothing when accounts share a key, so an account binding is
+also checked for ownership. The agent and environment must carry
+`metadata.open_muse_workspace`, and the memory store `metadata.open_muse_identity`,
+equal to `accountWorkspaceKey(apiKey, project, owner)` from
+`shared/workspace-key.ts`, which the account's own client assigns when it
+provisions them. The first binding records each resource ID for that account in
+`account_resources`; any other account that later submits the same ID receives
+403, even if the labels were changed outside Open Muse. A key holder can still
+reach any resource directly at Ark: this is an application boundary, not an Ark
+authorization boundary.
+
+The scheduler only selects account owners whose key was stored under the
+currently configured issuer and that made a verified request within the last 30
+days. Changing `SUPABASE_AUTH_URL` therefore stops existing account schedules,
+and a deleted or suspended provider account stops receiving background work
+after at most 30 days without any action. Each account can submit at most 10 new
+keys for Ark validation per hour; provider signup policy bounds the number of
+accounts.
+
 Only one configured issuer is accepted. Device-token enrollment remains available
 independently, and device owners cannot claim account owner IDs. Public signup
 policy, provider rate limiting, email verification, SMTP, and abuse protection
@@ -267,8 +286,8 @@ owner-bound encrypted configuration, schedule, job state, result set, and
 revocation operation. There is no global key-ownership registry and no
 deduplication of users or connections by key. Revoking one user's upload does
 not revoke another user's upload; revoking the key at Ark affects everyone
-using it. Device enrollment is a trusted administrative operation. Public
-sign-up and end-user login are not implemented.
+using it. Device enrollment is a trusted administrative operation; end users
+sign in with Muse accounts as described above.
 
 ### End-user identity and rollout prerequisite
 

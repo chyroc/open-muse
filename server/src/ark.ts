@@ -90,6 +90,25 @@ export class ArkRemote implements Remote {
         );
     }
   }
+  // Read access alone proves nothing when accounts share a key. Each resource
+  // must carry the ownership label the account's own client assigned to it.
+  async verifyOwnership(workspaceKey: string) {
+    for (const [collection, id, label] of [
+      ["agents", this.env.ARK_AGENT_ID, "open_muse_workspace"],
+      ["environments", this.env.ARK_ENVIRONMENT_ID, "open_muse_workspace"],
+      ["memory_stores", this.env.ARK_MEMORY_STORE_ID, "open_muse_identity"],
+    ]) {
+      const resource = await this.ark.request<{
+        id: string;
+        metadata?: Record<string, string>;
+      }>(`/${collection}/${validId(id)}`);
+      if (resource.id !== id || resource.metadata?.[label!] !== workspaceKey)
+        throw new HttpError(
+          403,
+          "This workspace does not belong to the signed-in account.",
+        );
+    }
+  }
   private async verifySession(session: string) {
     if (this.env.ARK_SESSION_OVERRIDES !== "true") return;
     const result = await this.ark.request<{

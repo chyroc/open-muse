@@ -237,10 +237,13 @@ export class ConnectionStore {
     revision: number,
     now = Date.now(),
     fetcher: typeof fetch = fetch,
-    // Account workspaces bind to one stored credential revision. A concurrent
-    // key rotation makes this upload fail instead of reviving the old key.
-    credentialRevision: number | null = null,
+    // Account workspaces bind to one stored credential revision, so a
+    // concurrent key rotation makes this upload fail instead of reviving the
+    // old key. Their resources must carry the account's ownership label and
+    // may be bound by only one account.
+    account: { credentialRevision: number; workspaceKey: string } | null = null,
   ) {
+    const credentialRevision = account?.credentialRevision ?? null;
     const current = await this.row();
     if ((current?.revision ?? 0) !== revision)
       throw new HttpError(
@@ -262,9 +265,10 @@ export class ConnectionStore {
     );
     try {
       await remote.verifyAccess();
+      if (account) await remote.verifyOwnership(account.workspaceKey);
     } catch (error) {
       throw new HttpError(
-        422,
+        error instanceof HttpError && error.status === 403 ? 403 : 422,
         error instanceof ApiError
           ? `Ark workspace verification failed (HTTP ${error.status}). Check the key's permissions and Worker-to-Ark access.`
           : error instanceof HttpError
@@ -272,6 +276,19 @@ export class ConnectionStore {
             : "The current Ark workspace could not be verified. Refresh the local workspace and retry.",
       );
     }
+    const resources = [
+      ["agent", config.agentId],
+      ["environment", config.environmentId],
+      ["memory_store", config.memoryStoreId],
+    ] as const;
+    const foreign = `NOT EXISTS(SELECT 1 FROM account_resources WHERE owner_id<>? AND (
+      (kind='agent' AND resource_id=?) OR (kind='environment' AND resource_id=?) OR (kind='memory_store' AND resource_id=?)))`;
+    const foreignBinds = [
+      this.owner,
+      config.agentId,
+      config.environmentId,
+      config.memoryStoreId,
+    ];
     const fingerprint = await remote.fingerprint();
     const encrypted = await encryptConfiguration(
       this.env,
@@ -282,14 +299,22 @@ export class ConnectionStore {
     const mutation = crypto.randomUUID();
     const credential = `(? IS NULL OR EXISTS(SELECT 1 FROM account_credentials WHERE owner_id=? AND revision=? AND encrypted IS NOT NULL))`;
     const results = await this.env.DB.batch([
+      ...(account
+        ? resources.map(([kind, id]) =>
+            this.env.DB.prepare(
+              `INSERT INTO account_resources(kind,resource_id,owner_id,claimed_at) VALUES (?,?,?,?)
+              ON CONFLICT(kind,resource_id) DO NOTHING`,
+            ).bind(kind, id, this.owner, now),
+          )
+        : []),
       this.env.DB.prepare(
         `INSERT INTO ark_connections(owner_id,revision,encrypted,updated_at,mutation_id)
       SELECT ?,1,?,?,? WHERE (?=0 OR EXISTS(SELECT 1 FROM ark_connections WHERE owner_id=?))
       AND NOT EXISTS(SELECT 1 FROM runs WHERE owner_id=? AND phase NOT IN ('complete','failed') AND (connection_hash IS NULL OR connection_hash<>?))
-      AND ${credential}
+      AND ${credential} AND (?=0 OR ${foreign})
       ON CONFLICT(owner_id) DO UPDATE SET revision=ark_connections.revision+1,encrypted=excluded.encrypted,updated_at=excluded.updated_at,mutation_id=excluded.mutation_id
       WHERE ark_connections.revision=? AND NOT EXISTS(SELECT 1 FROM runs WHERE owner_id=? AND phase NOT IN ('complete','failed') AND (connection_hash IS NULL OR connection_hash<>?))
-      AND ${credential}`,
+      AND ${credential} AND (?=0 OR ${foreign})`,
       ).bind(
         this.owner,
         encrypted,
@@ -302,23 +327,38 @@ export class ConnectionStore {
         credentialRevision,
         this.owner,
         credentialRevision,
+        +Boolean(account),
+        ...foreignBinds,
         revision,
         this.owner,
         fingerprint,
         credentialRevision,
         this.owner,
         credentialRevision,
+        +Boolean(account),
+        ...foreignBinds,
       ),
       this.env.DB.prepare(
         `UPDATE schedules SET enabled=0,next_run_at=NULL,revision=revision+1,updated_at=? WHERE owner_id=?
         AND EXISTS(SELECT 1 FROM ark_connections WHERE owner_id=? AND mutation_id=?)`,
       ).bind(now, this.owner, this.owner, mutation),
     ]);
-    if (!results[0].meta.changes)
+    if (!results[account ? resources.length : 0].meta.changes) {
+      if (
+        account &&
+        (await this.env.DB.prepare(`SELECT 1 AS hit WHERE NOT ${foreign}`)
+          .bind(...foreignBinds)
+          .first())
+      )
+        throw new HttpError(
+          403,
+          "This workspace does not belong to the signed-in account.",
+        );
       throw new HttpError(
         409,
         "The connection changed or a run is unresolved. Refresh and review before syncing.",
       );
+    }
     return this.status();
   }
   async remove(revision: number, now = Date.now()) {
