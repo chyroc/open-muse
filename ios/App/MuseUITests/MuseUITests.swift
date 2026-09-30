@@ -1097,7 +1097,7 @@ final class MuseUITests: XCTestCase {
     }
 
     func testSignedOutRequiresRealConnection() {
-        let connect = app.links["Connect with SSO or API Key to start chatting"]
+        let connect = app.links["Add an Ark API key to start chatting"]
         XCTAssertTrue(connect.waitForExistence(timeout: 20), app.debugDescription)
         let input = app.textViews["Message Muse"]
         tap(input)
@@ -1108,8 +1108,10 @@ final class MuseUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Demo content")).firstMatch.exists)
         capture("signed-out-real-connection-required")
         tap(connect)
-        XCTAssertTrue(app.buttons["Start SSO sign-in"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.switches["API Key"].exists)
+        XCTAssertTrue(app.secureTextFields["Ark API Key"].waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(app.buttons["Connect with API Key"].exists)
+        XCTAssertFalse(app.buttons["Connect with API Key"].isEnabled, "Nothing is submitted without a key")
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "SSO")).firstMatch.exists, "SSO sign-in is not offered")
         XCTAssertFalse(app.staticTexts["Service connection"].exists)
         XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Advanced setup")).firstMatch.exists)
         capture("signed-out-login-options")
@@ -1126,8 +1128,8 @@ final class MuseUITests: XCTestCase {
         tap(app.buttons["身份"])
         XCTAssertTrue(app.buttons["打开 MEMORY.md"].exists)
         tap(app.buttons["关闭伙伴详情"])
-        tap(app.links["通过 SSO 或 API Key 连接后开始对话"])
-        XCTAssertTrue(app.buttons["开始 SSO 登录"].waitForExistence(timeout: 10))
+        tap(app.links["添加 Ark API Key 后开始对话"])
+        XCTAssertTrue(app.buttons["使用 API Key 连接"].waitForExistence(timeout: 10), app.debugDescription)
         capture("system-language-chinese")
     }
 
@@ -1137,7 +1139,7 @@ final class MuseUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.textViews["Message Muse"].waitForExistence(timeout: 30), app.debugDescription)
         XCTAssertTrue(app.links["Chat"].exists)
-        XCTAssertTrue(app.links["Connect with SSO or API Key to start chatting"].exists)
+        XCTAssertTrue(app.links["Add an Ark API key to start chatting"].exists)
         capture("system-language-english-fallback")
     }
 
