@@ -67,16 +67,32 @@ neither happens automatically, and conversations and data from the earlier
 setup stay on the device without being attributed to the account.
 
 On first use, Muse prepares an agent and environment automatically. In an
-account build their ownership labels, the personal memory store, and every
-IndexedDB record are scoped by `accountWorkspaceKey(apiKey, project, owner)`,
-so two accounts sharing one Ark key never adopt each other's resources, and
-the account's other devices recover the same workspace by those labels. Each
-resource is also recorded for the account at the Open Muse service right after
-it is created or adopted. A holder of the same Ark key can still reach any
-resource directly at Ark; use separate keys when accounts must not reach each
-other's data. Local builds scope by API-key digest and project. Uncertain
-creation results are checked before another write; they are never blindly
-retried.
+account build the Open Muse service creates the account's agent, environment,
+and memory store with the account's key, records them for the account from its
+own creation responses, and keeps their IDs and model in the account's sealed
+workspace record. The account's other devices read that record instead of
+searching Ark, and two accounts sharing one Ark key never receive each other's
+resources, even if resource labels are changed outside Open Muse. Resource
+labels and every IndexedDB record are scoped by
+`accountWorkspaceKey(apiKey, project, owner)`. A holder of the same Ark key can
+still reach any resource directly at Ark; use separate keys when accounts must
+not reach each other's data. Local builds create and discover resources on the
+device, scoped by API-key digest and project. Uncertain creation results are
+checked before another write; they are never blindly retried or adopted.
+
+### What an account stores
+
+| Setting | Where it lives | Protection | On another device |
+| --- | --- | --- | --- |
+| Ark API key and project | Open Muse service, `account_credentials` | AES-GCM, bound to account and revision | Read back after sign-in, kept in memory |
+| Agent, environment, and memory-store IDs; agent model | Open Muse service, `account_workspaces` | AES-GCM, bound to account, workspace key, and revision | Read back from the sealed record |
+| Background binding (resource IDs plus the key, sealed together) | Open Muse service, `ark_connections` | AES-GCM | Server-side only |
+| Schedule (enabled, time zone, time) | Open Muse service, `schedules` | Plain D1 row, account-scoped | Server-side only |
+| Agent instructions, tools, and permission policy | The account's Ark agent, from app-defined defaults | Ark | Same agent resource |
+| Name, SOUL, MEMORY, goals, and Feed instructions | The account's Ark memory store | Ark | Same memory store |
+| Conversation list, saved replies, Library, Feed likes, local approvals | Device IndexedDB, scoped by workspace key | Not app-encrypted | Not synced; conversations themselves remain in Ark |
+| Muse session | Keychain (sessionStorage on web) | OS-protected | Each device signs in |
+| Appearance (Mac) | Device preference | None | Not synced |
 
 Existing agents retain their model. New agents use the public tool-calling model
 `doubao-seed-2-1-pro-260915`; the Ark project must have access to it. Model access

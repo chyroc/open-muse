@@ -58,7 +58,10 @@ export function credentialStorageReady(env: Env) {
 }
 // The purpose, owner, and revision are authenticated with every ciphertext, so
 // a row copied to another user, table, or revision cannot be decrypted.
-export type SealPurpose = "open-muse-ark-connection" | "open-muse-account-ark";
+export type SealPurpose =
+  | "open-muse-ark-connection"
+  | "open-muse-account-ark"
+  | "open-muse-account-workspace";
 const aad = (purpose: SealPurpose, owner: string, revision: number) =>
   new TextEncoder().encode(JSON.stringify([purpose, 1, owner, revision]));
 async function cryptoKey(value: string) {
@@ -259,6 +262,28 @@ export class ConnectionStore {
       return this.status();
     // Only read-only validation is performed here. Uploading must never create
     // an agent, session, memory store, or generation as a side effect.
+    if (
+      account &&
+      (
+        await this.env.DB.prepare(
+          `SELECT count(*) AS n FROM account_resources WHERE owner_id=? AND (
+          (kind='agent' AND resource_id=?) OR (kind='environment' AND resource_id=?) OR (kind='memory_store' AND resource_id=?))`,
+        )
+          .bind(
+            this.owner,
+            config.agentId,
+            config.environmentId,
+            config.memoryStoreId,
+          )
+          .first<{ n: number }>()
+      )?.n !== 3
+    )
+      // Checked before any Ark request, so nothing is read on another
+      // account's behalf.
+      throw new HttpError(
+        403,
+        "This workspace does not belong to the signed-in account.",
+      );
     const remote = new ArkRemote(
       configurationEnv({ ...this.env, OWNER_ID: this.owner }, config),
       fetcher,
@@ -276,14 +301,11 @@ export class ConnectionStore {
             : "The current Ark workspace could not be verified. Refresh the local workspace and retry.",
       );
     }
-    const resources = [
-      ["agent", config.agentId],
-      ["environment", config.environmentId],
-      ["memory_store", config.memoryStoreId],
-    ] as const;
-    const foreign = `NOT EXISTS(SELECT 1 FROM account_resources WHERE owner_id<>? AND (
-      (kind='agent' AND resource_id=?) OR (kind='environment' AND resource_id=?) OR (kind='memory_store' AND resource_id=?)))`;
-    const foreignBinds = [
+    // Account bindings may use only resources the service created for this
+    // account (see workspace.ts). Labels and client input cannot add any.
+    const owned = `(SELECT count(*) FROM account_resources WHERE owner_id=? AND (
+      (kind='agent' AND resource_id=?) OR (kind='environment' AND resource_id=?) OR (kind='memory_store' AND resource_id=?)))=3`;
+    const ownedBinds = [
       this.owner,
       config.agentId,
       config.environmentId,
@@ -303,10 +325,10 @@ export class ConnectionStore {
         `INSERT INTO ark_connections(owner_id,revision,encrypted,updated_at,mutation_id)
       SELECT ?,1,?,?,? WHERE (?=0 OR EXISTS(SELECT 1 FROM ark_connections WHERE owner_id=?))
       AND NOT EXISTS(SELECT 1 FROM runs WHERE owner_id=? AND phase NOT IN ('complete','failed') AND (connection_hash IS NULL OR connection_hash<>?))
-      AND ${credential} AND (?=0 OR ${foreign})
+      AND ${credential} AND (?=0 OR ${owned})
       ON CONFLICT(owner_id) DO UPDATE SET revision=ark_connections.revision+1,encrypted=excluded.encrypted,updated_at=excluded.updated_at,mutation_id=excluded.mutation_id
       WHERE ark_connections.revision=? AND NOT EXISTS(SELECT 1 FROM runs WHERE owner_id=? AND phase NOT IN ('complete','failed') AND (connection_hash IS NULL OR connection_hash<>?))
-      AND ${credential} AND (?=0 OR ${foreign})`,
+      AND ${credential} AND (?=0 OR ${owned})`,
       ).bind(
         this.owner,
         encrypted,
@@ -320,7 +342,7 @@ export class ConnectionStore {
         this.owner,
         credentialRevision,
         +Boolean(account),
-        ...foreignBinds,
+        ...ownedBinds,
         revision,
         this.owner,
         fingerprint,
@@ -328,29 +350,18 @@ export class ConnectionStore {
         this.owner,
         credentialRevision,
         +Boolean(account),
-        ...foreignBinds,
+        ...ownedBinds,
       ),
       this.env.DB.prepare(
         `UPDATE schedules SET enabled=0,next_run_at=NULL,revision=revision+1,updated_at=? WHERE owner_id=?
         AND EXISTS(SELECT 1 FROM ark_connections WHERE owner_id=? AND mutation_id=?)`,
       ).bind(now, this.owner, this.owner, mutation),
-      // Record ownership only when this binding committed. Records outlive the
-      // binding, so a revoked workspace cannot be taken over by another account.
-      ...(account
-        ? resources.map(([kind, id]) =>
-            this.env.DB.prepare(
-              `INSERT INTO account_resources(kind,resource_id,owner_id,claimed_at)
-              SELECT ?,?,?,? WHERE EXISTS(SELECT 1 FROM ark_connections WHERE owner_id=? AND mutation_id=?)
-              ON CONFLICT(kind,resource_id) DO NOTHING`,
-            ).bind(kind, id, this.owner, now, this.owner, mutation),
-          )
-        : []),
     ]);
     if (!results[0].meta.changes) {
       if (
         account &&
-        (await this.env.DB.prepare(`SELECT 1 AS hit WHERE NOT ${foreign}`)
-          .bind(...foreignBinds)
+        !(await this.env.DB.prepare(`SELECT 1 AS hit WHERE ${owned}`)
+          .bind(...ownedBinds)
           .first())
       )
         throw new HttpError(

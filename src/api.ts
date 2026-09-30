@@ -277,18 +277,18 @@ export class Client {
     const base = owner
       ? accountWorkspaceKey(c.apiKey, c.project ?? "", owner)
       : undefined;
-    const key = base
-      ? this.scope
-        ? digest(JSON.stringify([base, this.scope]))
-        : base
-      : digest(
-          JSON.stringify([
-            ARK_BASE_URL,
-            c.apiKey,
-            c.project ?? "",
-            ...(this.scope ? [this.scope] : []),
-          ]),
-        );
+    // Simulator acceptance profiles apply to local builds only: an account's
+    // workspace key must match the one the service labels its resources with.
+    const key =
+      base ??
+      digest(
+        JSON.stringify([
+          ARK_BASE_URL,
+          c.apiKey,
+          c.project ?? "",
+          ...(this.scope ? [this.scope] : []),
+        ]),
+      );
     if (this.runtime?.key !== key) {
       const apiKey = c.apiKey;
       this.reset();
@@ -328,16 +328,49 @@ export class Client {
         abort.signal,
       );
       const account = this.identity.account;
-      const claim = owner
-        ? (kind: "agent" | "environment" | "memory_store", id: string) =>
-            account!.claimResource(kind, id)
+      // Account workspaces are created and recorded by the service; the
+      // client only receives their IDs.
+      const provision = owner
+        ? async (replaceUnconfirmed: boolean) => {
+            const { workspace } = await account!.provisionAccountWorkspace(
+              c.revision!,
+              replaceUnconfirmed,
+            );
+            if (
+              !workspace?.agentId ||
+              !workspace.environmentId ||
+              !workspace.memoryStoreId
+            )
+              throw new ApiError(
+                502,
+                t("The workspace setup did not finish. Continue setup."),
+              );
+            return {
+              agentId: workspace.agentId,
+              environmentId: workspace.environmentId,
+              memoryStoreId: workspace.memoryStoreId,
+              model: workspace.model,
+            };
+          }
         : undefined;
-      const companion = new DirectIdentity(key, ark, this.db, undefined, claim);
+      const resolve = provision
+        ? async (create: boolean) =>
+            create
+              ? (await provision(false)).memoryStoreId
+              : (await account!.accountWorkspace()).workspace?.memoryStoreId
+        : undefined;
+      const companion = new DirectIdentity(
+        key,
+        ark,
+        this.db,
+        undefined,
+        resolve,
+      );
       this.runtime = {
         key,
         ark,
         abort,
-        workspace: new DirectWorkspace(key, ark, this.db, claim),
+        workspace: new DirectWorkspace(key, ark, this.db, provision),
         companion,
         goals: new DirectGoals(key, this.db, companion),
         redact: (text) => text.replaceAll(apiKey, "[redacted]"),
@@ -361,8 +394,9 @@ export class Client {
       };
     return this.context().workspace.status();
   }
-  startWorkspace() {
-    return this.context().workspace.start();
+  // replaceUnconfirmed only from an explicit "continue setup" action.
+  startWorkspace(options: { replaceUnconfirmed?: boolean } = {}) {
+    return this.context().workspace.start(options.replaceUnconfirmed === true);
   }
   async backgroundConfiguration(confirm: boolean) {
     const r = this.context();

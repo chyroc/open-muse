@@ -8,15 +8,16 @@ import {
 import type { WorkspaceStatus } from "../../shared/types";
 import { LocalDatabase } from "./storage";
 import { systemWithIdentity } from "../../shared/identity";
+import {
+  DEFAULT_MODEL,
+  MUSE_SYSTEM as system,
+  agentSpec,
+  environmentSpec,
+} from "../../shared/workspace-spec";
 
-const system =
-  "You are Open Muse, helping the user with research, writing, and planning. Use the user's language, and state evidence and uncertainty accurately. Execute tools directly when the user requests them, without asking for additional tool permission confirmation; never bypass upstream denial policies, and never describe unexecuted operations as completed.";
+export { DEFAULT_MODEL };
 const legacySystem =
   "You are Open Muse, helping the user with research, writing, and planning. Use the user's language, and state evidence and uncertainty accurately. External writes, sending messages, transactions, and deletions require explicit confirmation; never describe unexecuted operations as completed.";
-// A public tool-calling model, validated by MA when creating the agent. Existing
-// agents keep their model. Do not depend on the inference catalog's broken CORS
-// policy or infer model availability from an unverified local response.
-export const DEFAULT_MODEL = "doubao-seed-2-1-pro-260915";
 const legacyDefaultModel = "doubao-seed-2-0-pro-260215";
 type Kind = "agent" | "environment";
 interface Mapping {
@@ -42,9 +43,11 @@ export class DirectWorkspace {
     private key: string,
     private ark: ArkClient,
     private db: LocalDatabase,
-    // Account workspaces record each resource with the service right after it
-    // is created or adopted, before it is used.
-    private claim?: (kind: Kind, id: string) => Promise<void>,
+    // Account workspaces are created and recorded by the Open Muse service;
+    // this client never discovers or creates them by label.
+    private provision?: (
+      replaceUnconfirmed: boolean,
+    ) => Promise<{ agentId: string; environmentId: string; model: string }>,
   ) {
     this.storageKey = `${key}:workspace`;
   }
@@ -105,9 +108,11 @@ export class DirectWorkspace {
       );
     return { agent: row.agent_id, environment_id: row.environment_id };
   }
-  async start() {
+  // replaceUnconfirmed is set only by an explicit user action: it lets the
+  // service abandon an unconfirmed earlier creation and create a new resource.
+  async start(replaceUnconfirmed = false) {
     if (!this.job)
-      this.job = this.prepare()
+      this.job = this.prepare(replaceUnconfirmed)
         .catch(async (error) => {
           await this.update((row) => {
             row.state = "error";
@@ -188,7 +193,6 @@ export class DirectWorkspace {
           502,
           t("Creation result is unconfirmed. Resume to check cloud resources."),
         );
-      await this.claim?.(kind, resource.id);
       await this.update((r) => {
         r[`${kind}_id`] = resource.id;
         r[`${kind}_pending`] = false;
@@ -234,30 +238,36 @@ export class DirectWorkspace {
       throw error;
     }
   }
-  private async prepare() {
+  private async prepare(replaceUnconfirmed: boolean) {
     await this.update((row) => {
       row.state = "preparing";
       row.message = "Checking your personal workspace…";
     });
-    await this.ensure("environment", {
-      description:
-        "Personal cloud environment managed automatically by Open Muse",
-      config: environmentWithTools({
-        type: "cloud",
-        networking: { type: "unrestricted" },
-      }),
-    });
+    if (this.provision) {
+      const created = await this.provision(replaceUnconfirmed);
+      await this.update((r) => {
+        r.agent_id = created.agentId;
+        r.environment_id = created.environmentId;
+        r.model_id = created.model;
+        r.agent_pending = r.environment_pending = false;
+      });
+      await this.syncPolicy();
+      await this.update((r) => {
+        r.state = "ready";
+        r.message = "Your personal workspace is ready; you can start a task.";
+      });
+      return;
+    }
+    await this.ensure("environment", environmentSpec());
     const row = (await this.row())!;
     // Recover the existing agent without depending on model catalog access.
     if (!row.agent_id) {
       const existing = await this.discover("agent");
-      if (existing) {
-        await this.claim?.("agent", existing.id);
+      if (existing)
         await this.update((r) => {
           r.agent_id = existing.id;
           r.agent_pending = false;
         });
-      }
     }
     const modelRow = (await this.row())!;
     // Only repair an uncreated assistant's former default. Adopted agents and
@@ -271,17 +281,7 @@ export class DirectWorkspace {
       await this.update((r) => {
         r.model_id = DEFAULT_MODEL;
       });
-    await this.ensure("agent", {
-      description: "Personal agent managed automatically by Open Muse",
-      model: { id: (await this.row())!.model_id },
-      system: systemWithIdentity(systemWithTools(system)),
-      tools: [
-        {
-          type: "agent_toolset_20260701",
-          default_config: { permission_policy: { type: "always_allow" } },
-        },
-      ],
-    });
+    await this.ensure("agent", agentSpec((await this.row())!.model_id));
     await this.syncPolicy();
     await this.update((r) => {
       r.state = "ready";

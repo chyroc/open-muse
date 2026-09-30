@@ -39,7 +39,10 @@ export function WorkspacePanel({ client }: { client: Client }) {
       setStatus(
         await (!status || error
           ? client.workspaceStatus()
-          : client.startWorkspace()),
+          : client.startWorkspace({
+              // The user chose to continue after an interrupted setup.
+              replaceUnconfirmed: status.state === "error",
+            })),
       );
     } catch (e) {
       setError((e as Error).message);

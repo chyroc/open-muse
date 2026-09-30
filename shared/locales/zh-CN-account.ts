@@ -97,4 +97,10 @@ export const zhAccount: Record<string, string> = {
     "你的 Ark API Key 已在其他设备上更改。未发送任何请求；请检查后重试。",
   "Your Muse account session ended. Sign in again; nothing was sent.":
     "你的 Muse 账号会话已结束。请重新登录；未发送任何请求。",
+  "Workspace setup needs review: an earlier step may have created a resource Open Muse will not use, or another device is preparing it. Continue setup to create a new one.":
+    "工作区设置需要确认：之前的某一步可能已创建了 Open Muse 不会使用的资源，或者另一台设备正在设置。继续设置将创建新的资源。",
+  "The workspace setup result is unconfirmed. Continue setup to check it; nothing was repeated.":
+    "工作区设置结果尚未确认。继续设置以检查结果；未重复任何操作。",
+  "The workspace setup did not finish. Continue setup.":
+    "工作区设置尚未完成。请继续设置。",
 };

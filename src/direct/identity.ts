@@ -13,6 +13,7 @@ import type { conversationArchive } from "../../shared/conversation-history";
 import { LocalDatabase } from "./storage";
 import { defaultFeedInstructions } from "../../shared/inspiration";
 import { emptyGoalsDocument, parseGoals } from "../../shared/goals";
+import { memoryStoreName } from "../../shared/workspace-spec";
 
 type Store = { id: string; metadata?: Record<string, string> };
 type Memory = {
@@ -58,9 +59,9 @@ export class DirectIdentity {
       wait: (ms: number) =>
         new Promise<void>((resolve) => setTimeout(resolve, ms)),
     },
-    // Account workspaces record the memory store with the service right after
-    // it is created or adopted, before it is used.
-    private claim?: (kind: "memory_store", id: string) => Promise<void>,
+    // Account workspaces get the memory store the Open Muse service created
+    // and recorded for the account; it is never discovered by label.
+    private resolve?: (create: boolean) => Promise<string | undefined>,
   ) {
     this.key = `${owner}:identity:v1`;
   }
@@ -89,7 +90,13 @@ export class DirectIdentity {
     return rows;
   }
   private async store(create: boolean): Promise<string | undefined> {
-    const mapping = await this.db.get<Mapping>(this.key);
+    let mapping = await this.db.get<Mapping>(this.key);
+    if (this.resolve && !mapping?.store_id) {
+      const id = await this.resolve(create);
+      if (!id) return;
+      mapping = { store_id: validId(id) };
+      await this.db.set<Mapping>(this.key, mapping);
+    }
     if (mapping?.store_id) {
       const store = await this.ark.request<Store>(
         `/memory_stores/${validId(mapping.store_id)}`,
@@ -110,6 +117,8 @@ export class DirectIdentity {
         );
       return validId(store.id);
     }
+    // Unreachable for accounts: their store comes only from the service.
+    if (this.resolve) return;
     const rows = await this.collect<Store>("/memory_stores?limit=100");
     const owned = rows.filter(
       (s) => s.metadata?.open_muse_identity === this.owner,
@@ -123,7 +132,6 @@ export class DirectIdentity {
       );
     if (owned[0]) {
       const id = validId(owned[0].id);
-      await this.claim?.("memory_store", id);
       await this.db.set<Mapping>(this.key, { store_id: id });
       return id;
     }
@@ -143,12 +151,11 @@ export class DirectIdentity {
       const store = await this.ark.request<Store>("/memory_stores", {
         method: "POST",
         body: JSON.stringify({
-          name: "Open Muse personal memory",
+          name: memoryStoreName,
           metadata: { open_muse_identity: this.owner },
         }),
       });
       const id = validId(store.id);
-      await this.claim?.("memory_store", id);
       await this.db.set<Mapping>(this.key, { store_id: id });
       return id;
     } catch (error) {

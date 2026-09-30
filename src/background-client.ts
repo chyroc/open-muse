@@ -10,6 +10,7 @@ import {
   accountCredentialResponseSchema,
   type AccountCredential,
 } from "../shared/account-credential";
+import { accountWorkspaceResponseSchema } from "../shared/account-workspace";
 
 class BackgroundRequestError extends Error {}
 const RENEW_MARGIN = 120_000;
@@ -182,6 +183,8 @@ export class BackgroundClient {
     path: string,
     token: string,
     init: RequestInit = {},
+    // Endpoint-specific wording for particular error statuses.
+    messages: Partial<Record<number, string>> = {},
   ): Promise<unknown> {
     if (!this.origin || !path.startsWith("/v1/"))
       throw new Error(t("Background service is not configured."));
@@ -203,27 +206,33 @@ export class BackgroundClient {
         if (response.status === 401 && !token.startsWith("muse_device_"))
           await this.expire(token);
         throw new BackgroundRequestError(
-          response.status === 401
-            ? token.startsWith("muse_device_")
-              ? t("This device token was rejected or revoked.")
-              : t("The account session was rejected or expired. Sign in again.")
-            : response.status === 409
-              ? t(
-                  "The action conflicts with current server state. Refresh and review the schedule or active run.",
-                )
-              : response.status === 403 && !token.startsWith("muse_device_")
-                ? t(
-                    "This workspace belongs to another Muse account. Nothing was changed.",
+          messages[response.status] ??
+            (response.status === 401
+              ? token.startsWith("muse_device_")
+                ? t("This device token was rejected or revoked.")
+                : t(
+                    "The account session was rejected or expired. Sign in again.",
                   )
-                : response.status === 429
-                  ? t("Too many attempts. Try again later.")
-                  : response.status === 422
-                    ? t(
-                        "Ark could not verify this key or workspace. Check it and try again; nothing was saved.",
-                      )
-                    : t("Background service request failed (HTTP {status}).", {
-                        status: response.status,
-                      }),
+              : response.status === 409
+                ? t(
+                    "The action conflicts with current server state. Refresh and review the schedule or active run.",
+                  )
+                : response.status === 403 && !token.startsWith("muse_device_")
+                  ? t(
+                      "This workspace belongs to another Muse account. Nothing was changed.",
+                    )
+                  : response.status === 429
+                    ? t("Too many attempts. Try again later.")
+                    : response.status === 422
+                      ? t(
+                          "Ark could not verify this key or workspace. Check it and try again; nothing was saved.",
+                        )
+                      : t(
+                          "Background service request failed (HTTP {status}).",
+                          {
+                            status: response.status,
+                          },
+                        )),
         );
       }
       return await response.json();
@@ -428,15 +437,18 @@ export class BackgroundClient {
     });
   }
   private accountRequest<T>(
-    path: "/v1/account/credential" | "/v1/account/resources",
+    path: "/v1/account/credential" | "/v1/account/workspace",
     schema: z.ZodType<T>,
     init?: RequestInit,
+    messages?: Partial<Record<number, string>>,
   ) {
     return this.exclusive(async () => {
       await this.status();
       const c = this.credentials();
       if (!c.account) throw new Error(t("Sign in to a Muse account first."));
-      const result = schema.parse(await this.call(path, c.token, init));
+      const result = schema.parse(
+        await this.call(path, c.token, init, messages),
+      );
       this.assertCurrent(c);
       return result;
     });
@@ -461,16 +473,40 @@ export class BackgroundClient {
       body: JSON.stringify({ revision, confirm: true }),
     });
   }
-  // Records a workspace resource for this account right after it is created
-  // or adopted, before it is used.
-  async claimResource(
-    kind: "agent" | "environment" | "memory_store",
-    id: string,
+  // The account's workspace configuration for its current key, as sealed by
+  // the service. Nothing is created by reading it.
+  accountWorkspace() {
+    return this.accountRequest(
+      "/v1/account/workspace",
+      accountWorkspaceResponseSchema,
+    );
+  }
+  // The service creates any missing workspace resource with the account's own
+  // key and records it from its own creation response. Sent once; an
+  // unconfirmed result is checked on the next explicit attempt, not repeated.
+  provisionAccountWorkspace(
+    credentialRevision: number,
+    replaceUnconfirmed = false,
   ) {
-    await this.accountRequest(
-      "/v1/account/resources",
-      z.object({ claimed: z.literal(true) }),
-      { method: "POST", body: JSON.stringify({ kind, id }) },
+    return this.accountRequest(
+      "/v1/account/workspace",
+      accountWorkspaceResponseSchema,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          credentialRevision,
+          ...(replaceUnconfirmed ? { replaceUnconfirmed } : {}),
+          confirm: true,
+        }),
+      },
+      {
+        409: t(
+          "Workspace setup needs review: an earlier step may have created a resource Open Muse will not use, or another device is preparing it. Continue setup to create a new one.",
+        ),
+        503: t(
+          "The workspace setup result is unconfirmed. Continue setup to check it; nothing was repeated.",
+        ),
+      },
     );
   }
   disconnect() {

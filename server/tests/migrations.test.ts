@@ -92,5 +92,32 @@ describe("Revoking unverified account bindings", () => {
         scheduled: 1,
         phase: "queued",
       });
+    // 0007 drops every label-based record and revokes every account binding
+    // made with one; private device owners are untouched.
+    const statements = readFileSync(
+      new URL("../migrations/0007_account_workspaces.sql", import.meta.url),
+      "utf8",
+    )
+      .split(";")
+      .map((s) => s.trim())
+      .filter((s) => s && !/^(--[^\n]*\n)*\s*CREATE TABLE/.test(s));
+    await db.batch(statements.map((s) => db.prepare(s)));
+    expect(await state(verified)).toEqual({
+      sealed: null,
+      scheduled: 0,
+      phase: "failed",
+    });
+    expect(await state(device)).toEqual({
+      sealed: "sealed",
+      scheduled: 1,
+      phase: "queued",
+    });
+    expect(
+      (
+        await db
+          .prepare("SELECT count(*) AS n FROM account_resources")
+          .first<{ n: number }>()
+      )?.n,
+    ).toBe(0);
   });
 });

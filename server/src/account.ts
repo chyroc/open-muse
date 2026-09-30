@@ -7,7 +7,6 @@ import {
 import { currentKeyId, revokeBackground, seal, unseal } from "./connection";
 import { HttpError, type Env } from "./env";
 import { supabaseOrigin } from "../../shared/supabase-auth";
-import { accountWorkspaceKey } from "../../shared/workspace-key";
 
 type Row = { revision: number; encrypted: string | null; updated_at: number };
 const base = "https://ark.cn-beijing.volces.com/api/v3";
@@ -17,12 +16,6 @@ const KEY_CHECK_WINDOW = 3_600_000,
 // Background work for an account stops when it has not made a verified request
 // for this long, bounding work for deleted or suspended provider accounts.
 export const ACCOUNT_ACTIVITY_WINDOW = 30 * 86_400_000;
-export type ResourceKind = "agent" | "environment" | "memory_store";
-const resourceKinds: Record<ResourceKind, [string, string]> = {
-  agent: ["agents", "open_muse_workspace"],
-  environment: ["environments", "open_muse_workspace"],
-  memory_store: ["memory_stores", "open_muse_identity"],
-};
 
 // One encrypted Ark credential per verified account owner. Every device of the
 // account reads the same record; other accounts cannot address it, even when
@@ -151,71 +144,6 @@ export class AccountCredentials {
   remove(revision: number, now = Date.now()) {
     return this.commit(null, revision, now);
   }
-  // The client records each resource right after it provisions or adopts it,
-  // so an ownership record normally exists before anyone else could relabel
-  // the resource. Only a resource labelled for this account is recorded.
-  async claim(
-    kind: ResourceKind,
-    id: string,
-    now = Date.now(),
-    fetcher: typeof fetch = fetch,
-  ) {
-    const stored = await this.read();
-    if (!stored.credential)
-      throw new HttpError(
-        409,
-        "Save an Ark API key to your account before preparing a workspace.",
-      );
-    const [collection, label] = resourceKinds[kind];
-    let resource: { id?: string; metadata?: Record<string, string> };
-    try {
-      resource = await new ArkClient(
-        {
-          arkBaseUrl: base,
-          arkKey: stored.credential.apiKey,
-          project: stored.credential.project,
-        },
-        fetcher,
-      ).request(`/${collection}/${encodeURIComponent(id)}`);
-    } catch (error) {
-      throw new HttpError(
-        422,
-        error instanceof ApiError
-          ? `Ark could not confirm this resource (HTTP ${error.status}).`
-          : "Ark could not confirm this resource. Nothing was recorded.",
-      );
-    }
-    if (
-      resource.id !== id ||
-      resource.metadata?.[label] !==
-        accountWorkspaceKey(
-          stored.credential.apiKey,
-          stored.credential.project,
-          this.owner,
-        )
-    )
-      throw new HttpError(
-        403,
-        "This workspace does not belong to the signed-in account.",
-      );
-    await this.env.DB.prepare(
-      `INSERT INTO account_resources(kind,resource_id,owner_id,claimed_at) VALUES (?,?,?,?)
-      ON CONFLICT(kind,resource_id) DO NOTHING`,
-    )
-      .bind(kind, id, this.owner, now)
-      .run();
-    const owner = await this.env.DB.prepare(
-      "SELECT owner_id FROM account_resources WHERE kind=? AND resource_id=?",
-    )
-      .bind(kind, id)
-      .first<{ owner_id: string }>();
-    if (owner?.owner_id !== this.owner)
-      throw new HttpError(
-        403,
-        "This workspace does not belong to the signed-in account.",
-      );
-    return { claimed: true };
-  }
   // Replacing or removing the key also revokes the background binding sealed
   // with the previous key, so no scheduled run can keep using it.
   private async commit(
@@ -267,6 +195,7 @@ export async function rewrapRetiredKeys(env: Env, limit = 20) {
   for (const [table, rowPurpose] of [
     ["account_credentials", purpose],
     ["ark_connections", "open-muse-ark-connection"],
+    ["account_workspaces", "open-muse-account-workspace"],
   ] as const) {
     const rows = await env.DB.prepare(
       `SELECT owner_id,revision,encrypted FROM ${table}

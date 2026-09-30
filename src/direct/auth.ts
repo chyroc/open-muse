@@ -5,6 +5,7 @@ import type {
   AccountCredential,
   AccountCredentialResponse,
 } from "../../shared/account-credential";
+import type { AccountWorkspaceResponse } from "../../shared/account-workspace";
 import { credentials as defaultVault, type CredentialStore } from "./storage";
 import { ARK_BASE_URL, directFetch } from "./transport";
 
@@ -42,8 +43,8 @@ export type APIKeyLogin = z.infer<typeof apiKeyLogin> & {
   owner?: string;
   revision?: number;
 };
-type ResourceKind = "agent" | "environment" | "memory_store";
-// The signed-in Muse account and its server-side Ark credential.
+// The signed-in Muse account, its server-side Ark credential, and the
+// workspace the service created for it.
 export interface AccountProvider {
   accountConfigured(): boolean;
   accountOwner(): string | undefined;
@@ -54,7 +55,11 @@ export interface AccountProvider {
     revision: number,
   ): Promise<{ revision: number }>;
   removeAccountCredential(revision: number): Promise<{ revision: number }>;
-  claimResource(kind: ResourceKind, id: string): Promise<void>;
+  accountWorkspace(): Promise<AccountWorkspaceResponse>;
+  provisionAccountWorkspace(
+    credentialRevision: number,
+    replaceUnconfirmed?: boolean,
+  ): Promise<AccountWorkspaceResponse>;
 }
 
 export class DirectAuth {

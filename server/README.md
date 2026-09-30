@@ -59,23 +59,37 @@ and seals the result. A binding prepared for an older key revision returns 409.
 Schedules and runs then work as for private devices, and the scheduler resolves
 each account's own sealed binding.
 
-Read access proves nothing when accounts share a key, so an account binding is
-also checked for ownership. The agent and environment must carry
-`metadata.open_muse_workspace`, and the memory store `metadata.open_muse_identity`,
-equal to `accountWorkspaceKey(apiKey, project, owner)` from
-`shared/workspace-key.ts`, which the account's own client assigns when it
-provisions them. Ownership is recorded in `account_resources`: the account's
-client calls `POST /v1/account/resources` with `{kind, id}` right after it
-creates or adopts each resource, and a committed binding records its resources
-too. A record is written only for a resource labelled for the requesting
-account, and D1 serializes competing records so exactly one account wins. Any
-other account that later claims or binds the same ID receives 403, even if the
-labels were changed outside Open Muse. Records outlive bindings, so a revoked
-workspace cannot be taken over. Between creating a resource and recording it,
-a holder of the same Ark key could relabel it first and make it unusable for
-its creator. That holder can also read and change every resource directly at
-Ark: this is an application boundary, not an Ark authorization boundary. Use
-separate Ark keys when accounts must not reach each other's data.
+### Account workspaces
+
+Read access proves nothing when accounts share a key, so the Worker, not the
+client, creates each account's agent, environment, and memory store with the
+account's stored key (`POST /v1/account/workspace`). It records every resource
+in `account_resources` for that account from its own creation response, in the
+same D1 batch that updates the account's sealed workspace record. Nothing is
+ever recorded from a label, a list, or client input, so relabelling a resource
+outside Open Muse or racing its creation cannot make it another account's.
+Clients never discover or adopt account resources by label.
+
+Creation is sent once. Before each POST the Worker stores a pending marker with
+a random nonce. If the result is unconfirmed, the next request lists the
+collection for that nonce: if nothing was created it creates the resource once;
+if something was created it is never adopted, because its creation cannot be
+attributed with certainty, and the request returns 409 until the user explicitly
+continues setup (`replaceUnconfirmed: true`), which creates a new resource and
+leaves the unconfirmed one unused. A recorded resource deleted at Ark is created
+again; one whose label was changed outside Open Muse stops setup with 409. Each
+account may create at most 20 resources per hour.
+
+Resources still carry `metadata.open_muse_workspace` (agent, environment) or
+`metadata.open_muse_identity` (memory store) equal to
+`accountWorkspaceKey(apiKey, project, owner)` from `shared/workspace-key.ts`,
+which clients use to scope local records and check what they read. A binding
+(`PUT /v1/connection`) is accepted only for three resources recorded for the
+requesting account; this is checked before the Worker reads any resource, so it
+never reads another account's resource on a request's behalf. A holder of the
+same Ark key can still read and change every resource directly at Ark: this is
+an application boundary, not an Ark authorization boundary. Use separate Ark
+keys when accounts must not reach each other's data.
 
 The scheduler only selects account owners whose key was stored under the
 currently configured issuer and that made a verified request within the last 30
@@ -122,8 +136,10 @@ other devices stay signed in. Account deletion, password reset, and OAuth
 callbacks are not implemented.
 
 After sign-in the client reads the account's Ark key with
-`GET /v1/account/credential`, keeps it in memory, and scopes the workspace with
-the account owner. Saving, replacing, or removing the key goes through the same
+`GET /v1/account/credential` and keeps it in memory. It prepares the workspace
+with `POST /v1/account/workspace` and reads its memory store from
+`GET /v1/account/workspace`; it never creates or discovers account resources
+itself. Saving, replacing, or removing the key goes through the credential
 endpoint. Allowing background work sends only the workspace resource IDs. The
 app re-reads the key when it returns to the foreground (and when the Mac main
 window is focused) to pick up changes from other devices.
@@ -233,9 +249,15 @@ deployed or that a real unattended generation can complete.
   sealed for this account. A stale revision from another device returns 409.
 - `DELETE /v1/account/credential`: `{revision, confirm: true}` leaves a
   tombstone for this account only.
-- `POST /v1/account/resources`: `{kind: "agent" | "environment" |
-  "memory_store", id}` records an account-labelled resource for this account;
-  403 if its label or existing record belongs to another account.
+- `GET /v1/account/workspace`: `{revision, workspace?, unconfirmed}` for the
+  account's current key, where `workspace` is `{environmentId?, memoryStoreId?,
+  agentId?, model}` from the sealed record. Creates nothing.
+- `POST /v1/account/workspace`: `{credentialRevision, replaceUnconfirmed?,
+  confirm: true}` creates any missing resource as described under Account
+  workspaces and returns the same shape. 409 for a stale key revision, a
+  concurrent device, an unconfirmed earlier creation, or a resource changed
+  outside Open Muse; 503 when this creation's result is unconfirmed; 429 over the
+  hourly limit.
 
 ### Account Ark credentials
 
@@ -318,12 +340,12 @@ provider verifies. A random client UUID, a person's name or email, an Ark key,
 an API-key digest, an Apple device ID, or a claimed user ID is not
 authentication.
 
-Account clients derive workspace and personal-memory ownership labels, and
-scope local caches and pending actions, with
-`accountWorkspaceKey(apiKey, project, owner)`. Two accounts using the same
-key/project therefore provision separate MA resources, and the Worker refuses to
-bind or record a resource for an account whose label or ownership record says
-otherwise. Legacy records are preserved and never assigned to a newly signed-in
+Account workspace resources are created only by the Worker for the requesting
+account and recorded from its own creation responses; clients scope local
+caches and pending actions with `accountWorkspaceKey(apiKey, project, owner)`.
+Two accounts using the same key/project therefore get separate MA resources,
+and the Worker refuses to bind a resource not recorded for the requesting
+account. Legacy records are preserved and never assigned to a newly signed-in
 account; an earlier device-held key is used only after the user explicitly saves
 it to the account. A shared Ark key can grant direct upstream access to both
 users' resources: application partitioning is not an Ark authorization

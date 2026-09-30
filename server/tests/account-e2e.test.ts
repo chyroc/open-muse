@@ -300,12 +300,12 @@ describe("Muse accounts end to end", () => {
       const label = accountWorkspaceKey(sharedKey, "", owner);
       expect(
         upstream.rows.agents.find((row) => row.id === config.agentId)?.metadata,
-      ).toEqual({ open_muse_workspace: label });
+      ).toMatchObject({ open_muse_workspace: label });
       expect(
         upstream.rows.memory_stores.find(
           (row) => row.id === config.memoryStoreId,
         )?.metadata,
-      ).toEqual({ open_muse_identity: label });
+      ).toMatchObject({ open_muse_identity: label });
       // Background work is allowed with the account's stored key only.
       await d.account.syncConfiguration(d.client);
       expect((await d.account.status()).backgroundReady).toBe(true);
