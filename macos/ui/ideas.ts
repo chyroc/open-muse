@@ -246,8 +246,9 @@ export class MacIdeas {
         send: async (id, event) => {
           this.assertConnection();
           return client.ma("SendSessionEvents", {
-            session_id: id,
-            events: [event],
+            params: { session_id: id },
+            body: { events: [event] },
+            confirm: true,
           });
         },
       },

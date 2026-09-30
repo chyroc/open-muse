@@ -485,8 +485,9 @@ export class MacGoals {
     };
     try {
       await this.client.ma("SendSessionEvents", {
-        session_id: run.session,
-        events: [event],
+        params: { session_id: run.session },
+        body: { events: [event] },
+        confirm: true,
       });
       await this.patch(token, { phase: "confirmed", error: undefined });
     } catch (error) {

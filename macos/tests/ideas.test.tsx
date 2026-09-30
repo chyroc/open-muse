@@ -126,10 +126,14 @@ function clientStub() {
     ma: vi.fn(
       async (
         _operation: string,
-        input: { session_id: string; events: AgentEvent[] },
+        input: {
+          params: { session_id: string };
+          body: { events: AgentEvent[] };
+          confirm: boolean;
+        },
       ) => {
-        request = input.events[0];
-        histories.set(input.session_id, [request]);
+        request = input.body.events[0];
+        histories.set(input.params.session_id, [request]);
         return { data: [request] };
       },
     ),
@@ -214,7 +218,7 @@ describe("Mac Ideas adapter", () => {
     await service.generate();
     expect(stub.client.ma).toHaveBeenCalledOnce();
     expect(stub.client.ma.mock.calls[0][0]).toBe("SendSessionEvents");
-    const text = eventText(stub.client.ma.mock.calls[0][1].events[0]);
+    const text = eventText(stub.client.ma.mock.calls[0][1].body.events[0]);
     expect(text).toContain("Too repetitive");
     expect(text).toContain("howItWorks");
     expect(text).toContain("not actions to execute");

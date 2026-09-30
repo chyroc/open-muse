@@ -130,10 +130,14 @@ function fixture(initial: Goal[] = []) {
     ma: vi.fn(
       async (
         _operation: string,
-        input: { session_id: string; events: AgentEvent[] },
+        input: {
+          params: { session_id: string };
+          body: { events: AgentEvent[] };
+          confirm: boolean;
+        },
       ) => {
-        histories.set(input.session_id, input.events);
-        return { data: input.events };
+        histories.set(input.params.session_id, input.body.events);
+        return { data: input.body.events };
       },
     ),
     config: vi.fn(async () => ({ mode: "ark" })),
@@ -295,7 +299,7 @@ describe("Mac Goals adapter", () => {
     expect(f.stub.openConversation).not.toHaveBeenCalled();
     expect(open).toHaveBeenCalledWith("session-0");
     expect(f.stub.ma.mock.calls[0][0]).toBe("SendSessionEvents");
-    expect(eventText(f.stub.ma.mock.calls[0][1].events[0])).toBe(
+    expect(eventText(f.stub.ma.mock.calls[0][1].body.events[0])).toBe(
       "I want to start a health goal",
     );
     expect((await f.service().labels())["session-0"]).toBe("Health goal");
@@ -319,13 +323,13 @@ describe("Mac Goals adapter", () => {
     f.sessions.push({ id: "recovered", title } as Session);
     await f.service().start("health", open);
     expect(f.stub.create).toHaveBeenCalledTimes(1);
-    expect(f.stub.ma.mock.calls[0][1].session_id).toBe("recovered");
+    expect(f.stub.ma.mock.calls[0][1].params.session_id).toBe("recovered");
   });
   it("does not create a duplicate when recovery confirms a lost send", async () => {
     const f = fixture();
     const open = vi.fn(async (_id: string) => {});
     f.stub.ma.mockImplementationOnce(async (_operation, input) => {
-      f.histories.set(input.session_id, input.events);
+      f.histories.set(input.params.session_id, input.body.events);
       throw new Error("Lost send response");
     });
     await expect(f.service().start("health", open)).rejects.toThrow(
