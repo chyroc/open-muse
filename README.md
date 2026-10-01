@@ -265,12 +265,13 @@ start the conversation with one short question about an active goal, a recent
 topic, or a stated preference, read from personal memory. It may use an inline
 question. A check-in happens only while the app is open, between 08:00 and
 22:00 local time, at least 18 hours after the last message, at most once per
-local day, and never while a reply is pending or an earlier check-in is
-unanswered. A new identity gets the welcome instead.
+local day, and never while a reply, approval, or tool result is pending or
+while a welcome, check-in, or reminder from any device is unanswered. A new
+identity gets the welcome instead.
 
-Like the welcome, the initiation is an app-generated ordinary MA message hidden
-from the chat and export by a device-local receipt tied to its exact event ID
-and text; it remains in execution history. Claims are transactional per
+The initiation is an app-generated ordinary MA message. It is hidden from the
+chat and export by its exact event ID and text, and on other devices by its
+fixed app-written opening; it remains in execution history. Claims are transactional per
 identity, and an uncertain result is confirmed from history, never sent again.
 Each check-in is a real, possibly billed Ark request. Settings has a
 device-local toggle under **Check-ins**, on by default. Check-ins do not send
@@ -291,15 +292,20 @@ paused ones, with pause, resume, and delete. Each change rewrites
 also list, move, pause, or cancel items in chat.
 
 When an item falls due while the main chat is open, including while it stays
-open, the app sends one app-generated message and the companion delivers the
-reminder or does the task, asking for approval before external actions. Due
-reminders take precedence over a check-in. Each occurrence is claimed on the
+open, the app sends one app-generated message (hidden like a check-in) and the
+companion delivers the reminder or does the task, asking for approval before
+external actions. A conversation waiting on an approval or tool result is not
+interrupted; the reminder follows once it is free. At most five items go in one
+message, and the rest follow. Due reminders take precedence over a check-in. Each occurrence is claimed on the
 device before sending and never sent again, even after an ambiguous or
 rejected result. Only the latest occurrence from the last 36 hours is
 delivered; older misses are not replayed. A device delivers only occurrences
 after it first ran this feature, so a new device does not repeat earlier
-reminders, but two devices open at the same time can both deliver one. There
-are no push notifications or background runs yet.
+reminders. Before sending, it also skips occurrences another device already
+delivered to the main chat; two devices sending in the same moment can still
+both deliver one. Resuming or changing an item does not replay occurrences
+that passed in the meantime. There are no push notifications or background
+runs yet.
 
 ## Personal identity and memory
 
