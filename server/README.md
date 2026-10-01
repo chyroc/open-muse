@@ -1,11 +1,12 @@
 # Open Muse service
 
-Cloudflare Workers API for the iOS and macOS apps. It verifies Muse account
-sessions, keeps each account's Ark API key encrypted, records account workspace
-ownership, and runs background Feed work. Login and the schedule clock can run
-on Volcengine (Supabase Auth and a veFaaS timer); see [Deploying](DEPLOY.md). No website, static assets, chat
-proxy, or native app binaries are hosted here. Clients call Ark directly with
-the account's key.
+API service for the iOS and macOS apps. It verifies Muse account sessions,
+keeps each account's Ark API key encrypted, records account workspace
+ownership, and runs background Feed work and Upcoming reminders. It is deployed
+on Volcengine as a Supabase Edge Function with the workspace's Postgres, Auth,
+and a veFaaS timer; the same code also runs as a Cloudflare Worker with D1. See
+[Deploying](DEPLOY.md). No website, static assets, chat proxy, or native app
+binaries are hosted here. Clients call Ark directly with the account's key.
 
 ## Current scope
 
@@ -16,8 +17,8 @@ controls in Settings, under **While you're away**. Background results currently
 appear in that card, not in the main Feed tab. Push notifications are not
 implemented.
 
-A clock ticks every five minutes: Workers Cron, or a signed external trigger
-such as a Volcengine veFaaS timer when `SCHEDULER_SOURCE=external`. Each tick
+A clock ticks every five minutes: a signed external trigger from a Volcengine
+veFaaS timer when `SCHEDULER_SOURCE=external`, or Workers Cron on Cloudflare. Each tick
 advances a persisted stage instead of waiting for the agent. Generation and delivery are not exact-time guarantees.
 Missed schedule occurrences do not create a catch-up burst. Nonexistent daylight
 saving times are skipped. Only one unresolved run is allowed per owner, with at
@@ -45,7 +46,7 @@ document with the account's key and computes due occurrences with
 `shared/upcoming.ts` (no catch-up burst; at most five items per message). It
 sends nothing while the conversation is running or waiting for an approval or
 a client's tool result, and skips occurrences already named in its recent
-history. Each occurrence is claimed in D1 together with one persisted event ID
+history. Each occurrence is claimed in the database together with one persisted event ID
 before a single `user.message` is posted, and is never claimed again. A
 definite rejection consumes the occurrence; an ambiguous result is looked up in
 history and never resent, and no new reminder is sent while one is
@@ -58,7 +59,7 @@ approval waits for the user in the app.
 The API accepts end-user access tokens from one explicitly configured
 Supabase Auth provider, including the Volcano-hosted Supabase service. Configure
 `SUPABASE_AUTH_URL` as its public HTTPS origin and `SUPABASE_ANON_KEY` as its anon
-or publishable key. Never configure a service-role key. The Worker verifies each
+or publishable key. Never configure a service-role key. The service verifies each
 request with the provider's read-only `/auth/v1/user` endpoint. Invalid sessions
 are rejected; provider failures return 503 without falling back to another
 identity. No token claims, client metadata, names, or emails select the owner.
@@ -72,23 +73,23 @@ configuration or the private owner's data. The status response reports
 `account: {provider, credential: {configured, revision, updatedAt}}`. To allow
 background work, an account sends only its workspace resource IDs to
 `PUT /v1/connection` as `{workspace, credentialRevision, revision, confirm}`.
-The Worker pairs them with the account's stored key, verifies them read-only,
+The service pairs them with the account's stored key, verifies them read-only,
 and seals the result. A binding prepared for an older key revision returns 409.
 Schedules and runs then work as for private devices, and the scheduler resolves
 each account's own sealed binding.
 
 ### Account workspaces
 
-Read access proves nothing when accounts share a key, so the Worker, not the
+Read access proves nothing when accounts share a key, so the service, not the
 client, creates each account's agent, environment, and memory store with the
 account's stored key (`POST /v1/account/workspace`). It records every resource
 in `account_resources` for that account from its own creation response, in the
-same D1 batch that updates the account's sealed workspace record. Nothing is
+same database transaction that updates the account's sealed workspace record. Nothing is
 ever recorded from a label, a list, or client input, so relabelling a resource
 outside Open Muse or racing its creation cannot make it another account's.
 Clients never discover or adopt account resources by label.
 
-Creation is sent once. Before each POST the Worker stores a pending marker with
+Creation is sent once. Before each POST the service stores a pending marker with
 a random nonce. If the result is unconfirmed, the next request lists the
 collection for that nonce: if nothing was created it creates the resource once;
 if something was created it is never adopted, because its creation cannot be
@@ -103,7 +104,7 @@ Resources still carry `metadata.open_muse_workspace` (agent, environment) or
 `accountWorkspaceKey(apiKey, project, owner)` from `shared/workspace-key.ts`,
 which clients use to scope local records and check what they read. A binding
 (`PUT /v1/connection`) is accepted only for three resources recorded for the
-requesting account; this is checked before the Worker reads any resource, so it
+requesting account; this is checked before the service reads any resource, so it
 never reads another account's resource on a request's behalf. A holder of the
 same Ark key can still read and change every resource directly at Ark: this is
 an application boundary, not an Ark authorization boundary. Use separate Ark
@@ -120,7 +121,7 @@ accounts.
 Only one configured issuer is accepted. Device-token enrollment remains available
 independently, and device owners cannot claim account owner IDs. Public signup
 policy, provider rate limiting, email verification, SMTP, and abuse protection
-are configured at Supabase. The Worker never needs an Auth administrative key,
+are configured at Supabase. The service never needs an Auth administrative key,
 password, provider refresh token, or database connection string. CORS and
 native connectivity require live acceptance.
 
@@ -137,16 +138,16 @@ private-device-token enrollment, and make no Supabase requests.
 The **Muse account** settings card supports email/password signup and login.
 Signup requires explicit confirmation and does not count as a confirmed login;
 follow the provider's email-verification policy, then sign in. Passwords are
-sent directly to Auth and never saved. Only after the Worker confirms the same
+sent directly to Auth and never saved. Only after the service confirms the same
 user is the access/refresh session stored in the separate background Keychain
 entry (sessionStorage on web, not supported on Android). No account token or
-password goes into IndexedDB, a URL, logs, or Cloudflare storage.
+password goes into IndexedDB, a URL, logs, or the service's database.
 
 The client renews the session shortly before the access token expires, at the
 start of an operation, and also on explicit request. Before the one refresh POST
 it saves a pending marker; an ambiguous outcome requires signing out and in
 again, never replaying the potentially rotated refresh token. A successful
-same-user refresh is saved immediately, before the Worker check. Web Locks
+same-user refresh is saved immediately, before the service check. Web Locks
 coordinate renewal across windows and a saved-session comparison rejects stale
 windows. Devices without Web Locks must sign in again instead. Signing out sends
 one `POST /auth/v1/logout?scope=local` and always removes the local session;
@@ -177,7 +178,7 @@ protocol doubles of the Auth provider, not a live Supabase project.
 Signup failures use one generic message and do not surface provider status
 codes, so the form does not reveal whether an email is registered. Live use
 requires an authorized Supabase workspace, the correct public endpoint and key,
-provider signup/email policy, and native-to-Auth plus Worker-to-Auth
+provider signup/email policy, and native-to-Auth plus service-to-Auth
 connectivity. Local builds do not change any cloud settings.
 
 ## Local development
@@ -192,8 +193,9 @@ npm run build
 npm run dev
 ```
 
-`build` bundles the Worker with Wrangler's dry-run mode. It does not deploy or
-create cloud resources. Tests run against a local Miniflare D1 database with
+`build` bundles the service with Wrangler's dry-run mode. It does not deploy or
+create cloud resources. `check` runs the tests twice, on a local Miniflare D1
+database and on PGlite (Postgres) with `migrations-postgres/`, with
 mocked upstream calls. Development listens on port 4311.
 
 Configure local bindings in ignored `.dev.vars`:
@@ -259,7 +261,7 @@ deployed or that a real unattended generation can complete.
 ## API
 
 - `GET /health`: public liveness only; no configuration or credentials.
-- `GET /v1/status`: requires `Authorization: Bearer <device-token>`; checks D1.
+- `GET /v1/status`: requires `Authorization: Bearer <device-token>`; checks the database.
 - `PUT /v1/schedule`: `{enabled, timezone, local_time, revision, confirm}`;
   enabling requires `confirm: true`. Stale revisions return 409.
 - `POST /v1/runs`: `{confirm: true}` and a stable `Idempotency-Key` of 16–80
@@ -396,7 +398,7 @@ revision cannot be decrypted. Two accounts that upload the same key keep
 separate records. Every device signed in to the same account reads that
 account's record.
 
-Replacing or removing the key, in the same D1 batch, also removes the account's
+Replacing or removing the key, in the same database transaction, also removes the account's
 background binding, disables its schedule, and stops unfinished runs, so no
 scheduled work continues with the previous key. The scheduled handler reseals up
 to 20 rows per table under the current `CREDENTIAL_ENCRYPTION_KEYS` entry. Keep
@@ -416,20 +418,20 @@ resource or enables a schedule. SSO access/refresh credentials, vaults, tools,
 and arbitrary upstream URLs are not accepted. No separate Ark key or agent is
 required. Native opt-in integration is described above.
 
-Configure `CREDENTIAL_ENCRYPTION_KEYS` as a Worker secret containing a keyring:
+Configure `CREDENTIAL_ENCRYPTION_KEYS` as a service secret containing a keyring:
 `{"current":"v1","keys":{"v1":"<base64-encoded random 32-byte key>"}}`.
 The entire uploaded configuration is AES-256-GCM encrypted with a fresh 96-bit
-nonce and owner/revision-bound authenticated data. D1 stores only the encrypted
-envelope and non-secret revision/time metadata. The keyring never goes into D1,
+nonce and owner/revision-bound authenticated data. The database stores only the encrypted
+envelope and non-secret revision/time metadata. The keyring never goes into the database,
 an app, a response, or Git. This is encryption at rest, **not end-to-end
-encryption**: the authorized Worker briefly decrypts the key to call Ark.
-Cloudflare administrators with runtime/secret access remain trusted. HTTPS
+encryption**: the authorized service briefly decrypts the key to call Ark.
+Administrators of the hosting platform with runtime or secret access remain trusted. HTTPS
 protects uploads in transit; do not enable request-body logging or tracing.
 
 For rotation, add a new key ID and switch `current`, retaining previous keys
 until all retained envelopes/backups have been migrated or expired. Do not
 remove an old key prematurely. This version has no automated bulk re-encryption
-or backup purge. D1 Time Travel/backups can retain older ciphertext; removing
+or backup purge. Database backups can retain older ciphertext; removing
 the live row is not proof of physical erasure from backups.
 
 `DELETE /v1/connection` with `{revision, confirm: true}` removes the live encrypted
@@ -467,11 +469,11 @@ provider verifies. A random client UUID, a person's name or email, an Ark key,
 an API-key digest, an Apple device ID, or a claimed user ID is not
 authentication.
 
-Account workspace resources are created only by the Worker for the requesting
+Account workspace resources are created only by the service for the requesting
 account and recorded from its own creation responses; clients scope local
 caches and pending actions with `accountWorkspaceKey(apiKey, project, owner)`.
 Two accounts using the same key/project therefore get separate MA resources,
-and the Worker refuses to bind a resource not recorded for the requesting
+and the service refuses to bind a resource not recorded for the requesting
 account. Legacy records are preserved and never assigned to a newly signed-in
 account; an earlier device-held key is used only after the user explicitly saves
 it to the account. A shared Ark key can grant direct upstream access to both
@@ -489,7 +491,7 @@ an HTTP request's owner. Migrate device-token maps before deploying this version
 
 The uploaded app agent is version-pinned and reused with per-session overrides:
 empty tools, MCP servers, and skills, plus a background-only system instruction.
-Coordinator agents are rejected. The Worker verifies the effective session's
+Coordinator agents are rejected. The service verifies the effective session's
 agent ID/version, the background system instruction, and empty execution
 capabilities before submitting any message. Ark leaves an overridden empty list
 out of the session, while an ignored override shows the agent's own list; a
@@ -503,26 +505,29 @@ of scope.
 Only set `BACKGROUND_ENABLED=true` after real-account policy and connectivity
 verification. Upload requires explicit native consent; local sign-out does not
 remove previously uploaded authorization. This
-service never accepts or stores the Cloudflare management token in its runtime.
+service never accepts or stores a cloud management token in its runtime.
 
 Creation/message markers are persisted before POST. Ambiguous results are
 reconciled from MA history; a missing result is not proof of failure. Duplicate
 markers, invalid output, unexpected approvals, configuration changes, and
 monitoring deadlines require review. Logs and API errors do not echo upstream
 payloads. Personal context may remain in a pending run until submission is
-confirmed; D1 is not application-level end-to-end encrypted.
+confirmed; the database is not application-level end-to-end encrypted.
 
 ## Deployment boundary
 
-The checked-in Wrangler database ID is a non-deployable placeholder. Create an
-app-specific D1 database and use ignored `wrangler.local.jsonc` for actual
-resource IDs. Apply migrations before deploying. Configure device-token hashes
-with Worker secrets rather than committing them. Cloudflare management tokens
-belong only in local tooling, never in Worker bindings or an app bundle.
+Deployment parameters and secrets (workspace ID, database host and password,
+keyring, trigger secret) are passed to the deploy scripts through the
+environment and never committed. The service's tables live in the `open_muse`
+schema, outside the Supabase data API, and the function connects with a role
+limited to them. For the Worker alternative, the checked-in Wrangler database
+ID is a non-deployable placeholder; use ignored `wrangler.local.jsonc` for real
+resource IDs and Worker secrets for keys. Cloud management credentials belong
+only in local tooling, never in the service's runtime or an app bundle.
 
 No cloud deployment, real MA call, or notification delivery is established by a
-passing local build. [Deploying](DEPLOY.md) describes the Volcengine and
-Cloudflare setup and how to check a live deployment. Outbound Auth and Ark
+passing local build. [Deploying](DEPLOY.md) describes the Volcengine setup,
+the Cloudflare alternative, and how to check a live deployment. Outbound Auth and Ark
 requests use `redirect: "manual"` because Workers reject `"error"`; any redirect
 response fails the request.
 

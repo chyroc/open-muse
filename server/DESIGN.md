@@ -1,16 +1,16 @@
-# Cloudflare backend design boundaries
+# Backend design boundaries
 
 This document records design boundaries and future expansion, not a feature
 status checklist. See [README](README.md) for implemented behavior and setup.
 
 The application still connects directly to Volcano APIs. Keep that mode usable
-without an Open Muse account or backend. Cloudflare would own application sync
-and orchestration, not replace Ark Managed Agents (MA).
+without an Open Muse account or backend. The service owns application sync
+and orchestration; it does not replace Ark Managed Agents (MA).
 
 The target clients are iOS and macOS. Their UI assets remain bundled with the
-apps; static website hosting, Workers Static Assets, Pages, and Web Push are out
-of scope. Cloudflare would expose an HTTPS API and run background coordination,
-not serve the application UI. Web and Android work is not part of this plan.
+apps; static website hosting and Web Push are out of scope. The service
+exposes an HTTPS API and runs background coordination; it does not serve
+the application UI. Web and Android work is not part of this plan.
 
 ## Placement decisions
 
@@ -160,11 +160,11 @@ other account work. Steps that require approval still wait for the user.
 - Use persisted jobs for durable work. Workers have CPU, memory, and invocation
   lifetime limits; response completion or client disconnection is not a durable
   background execution mechanism.
-- Worker-to-Ark and Worker-to-Volcengine-Auth requests work. `*.workers.dev`
-  is not reliably reachable from mainland networks (wrong DNS answers, reset
-  TLS handshakes), which is why the veFaaS clock runs outside the mainland; see
-  [Deploying](DEPLOY.md). Mainland clients need a custom domain on the Worker.
-  Ordinary Cloudflare deployment does not imply mainland hosting; China Network has separate availability, product,
+- The primary deployment runs on Volcengine in cn-beijing (Supabase Edge
+  Function, Postgres, Auth, and a veFaaS timer), reachable from mainland
+  networks and close to Ark; see [Deploying](DEPLOY.md). `*.workers.dev` is not
+  reliably reachable from mainland networks, so a Cloudflare deployment for
+  mainland users needs a custom domain. Ordinary Cloudflare deployment does not imply mainland hosting; China Network has separate availability, product,
   subscription, and ICP requirements. Review data residency before uploading
   personal content.
 
