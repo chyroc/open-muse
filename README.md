@@ -276,6 +276,31 @@ Each check-in is a real, possibly billed Ark request. Settings has a
 device-local toggle under **Check-ins**, on by default. Check-ins do not send
 notifications or run in the background.
 
+### Upcoming
+
+Ask the companion for a reminder or a repeating task, such as "every Monday at
+9am, remind me to submit my timesheet". MA saves it to `UPCOMING.md` in
+personal memory and reads it back before confirming. Items are one-time,
+daily, weekly (chosen weekdays), or monthly (a day of the month, clamped to
+short months), at a local time in the person's IANA time zone. A time skipped
+by a daylight-saving change does not fire that day; a repeated hour fires once.
+
+The companion panel's **Upcoming** tab lists active items soonest first, then
+paused ones, with pause, resume, and delete. Each change rewrites
+`UPCOMING.md` only if it has not changed since it was read. The companion can
+also list, move, pause, or cancel items in chat.
+
+When an item falls due while the main chat is open, including while it stays
+open, the app sends one app-generated message and the companion delivers the
+reminder or does the task, asking for approval before external actions. Due
+reminders take precedence over a check-in. Each occurrence is claimed on the
+device before sending and never sent again, even after an ambiguous or
+rejected result. Only the latest occurrence from the last 36 hours is
+delivered; older misses are not replayed. A device delivers only occurrences
+after it first ran this feature, so a new device does not repeat earlier
+reminders, but two devices open at the same time can both deliver one. There
+are no push notifications or background runs yet.
+
 ## Personal identity and memory
 
 Tap the companion avatar to open Activity, Approvals, Desktop, Recent, or
