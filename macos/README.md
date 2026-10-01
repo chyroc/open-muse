@@ -19,6 +19,24 @@ The signed local app is `.build/macos/Open Muse.app`. The build type-checks
 `npm run macos:build` also runs the repository's shared web build before the
 Mac-specific build. No iOS or Android build is needed.
 
+### Signing and Keychain access
+
+Keychain trusts the app by its code signature. An ad-hoc signature changes with
+every build, so macOS asks for the Keychain password again after each one. The
+build signs with a stable identity when it can:
+
+1. A dedicated build keychain, usable from any shell including SSH. Export your
+   Apple Development identity from Keychain Access as a `.p12`, then run once:
+   `scripts/macos-build-keychain.sh path/to/identity.p12`. Its random password is
+   kept in `~/.config/open-muse/`, readable only by you.
+2. Otherwise `OPEN_MUSE_SIGN_IDENTITY` or the first Apple Development identity in
+   the login keychain, which works in your own Terminal session.
+3. Otherwise ad-hoc signing, which the build reports.
+
+After the first launch of a stably signed build, choose "Always Allow" once;
+later builds keep that trust, as well as the Accessibility and Screen
+Recording permissions.
+
 ## Desktop workspace
 
 - A 74-point navigation rail, continuous main chat, searchable side-chat drawer,

@@ -7,6 +7,8 @@ import {
   rename,
   writeFile,
 } from "node:fs/promises";
+import { existsSync, readFileSync } from "node:fs";
+import os from "node:os";
 import { editorLicenseNotices } from "../macos/tools/licenses.mjs";
 import path from "node:path";
 import sharp from "sharp";
@@ -100,38 +102,81 @@ execFileSync(
 // Keychain trusts the app by its code signature. An ad-hoc signature changes
 // with every build, so macOS asks for the Keychain password after each one.
 // A stable signing identity keeps one "Always Allow" valid across builds, and
-// keeps the Accessibility and Screen Recording grants too. Set
-// OPEN_MUSE_SIGN_IDENTITY to choose one; otherwise the first Apple Development
-// identity in the login keychain is used, and ad-hoc signing is the fallback.
-function signingIdentity() {
-  if (process.env.OPEN_MUSE_SIGN_IDENTITY)
-    return process.env.OPEN_MUSE_SIGN_IDENTITY;
+// keeps the Accessibility and Screen Recording grants too. The dedicated build
+// keychain from scripts/macos-build-keychain.sh works from any shell; otherwise
+// OPEN_MUSE_SIGN_IDENTITY or the first Apple Development identity in the login
+// keychain is tried, and ad-hoc signing is the fallback.
+const buildKeychain = path.join(
+  os.homedir(),
+  "Library/Keychains/open-muse-build.keychain-db",
+);
+const buildSecret = path.join(
+  os.homedir(),
+  ".config/open-muse/build-keychain-password",
+);
+function developmentIdentity(keychain) {
   try {
     const found = execFileSync(
       "security",
-      ["find-identity", "-v", "-p", "codesigning"],
+      [
+        "find-identity",
+        "-v",
+        "-p",
+        "codesigning",
+        ...(keychain ? [keychain] : []),
+      ],
       { encoding: "utf8" },
     );
-    return /"(Apple Development: [^"]+)"/.exec(found)?.[1] ?? "-";
+    return /"(Apple Development: [^"]+)"/.exec(found)?.[1];
   } catch {
-    return "-";
+    return undefined;
   }
 }
-function sign(identity) {
-  execFileSync("codesign", ["--force", "--sign", identity, app], {
-    stdio: identity === "-" ? "inherit" : "pipe",
-  });
+function signingOptions() {
+  if (existsSync(buildKeychain) && existsSync(buildSecret)) {
+    try {
+      execFileSync(
+        "security",
+        [
+          "unlock-keychain",
+          "-p",
+          readFileSync(buildSecret, "utf8").trim(),
+          buildKeychain,
+        ],
+        { stdio: "pipe" },
+      );
+      const identity = developmentIdentity(buildKeychain);
+      if (identity) return { identity, keychain: buildKeychain };
+    } catch {
+      // Fall through to the login keychain.
+    }
+  }
+  const identity = process.env.OPEN_MUSE_SIGN_IDENTITY ?? developmentIdentity();
+  return identity ? { identity } : undefined;
 }
-const identity = signingIdentity();
+function sign(options) {
+  execFileSync(
+    "codesign",
+    [
+      "--force",
+      "--sign",
+      options?.identity ?? "-",
+      ...(options?.keychain ? ["--keychain", options.keychain] : []),
+      app,
+    ],
+    { stdio: options ? "pipe" : "inherit" },
+  );
+}
+const options = signingOptions();
 let stable = false;
-if (identity !== "-")
+if (options)
   try {
-    sign(identity);
+    sign(options);
     stable = true;
   } catch {
     // A remote shell cannot use a key in a locked login keychain.
   }
-if (!stable) sign("-");
+if (!stable) sign(undefined);
 console.log(
   stable
     ? "Signed with a stable development identity."
