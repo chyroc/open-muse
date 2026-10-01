@@ -33,8 +33,12 @@ import { shortcutAvailable } from "./shortcut";
 import {
   appearances,
   saveAppearance,
+  saveTheme,
   storedAppearance,
+  storedTheme,
+  themeColors,
   type Appearance,
+  type ThemeColor,
 } from "./appearance";
 import {
   connectionError,
@@ -105,6 +109,7 @@ export function SettingsWindow({ client }: { client: Client }) {
   const [connection, setConnection] = useState<ConnectionStatus>();
   const [manage, setManage] = useState(false);
   const [appearance, setAppearance] = useState<Appearance>(storedAppearance);
+  const [theme, setTheme] = useState<ThemeColor>(storedTheme);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const alive = useRef(true);
@@ -229,12 +234,6 @@ export function SettingsWindow({ client }: { client: Client }) {
                 />
               </div>
             )}
-            <h2>{t("Desktop")}</h2>
-            <PresenceSettings />
-            {shortcutAvailable() && <h2>{t("Shortcuts")}</h2>}
-            <ShortcutSettings />
-            {client.signedIn() && <h2>{t("Check-ins")}</h2>}
-            <CheckInSwitch client={client} />
             <h2>{t("Language")}</h2>
             <div className="settings-group">
               <Row
@@ -255,15 +254,11 @@ export function SettingsWindow({ client }: { client: Client }) {
                 />
               )}
             </div>
-            <h2>{t("About")}</h2>
+            <h2>{t("Appearance")}</h2>
             <div className="settings-group">
-              <Row
-                title={t("Version")}
-                value={version || t("Unknown outside the Mac app")}
-              />
               <div className="settings-row">
                 <div>
-                  <strong>{t("Appearance")}</strong>
+                  <strong>{t("Mode")}</strong>
                 </div>
                 <div
                   className="settings-segments"
@@ -290,6 +285,44 @@ export function SettingsWindow({ client }: { client: Client }) {
                   })}
                 </div>
               </div>
+              <div className="settings-row settings-theme-row">
+                <div>
+                  <strong>{t("Theme color")}</strong>
+                </div>
+                <div
+                  className="settings-swatches"
+                  role="radiogroup"
+                  aria-label={t("Theme color")}
+                >
+                  {themeColors.map(({ id, label }) => (
+                    <button
+                      key={id}
+                      role="radio"
+                      data-swatch={id}
+                      aria-checked={theme === id}
+                      aria-label={t(label)}
+                      title={t(label)}
+                      onClick={() => {
+                        saveTheme(id);
+                        setTheme(id);
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <h2>{t("App behavior")}</h2>
+            <PresenceSettings />
+            {shortcutAvailable() && <h2>{t("Shortcuts")}</h2>}
+            <ShortcutSettings />
+            {client.signedIn() && <h2>{t("Check-ins")}</h2>}
+            <CheckInSwitch client={client} />
+            <h2>{t("About")}</h2>
+            <div className="settings-group">
+              <Row
+                title={t("Version")}
+                value={version || t("Unknown outside the Mac app")}
+              />
               <Row
                 title={t("Updates")}
                 detail={t(

@@ -87,3 +87,90 @@
   --shadow: #00000066;
   --blue: #005cff2b;
 }
+/* Theme colors: each replaces the accent, its hover and soft tints, and your
+   own message bubbles, in both appearances. */
+:root[data-theme="blue"] {
+  --accent: #1f6feb;
+  --accent-hover: #1a5fd0;
+  --accent-soft: #e3efff;
+  --blue: #d6e6ff;
+}
+:root[data-theme="purple"] {
+  --accent: #7c3aed;
+  --accent-hover: #6b2fd4;
+  --accent-soft: #f1e8ff;
+  --blue: #e6dbff;
+}
+:root[data-theme="pink"] {
+  --accent: #d63384;
+  --accent-hover: #bd2a73;
+  --accent-soft: #ffe6f2;
+  --blue: #ffd9ec;
+}
+:root[data-theme="orange"] {
+  --accent: #e8590c;
+  --accent-hover: #cc4e0a;
+  --accent-soft: #fff0e6;
+  --blue: #ffe2cf;
+}
+:root[data-theme="green"] {
+  --accent: #2f9e44;
+  --accent-hover: #288a3b;
+  --accent-soft: #e8f7ec;
+  --blue: #d5f0dc;
+}
+:root[data-theme="beige"] {
+  --accent: #9c7a4c;
+  --accent-hover: #866841;
+  --accent-soft: #f6efe4;
+  --blue: #eee2cf;
+}
+:root[data-theme="monochrome"] {
+  --accent: #2a2a2d;
+  --accent-hover: #000;
+  --accent-soft: #ececee;
+  --blue: #e4e4e7;
+}
+:root[data-appearance="dark"][data-theme="blue"] {
+  --accent: #4c8dff;
+  --accent-hover: #6aa0ff;
+  --accent-soft: #4c8dff2e;
+  --blue: #2b4d8a80;
+}
+:root[data-appearance="dark"][data-theme="purple"] {
+  --accent: #a274ff;
+  --accent-hover: #b48dff;
+  --accent-soft: #a274ff2e;
+  --blue: #5b3aa880;
+}
+:root[data-appearance="dark"][data-theme="pink"] {
+  --accent: #ff6fae;
+  --accent-hover: #ff8bbf;
+  --accent-soft: #ff6fae2e;
+  --blue: #8a2b5880;
+}
+:root[data-appearance="dark"][data-theme="orange"] {
+  --accent: #ff8a3d;
+  --accent-hover: #ffa060;
+  --accent-soft: #ff8a3d2e;
+  --blue: #8a452080;
+}
+:root[data-appearance="dark"][data-theme="green"] {
+  --accent: #51cf66;
+  --accent-hover: #6ad97c;
+  --accent-soft: #51cf662e;
+  --blue: #2a6b3680;
+}
+:root[data-appearance="dark"][data-theme="beige"] {
+  --accent: #c9a87a;
+  --accent-hover: #d6b98f;
+  --accent-soft: #c9a87a2e;
+  --blue: #6b573a80;
+}
+:root[data-appearance="dark"][data-theme="monochrome"] {
+  --accent: #f2f2f4;
+  --accent-hover: #fff;
+  --accent-text: #111112;
+  --accent-soft: #ffffff1f;
+  --blue: #ffffff26;
+}

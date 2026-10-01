@@ -70,7 +70,7 @@ export function PresenceSettings() {
               ? t("macOS is waiting for you to allow Open Muse in Login Items.")
               : presence?.startup === "unavailable"
                 ? t("macOS did not accept this app as a login item.")
-                : undefined
+                : t("Open Open Muse automatically when you log in to your Mac.")
           }
           checked={
             presence?.startup === "enabled" ||
@@ -86,6 +86,9 @@ export function PresenceSettings() {
         )}
         <Switch
           label={t("Show in menu bar")}
+          detail={t(
+            "Reach Open Muse from the menu bar at the top of the screen.",
+          )}
           checked={presence?.menuBar ?? false}
           disabled={loading || pending !== undefined}
           onChange={(value) => change("menuBar", value)}

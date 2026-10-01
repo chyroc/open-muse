@@ -276,3 +276,60 @@
   box-shadow: inset 0 0 0 2px var(--accent);
   color: var(--text-2);
 }
+/* Theme color swatches: one round chip per palette, the chosen one ringed. */
+.settings-theme-row {
+  align-items: center;
+}
+.settings-swatches {
+  margin-left: auto;
+  display: flex;
+  gap: 7px;
+  flex-shrink: 0;
+}
+.settings-swatches button {
+  width: 22px;
+  height: 22px;
+  border-radius: 11px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition: transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.settings-swatches button:hover {
+  transform: scale(1.12);
+}
+.settings-swatches button[aria-checked="true"] {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--text-2);
+}
+.settings-swatches [data-swatch="avatar"] {
+  background: conic-gradient(#e9dcc0, #c9b48a, #e9dcc0);
+}
+.settings-swatches [data-swatch="default"] {
+  background: #0064d4;
+}
+.settings-swatches [data-swatch="blue"] {
+  background: #1f6feb;
+}
+.settings-swatches [data-swatch="purple"] {
+  background: #7c3aed;
+}
+.settings-swatches [data-swatch="pink"] {
+  background: #d63384;
+}
+.settings-swatches [data-swatch="orange"] {
+  background: #e8590c;
+}
+.settings-swatches [data-swatch="green"] {
+  background: #2f9e44;
+}
+.settings-swatches [data-swatch="beige"] {
+  background: #9c7a4c;
+}
+.settings-swatches [data-swatch="monochrome"] {
+  background: linear-gradient(135deg, #2a2a2d 50%, #f2f2f4 50%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .settings-swatches button {
+    transition: none;
+  }
+}

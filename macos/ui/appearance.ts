@@ -72,6 +72,7 @@ export function saveAppearance(choice: Appearance) {
 // listeners stay for the lifetime of the page and re-read the stored choice.
 export function initializeAppearance() {
   applyAppearance(storedAppearance());
+  applyTheme(storedTheme());
   const media = window.matchMedia?.("(prefers-color-scheme: dark)");
   const follow = () => {
     if (storedAppearance() === "system") applyAppearance("system", false);
@@ -82,7 +83,60 @@ export function initializeAppearance() {
   );
   window.addEventListener("storage", (event) => {
     if (event.key === storageKey) applyAppearance(storedAppearance(), false);
+    if (event.key === themeKey) applyTheme(storedTheme());
   });
+}
+
+// The accent used for buttons, selection and your own message bubbles. Also a
+// device-local presentation choice. "avatar" follows the companion's own
+// colors; "default" keeps the standard accent.
+export type ThemeColor =
+  | "avatar"
+  | "default"
+  | "blue"
+  | "purple"
+  | "pink"
+  | "orange"
+  | "green"
+  | "beige"
+  | "monochrome";
+export const themeColors: { id: ThemeColor; label: string }[] = [
+  { id: "avatar", label: "Match my avatar" },
+  { id: "default", label: "Default" },
+  { id: "blue", label: "Blue" },
+  { id: "purple", label: "Purple" },
+  { id: "pink", label: "Pink" },
+  { id: "orange", label: "Orange" },
+  { id: "green", label: "Green" },
+  { id: "beige", label: "Beige" },
+  { id: "monochrome", label: "Monochrome" },
+];
+const themeKey = "muse.theme";
+export function storedTheme(): ThemeColor {
+  try {
+    const value = localStorage.getItem(themeKey);
+    return themeColors.some((item) => item.id === value)
+      ? (value as ThemeColor)
+      : "default";
+  } catch {
+    return "default";
+  }
+}
+// The companion's avatar is beige, so matching it uses that palette.
+export function applyTheme(theme: ThemeColor) {
+  const resolved = theme === "avatar" ? "beige" : theme;
+  if (resolved === "default") delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = resolved;
+  return resolved;
+}
+export function saveTheme(theme: ThemeColor) {
+  try {
+    if (theme === "default") localStorage.removeItem(themeKey);
+    else localStorage.setItem(themeKey, theme);
+  } catch {
+    // Presentation must still change for this session without storage.
+  }
+  applyTheme(theme);
 }
 
 export function appearanceLabel(id: Appearance) {

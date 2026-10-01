@@ -82,4 +82,20 @@ export const zhDesktop: Record<string, string> = {
   "Change the Quick chat shortcut": "更改快速聊天快捷键",
   "Type a shortcut…": "请按下快捷键…",
   Reset: "重置",
+  Mode: "模式",
+  "Theme color": "主题颜色",
+  "Match my avatar": "匹配我的虚拟形象",
+  Default: "默认",
+  Blue: "蓝色",
+  Purple: "紫色",
+  Pink: "粉色",
+  Orange: "橙色",
+  Green: "绿色",
+  Beige: "米色",
+  Monochrome: "黑白",
+  "App behavior": "应用行为",
+  "Open Open Muse automatically when you log in to your Mac.":
+    "登录 Mac 时自动打开 Open Muse。",
+  "Reach Open Muse from the menu bar at the top of the screen.":
+    "从屏幕顶部的菜单栏使用 Open Muse。",
 };
