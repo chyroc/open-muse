@@ -56,7 +56,14 @@ Recording permissions.
   main composer; nothing changes until the message is sent.
 - Opening or searching a chat does not create a cloud session. The first explicit
   send prepares the MA workspace; unconfirmed writes are not automatically retried.
-- Closing the window keeps the app running; clicking its Dock icon restores it.
+- Closing the window keeps the app running; clicking its Dock icon, the menu
+  bar icon or the floating button restores it. The floating button appears
+  while the window is closed or minimized, can be dragged, and remembers its
+  place. General settings switch the menu bar icon, the floating button and
+  Run on startup; a login item macOS still holds for approval reads as pending.
+- Option-Space, or Quick chat in the menu bar icon, opens a small card over the
+  app in front that shows and sends into the main chat. Pressing it again,
+  Escape or clicking elsewhere puts it away.
 - Both windows render before the Keychain login is restored. A pending or denied
   authorization leaves the app usable and disconnected, reports the refusal with
   a retry, and never writes to secure storage, so the saved credential survives.
@@ -83,9 +90,22 @@ Recording permissions.
   agent with its tools, approvals still wait, and there are no push
   notifications.
 
+## Computer use
+
+The agent declares `mac_*` custom tools (screenshot, click, type, keys, scroll,
+drag, open an app, address or file, list apps and windows). MA waits for this
+app to answer them. Nothing runs until Settings > Computer use is on, where the
+Screen Recording and Accessibility permissions are shown and requested. Each
+pending call is described above the composer and needs an answer: allow once,
+allow the rest of that chat, or decline. Calls are answered once and never
+resent automatically, only the workspace window runs them, and requests for
+another device, such as Apple Health on the iPhone, are shown as waiting.
+Conversations keep their agent version, so the tools reach conversations
+created after the agent was updated.
+
 This is an incremental desktop implementation, not a verified one-to-one clone.
-Cloud artifact/media indexing, dictation and desktop automation still need
-their Mac-specific implementation and acceptance checks. The UI identifies unfinished surfaces. No mock replies are
+Cloud artifact/media indexing and dictation still need their Mac-specific
+implementation and acceptance checks. The UI identifies unfinished surfaces. No mock replies are
 included in the app. Real cloud verification requires an authorized connection.
 
 ## Settings window
