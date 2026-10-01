@@ -24,11 +24,15 @@ Mac-specific build. No iOS or Android build is needed.
 - A 74-point navigation rail, continuous main chat, searchable side-chat drawer,
   assistant activity/approval panel, and a bottom-aligned message composer.
 - Return sends; Shift-Return inserts a newline; IME composition does not submit.
-- Command-N opens a side-chat draft; Command-K searches conversations;
+- Command-N opens a side-chat draft; Command-K opens a palette of commands,
+  chats and open goals, and can write the typed text into the main composer;
   Command-comma opens settings; Command-1 and Command-J return to the main chat;
   Command-slash lists every shortcut; Shift-Escape focuses the message field;
   Escape stops a running reply when no dialog or menu is open.
 - The rail's bottom button opens a menu with Settings and Keyboard shortcuts.
+- The plus button, a drop on the composer, or a paste attaches files. Each is
+  checked against the shared limits before it uploads; a message can carry
+  files without text and waits until every upload has finished.
 - The pencil on the status panel avatar drafts an avatar or name change in the
   main composer; nothing changes until the message is sent.
 - Opening or searching a chat does not create a cloud session. The first explicit
@@ -55,10 +59,14 @@ Mac-specific build. No iOS or Android build is needed.
 - While connected, the app checks once a minute for occurrences that have come
   due and delivers them into the main chat through the shared delivery service,
   which claims each occurrence before sending and never sends it twice.
+- Account builds can switch on delivery by the Muse service while the app is
+  closed. It is off by default; each delivery is a billed Ark request run by the
+  agent with its tools, approvals still wait, and there are no push
+  notifications.
 
 This is an incremental desktop implementation, not a verified one-to-one clone.
-Cloud artifact/media indexing, attachments, dictation and desktop automation
-still need their Mac-specific implementation and acceptance checks. The UI identifies unfinished surfaces. No mock replies are
+Cloud artifact/media indexing, dictation and desktop automation still need
+their Mac-specific implementation and acceptance checks. The UI identifies unfinished surfaces. No mock replies are
 included in the app. Real cloud verification requires an authorized connection.
 
 ## Settings window
