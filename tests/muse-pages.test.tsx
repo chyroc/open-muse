@@ -64,7 +64,7 @@ describe("Muse iOS navigation and real status", () => {
         onDiscuss={() => {}}
       />,
     );
-    expect(html).toContain("Background delivery is not enabled");
+    expect(html).not.toContain("Background delivery is not enabled");
     expect(html).not.toContain("inspiration-post");
     expect(html).toContain('disabled=""');
   });
