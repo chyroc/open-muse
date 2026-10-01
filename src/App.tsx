@@ -39,6 +39,7 @@ import type {
 import { eventText, pendingPermissions, taskState } from "../shared/types";
 import { canAutoApprove } from "../shared/approval-policy";
 import { AuthPanel } from "./AuthPanel";
+import { CheckInSettings } from "./CheckInSettings";
 import { Studio } from "./Studio";
 import { exportText } from "./platform";
 import { backgroundClient } from "./background-client";
@@ -189,6 +190,7 @@ function Workspace({
   const [welcomeError, setWelcomeError] = useState("");
   const checkedWelcome = useRef(false);
   const welcomeJob = useRef(false);
+  const checkInJob = useRef(false);
   const busyRef = useRef(false);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [category, setCategory] = useState<Category>("general");
@@ -376,6 +378,49 @@ function Workspace({
     checkedWelcome.current = true;
     void beginWelcome();
   }, [client, loading, config?.mode, loadError, tab, isSideDraft, taskRoute]);
+  useEffect(() => {
+    if (
+      loading ||
+      config?.mode !== "ark" ||
+      Boolean(loadError) ||
+      tab !== "home" ||
+      isSideDraft ||
+      taskRoute ||
+      welcomeBusy ||
+      (welcome && welcome.phase !== "confirmed" && welcome.phase !== "skipped")
+    )
+      return;
+    // Check-ins start only while the main chat is in front of the person.
+    const run = () => {
+      if (document.hidden || checkInJob.current) return;
+      checkInJob.current = true;
+      void client
+        .startCheckIn(systemLanguage())
+        .then((record) => {
+          if (record && alive.current) void reload();
+        })
+        .catch(() => {
+          /* An app-initiated check-in never interrupts the person. */
+        })
+        .finally(() => {
+          checkInJob.current = false;
+        });
+    };
+    run();
+    document.addEventListener("visibilitychange", run);
+    return () => document.removeEventListener("visibilitychange", run);
+  }, [
+    client,
+    loading,
+    config?.mode,
+    loadError,
+    tab,
+    isSideDraft,
+    taskRoute,
+    welcome,
+    welcomeBusy,
+    reload,
+  ]);
   useEffect(() => {
     if (config?.mode !== "ark" || !lastStatusId) return;
     let active = true;
@@ -1120,6 +1165,7 @@ function Settings({
   return (
     <div className="page-content settings-page">
       <AuthPanel client={client} onChanged={onConnection} />
+      <CheckInSettings client={client} />
       <a className="settings-studio-link" href="#/studio">
         MA Studio <ExternalLink size={16} />
       </a>

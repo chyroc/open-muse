@@ -27,6 +27,7 @@ import { DirectIdentity, defaultIdentity } from "./direct/identity";
 import { DirectGoals } from "./direct/goals";
 import { DirectChoices } from "./direct/choices";
 import { DirectWelcome } from "./direct/welcome";
+import { DirectCheckIn } from "./direct/checkin";
 import { DirectLibrary } from "./direct/library";
 import { DirectAttachments } from "./direct/attachments";
 import {
@@ -104,6 +105,7 @@ type Runtime = {
   goals: DirectGoals;
   choices?: DirectChoices;
   welcome?: DirectWelcome;
+  checkin?: DirectCheckIn;
   redact: (text: string) => string;
   abort: AbortController;
 };
@@ -1002,6 +1004,35 @@ export class Client {
   welcomeState() {
     return this.welcomeService(this.context()).state();
   }
+  private checkInService(r: Runtime) {
+    return (r.checkin ??= new DirectCheckIn(r.key, this.db, {
+      main: async () => {
+        const { mainId } = await this.conversations(r).index();
+        return mainId ? r.ark.get(validId(mainId)) : undefined;
+      },
+      history: (id) =>
+        this.collect<AgentEvent>(
+          r.ark,
+          `/sessions/${validId(id)}/events?order=asc&limit=200`,
+        ),
+      send: (id, text, eventId) =>
+        this.submit(id, { type: "user.message", text }, undefined, {
+          runtime: r,
+          eventId,
+        }),
+    }));
+  }
+  startCheckIn(language: string) {
+    return this.checkInService(this.context()).start(language);
+  }
+  checkInState() {
+    return this.checkInService(this.context()).state();
+  }
+  setCheckIn(enabled: boolean) {
+    return this.checkInService(this.context()).setEnabled(
+      z.boolean().parse(enabled),
+    );
+  }
   async openConversation(
     kind: ConversationKind,
     title = "Main chat",
@@ -1086,7 +1117,10 @@ export class Client {
       welcome_reply: _welcome,
       ...original
     } = event;
-    const annotated = await this.welcomeService(r).annotate(id, original);
+    const annotated = await this.checkInService(r).annotate(
+      id,
+      await this.welcomeService(r).annotate(id, original),
+    );
     if (event.type === "agent.message") {
       const reply = await this.choiceService(r).reply(id, event.id);
       return reply ? { ...annotated, choice_reply: reply } : annotated;
