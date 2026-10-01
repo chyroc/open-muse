@@ -1,3 +1,4 @@
+import { edgeFetch } from "./fetch";
 import { HttpError, type Env } from "./env";
 import { authenticateSupabase, isSupabaseOwner } from "./supabase";
 
@@ -60,7 +61,7 @@ export function authorizedOwners(env: Env) {
 export async function authenticate(
   request: Request,
   env: Env,
-  fetcher: typeof fetch = fetch,
+  fetcher: typeof fetch = edgeFetch,
 ) {
   const authorization = request.headers.get("Authorization") ?? "";
   if (

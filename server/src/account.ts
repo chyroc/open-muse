@@ -1,3 +1,4 @@
+import { edgeFetch } from "./fetch";
 import { ApiError, ArkClient } from "../../shared/ark";
 import {
   accountCredentialSchema,
@@ -80,7 +81,7 @@ export class AccountCredentials {
     credential: AccountCredential,
     revision: number,
     now = Date.now(),
-    fetcher: typeof fetch = fetch,
+    fetcher: typeof fetch = edgeFetch,
   ) {
     credential = accountCredentialSchema.parse(credential);
     const current = await this.row();

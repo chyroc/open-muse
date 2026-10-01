@@ -1,3 +1,4 @@
+import { edgeFetch } from "./fetch";
 import { authenticate, checkOrigin } from "./auth";
 import { backgroundReady, HttpError, json, type Env } from "./env";
 import { Repository } from "./repository";
@@ -63,7 +64,7 @@ async function body(
 export async function handle(
   request: Request,
   env: Env,
-  fetcher: typeof fetch = fetch,
+  fetcher: typeof fetch = edgeFetch,
 ): Promise<Response> {
   let origin: string | null = null;
   let response: Response;

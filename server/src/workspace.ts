@@ -1,3 +1,4 @@
+import { edgeFetch } from "./fetch";
 import { z } from "zod";
 import { ApiError, ArkClient } from "../../shared/ark";
 import { accountWorkspaceKey } from "../../shared/workspace-key";
@@ -137,7 +138,7 @@ export class AccountWorkspaces {
   constructor(
     private env: Env,
     private owner: string,
-    private fetcher: typeof fetch = fetch,
+    private fetcher: typeof fetch = edgeFetch,
   ) {}
   private async context(credentialRevision?: number) {
     const stored = await new AccountCredentials(this.env, this.owner).read();

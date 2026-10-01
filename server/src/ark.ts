@@ -1,3 +1,4 @@
+import { edgeFetch } from "./fetch";
 import { ArkClient } from "../../shared/ark";
 import { parseGoals } from "../../shared/goals";
 import { defaultFeedInstructions } from "../../shared/inspiration";
@@ -26,7 +27,7 @@ export class ArkRemote implements Remote {
   private ark: ArkClient;
   constructor(
     private env: Env,
-    fetcher: typeof fetch = fetch,
+    fetcher: typeof fetch = edgeFetch,
   ) {
     this.owner = env.OWNER_ID;
     this.ark = new ArkClient(

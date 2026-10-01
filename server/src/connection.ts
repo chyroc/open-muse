@@ -1,3 +1,4 @@
+import { edgeFetch } from "./fetch";
 import { z } from "zod";
 import {
   backgroundConfigurationSchema,
@@ -218,7 +219,7 @@ export class ConnectionStore {
   }
   guardedFetch(
     revision: number | null,
-    fetcher: typeof fetch = fetch,
+    fetcher: typeof fetch = edgeFetch,
   ): typeof fetch {
     return async (input, init) => {
       const row = await this.row();
@@ -239,7 +240,7 @@ export class ConnectionStore {
     config: BackgroundConfiguration,
     revision: number,
     now = Date.now(),
-    fetcher: typeof fetch = fetch,
+    fetcher: typeof fetch = edgeFetch,
     // Account workspaces bind to one stored credential revision, so a
     // concurrent key rotation makes this upload fail instead of reviving the
     // old key. Their resources must carry the account's ownership label and
