@@ -73,11 +73,13 @@ import {
   pendingPermissions,
   taskState,
   type AgentEvent,
+  type Goal,
   type Session,
 } from "../../shared/types";
 import { canAutoApprove } from "../../shared/approval-policy";
 import { ArchiveToggle, Empty, Modal, Rail } from "./Chrome";
 import { ShortcutsDialog } from "./Shortcuts";
+import { CommandPalette, paletteItems } from "./Palette";
 import {
   SentFiles,
   StagedFiles,
@@ -142,6 +144,7 @@ export function DesktopApp({ client }: { client: Client }) {
   const [menu, setMenu] = useState(false);
   const [prefill, setPrefill] = useState(0);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [paletteGoals, setPaletteGoals] = useState<Goal[]>([]);
   // Files staged for each draft; they are sent only with that draft.
   const [stagedBy, setStagedBy] = useState<Record<string, Staged[]>>({});
   const [fileNames, setFileNames] = useState<Record<string, string>>({});
@@ -386,6 +389,18 @@ export function DesktopApp({ client }: { client: Client }) {
       window.removeEventListener(connectionReady, ready);
     };
   }, [reload, client]);
+  // The palette reaches goals too; they are read when it opens.
+  useEffect(() => {
+    if (!search || !ready) return;
+    let active = true;
+    void Promise.resolve()
+      .then(() => client.goals())
+      .then((value) => active && setPaletteGoals(value.data))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [search, ready, client]);
   // MA image blocks carry no name, so the names come from this device.
   useEffect(() => {
     if (!ready) return;
@@ -1389,45 +1404,38 @@ export function DesktopApp({ client }: { client: Client }) {
         </Modal>
       )}
       {search && (
-        <Modal
-          title={t("Search")}
+        <CommandPalette
+          query={query}
+          onQuery={setQuery}
+          loading={loading}
+          items={paletteItems({
+            query,
+            chats: sessions
+              .filter((session) => !index.entries[session.id]?.continuedBy)
+              .map((session) => ({
+                id: session.id,
+                title: index.entries[session.id]?.title ?? session.title,
+              })),
+            goals: paletteGoals,
+            onPage: goPage,
+            onNewChat: () => navigate("/new"),
+            onSettings: openSettings,
+            onShortcuts: () => setShortcutsOpen(true),
+            onChat: (chat) => {
+              const session = sessions.find((item) => item.id === chat);
+              if (session) openChat(session);
+            },
+            onGoal: (goal) => navigate(`/goals/${goal}`),
+            onWrite: (text) => {
+              navigate("/");
+              prefillComposer(text);
+            },
+          })}
           onClose={() => {
             setSearch(false);
             setQuery("");
           }}
-        >
-          <label className="search-field">
-            <Search size={20} />
-            <input
-              autoFocus
-              placeholder={t("Search chats")}
-              aria-label={t("Search all chats")}
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          </label>
-          <div className="search-results">
-            {sessions
-              .filter(
-                (session) =>
-                  !index.entries[session.id]?.continuedBy &&
-                  (index.entries[session.id]?.title ?? session.title)
-                    .toLowerCase()
-                    .includes(query.toLowerCase()),
-              )
-              .map((session) => (
-                <button key={session.id} onClick={() => openChat(session)}>
-                  <MessageCircle size={18} />
-                  {index.entries[session.id]?.title ?? session.title}
-                </button>
-              ))}
-            {!sessions.length && (
-              <p className="subtle">
-                {loading ? t("Loading…") : t("No chats yet")}
-              </p>
-            )}
-          </div>
-        </Modal>
+        />
       )}
       {goalDraftReplacement && (
         <Modal

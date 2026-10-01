@@ -17,4 +17,10 @@ export const zhDesktop: Record<string, string> = {
   "Focus the message field": "聚焦消息输入框",
   "Stop the response": "停止回复",
   "New line": "换行",
+  "Go to {name}": "前往{name}",
+  "Write “{text}” in the main chat": "在主对话中写下“{text}”",
+  "Search chats, goals and commands": "搜索对话、目标和命令",
+  "No results": "没有结果",
+  Commands: "命令",
+  Chats: "对话",
 };
