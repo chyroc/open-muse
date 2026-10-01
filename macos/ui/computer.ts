@@ -16,6 +16,8 @@ export type ComputerState = {
   screen: boolean;
   keepAwake: boolean;
   blocked: BlockedApp[];
+  fullDiskAccess: boolean;
+  blockedFolders: string[];
 };
 export const computerChanged = "muse-computer-changed";
 
@@ -49,6 +51,13 @@ export function parseComputerState(value: unknown): ComputerState | undefined {
         screen: record.screen,
         keepAwake: record.keepAwake === true,
         blocked,
+        fullDiskAccess: record.fullDiskAccess === true,
+        blockedFolders: Array.isArray(record.blockedFolders)
+          ? record.blockedFolders.filter(
+              (item): item is string =>
+                typeof item === "string" && item.startsWith("/"),
+            )
+          : [],
       }
     : undefined;
 }
@@ -81,6 +90,10 @@ export const setKeepAwake = (value: boolean) =>
 export const blockApp = () => send({ operation: "block-app" });
 export const unblockApp = (id: string) =>
   send({ operation: "unblock-app", id });
+export const blockFolder = () => send({ operation: "block-folder" });
+export const unblockFolder = (path: string) =>
+  send({ operation: "unblock-folder", path });
+export const openFullDiskAccess = () => send({ operation: "full-disk-access" });
 export async function requestPermission(kind: "accessibility" | "screen") {
   const native = bridge();
   return native

@@ -50,4 +50,16 @@ export const zhComputer: Record<string, string> = {
   "Your assistant can't see or use the apps you add here: they are left out of screenshots and app lists, and opening or acting on them is refused.":
     "助手无法查看或使用你在这里添加的 App：它们不会出现在截图和 App 列表中，打开或操作它们的请求也会被拒绝。",
   "Add app": "添加 App",
+  "When computer use is on, your assistant can open files on this Mac that you ask about. Folders you block here are never opened.":
+    "开启电脑操控后，助手可以打开你提到的这台 Mac 上的文件。你在这里屏蔽的文件夹永远不会被打开。",
+  "Full Disk Access": "完全磁盘访问权限",
+  "Lets your assistant open files in protected places such as Mail and Messages data. Most files do not need it.":
+    "让助手可以打开受保护位置的文件，例如邮件和信息的数据。大多数文件不需要此权限。",
+  "Blocked folders": "已屏蔽的文件夹",
+  "Your assistant can't open files inside the folders you add here, or the folders themselves.":
+    "助手无法打开你在这里添加的文件夹及其中的文件。",
+  "Add folder": "添加文件夹",
+  "App data": "App 数据",
+  "This app has no tools that read Mail, Messages, Notes or WhatsApp data, so there is nothing to allow per app.":
+    "此 App 没有读取邮件、信息、备忘录或 WhatsApp 数据的工具，因此无需逐个 App 授权。",
 };

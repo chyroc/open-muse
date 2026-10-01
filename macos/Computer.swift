@@ -23,6 +23,8 @@ final class Computer {
     private var shotSize: CGSize = .zero
     // Apps the person blocked: never shown, listed, opened or acted on.
     var blocked: Set<String> = []
+    // Folders the person blocked: nothing inside them is opened.
+    var blockedFolders: [String] = []
     // Keeps the display awake while the assistant is working, and a minute after.
     var keepAwake = false
     private var awake: IOPMAssertionID = 0
@@ -36,6 +38,12 @@ final class Computer {
         _ = AXIsProcessTrustedWithOptions([key: true] as CFDictionary)
     }
     func requestScreen() { _ = CGRequestScreenCaptureAccess() }
+    // Full Disk Access cannot be queried directly; reading a file only it
+    // unlocks is the accepted check, and nothing read is kept.
+    var fullDiskAccess: Bool {
+        let probe = NSHomeDirectory() + "/Library/Application Support/com.apple.TCC/TCC.db"
+        return FileManager.default.isReadableFile(atPath: probe)
+    }
 
     func run(_ tool: String, _ input: [String: Any]) async -> Output {
         if keepAwake { holdAwake() }
@@ -140,7 +148,10 @@ final class Computer {
                 : failure("The address could not be opened.")
         }
         if value.hasPrefix("/") {
-            let url = URL(fileURLWithPath: value)
+            let url = URL(fileURLWithPath: value).standardizedFileURL.resolvingSymlinksInPath()
+            if blockedFolders.contains(where: { url.path == $0 || url.path.hasPrefix($0 + "/") }) {
+                return failure("The person blocked this folder for their assistant.")
+            }
             guard FileManager.default.fileExists(atPath: url.path) else { return failure("No file exists at that path.") }
             return NSWorkspace.shared.open(url)
                 ? Output(ok: true, text: json(["ok": true, "opened": url.path]))

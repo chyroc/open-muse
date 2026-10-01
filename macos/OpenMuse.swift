@@ -399,6 +399,10 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     // workspace window, where each call is approved, may run a tool.
     private let keepAwakeKey = "computerUse.keepAwake"
     private let blockedAppsKey = "computerUse.blockedApps"
+    private let blockedFoldersKey = "computerUse.blockedFolders"
+    private var blockedFolders: [String] {
+        (UserDefaults.standard.array(forKey: blockedFoldersKey) as? [String] ?? []).filter { $0.hasPrefix("/") }
+    }
     // Blocked apps are stored by bundle identifier with the name shown to the person.
     private var blockedApps: [[String: String]] {
         (UserDefaults.standard.array(forKey: blockedAppsKey) as? [[String: String]] ?? [])
@@ -409,7 +413,9 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
          "accessibility": computer.accessibility,
          "screen": computer.screen,
          "keepAwake": UserDefaults.standard.bool(forKey: keepAwakeKey),
-         "blocked": blockedApps]
+         "blocked": blockedApps,
+         "fullDiskAccess": computer.fullDiskAccess,
+         "blockedFolders": blockedFolders]
     }
     private func chooseBlockedApp(for sender: WKWebView?, done: @escaping () -> Void) {
         let panel = NSOpenPanel()
@@ -452,6 +458,28 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
                 replyHandler(self.computerState(), nil)
                 self.broadcast("muse-computer-changed", except: sender)
             }
+        case "block-folder":
+            let panel = NSOpenPanel()
+            panel.canChooseFiles = false
+            panel.canChooseDirectories = true
+            panel.allowsMultipleSelection = false
+            panel.prompt = localized("Block")
+            let finish: (NSApplication.ModalResponse) -> Void = { [weak self] response in
+                guard let self else { return }
+                if response == .OK, let url = panel.url?.standardizedFileURL.resolvingSymlinksInPath() {
+                    UserDefaults.standard.set(Array(Set(self.blockedFolders + [url.path])).sorted(), forKey: self.blockedFoldersKey)
+                }
+                replyHandler(self.computerState(), nil)
+            }
+            if let host = sender?.window { panel.beginSheetModal(for: host, completionHandler: finish) }
+            else { finish(panel.runModal()) }
+        case "unblock-folder":
+            guard let path = body["path"] else { replyHandler(nil, "Invalid folder"); return }
+            UserDefaults.standard.set(blockedFolders.filter { $0 != path }, forKey: blockedFoldersKey)
+            replyHandler(computerState(), nil)
+        case "full-disk-access":
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") { NSWorkspace.shared.open(url) }
+            replyHandler(computerState(), nil)
         case "unblock-app":
             guard let id = body["id"] else { replyHandler(nil, "Invalid app"); return }
             UserDefaults.standard.set(blockedApps.filter { $0["id"] != id }, forKey: blockedAppsKey)
@@ -478,6 +506,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
                   let input = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
             else { replyHandler(nil, "Invalid computer use request"); return }
             computer.blocked = Set(blockedApps.compactMap { $0["id"] })
+            computer.blockedFolders = blockedFolders
             computer.keepAwake = UserDefaults.standard.bool(forKey: keepAwakeKey)
             Task { @MainActor in
                 let output = await computer.run(tool, input)

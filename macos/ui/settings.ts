@@ -35,13 +35,7 @@ export const settingsSections: SettingsSection[] = [
       "MCP connectors and their OAuth flows are not wired into this Mac build. Tools stay limited to what your agent already has.",
   },
   { id: "computer-use", label: "Computer use", connected: true },
-  {
-    id: "file-system",
-    label: "File system access",
-    connected: false,
-    unavailable:
-      "Sandbox file browsing is not connected. Library's System files only opens your MA memory documents.",
-  },
+  { id: "file-system", label: "File system access", connected: true },
   { id: "dictation", label: "Dictation", connected: true },
   {
     id: "wallet",

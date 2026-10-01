@@ -351,6 +351,10 @@ describe("Mac computer use", () => {
     for (const tool of MAC_TOOLS) expect(swift).toContain(`"${tool}"`);
     expect(swift).toContain("AXIsProcessTrusted()");
     expect(swift).toContain("CGPreflightScreenCaptureAccess()");
+    // Blocked folders are refused when a file is opened.
+    expect(swift).toContain(
+      "The person blocked this folder for their assistant.",
+    );
     // Blocked apps are left out of screenshots, lists and actions.
     expect(swift).toContain("excludingApplications: hidden");
     expect(swift).toContain(
