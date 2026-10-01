@@ -29,6 +29,28 @@ final class MuseHealthHandler: NSObject, WKScriptMessageHandlerWithReply {
             replyHandler(HKHealthStore.isHealthDataAvailable(), nil)
             return
         }
+        // Connecting asks once for every metric this app reads. HealthKit
+        // reports only whether it has asked, never what the person allowed.
+        if operation == "access" {
+            guard HKHealthStore.isHealthDataAvailable() else { replyHandler("unavailable", nil); return }
+            store.getRequestStatusForAuthorization(toShare: [], read: Self.allTypes) { status, error in
+                DispatchQueue.main.async {
+                    replyHandler(error == nil && status == .unnecessary ? "requested" : "not_requested", nil)
+                }
+            }
+            return
+        }
+        if operation == "authorize" {
+            guard HKHealthStore.isHealthDataAvailable()
+            else { replyHandler(nil, "Health data is not available on this device"); return }
+            store.requestAuthorization(toShare: [], read: Self.allTypes) { granted, error in
+                DispatchQueue.main.async {
+                    if granted, error == nil { replyHandler(true, nil) }
+                    else { replyHandler(nil, "Health access was not granted") }
+                }
+            }
+            return
+        }
         guard operation == "read" else { replyHandler(nil, "Invalid health request"); return }
         guard HKHealthStore.isHealthDataAvailable()
         else { replyHandler(nil, "Health data is not available on this device"); return }
@@ -57,6 +79,12 @@ final class MuseHealthHandler: NSObject, WKScriptMessageHandlerWithReply {
             }
         }
     }
+
+    private static let metrics = [
+        "steps", "active_energy", "exercise_minutes", "walking_running_distance",
+        "heart_rate", "resting_heart_rate", "sleep", "workouts", "body_mass",
+    ]
+    private static let allTypes = Set(metrics.compactMap(objectType))
 
     private static func objectType(_ metric: String) -> HKObjectType? {
         switch metric {

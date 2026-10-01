@@ -6,8 +6,10 @@ import {
   Bookmark,
   Check,
   Copy,
+  ChevronRight,
   ExternalLink,
   HeartPulse,
+  Plug,
   Laptop,
   LoaderCircle,
   RefreshCw,
@@ -49,6 +51,7 @@ import { AuthPanel } from "./AuthPanel";
 import { HealthRequestCard } from "./HealthRequestCard";
 import { isHealthRequest } from "../shared/health";
 import { CheckInSettings } from "./CheckInSettings";
+import { ConnectorsSheet } from "./ConnectorsSheet";
 import { Studio } from "./Studio";
 import { exportText } from "./platform";
 import { backgroundClient } from "./background-client";
@@ -1082,7 +1085,17 @@ function Workspace({
             {tab === "library" && <LibraryPage client={client} />}
             {tab === "studio" && <Studio client={client} config={config} />}
             {tab === "settings" && (
-              <Settings client={client} onConnection={onConnection} />
+              <Settings
+                client={client}
+                onConnection={onConnection}
+                onDraft={(text) => {
+                  setDrafts((current) => ({
+                    ...current,
+                    [index.mainId ?? "new-main"]: text,
+                  }));
+                  navigate("/");
+                }}
+              />
             )}
           </div>
         )}
@@ -1222,13 +1235,33 @@ function Workspace({
 function Settings({
   client,
   onConnection,
+  onDraft,
 }: {
   client: Client;
   onConnection: () => void;
+  onDraft: (text: string) => void;
 }) {
+  const [connectors, setConnectors] = useState(false);
   return (
     <div className="page-content settings-page">
       <AuthPanel client={client} onChanged={onConnection} />
+      <button
+        className="settings-connectors-row"
+        onClick={() => setConnectors(true)}
+      >
+        <Plug size={20} aria-hidden="true" />
+        <span>{t("Connectors")}</span>
+        <ChevronRight size={18} aria-hidden="true" />
+      </button>
+      {connectors && (
+        <ConnectorsSheet
+          onClose={() => setConnectors(false)}
+          onDraft={(text) => {
+            setConnectors(false);
+            onDraft(text);
+          }}
+        />
+      )}
       <CheckInSettings client={client} />
       <a className="settings-studio-link" href="#/studio">
         MA Studio <ExternalLink size={16} />

@@ -5,6 +5,9 @@ import type { Client } from "../src/api";
 import { HealthRequestCard } from "../src/HealthRequestCard";
 import { UpcomingPanel } from "../src/UpcomingPanel";
 import { CheckInSettings } from "../src/CheckInSettings";
+import { ConnectorsSheet } from "../src/ConnectorsSheet";
+import { connectHealth, healthAccess } from "../src/health";
+import { t } from "../shared/i18n";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -88,5 +91,42 @@ describe("Signed-out companion settings", () => {
     expect(
       renderToStaticMarkup(<CheckInSettings client={client(false)} />),
     ).toBe("");
+  });
+});
+
+describe("Connectors", () => {
+  it("lists included tools as connected and Lark as available", () => {
+    const html = renderToStaticMarkup(
+      <ConnectorsSheet onClose={() => {}} onDraft={() => {}} />,
+    );
+    expect(html).toContain("Search connectors");
+    for (const name of [
+      "Web search and pages",
+      "Browser",
+      "Files and commands",
+      "Personal memory",
+    ])
+      expect(html).toContain(name);
+    expect(html).toContain("Connect Lark");
+    // Health appears only once the native reader answers.
+    expect(html).not.toContain("Apple Health");
+    expect(t("Connectors", {}, "zh-CN")).toBe("连接器");
+    expect(t("Available", {}, "zh-CN")).toBe("可用");
+  });
+
+  it("asks the native Health reader for access status and authorization", async () => {
+    expect(await healthAccess()).toBe("unavailable");
+    const postMessage = vi.fn(
+      async (body: { operation: string }): Promise<unknown> =>
+        body.operation === "access" ? "not_requested" : true,
+    );
+    vi.stubGlobal("webkit", {
+      messageHandlers: { museHealth: { postMessage } },
+    });
+    expect(await healthAccess()).toBe("not_requested");
+    await connectHealth();
+    expect(postMessage).toHaveBeenLastCalledWith({ operation: "authorize" });
+    postMessage.mockResolvedValueOnce("granted");
+    await expect(healthAccess()).rejects.toThrow();
   });
 });

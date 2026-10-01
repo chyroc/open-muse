@@ -1,0 +1,137 @@
+.connectors h3 {
+  margin: 22px 4px 8px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #8e8e93;
+}
+.connector-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  min-height: 44px;
+  border-radius: 22px;
+  background: #f2f2f4;
+  color: #8e8e93;
+}
+.connector-search input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  font-size: 16px;
+  outline: none;
+  color: #1c1c1e;
+}
+.connector-group {
+  list-style: none;
+  margin: 0;
+  padding: 0 16px;
+  border-radius: 20px;
+  background: #f7f7f8;
+}
+.connector-group li + li {
+  border-top: 1px solid #e5e5ea;
+}
+.connector-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 60px;
+  padding: 10px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: opacity 120ms ease-out;
+}
+button.connector-row:active {
+  opacity: 0.55;
+}
+.connector-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 5%);
+  color: #1c1c1e;
+}
+.connector-icon[data-id="health"] {
+  color: #ff2d55;
+}
+.connector-icon[data-id="lark"] {
+  color: #3370ff;
+}
+.connector-name {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  font-size: 17px;
+}
+.connector-name small {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #8e8e93;
+}
+.connector-chevron {
+  flex: 0 0 auto;
+  color: #c7c7cc;
+}
+.connector-connect {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 17px;
+  color: #0a66d8;
+  transition:
+    transform 120ms ease-out,
+    opacity 120ms ease-out;
+}
+.connector-connect:not(:disabled):active {
+  transform: scale(0.94);
+  opacity: 0.6;
+}
+.connector-detail {
+  margin: -4px 0 12px 54px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #6c6c70;
+}
+.connector-empty,
+.connector-note {
+  margin: 18px 4px 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #8e8e93;
+}
+.settings-connectors-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 20px;
+  background: #fff;
+  font: inherit;
+  font-size: 17px;
+  color: inherit;
+  text-align: left;
+  transition: opacity 120ms ease-out;
+}
+.settings-connectors-row:active {
+  opacity: 0.6;
+}
+.settings-connectors-row span {
+  flex: 1;
+}

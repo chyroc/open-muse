@@ -26,3 +26,20 @@ export async function readHealth(query: HealthQuery) {
   });
   return z.string().min(2).max(60000).parse(result);
 }
+
+// Whether this iPhone has already asked for Health access. HealthKit does not
+// reveal what the person allowed, only that the question was asked.
+export async function healthAccess() {
+  const native = handler();
+  if (!native) return "unavailable" as const;
+  return z
+    .enum(["requested", "not_requested", "unavailable"])
+    .parse(await native.postMessage({ operation: "access" }));
+}
+
+// Shows HealthKit's permission sheet for every metric this app can read.
+export async function connectHealth() {
+  const native = handler();
+  if (!native) throw new Error("Apple Health is not available here.");
+  await native.postMessage({ operation: "authorize" });
+}
