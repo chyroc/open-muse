@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Brain,
   Globe,
@@ -10,6 +10,97 @@ import {
 } from "lucide-react";
 import { t } from "../../shared/i18n";
 import { draftInMainChat } from "./dataExport";
+import { Switch } from "./SettingsSwitch";
+import {
+  computerAvailable,
+  computerChanged,
+  enableCalendar,
+  readComputer,
+  requestCalendar,
+  type CalendarPermission,
+  type CalendarState,
+} from "./computer";
+
+// Calendar and Reminders on this Mac: off until turned on here, read only, and
+// every read still waits for approval in the conversation.
+function CalendarConnector({ term }: { term: string }) {
+  const [state, setState] = useState<CalendarState>();
+  const [error, setError] = useState("");
+  const refresh = useCallback(
+    () =>
+      void readComputer()
+        .then((value) => value && setState(value.calendar))
+        .catch(() => setError(t("Could not read the app settings."))),
+    [],
+  );
+  useEffect(() => {
+    refresh();
+    // Permissions are granted in System Settings, so re-read on return.
+    window.addEventListener("focus", refresh);
+    window.addEventListener(computerChanged, refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener(computerChanged, refresh);
+    };
+  }, [refresh]);
+  const name = t("Calendar and Reminders");
+  const detail = t(
+    "Your assistant can read your events and open reminders on this Mac when you ask. It never changes them, and each read waits for your approval.",
+  );
+  if (term && !`${name} ${detail}`.toLocaleLowerCase().includes(term))
+    return null;
+  const change = (request: Promise<{ calendar: CalendarState } | undefined>) =>
+    void request
+      .then((value) => value && setState(value.calendar))
+      .catch(() => setError(t("Could not change the app settings.")));
+  const permission = (
+    kind: "events" | "reminders",
+    title: string,
+    value?: CalendarPermission,
+  ) => (
+    <div className="settings-row">
+      <div>
+        <strong>{title}</strong>
+      </div>
+      {value === "allowed" ? (
+        <span>{t("Allowed")}</span>
+      ) : (
+        <button
+          className="settings-inline-button"
+          disabled={!state}
+          onClick={() => change(requestCalendar(kind))}
+        >
+          {value === "denied" ? t("Open System Settings") : t("Allow")}
+        </button>
+      )}
+    </div>
+  );
+  return (
+    <>
+      <h2>{t("On this Mac")}</h2>
+      <div className="settings-group">
+        <Switch
+          label={name}
+          detail={detail}
+          checked={state?.enabled ?? false}
+          disabled={!state}
+          onChange={(value) => change(enableCalendar(value))}
+        />
+        {state?.enabled && (
+          <>
+            {permission("events", t("Calendar"), state.events)}
+            {permission("reminders", t("Reminders"), state.reminders)}
+          </>
+        )}
+      </div>
+      {error && (
+        <p className="settings-error" role="alert">
+          {error}
+        </p>
+      )}
+    </>
+  );
+}
 
 type Connector = {
   id: string;
@@ -146,6 +237,7 @@ export function ConnectorsSettings({
           </div>
         )}
       </div>
+      {computerAvailable() && <CalendarConnector term={term} />}
       {notice && <p className="settings-lead settings-after">{notice}</p>}
       <p className="settings-lead settings-after">
         {t(

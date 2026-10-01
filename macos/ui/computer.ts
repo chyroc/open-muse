@@ -1,4 +1,4 @@
-import { t } from "../../shared/i18n";
+import { formatLocale, t } from "../../shared/i18n";
 import type { AgentEvent } from "../../shared/types";
 import { macToolNames, type MacToolName } from "../../shared/mac-tools";
 import type { CustomToolResult } from "../../src/api";
@@ -10,6 +10,14 @@ export const isMacTool = (name?: string): name is MacToolName =>
   MAC_TOOLS.includes(name as MacToolName);
 
 export type BlockedApp = { id: string; name: string };
+export type CalendarPermission = "allowed" | "denied" | "not-asked";
+// Calendar and Reminders: a read-only local connector with its own switch.
+export type CalendarState = {
+  enabled: boolean;
+  events: CalendarPermission;
+  reminders: CalendarPermission;
+};
+export const CALENDAR_TOOL = "mac_calendar";
 export type ComputerState = {
   enabled: boolean;
   accessibility: boolean;
@@ -18,6 +26,7 @@ export type ComputerState = {
   blocked: BlockedApp[];
   fullDiskAccess: boolean;
   blockedFolders: string[];
+  calendar: CalendarState;
 };
 export const computerChanged = "muse-computer-changed";
 
@@ -30,6 +39,23 @@ function bridge(): Bridge | undefined {
   ).webkit?.messageHandlers?.museComputer;
 }
 export const computerAvailable = () => Boolean(bridge());
+
+const permissions: CalendarPermission[] = ["allowed", "denied", "not-asked"];
+function parseCalendar(value: unknown): CalendarState {
+  const record = (value && typeof value === "object" ? value : {}) as Record<
+    string,
+    unknown
+  >;
+  const permission = (item: unknown): CalendarPermission =>
+    permissions.includes(item as CalendarPermission)
+      ? (item as CalendarPermission)
+      : "not-asked";
+  return {
+    enabled: record.enabled === true,
+    events: permission(record.events),
+    reminders: permission(record.reminders),
+  };
+}
 
 export function parseComputerState(value: unknown): ComputerState | undefined {
   if (!value || typeof value !== "object") return undefined;
@@ -58,6 +84,7 @@ export function parseComputerState(value: unknown): ComputerState | undefined {
                 typeof item === "string" && item.startsWith("/"),
             )
           : [],
+        calendar: parseCalendar(record.calendar),
       }
     : undefined;
 }
@@ -94,6 +121,11 @@ export const blockFolder = () => send({ operation: "block-folder" });
 export const unblockFolder = (path: string) =>
   send({ operation: "unblock-folder", path });
 export const openFullDiskAccess = () => send({ operation: "full-disk-access" });
+export const enableCalendar = (value: boolean) =>
+  send({ operation: "calendar-enable", value: value ? "true" : "false" });
+// Asks macOS the first time; afterwards opens the matching privacy pane.
+export const requestCalendar = (kind: "events" | "reminders") =>
+  send({ operation: "calendar-request", kind });
 export async function requestPermission(kind: "accessibility" | "screen") {
   const native = bridge();
   return native
@@ -190,6 +222,25 @@ export function describeCall(event: AgentEvent) {
       return t("Look at your screen");
     case "mac_apps":
       return t("List the open apps and windows");
+    case "mac_calendar": {
+      const day = (value: unknown) => {
+        const date = typeof value === "string" ? new Date(value) : undefined;
+        return date && !Number.isNaN(date.getTime())
+          ? date.toLocaleDateString(formatLocale(), {
+              month: "short",
+              day: "numeric",
+            })
+          : "";
+      };
+      if (input.kind === "reminders") return t("Read your open reminders");
+      const from = day(input.from);
+      const to = day(input.to);
+      if (from && to)
+        return t("Read your calendar from {from} to {to}", { from, to });
+      return from
+        ? t("Read your calendar for a week from {from}", { from })
+        : t("Read your calendar for the coming week");
+    }
     case "mac_open":
       return t("Open {target}", { target: String(input.target ?? "") });
     case "mac_action":

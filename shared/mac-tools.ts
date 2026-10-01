@@ -103,6 +103,44 @@ export const macTools = [
       additionalProperties: false,
     },
   },
+  {
+    type: "custom",
+    name: "mac_calendar",
+    description:
+      "Read the user's schedule from the Calendar app, or their open reminders from the Reminders app, on their Mac. Read-only: it never creates, changes or deletes anything. Use when the user asks about their events, schedule, availability or to-dos and has not pointed you to another calendar such as Lark. The user approves each call on the Mac and can turn this off; if declined or unavailable, say so and do not try another way.",
+    input_schema: {
+      type: "object",
+      properties: {
+        kind: {
+          type: "string",
+          enum: ["events", "reminders"],
+          description:
+            "events reads calendar events; reminders reads reminders that are not completed.",
+        },
+        from: {
+          type: "string",
+          maxLength: 40,
+          description:
+            "ISO 8601 start, for events. Defaults to now. The range spans at most 92 days.",
+        },
+        to: {
+          type: "string",
+          maxLength: 40,
+          description:
+            "ISO 8601 end. Defaults to seven days after from for events; for reminders, only those due by then are returned (all open reminders when omitted).",
+        },
+        query: {
+          type: "string",
+          maxLength: 200,
+          description:
+            "Only items whose title, location or notes contain this.",
+        },
+        limit: { type: "integer", minimum: 1, maximum: 200 },
+      },
+      required: ["kind"],
+      additionalProperties: false,
+    },
+  },
 ] as const;
 
 export type MacToolName = (typeof macTools)[number]["name"];

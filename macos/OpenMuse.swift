@@ -1,6 +1,7 @@
 import AppKit
 import Carbon.HIToolbox
 import CryptoKit
+import EventKit
 import WebKit
 import Security
 import ServiceManagement
@@ -187,6 +188,10 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     private let menuBarKey = "presence.menuBar"
     private let computerKey = "computerUse.enabled"
     private let computer = Computer()
+    // Calendar and Reminders are a local connector with their own switch,
+    // separate from computer use, and read only.
+    private let calendarKey = "connectors.calendar.enabled"
+    private let calendar = LocalCalendar()
     private let dictation = Dictation()
     private weak var dictationView: WKWebView?
     private let floatingButtonKey = "presence.floatingButton"
@@ -418,7 +423,10 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
          "keepAwake": UserDefaults.standard.bool(forKey: keepAwakeKey),
          "blocked": blockedApps,
          "fullDiskAccess": computer.fullDiskAccess,
-         "blockedFolders": blockedFolders]
+         "blockedFolders": blockedFolders,
+         "calendar": ["enabled": UserDefaults.standard.bool(forKey: calendarKey),
+                      "events": LocalCalendar.state(.event),
+                      "reminders": LocalCalendar.state(.reminder)]]
     }
     private func chooseBlockedApp(for sender: WKWebView?, done: @escaping () -> Void) {
         let panel = NSOpenPanel()
@@ -450,6 +458,33 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             UserDefaults.standard.set(value == "true", forKey: computerKey)
             replyHandler(computerState(), nil)
             broadcast("muse-computer-changed", except: sender)
+        case "calendar-enable":
+            guard let value = body["value"], value == "true" || value == "false"
+            else { replyHandler(nil, "Invalid calendar value"); return }
+            UserDefaults.standard.set(value == "true", forKey: calendarKey)
+            replyHandler(computerState(), nil)
+            broadcast("muse-computer-changed", except: sender)
+        case "calendar-request":
+            // macOS asks only once; after that the choice lives in System Settings.
+            let type: EKEntityType
+            switch body["kind"] {
+            case "events": type = .event
+            case "reminders": type = .reminder
+            default: replyHandler(nil, "Invalid permission"); return
+            }
+            if LocalCalendar.state(type) == "not-asked" {
+                calendar.request(type) { [weak self] in
+                    Task { @MainActor in
+                        guard let self else { return }
+                        replyHandler(self.computerState(), nil)
+                        self.broadcast("muse-computer-changed", except: sender)
+                    }
+                }
+                return
+            }
+            let pane = type == .event ? "Privacy_Calendars" : "Privacy_Reminders"
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(pane)") { NSWorkspace.shared.open(url) }
+            replyHandler(computerState(), nil)
         case "keep-awake":
             guard let value = body["value"], value == "true" || value == "false"
             else { replyHandler(nil, "Invalid computer use value"); return }
@@ -501,6 +536,19 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             replyHandler(computerState(), nil)
         case "run":
             guard sender === webView else { replyHandler(nil, "Only the workspace window runs computer use"); return }
+            if body["tool"] == LocalCalendar.tool {
+                guard UserDefaults.standard.bool(forKey: calendarKey)
+                else { replyHandler(nil, localized("Calendar and Reminders are off on this Mac.")); return }
+                guard let raw = body["input"], raw.utf8.count <= 16384,
+                      let data = raw.data(using: .utf8),
+                      let input = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+                else { replyHandler(nil, "Invalid calendar request"); return }
+                Task { @MainActor in
+                    let output = await calendar.run(input)
+                    replyHandler(["ok": output.ok, "text": output.text, "image": ""], nil)
+                }
+                return
+            }
             guard UserDefaults.standard.bool(forKey: computerKey)
             else { replyHandler(nil, localized("Computer use is off on this Mac.")); return }
             guard let tool = body["tool"], Computer.tools.contains(tool),

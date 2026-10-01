@@ -1448,8 +1448,8 @@ export function DesktopApp({ client }: { client: Client }) {
                 calls={macCalls}
                 busy={busy || answeringMac.current === macCallKey}
                 onAnswer={answerMac}
-                onSettings={() => {
-                  if (!openNativeSettings("computer-use")) setSettings(true);
+                onSettings={(section) => {
+                  if (!openNativeSettings(section)) setSettings(true);
                 }}
               />
             )}

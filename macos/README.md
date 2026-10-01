@@ -123,6 +123,13 @@ another device, such as Apple Health on the iPhone, are shown as waiting.
 Conversations keep their agent version, so the tools reach conversations
 created after the agent was updated.
 
+`mac_calendar` reads calendar events in a range of up to 92 days, or open
+reminders, from the Calendar and Reminders apps through EventKit. It only
+reads and never changes either app. It has its own switch under Settings >
+Connectors > On this Mac, separate from computer use, together with the two
+macOS permissions. Each call still waits for an answer in the chat like the
+other `mac_*` tools.
+
 This is an incremental desktop implementation, not a verified one-to-one clone.
 Cloud artifact/media indexing and dictation into other apps still need their
 Mac-specific implementation and acceptance checks.
@@ -178,7 +185,8 @@ Other sections:
 - Connectors lists, with search, what the assistant can reach: web search and
   pages, a browser and files in its cloud environment, the Lark CLI and its
   skills (Connect drafts a sign-in request in the main chat), personal memory,
-  this Mac and Apple Health on the iPhone.
+  this Mac and Apple Health on the iPhone. In the Mac app, On this Mac turns
+  Calendar and Reminders on or off and requests their permissions.
 - File system access shows Full Disk Access and keeps a Blocked folders list;
   the assistant's open action refuses anything inside a blocked folder.
 - Secure storage lists the secrets kept in the account's MA vault and adds or

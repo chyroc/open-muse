@@ -30,6 +30,17 @@ export const zhComputer: Record<string, string> = {
   "Open Settings": "打开设置",
   "Look at your screen": "查看你的屏幕",
   "List the open apps and windows": "列出打开的 App 和窗口",
+  "Read your open reminders": "读取你未完成的提醒事项",
+  "Read your calendar from {from} to {to}": "读取你 {from} 至 {to} 的日历",
+  "Read your calendar for a week from {from}": "读取你从 {from} 起一周的日历",
+  "Read your calendar for the coming week": "读取你接下来一周的日历",
+  "Calendar and Reminders are off on this Mac. Turn them on in Settings, or decline.":
+    "这台 Mac 的日历与提醒事项已关闭。请在设置中开启，或拒绝此请求。",
+  "Calendar and Reminders": "日历与提醒事项",
+  "Your assistant can read your events and open reminders on this Mac when you ask. It never changes them, and each read waits for your approval.":
+    "你提出请求时，助手可以读取这台 Mac 上的日历事件和未完成的提醒事项。它不会修改这些内容，每次读取都要经过你的批准。",
+  Calendar: "日历",
+  Reminders: "提醒事项",
   "Open {target}": "打开 {target}",
   "Click at {point}": "点按 {point}",
   "Double-click at {point}": "双击 {point}",

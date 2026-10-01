@@ -73,6 +73,8 @@ execFileSync(
     "CoreAudio",
     "-framework",
     "AudioToolbox",
+    "-framework",
+    "EventKit",
     // Acceptance builds can include the snapshot tour; releases never do.
     ...(process.env.OPEN_MUSE_SNAPSHOT_TOUR === "1"
       ? ["-D", "SNAPSHOT_TOUR"]
@@ -80,6 +82,7 @@ execFileSync(
     path.join(root, "macos/OpenMuse.swift"),
     path.join(root, "macos/Computer.swift"),
     path.join(root, "macos/Dictation.swift"),
+    path.join(root, "macos/LocalCalendar.swift"),
     "-o",
     path.join(contents, "MacOS/OpenMuse"),
   ],

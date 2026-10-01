@@ -348,7 +348,9 @@ describe("Mac computer use", () => {
   });
   it("keeps the native tool list, permission checks and copy in step", () => {
     const swift = readFileSync("macos/Computer.swift", "utf8");
-    for (const tool of MAC_TOOLS) expect(swift).toContain(`"${tool}"`);
+    // Calendar reads have their own executor; see calendar.test.tsx.
+    for (const tool of MAC_TOOLS.filter((name) => name !== "mac_calendar"))
+      expect(swift).toContain(`"${tool}"`);
     expect(swift).toContain("AXIsProcessTrusted()");
     expect(swift).toContain("CGPreflightScreenCaptureAccess()");
     // Blocked folders are refused when a file is opened.

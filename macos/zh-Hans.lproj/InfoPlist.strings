@@ -1,2 +1,4 @@
 "NSMicrophoneUsageDescription" = "Open Muse 会在你听写消息时使用麦克风。";
 "NSSpeechRecognitionUsageDescription" = "Open Muse 会把你的听写转换为正在撰写的消息文字。";
+"NSCalendarsFullAccessUsageDescription" = "当你向助手询问日程时，Open Muse 会读取你的日历事件，但不会修改。";
+"NSRemindersFullAccessUsageDescription" = "当你向助手询问待办事项时，Open Muse 会读取你未完成的提醒事项，但不会修改。";

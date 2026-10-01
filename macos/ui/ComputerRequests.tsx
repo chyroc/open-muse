@@ -3,6 +3,7 @@ import { MonitorSmartphone } from "lucide-react";
 import { t } from "../../shared/i18n";
 import type { AgentEvent } from "../../shared/types";
 import {
+  CALENDAR_TOOL,
   computerAvailable,
   computerChanged,
   describeCall,
@@ -23,7 +24,7 @@ export function ComputerRequests({
   calls: AgentEvent[];
   busy: boolean;
   onAnswer: (answer: MacAnswer) => void;
-  onSettings: () => void;
+  onSettings: (section: string) => void;
 }) {
   const [state, setState] = useState<ComputerState>();
   useEffect(() => {
@@ -42,7 +43,16 @@ export function ComputerRequests({
       window.removeEventListener(computerChanged, refresh);
     };
   }, []);
-  const enabled = state?.enabled ?? false;
+  // Calendar reads follow their own connector switch; everything else needs
+  // computer use. The card offers to allow only when every call can run.
+  const asksCalendar = calls.some((call) => call.name === CALENDAR_TOOL);
+  const asksComputer = calls.some((call) => call.name !== CALENDAR_TOOL);
+  const calendarOn = state?.calendar.enabled ?? false;
+  const computerOn = state?.enabled ?? false;
+  const enabled =
+    (!asksCalendar || calendarOn) && (!asksComputer || computerOn);
+  const settingsSection =
+    asksComputer && !computerOn ? "computer-use" : "connectors";
   return (
     <section
       className="computer-requests"
@@ -60,9 +70,13 @@ export function ComputerRequests({
       </ul>
       {!enabled && (
         <p className="computer-off">
-          {t(
-            "Computer use is off on this Mac. Turn it on in Settings, or decline.",
-          )}
+          {asksComputer && !computerOn
+            ? t(
+                "Computer use is off on this Mac. Turn it on in Settings, or decline.",
+              )
+            : t(
+                "Calendar and Reminders are off on this Mac. Turn them on in Settings, or decline.",
+              )}
         </p>
       )}
       <div className="computer-actions">
@@ -91,7 +105,10 @@ export function ComputerRequests({
             </button>
           </>
         ) : (
-          <button className="pill-button primary" onClick={onSettings}>
+          <button
+            className="pill-button primary"
+            onClick={() => onSettings(settingsSection)}
+          >
             {t("Open Settings")}
           </button>
         )}
