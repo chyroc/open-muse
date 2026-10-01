@@ -97,7 +97,13 @@ describe("Mac settings model", () => {
       expect(Boolean(section.unavailable)).toBe(!section.connected);
     expect(
       settingsSections.filter((s) => s.connected).map((s) => s.id),
-    ).toEqual(["general", "secure-storage", "permissions", "data-controls"]);
+    ).toEqual([
+      "general",
+      "computer-use",
+      "secure-storage",
+      "permissions",
+      "data-controls",
+    ]);
   });
   it("reports the resolved language and only a plausible native version", () => {
     vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", ["zh-Hans-CN", "en"]);

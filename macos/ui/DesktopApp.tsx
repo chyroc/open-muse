@@ -48,12 +48,15 @@ import { navLabel } from "./labels";
 import { connectionError, connectionReady } from "./startup";
 import { WorkspaceBoundary } from "./WorkspaceBoundary";
 import { AssistantContent, messageParts } from "./ChoiceContent";
-import { currentChoiceEvent } from "../../shared/chat-choices";
-import { digest } from "../../shared/crypto";
+import { ComputerRequests, type MacAnswer } from "./ComputerRequests";
+import { declinedResult, isMacTool, runMacTool } from "./computer";
+import { healthToolName } from "../../shared/health";
 import { UpcomingTab, upcomingChanged } from "./UpcomingTab";
 
 // How often the open app checks for reminders that have come due.
 const UPCOMING_CHECK_INTERVAL = 60000;
+import { currentChoiceEvent } from "../../shared/chat-choices";
+import { digest } from "../../shared/crypto";
 import {
   discussionPrompt,
   type InspirationItem,
@@ -69,6 +72,7 @@ import {
 } from "../../src/direct/conversations";
 import {
   eventText,
+  pendingCustomTools,
   pendingPermissions,
   taskState,
   type AgentEvent,
@@ -195,6 +199,11 @@ export function DesktopApp({ client }: { client: Client }) {
       !canAutoApprove(event) || task.autoApprovalFailures.includes(event.id),
   );
   const chats = sideChats(sessions, index, query, archived);
+  // This Mac answers only its own tools; another device answers the rest.
+  const deviceCalls = pendingCustomTools(currentEvents);
+  const macCalls = deviceCalls.filter((call) => isMacTool(call.name));
+  const elsewhere = deviceCalls.filter((call) => !isMacTool(call.name));
+  const macCallKey = macCalls.map((call) => call.id).join(",");
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -414,6 +423,45 @@ export function DesktopApp({ client }: { client: Client }) {
       window.removeEventListener(connectionReady, ready);
     };
   }, [reload, client]);
+  // Calls for this Mac run only after the person answers. "Allow in this chat"
+  // trusts the rest of that conversation until the app quits; every call is
+  // answered exactly once and a failed answer is never resent automatically.
+  const trustedChats = useRef(new Set<string>());
+  const answeringMac = useRef("");
+  const answerMac = useCallback(
+    (answer: MacAnswer) => {
+      if (!id || !macCalls.length || answeringMac.current === macCallKey)
+        return;
+      answeringMac.current = macCallKey;
+      if (answer === "chat") trustedChats.current.add(id);
+      const calls = macCalls;
+      const session = id;
+      void action(async () => {
+        const results = [];
+        for (const call of calls)
+          results.push(
+            answer === "deny" ? declinedResult(call) : await runMacTool(call),
+          );
+        try {
+          await client.answerCustomTools(session, results);
+        } catch (failure) {
+          // The person may try again; the client re-reads history first.
+          // A trusted chat stops running calls on its own after a failure.
+          answeringMac.current = "";
+          trustedChats.current.delete(session);
+          throw failure;
+        } finally {
+          await task.refresh();
+        }
+      });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [id, macCallKey, client],
+  );
+  useEffect(() => {
+    if (id && macCalls.length && trustedChats.current.has(id))
+      answerMac("once");
+  }, [id, macCallKey, answerMac, macCalls.length]);
   // The palette reaches goals too; they are read when it opens.
   useEffect(() => {
     if (!search || !ready) return;
@@ -1242,9 +1290,13 @@ export function DesktopApp({ client }: { client: Client }) {
               </div>
               {running && (
                 <p className="thinking" role="status">
-                  {approvals.length
+                  {approvals.length || macCalls.length
                     ? t("Waiting for your approval")
-                    : t("{name} is working…", { name })}
+                    : elsewhere.length
+                      ? elsewhere.every((call) => call.name === healthToolName)
+                        ? t("Waiting for your iPhone")
+                        : t("Waiting for another device")
+                      : t("{name} is working…", { name })}
                 </p>
               )}
             </div>
@@ -1256,6 +1308,16 @@ export function DesktopApp({ client }: { client: Client }) {
               >
                 <ArrowDown size={18} />
               </button>
+            )}
+            {macCalls.length > 0 && (
+              <ComputerRequests
+                calls={macCalls}
+                busy={busy || answeringMac.current === macCallKey}
+                onAnswer={answerMac}
+                onSettings={() => {
+                  if (!openNativeSettings("computer-use")) setSettings(true);
+                }}
+              />
             )}
             {approvals.length > 0 && (
               <button

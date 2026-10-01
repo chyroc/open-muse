@@ -34,13 +34,7 @@ export const settingsSections: SettingsSection[] = [
     unavailable:
       "MCP connectors and their OAuth flows are not wired into this Mac build. Tools stay limited to what your agent already has.",
   },
-  {
-    id: "computer-use",
-    label: "Computer use",
-    connected: false,
-    unavailable:
-      "This Mac build cannot let an agent control your computer. Nothing on this Mac is exposed to MA.",
-  },
+  { id: "computer-use", label: "Computer use", connected: true },
   {
     id: "file-system",
     label: "File system access",
@@ -138,7 +132,7 @@ export function appVersion() {
 
 // The native shell owns the separate settings window. Without it, the caller
 // falls back to the in-workspace panel instead of losing the entry point.
-export function openNativeSettings() {
+export function openNativeSettings(section?: SettingsSectionId) {
   const bridge = (
     window as unknown as {
       webkit?: {
@@ -148,7 +142,9 @@ export function openNativeSettings() {
   ).webkit?.messageHandlers?.museWindow;
   if (!bridge) return false;
   try {
-    bridge.postMessage({ name: "settings" });
+    bridge.postMessage(
+      section ? { name: "settings", value: section } : { name: "settings" },
+    );
     return true;
   } catch {
     return false;

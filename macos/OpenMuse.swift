@@ -173,6 +173,8 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     private var quickWebView: WKWebView?
     private var quickHotKey: EventHotKeyRef?
     private let menuBarKey = "presence.menuBar"
+    private let computerKey = "computerUse.enabled"
+    private let computer = Computer()
     private let floatingButtonKey = "presence.floatingButton"
 
     static func main() {
@@ -199,6 +201,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         configuration.setURLSchemeHandler(assets, forURLScheme: "muse")
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museCredentials")
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "musePresence")
+        configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museComputer")
         configuration.userContentController.add(self, name: "museExport")
         configuration.userContentController.add(self, name: "museWindow")
         configuration.userContentController.addUserScript(WKUserScript(source: "window.__OPEN_MUSE_DESKTOP__ = true;", injectionTime: .atDocumentStart, forMainFrameOnly: true))
@@ -263,6 +266,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         guard trusted(message), let body = message.body as? [String: String]
         else { replyHandler(nil, "Untrusted credential request"); return }
         if message.name == "musePresence" { presence(body, from: message.webView, replyHandler: replyHandler); return }
+        if message.name == "museComputer" { computerUse(body, from: message.webView, replyHandler: replyHandler); return }
         // Keychain can wait for an OS authorization dialog. Never block AppKit
         // or discard the eventual reply while the user is deciding.
         DispatchQueue.global(qos: .userInitiated).async { [self] in
@@ -354,6 +358,51 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             broadcast("muse-presence-changed", except: sender)
         default:
             replyHandler(nil, "Invalid presence operation")
+        }
+    }
+    // Computer use is off until the user turns it on for this Mac. Only the
+    // workspace window, where each call is approved, may run a tool.
+    private func computerState() -> [String: Any] {
+        ["enabled": UserDefaults.standard.bool(forKey: computerKey),
+         "accessibility": computer.accessibility,
+         "screen": computer.screen]
+    }
+    private func computerUse(_ body: [String: String], from sender: WKWebView?, replyHandler: @escaping (Any?, String?) -> Void) {
+        switch body["operation"] {
+        case "status":
+            replyHandler(computerState(), nil)
+        case "enable":
+            guard let value = body["value"], value == "true" || value == "false"
+            else { replyHandler(nil, "Invalid computer use value"); return }
+            UserDefaults.standard.set(value == "true", forKey: computerKey)
+            replyHandler(computerState(), nil)
+            broadcast("muse-computer-changed", except: sender)
+        case "request":
+            let pane: String
+            if body["kind"] == "accessibility" {
+                computer.requestAccessibility()
+                pane = "Privacy_Accessibility"
+            } else if body["kind"] == "screen" {
+                computer.requestScreen()
+                pane = "Privacy_ScreenCapture"
+            } else { replyHandler(nil, "Invalid permission"); return }
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(pane)") { NSWorkspace.shared.open(url) }
+            replyHandler(computerState(), nil)
+        case "run":
+            guard sender === webView else { replyHandler(nil, "Only the workspace window runs computer use"); return }
+            guard UserDefaults.standard.bool(forKey: computerKey)
+            else { replyHandler(nil, localized("Computer use is off on this Mac.")); return }
+            guard let tool = body["tool"], Computer.tools.contains(tool),
+                  let raw = body["input"], raw.utf8.count <= 16384,
+                  let data = raw.data(using: .utf8),
+                  let input = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+            else { replyHandler(nil, "Invalid computer use request"); return }
+            Task { @MainActor in
+                let output = await computer.run(tool, input)
+                replyHandler(["ok": output.ok, "text": output.text, "image": output.image ?? ""], nil)
+            }
+        default:
+            replyHandler(nil, "Invalid computer use operation")
         }
     }
     private func updateStatusItem() {
@@ -571,7 +620,13 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
                 default: break
                 }
             }
-            if body?["name"] == "settings" { openSettings() }
+            if body?["name"] == "settings" {
+                openSettings()
+                // Open a named section; the settings route ignores anything else.
+                if let section = body?["value"], section.range(of: "^[a-z-]{1,40}$", options: .regularExpression) != nil {
+                    settingsWebView?.evaluateJavaScript("location.hash = '#/settings/\(section)'", completionHandler: nil)
+                }
+            }
             if body?["name"] == "appearance" { applyAppearance(body?["value"], from: message.webView) }
             return
         }

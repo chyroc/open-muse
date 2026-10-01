@@ -238,3 +238,21 @@
     transition: opacity 0.15s ease-out;
   }
 }
+.settings-inline-button {
+  margin-left: auto;
+  flex-shrink: 0;
+  align-self: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  background: var(--fill-strong);
+  font-size: 13px;
+  white-space: nowrap;
+  transition: transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.settings-inline-button:hover {
+  background: var(--fill-hover);
+}
+.settings-inline-button:active:not(:disabled) {
+  transform: scale(0.95);
+}

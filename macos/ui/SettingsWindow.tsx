@@ -24,8 +24,9 @@ import { t } from "../../shared/i18n";
 import type { Client } from "../../src/api";
 import { AuthPanel } from "../../src/AuthPanel";
 import { Modal } from "./Chrome";
-import { CheckInSwitch } from "./CheckInSwitch";
 import { PresenceSettings } from "./PresenceSettings";
+import { CheckInSwitch } from "./CheckInSwitch";
+import { ComputerSettings } from "./ComputerSettings";
 import {
   appearances,
   saveAppearance,
@@ -293,6 +294,7 @@ export function SettingsWindow({ client }: { client: Client }) {
             </div>
           </>
         )}
+        {active.id === "computer-use" && <ComputerSettings />}
         {active.id === "secure-storage" && (
           <>
             <p className="settings-lead">

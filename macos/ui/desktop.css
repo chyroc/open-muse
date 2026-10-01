@@ -1037,6 +1037,59 @@ h3 {
     opacity: 0;
   }
 }
+/* A pending request from the agent to use this Mac, above the composer. */
+.computer-requests {
+  align-self: center;
+  width: min(520px, calc(100% - 48px));
+  margin: 0 auto 8px;
+  padding: 14px 16px 12px;
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 6px 24px var(--shadow);
+  animation: computer-in 0.36s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+.computer-requests header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.computer-requests ul {
+  margin: 8px 0 0;
+  padding-left: 25px;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.computer-off {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--warning-text);
+}
+.computer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+@keyframes computer-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .computer-requests {
+    animation: computer-fade 0.15s ease-out both;
+  }
+}
+@keyframes computer-fade {
+  from {
+    opacity: 0;
+  }
+}
 /* The rail's bottom button opens a small menu beside it. */
 .rail-menu-anchor {
   position: relative;
