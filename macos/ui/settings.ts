@@ -42,13 +42,7 @@ export const settingsSections: SettingsSection[] = [
     unavailable:
       "Sandbox file browsing is not connected. Library's System files only opens your MA memory documents.",
   },
-  {
-    id: "dictation",
-    label: "Dictation",
-    connected: false,
-    unavailable:
-      "Use macOS Dictation from the Edit menu. Built-in voice input is not connected yet.",
-  },
+  { id: "dictation", label: "Dictation", connected: true },
   {
     id: "wallet",
     label: "Wallet",

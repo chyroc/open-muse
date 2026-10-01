@@ -52,4 +52,26 @@ export const zhDesktop: Record<string, string> = {
   "Could not change the app settings.": "无法更改 App 设置。",
   "Open in the main window": "在主窗口中打开",
   "Quick chat": "快速聊天",
+  Allow: "允许",
+  "Allow the microphone and speech recognition for Open Muse in System Settings.":
+    "请在系统设置中允许 Open Muse 使用麦克风和语音识别。",
+  "By Apple's speech service": "由 Apple 语音服务识别",
+  "Dictation in other apps": "在其他 App 中听写",
+  "Dictation needs the Open Muse Mac app.": "听写需要 Open Muse Mac App。",
+  "Holding a key to dictate into any app is not built yet. Dictation works in the Open Muse message field.":
+    "按住按键在任意 App 中听写的功能尚未实现。目前可在 Open Muse 的消息输入框中听写。",
+  Microphone: "麦克风",
+  "Press the microphone in the message field to dictate; text appears as you speak, and nothing is sent until you send it.":
+    "点按消息输入框中的麦克风即可听写；文字会随你说话出现，在你发送前不会发出任何内容。",
+  "Speech recognition": "语音识别",
+  "Stop dictation": "停止听写",
+  "Turns what you say into text.": "把你说的话转换为文字。",
+  "Used only while you are dictating.": "仅在你听写时使用。",
+  "Use macOS Dictation from the Edit menu. Built-in voice input needs the Mac app.":
+    "请使用“编辑”菜单中的 macOS 听写。内置语音输入需要 Mac App。",
+  "Where speech is recognized": "语音在哪里识别",
+  "Your language can be recognized on this Mac, so dictated audio does not leave it.":
+    "你的语言可以在这台 Mac 上识别，听写的音频不会离开这台 Mac。",
+  "Your language is not available on this Mac, so macOS sends dictated audio to Apple to recognize it.":
+    "这台 Mac 上无法识别你的语言，macOS 会把听写音频发送给 Apple 进行识别。",
 };

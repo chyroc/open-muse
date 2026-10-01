@@ -87,6 +87,16 @@ import { FindBar, findMatches, partKey } from "./FindBar";
 import { MessageActions } from "./MessageActions";
 import { readReactions, setReaction, type Mood } from "./reactions";
 import {
+  dictationAvailable,
+  dictationEvent,
+  joinDictation,
+  readDictation,
+  requestDictation,
+  startDictation,
+  stopDictation,
+  type DictationEvent,
+} from "./dictation";
+import {
   SentFiles,
   StagedFiles,
   stageFile,
@@ -152,6 +162,8 @@ export function DesktopApp({ client }: { client: Client }) {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [paletteGoals, setPaletteGoals] = useState<Goal[]>([]);
   const [reactions, setReactions] = useState<Record<string, Mood>>({});
+  const [listening, setListening] = useState(false);
+  const dictationBase = useRef<{ key: string; text: string }>(undefined);
   // Find in the open conversation; undefined while the bar is closed.
   const [find, setFind] = useState<string>();
   const [findAt, setFindAt] = useState(0);
@@ -324,7 +336,8 @@ export function DesktopApp({ client }: { client: Client }) {
         if (event.shiftKey) {
           event.preventDefault();
           composer.current?.focus();
-        } else stopRef.current();
+        } else if (listeningRef.current) void stopDictation().catch(() => {});
+        else stopRef.current();
         return;
       }
       if (!event.metaKey || event.altKey) return;
@@ -474,6 +487,33 @@ export function DesktopApp({ client }: { client: Client }) {
       active = false;
     };
   }, [search, ready, client]);
+  // Spoken text replaces only what this dictation added, so typing before it
+  // started is kept and each partial result settles into the final one.
+  useEffect(() => {
+    const listen = (event: Event) => {
+      const detail = (event as CustomEvent<DictationEvent>).detail;
+      if (!detail || typeof detail !== "object") return;
+      if ("ended" in detail) {
+        setListening(false);
+        dictationBase.current = undefined;
+        if (detail.error) setError(detail.error);
+        return;
+      }
+      const base = dictationBase.current;
+      if (!base || typeof detail.text !== "string") return;
+      setDrafts((old) => ({
+        ...old,
+        [base.key]: joinDictation(base.text, detail.text).slice(0, 16000),
+      }));
+    };
+    window.addEventListener(dictationEvent, listen);
+    return () => window.removeEventListener(dictationEvent, listen);
+  }, []);
+  // Leaving the conversation ends dictation into it.
+  useEffect(() => {
+    if (listening && dictationBase.current?.key !== draftKey)
+      void stopDictation().catch(() => {});
+  }, [draftKey, listening]);
   // Moods left on messages are kept on this Mac for the signed-in account.
   useEffect(() => {
     if (!ready) return;
@@ -620,6 +660,49 @@ export function DesktopApp({ client }: { client: Client }) {
       if (alive.current) setBusy(false);
     }
   }
+  // Dictation writes into the draft that was open when it started.
+  async function toggleDictation() {
+    if (!dictationAvailable()) {
+      setNotice(
+        t(
+          "Use macOS Dictation from the Edit menu. Built-in voice input needs the Mac app.",
+        ),
+      );
+      return;
+    }
+    const language = systemLanguage() === "zh-CN" ? "zh-CN" : "en-US";
+    try {
+      if (listening) {
+        await stopDictation();
+        return;
+      }
+      let state = await readDictation(language);
+      if (
+        state &&
+        (state.microphone === "not-asked" || state.speech === "not-asked")
+      )
+        state = await requestDictation(language);
+      if (
+        !state ||
+        state.microphone !== "allowed" ||
+        state.speech !== "allowed"
+      ) {
+        setError(
+          t(
+            "Allow the microphone and speech recognition for Open Muse in System Settings.",
+          ),
+        );
+        return;
+      }
+      dictationBase.current = { key: draftKey, text: draft };
+      await startDictation(language);
+      setListening(true);
+      composer.current?.focus();
+    } catch (failure) {
+      setListening(false);
+      setError((failure as Error).message);
+    }
+  }
   // Stopping is the person's own request; it is sent once, never retried.
   function stop() {
     if (!running || !id) return;
@@ -630,6 +713,8 @@ export function DesktopApp({ client }: { client: Client }) {
   }
   const stopRef = useRef(stop);
   stopRef.current = stop;
+  const listeningRef = useRef(listening);
+  listeningRef.current = listening;
   // Each file is checked against the shared limits, then uploaded to MA.
   function attach(files: File[]) {
     const key = draftKey;
@@ -1431,15 +1516,12 @@ export function DesktopApp({ client }: { client: Client }) {
               />
               <button
                 type="button"
-                className="icon-button"
-                aria-label={t("Dictate a message")}
-                onClick={() =>
-                  setNotice(
-                    t(
-                      "Use macOS Dictation from the Edit menu. Built-in voice input is not connected yet.",
-                    ),
-                  )
+                className={`icon-button dictate ${listening ? "listening" : ""}`}
+                aria-label={
+                  listening ? t("Stop dictation") : t("Dictate a message")
                 }
+                aria-pressed={listening}
+                onClick={() => void toggleDictation()}
               >
                 <Mic size={20} />
               </button>

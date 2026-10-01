@@ -27,6 +27,7 @@ import { Modal } from "./Chrome";
 import { PresenceSettings } from "./PresenceSettings";
 import { CheckInSwitch } from "./CheckInSwitch";
 import { ComputerSettings } from "./ComputerSettings";
+import { DictationSettings } from "./DictationSettings";
 import {
   appearances,
   saveAppearance,
@@ -295,6 +296,7 @@ export function SettingsWindow({ client }: { client: Client }) {
           </>
         )}
         {active.id === "computer-use" && <ComputerSettings />}
+        {active.id === "dictation" && <DictationSettings />}
         {active.id === "secure-storage" && (
           <>
             <p className="settings-lead">

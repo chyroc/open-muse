@@ -175,6 +175,8 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     private let menuBarKey = "presence.menuBar"
     private let computerKey = "computerUse.enabled"
     private let computer = Computer()
+    private let dictation = Dictation()
+    private weak var dictationView: WKWebView?
     private let floatingButtonKey = "presence.floatingButton"
 
     static func main() {
@@ -202,6 +204,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museCredentials")
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "musePresence")
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museComputer")
+        configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museDictation")
         configuration.userContentController.add(self, name: "museExport")
         configuration.userContentController.add(self, name: "museWindow")
         configuration.userContentController.addUserScript(WKUserScript(source: "window.__OPEN_MUSE_DESKTOP__ = true;", injectionTime: .atDocumentStart, forMainFrameOnly: true))
@@ -267,6 +270,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         else { replyHandler(nil, "Untrusted credential request"); return }
         if message.name == "musePresence" { presence(body, from: message.webView, replyHandler: replyHandler); return }
         if message.name == "museComputer" { computerUse(body, from: message.webView, replyHandler: replyHandler); return }
+        if message.name == "museDictation" { dictate(body, from: message.webView, replyHandler: replyHandler); return }
         // Keychain can wait for an OS authorization dialog. Never block AppKit
         // or discard the eventual reply while the user is deciding.
         DispatchQueue.global(qos: .userInitiated).async { [self] in
@@ -403,6 +407,50 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             }
         default:
             replyHandler(nil, "Invalid computer use operation")
+        }
+    }
+    // Dictation streams its text to the window that started it, as
+    // muse-dictation events, until it is stopped or recognition ends.
+    private func dictationState(_ language: String?) -> [String: Any] {
+        ["microphone": Dictation.microphoneState(),
+         "speech": Dictation.speechState(),
+         "onDevice": Dictation.onDeviceSupported(language ?? "en-US"),
+         "running": dictation.running]
+    }
+    private func sendDictation(_ detail: [String: Any]) {
+        guard let view = dictationView,
+              let data = try? JSONSerialization.data(withJSONObject: detail),
+              let json = String(data: data, encoding: .utf8) else { return }
+        view.evaluateJavaScript("window.dispatchEvent(new CustomEvent('muse-dictation', {detail:\(json)}))", completionHandler: nil)
+    }
+    private func dictate(_ body: [String: String], from sender: WKWebView?, replyHandler: @escaping (Any?, String?) -> Void) {
+        let language = body["language"].flatMap { $0.range(of: "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$", options: .regularExpression) != nil ? $0 : nil }
+        switch body["operation"] {
+        case "status":
+            replyHandler(dictationState(language), nil)
+        case "request":
+            Dictation.requestAccess { [weak self] _ in
+                Task { @MainActor in replyHandler(self?.dictationState(language), nil) }
+            }
+        case "start":
+            guard sender === webView || sender === quickWebView else { replyHandler(nil, "Dictation is not available here"); return }
+            dictationView = sender
+            dictation.onText = { [weak self] text, final in self?.sendDictation(["text": text, "final": final]) }
+            dictation.onEnd = { [weak self] error in
+                var detail: [String: Any] = ["ended": true]
+                if let error { detail["error"] = localized(error) }
+                self?.sendDictation(detail)
+            }
+            if let error = dictation.start(language: language ?? "en-US") { replyHandler(nil, localized(error)); return }
+            replyHandler(dictationState(language), nil)
+        case "stop":
+            dictation.stop(cancel: body["cancel"] == "true")
+            replyHandler(dictationState(language), nil)
+        case "settings":
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") { NSWorkspace.shared.open(url) }
+            replyHandler(dictationState(language), nil)
+        default:
+            replyHandler(nil, "Invalid dictation operation")
         }
     }
     private func updateStatusItem() {

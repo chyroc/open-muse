@@ -1445,3 +1445,19 @@ h3 {
     transform: none;
   }
 }
+/* The microphone while dictation is listening. */
+.icon-button.dictate.listening {
+  color: var(--danger);
+  background: var(--fill-hover);
+  animation: dictate-pulse 1.4s ease-in-out infinite;
+}
+@keyframes dictate-pulse {
+  50% {
+    box-shadow: 0 0 0 5px var(--fill-hover);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .icon-button.dictate.listening {
+    animation: none;
+  }
+}

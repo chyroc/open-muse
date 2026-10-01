@@ -1,0 +1,2 @@
+"NSMicrophoneUsageDescription" = "Open Muse uses the microphone when you dictate a message.";
+"NSSpeechRecognitionUsageDescription" = "Open Muse turns your dictation into text for the message you are writing.";

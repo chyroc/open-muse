@@ -100,6 +100,7 @@ describe("Mac settings model", () => {
     ).toEqual([
       "general",
       "computer-use",
+      "dictation",
       "secure-storage",
       "permissions",
       "data-controls",

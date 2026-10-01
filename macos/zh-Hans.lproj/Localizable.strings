@@ -31,3 +31,7 @@
 "macOS did not change the login item." = "macOS 未更改登录项。";
 "Quick chat" = "快速聊天";
 "Computer use is off on this Mac." = "此 Mac 上的电脑操控已关闭。";
+"Allow the microphone and speech recognition for Open Muse in System Settings." = "请在系统设置中允许 Open Muse 使用麦克风和语音识别。";
+"Speech recognition is not available right now." = "语音识别暂时不可用。";
+"The microphone could not start." = "无法启动麦克风。";
+"Dictation stopped." = "听写已停止。";

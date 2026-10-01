@@ -31,3 +31,7 @@
 "macOS did not change the login item." = "macOS did not change the login item.";
 "Quick chat" = "Quick chat";
 "Computer use is off on this Mac." = "Computer use is off on this Mac.";
+"Allow the microphone and speech recognition for Open Muse in System Settings." = "Allow the microphone and speech recognition for Open Muse in System Settings.";
+"Speech recognition is not available right now." = "Speech recognition is not available right now.";
+"The microphone could not start." = "The microphone could not start.";
+"Dictation stopped." = "Dictation stopped.";

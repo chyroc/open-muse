@@ -13,5 +13,7 @@
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
 <key>NSHighResolutionCapable</key><true/>
+<key>NSMicrophoneUsageDescription</key><string>Open Muse uses the microphone when you dictate a message.</string>
+<key>NSSpeechRecognitionUsageDescription</key><string>Open Muse turns your dictation into text for the message you are writing.</string>
 <key>NSHumanReadableCopyright</key><string>Open Muse · Independent Managed Agents client</string>
 </dict></plist>
