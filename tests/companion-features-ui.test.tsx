@@ -6,6 +6,7 @@ import { HealthRequestCard } from "../src/HealthRequestCard";
 import { UpcomingPanel } from "../src/UpcomingPanel";
 import { CheckInSettings } from "../src/CheckInSettings";
 import { ConnectorsSheet } from "../src/ConnectorsSheet";
+import { SettingsHome } from "../src/SettingsHome";
 import { connectHealth, healthAccess } from "../src/health";
 import { t } from "../shared/i18n";
 
@@ -128,5 +129,29 @@ describe("Connectors", () => {
     expect(postMessage).toHaveBeenLastCalledWith({ operation: "authorize" });
     postMessage.mockResolvedValueOnce("granted");
     await expect(healthAccess()).rejects.toThrow();
+  });
+});
+
+describe("Settings home", () => {
+  it("shows a status card and one list of sections when signed in", () => {
+    const html = renderToStaticMarkup(
+      <SettingsHome
+        client={client(true)}
+        onConnection={() => {}}
+        onDraft={() => {}}
+      />,
+    );
+    expect(html).toContain("Volcano Ark MA");
+    for (const label of [
+      "Connectors",
+      "Check-ins",
+      "Account and workspace",
+      "MA Studio",
+      "About",
+    ])
+      expect(html).toContain(label);
+    // Account details open in their own sheet instead of filling the page.
+    expect(html).not.toContain("settings-card auth-card");
+    expect(t("Account and workspace", {}, "zh-CN")).toBe("账号与工作区");
   });
 });

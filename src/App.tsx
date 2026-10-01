@@ -6,10 +6,7 @@ import {
   Bookmark,
   Check,
   Copy,
-  ChevronRight,
-  ExternalLink,
   HeartPulse,
-  Plug,
   Laptop,
   LoaderCircle,
   RefreshCw,
@@ -32,7 +29,7 @@ import { isWelcomeReply } from "../shared/welcome";
 import { currentChoiceEvent } from "../shared/chat-choices";
 import { digest, uuid } from "../shared/crypto";
 import { goalPrompt, goalStarter, type GoalCategory } from "../shared/goals";
-import { Activity, Markdown, MuseMark, PermissionCard } from "./components";
+import { Activity, Markdown, PermissionCard } from "./components";
 import type {
   AgentEvent,
   AppConfig,
@@ -47,11 +44,9 @@ import {
   taskState,
 } from "../shared/types";
 import { canAutoApprove } from "../shared/approval-policy";
-import { AuthPanel } from "./AuthPanel";
 import { HealthRequestCard } from "./HealthRequestCard";
 import { isHealthRequest } from "../shared/health";
-import { CheckInSettings } from "./CheckInSettings";
-import { ConnectorsSheet } from "./ConnectorsSheet";
+import { SettingsHome } from "./SettingsHome";
 import { Studio } from "./Studio";
 import { exportText } from "./platform";
 import { backgroundClient } from "./background-client";
@@ -1085,7 +1080,7 @@ function Workspace({
             {tab === "library" && <LibraryPage client={client} />}
             {tab === "studio" && <Studio client={client} config={config} />}
             {tab === "settings" && (
-              <Settings
+              <SettingsHome
                 client={client}
                 onConnection={onConnection}
                 onDraft={(text) => {
@@ -1228,78 +1223,6 @@ function Workspace({
           {toast}
         </div>
       )}
-    </div>
-  );
-}
-
-function Settings({
-  client,
-  onConnection,
-  onDraft,
-}: {
-  client: Client;
-  onConnection: () => void;
-  onDraft: (text: string) => void;
-}) {
-  const [connectors, setConnectors] = useState(false);
-  return (
-    <div className="page-content settings-page">
-      <AuthPanel client={client} onChanged={onConnection} />
-      <button
-        className="settings-connectors-row"
-        onClick={() => setConnectors(true)}
-      >
-        <Plug size={20} aria-hidden="true" />
-        <span>{t("Connectors")}</span>
-        <ChevronRight size={18} aria-hidden="true" />
-      </button>
-      {connectors && (
-        <ConnectorsSheet
-          onClose={() => setConnectors(false)}
-          onDraft={(text) => {
-            setConnectors(false);
-            onDraft(text);
-          }}
-        />
-      )}
-      <CheckInSettings client={client} />
-      <a className="settings-studio-link" href="#/studio">
-        MA Studio <ExternalLink size={16} />
-      </a>
-      <section className="privacy-grid">
-        <div>
-          <ShieldCheck size={22} />
-          <h3>{t("Every step is visible")}</h3>
-          <p>
-            {t(
-              "Tools run directly by default and may send data to external services, change files, or incur charges. Upstream denials still apply. Execution records stay in the conversation.",
-            )}
-          </p>
-        </div>
-        <div>
-          <Unplug size={22} />
-          <h3>{t("A real connection")}</h3>
-          <p>
-            {t(
-              "If sign-in expires or a request fails, Muse reports the error instead of generating simulated replies.",
-            )}
-          </p>
-        </div>
-      </section>
-      <div className="about-line">
-        <span>
-          <MuseMark />
-          Open Muse <small>v0.2.0</small>
-        </span>
-        <a
-          href="https://www.volcengine.com/product/ark"
-          target="_blank"
-          rel="noreferrer"
-        >
-          Volcano Ark
-          <ExternalLink size={13} />
-        </a>
-      </div>
     </div>
   );
 }
