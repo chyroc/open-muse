@@ -82,9 +82,11 @@ describe("External scheduler trigger", () => {
 
   it("only sends triggers to a configured HTTPS origin", async () => {
     expect(apiOrigin("https://api.example.com")).toBe(origin);
+    expect(apiOrigin("https://api.example.com/functions/v1/open-muse/")).toBe(
+      `${origin}/functions/v1/open-muse`,
+    );
     for (const bad of [
       "http://api.example.com",
-      "https://api.example.com/path",
       "https://user:pass@api.example.com",
       "https://api.example.com?x=1",
     ])

@@ -17,18 +17,19 @@ export function triggerHeaders(secret, now = Date.now()) {
   };
 }
 
+// The service's base URL: an HTTPS origin, optionally with a path such as
+// a Supabase function's `/functions/v1/open-muse`.
 export function apiOrigin(value) {
   const url = new URL(value ?? "");
   if (
     url.protocol !== "https:" ||
     url.username ||
     url.password ||
-    url.pathname !== "/" ||
     url.search ||
     url.hash
   )
-    throw new Error("MUSE_API_ORIGIN must be an HTTPS origin.");
-  return url.origin;
+    throw new Error("MUSE_API_ORIGIN must be an HTTPS URL.");
+  return url.origin + url.pathname.replace(/\/+$/, "");
 }
 
 // Sends one trigger. Never retried here: a lost response is harmless because

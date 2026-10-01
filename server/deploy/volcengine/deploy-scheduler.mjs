@@ -2,9 +2,9 @@
 // Creates or updates the veFaaS scheduler function and its timer trigger with
 // the Volcengine CLI (`ve`). Run from any directory:
 //
-//   MUSE_API_ORIGIN=https://api.example.com \
+//   MUSE_API_ORIGIN=https://<auth-origin>/functions/v1/open-muse \
 //   SCHEDULER_TRIGGER_SECRET=... \
-//   VOLC_PROJECT=default VOLC_REGION=ap-southeast-1 \
+//   VOLC_PROJECT=default VOLC_REGION=cn-beijing \
 //   node server/deploy/volcengine/deploy-scheduler.mjs
 //
 // Requires `ve` signed in (for example `ve login`) and the `zip` command. The
@@ -18,7 +18,7 @@ import { fileURLToPath } from "node:url";
 import { apiOrigin } from "./scheduler/trigger.mjs";
 
 const NAME = process.env.SCHEDULER_FUNCTION_NAME || "open-muse-scheduler";
-const REGION = process.env.VOLC_REGION || "ap-southeast-1";
+const REGION = process.env.VOLC_REGION || "cn-beijing";
 const PROJECT = process.env.VOLC_PROJECT || "default";
 const CRONTAB = process.env.SCHEDULER_CRONTAB || "*/5 * * * *";
 const origin = apiOrigin(process.env.MUSE_API_ORIGIN);
