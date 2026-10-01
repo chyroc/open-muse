@@ -45,7 +45,7 @@ export const settingsSections: SettingsSection[] = [
     label: "Message channels",
     connected: false,
     unavailable:
-      "There is no Open Muse service to deliver messages from, so no email, SMS or chat channel can be connected.",
+      "Open Muse cannot deliver email, SMS or chat messages yet, so no channel can be connected.",
   },
   { id: "devices", label: "Devices", connected: true },
   { id: "data-controls", label: "Data controls", connected: true },

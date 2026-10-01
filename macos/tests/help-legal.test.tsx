@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { zhCN } from "../../shared/locales/zh-CN";
 import { HelpSettings } from "../ui/HelpSettings";
 import { LegalSettings } from "../ui/LegalSettings";
+import { backgroundClient } from "../../src/background-client";
 import { shortcuts } from "../ui/Shortcuts";
 
 let root: Root | undefined;
@@ -49,6 +50,17 @@ describe("Mac help and legal settings", () => {
     await act(async () => host!.querySelector("button")!.click());
     await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
     expect(host!.textContent).toContain("only included in the Mac app bundle");
+  });
+  it("names the Open Muse service only in builds that have one", async () => {
+    const configured = vi
+      .spyOn(backgroundClient, "configured")
+      .mockReturnValue(true);
+    await mount(<LegalSettings />);
+    expect(host!.textContent).toContain(
+      "the Open Muse service only keeps your account",
+    );
+    expect(host!.textContent).not.toContain("runs no service of its own");
+    configured.mockRestore();
   });
   it("translates its copy and ships the notices", () => {
     for (const file of [

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { t } from "../../shared/i18n";
 import type { Client } from "../../src/api";
+import { backgroundClient } from "../../src/background-client";
 import { AuthPanel } from "../../src/AuthPanel";
 import { Modal } from "./Chrome";
 import { PresenceSettings } from "./PresenceSettings";
@@ -446,9 +447,13 @@ export function SettingsWindow({ client }: { client: Client }) {
         {active.id === "data-controls" && (
           <>
             <p className="settings-lead">
-              {t(
-                "Open Muse has no server of its own. Nothing is collected, and no analytics or crash reports leave this Mac.",
-              )}
+              {backgroundClient.configured()
+                ? t(
+                    "Chats go straight to your Ark project. No analytics or crash reports leave this Mac.",
+                  )
+                : t(
+                    "Open Muse has no server of its own. Nothing is collected, and no analytics or crash reports leave this Mac.",
+                  )}
             </p>
             <div className="settings-group">
               <Row
@@ -463,6 +468,14 @@ export function SettingsWindow({ client }: { client: Client }) {
                   "Sessions, events, memory documents and agent configuration stay in the cloud project you connected, under its own retention rules.",
                 )}
               />
+              {backgroundClient.configured() && (
+                <Row
+                  title={t("With the Open Muse service")}
+                  detail={t(
+                    "Your Muse account sign-in, your Ark key encrypted for that account, the devices you use, and the Upcoming items you let run while you are away.",
+                  )}
+                />
+              )}
               <Row
                 title={t("Signing out")}
                 detail={t(

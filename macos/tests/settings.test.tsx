@@ -16,6 +16,7 @@ import {
   settingsSections,
 } from "../ui/settings";
 import { SettingsWindow } from "../ui/SettingsWindow";
+import { backgroundClient } from "../../src/background-client";
 import { restoreInBackground } from "../ui/startup";
 
 let root: Root | undefined;
@@ -192,6 +193,24 @@ describe("Mac settings window", () => {
     expect(host!.textContent).toContain("never retried automatically");
     expect(host!.querySelectorAll("input[type=checkbox]")).toHaveLength(0);
     expect(host!.querySelectorAll("input[type=radio]")).toHaveLength(0);
+  });
+  it("says what the Open Muse service keeps only when the build has one", async () => {
+    const configured = vi
+      .spyOn(backgroundClient, "configured")
+      .mockReturnValue(false);
+    await mount(<SettingsWindow client={await fixture()} />);
+    await click("Data controls");
+    expect(host!.textContent).toContain("Open Muse has no server of its own.");
+    expect(host!.textContent).not.toContain("With the Open Muse service");
+    await act(async () => root!.unmount());
+    root = undefined;
+    configured.mockReturnValue(true);
+    await mount(<SettingsWindow client={await fixture()} />);
+    await click("Data controls");
+    expect(host!.textContent).not.toContain("has no server of its own");
+    expect(host!.textContent).toContain("With the Open Muse service");
+    expect(host!.textContent).toContain("your Ark key encrypted");
+    configured.mockRestore();
   });
   it("matches the reference on the section names it leaves in English", async () => {
     for (const label of ["Computer use", "File system access", "Dictation"])

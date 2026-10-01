@@ -133,6 +133,13 @@ export const zhDesktop: Record<string, string> = {
     "听写开始和结束时播放提示音。",
   "The notices are only included in the Mac app bundle.":
     "这些声明只包含在 Mac App 安装包中。",
+  "Chats go straight to the Ark account you connect and follow its agreement; the Open Muse service only keeps your account, your encrypted Ark key and the background work you allow. The software it ships includes open-source components under their own licenses.":
+    "对话直接发往你连接的 Ark 账户，并遵循其协议；Open Muse 服务只保存你的账号、加密后的 Ark 密钥，以及你允许的后台工作。随附的软件包含按各自许可证发布的开源组件。",
+  "Chats go straight to your Ark project. No analytics or crash reports leave this Mac.":
+    "对话直接发往你的 Ark 项目。不会有分析数据或崩溃报告离开这台 Mac。",
+  "With the Open Muse service": "在 Open Muse 服务中",
+  "Your Muse account sign-in, your Ark key encrypted for that account, the devices you use, and the Upcoming items you let run while you are away.":
+    "你的 Muse 账号登录信息、为该账号加密保存的 Ark 密钥、你使用的设备，以及你允许在离开时执行的待办。",
   "Open Muse runs no service of its own for chats; cloud use follows the agreement of the Ark account you connect. The software it ships includes open-source components under their own licenses.":
     "Open Muse 不为对话运行自己的服务；云端使用遵循你所连接的 Ark 账号的协议。随附的软件包含按各自许可证发布的开源组件。",
   "Open source notices": "开源声明",

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { t } from "../../shared/i18n";
+import { backgroundClient } from "../../src/background-client";
 
 // The notices for the open-source software this app ships, read from the
 // app bundle itself, and the terms that govern cloud use.
@@ -25,9 +26,13 @@ export function LegalSettings() {
   return (
     <>
       <p className="settings-lead">
-        {t(
-          "Open Muse runs no service of its own for chats; cloud use follows the agreement of the Ark account you connect. The software it ships includes open-source components under their own licenses.",
-        )}
+        {backgroundClient.configured()
+          ? t(
+              "Chats go straight to the Ark account you connect and follow its agreement; the Open Muse service only keeps your account, your encrypted Ark key and the background work you allow. The software it ships includes open-source components under their own licenses.",
+            )
+          : t(
+              "Open Muse runs no service of its own for chats; cloud use follows the agreement of the Ark account you connect. The software it ships includes open-source components under their own licenses.",
+            )}
       </p>
       <div className="settings-group">
         <button

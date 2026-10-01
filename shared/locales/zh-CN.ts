@@ -1108,8 +1108,8 @@ export const zhCN: Record<string, string> = {
     "尚未接入沙箱文件浏览。资源库的「系统文件」只能打开你的 MA 记忆文档。",
   "This client holds no payment method and performs no billing. Cloud usage is billed by your Ark account.":
     "此客户端不保存任何支付方式，也不进行计费；云端用量由你的 Ark 账户结算。",
-  "There is no Open Muse service to deliver messages from, so no email, SMS or chat channel can be connected.":
-    "Open Muse 没有可用于发送消息的服务，因此无法接入邮件、短信或聊天渠道。",
+  "Open Muse cannot deliver email, SMS or chat messages yet, so no channel can be connected.":
+    "Open Muse 暂时无法发送邮件、短信或聊天消息，因此无法接入消息渠道。",
   "Each client keeps its own local data and credentials, so this Mac cannot list or manage your other devices.":
     "每个客户端各自保存本地数据与凭据，因此这台 Mac 无法列出或管理你的其他设备。",
   "This personal client ships no support channel. Its documentation is the project README.":
