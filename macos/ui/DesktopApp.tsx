@@ -10,6 +10,7 @@ import {
 import {
   ArrowDown,
   ArrowUp,
+  AudioLines,
   Menu,
   MessageCircle,
   MessagesSquare,
@@ -88,6 +89,13 @@ import { MessageActions } from "./MessageActions";
 import { registerThisMac } from "./devices";
 import { useUnreadBadge } from "./unread";
 import { speechAvailable, useReadAloud } from "./speech";
+import { useVoiceConversation, type VoiceState } from "./voice";
+
+const voiceLabels: Record<Exclude<VoiceState, "off">, string> = {
+  listening: "Listening…",
+  thinking: "Thinking…",
+  speaking: "Speaking…",
+};
 import { readReactions, setReaction, type Mood } from "./reactions";
 import {
   dictationAvailable,
@@ -877,6 +885,23 @@ export function DesktopApp({ client }: { client: Client }) {
   const messages = chatMessages(events);
   useUnreadBadge(id, messages);
   const readAloud = useReadAloud();
+  // A voice conversation sends each spoken turn through the normal send, so
+  // quotes, goals and connection checks apply exactly as when typing.
+  const voice = useVoiceConversation({
+    messages,
+    running,
+    submit: (text) => {
+      setDrafts((old) => ({ ...old, [draftKey]: text }));
+      setAutoSend(draftKey);
+    },
+    onError: setError,
+    onIdle: () =>
+      setNotice(t("The voice conversation ended because nothing was heard.")),
+  });
+  const endVoice = voice.end;
+  // Moving to another conversation hangs up.
+  useEffect(() => () => endVoice(), [draftKey, endVoice]);
+  const voiceAvailable = dictationAvailable() && speechAvailable();
   const parts = messageParts(messages, events);
   const found = findMatches(parts, find ?? "", (event) =>
     messageAttachments(event, fileNames).map((item) => item.name),
@@ -1498,6 +1523,19 @@ export function DesktopApp({ client }: { client: Client }) {
                 </button>
               </aside>
             )}
+            {voice.state !== "off" && (
+              <div className={`voice-bar ${voice.state}`} role="status">
+                <span className="voice-dot" aria-hidden="true" />
+                <span>{t(voiceLabels[voice.state])}</span>
+                <button
+                  type="button"
+                  className="pill-button"
+                  onClick={voice.end}
+                >
+                  {t("End")}
+                </button>
+              </div>
+            )}
             <form
               className={`desktop-composer ${staged.length ? "has-files" : ""}`}
               onSubmit={(event) => {
@@ -1587,6 +1625,24 @@ export function DesktopApp({ client }: { client: Client }) {
               >
                 <Mic size={20} />
               </button>
+              {voiceAvailable && (
+                <button
+                  type="button"
+                  className={`icon-button voice ${voice.state !== "off" ? "active" : ""}`}
+                  aria-label={
+                    voice.state === "off"
+                      ? t("Start a voice conversation")
+                      : t("End the voice conversation")
+                  }
+                  aria-pressed={voice.state !== "off"}
+                  disabled={!ready}
+                  onClick={() =>
+                    voice.state === "off" ? void voice.start() : voice.end()
+                  }
+                >
+                  <AudioLines size={20} />
+                </button>
+              )}
               {running ? (
                 <button
                   type="button"

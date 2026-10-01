@@ -154,7 +154,14 @@ permission and never see other keystrokes.
 Read aloud, in an assistant reply's More menu, speaks the reply with the Mac's
 own voices: code, addresses and markup are left out, and Chinese text gets a
 Chinese voice. Pressing it again or reading another reply stops it, and
-dictation stops it before the microphone listens. The UI identifies unfinished surfaces. No mock replies are
+dictation stops it before the microphone listens.
+
+A voice conversation, started with the button beside the microphone, repeats
+listen, send and read aloud in the open conversation. A pause of 1.5 seconds
+after speech sends the turn through the normal send; the reply is read once the
+agent has finished, and listening resumes after it. Eight seconds without
+speech, two minutes without a reply, the End button or moving to another
+conversation hang up. Each turn is a real message to MA. The UI identifies unfinished surfaces. No mock replies are
 included in the app. Real cloud verification requires an authorized connection.
 
 ## Settings window
