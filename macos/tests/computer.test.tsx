@@ -175,6 +175,55 @@ describe("Mac computer use", () => {
     await act(async () => button("Open System Settings").click());
     expect(post).toHaveBeenCalledWith({ operation: "request", kind: "screen" });
   });
+  it("keeps the screen awake and blocks apps from settings", async () => {
+    let state = {
+      enabled: true,
+      accessibility: true,
+      screen: true,
+      keepAwake: false,
+      blocked: [] as { id: string; name: string }[],
+    };
+    const postMessage = vi.fn(async (body: Record<string, string>) => {
+      if (body.operation === "keep-awake")
+        state = { ...state, keepAwake: body.value === "true" };
+      if (body.operation === "block-app")
+        state = {
+          ...state,
+          blocked: [{ id: "com.example.bank", name: "Bank" }],
+        };
+      if (body.operation === "unblock-app")
+        state = {
+          ...state,
+          blocked: state.blocked.filter((app) => app.id !== body.id),
+        };
+      return state;
+    });
+    Object.defineProperty(window, "webkit", {
+      configurable: true,
+      value: { messageHandlers: { museComputer: { postMessage } } },
+    });
+    await mount(<ComputerSettings />);
+    const awake = [...host!.querySelectorAll("label")]
+      .find((item) => item.textContent?.startsWith("Keep screen awake"))!
+      .querySelector<HTMLInputElement>("input")!;
+    await act(async () => awake.click());
+    expect(postMessage).toHaveBeenCalledWith({
+      operation: "keep-awake",
+      value: "true",
+    });
+    await act(async () => button("Add app").click());
+    expect(host!.textContent).toContain("Bank");
+    await act(async () =>
+      host!
+        .querySelector<HTMLButtonElement>('[aria-label="Unblock Bank"]')!
+        .click(),
+    );
+    expect(postMessage).toHaveBeenCalledWith({
+      operation: "unblock-app",
+      id: "com.example.bank",
+    });
+    expect(host!.textContent).not.toContain("Bank");
+  });
   it("runs a call only after approval and answers it once", async () => {
     const post = shell();
     fixtureTask.events = [
@@ -302,6 +351,11 @@ describe("Mac computer use", () => {
     for (const tool of MAC_TOOLS) expect(swift).toContain(`"${tool}"`);
     expect(swift).toContain("AXIsProcessTrusted()");
     expect(swift).toContain("CGPreflightScreenCaptureAccess()");
+    // Blocked apps are left out of screenshots, lists and actions.
+    expect(swift).toContain("excludingApplications: hidden");
+    expect(swift).toContain(
+      "guard !isBlocked(NSWorkspace.shared.frontmostApplication)",
+    );
     const shellSource = readFileSync("macos/OpenMuse.swift", "utf8");
     expect(shellSource).toContain('name: "museComputer"');
     expect(shellSource).toContain("guard sender === webView else");

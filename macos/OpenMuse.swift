@@ -369,10 +369,39 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     }
     // Computer use is off until the user turns it on for this Mac. Only the
     // workspace window, where each call is approved, may run a tool.
+    private let keepAwakeKey = "computerUse.keepAwake"
+    private let blockedAppsKey = "computerUse.blockedApps"
+    // Blocked apps are stored by bundle identifier with the name shown to the person.
+    private var blockedApps: [[String: String]] {
+        (UserDefaults.standard.array(forKey: blockedAppsKey) as? [[String: String]] ?? [])
+            .filter { $0["id"] != nil && $0["name"] != nil }
+    }
     private func computerState() -> [String: Any] {
         ["enabled": UserDefaults.standard.bool(forKey: computerKey),
          "accessibility": computer.accessibility,
-         "screen": computer.screen]
+         "screen": computer.screen,
+         "keepAwake": UserDefaults.standard.bool(forKey: keepAwakeKey),
+         "blocked": blockedApps]
+    }
+    private func chooseBlockedApp(for sender: WKWebView?, done: @escaping () -> Void) {
+        let panel = NSOpenPanel()
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        panel.allowedContentTypes = [.application]
+        panel.allowsMultipleSelection = false
+        panel.prompt = localized("Block")
+        let finish: (NSApplication.ModalResponse) -> Void = { [weak self] response in
+            guard let self else { return }
+            if response == .OK, let url = panel.url, let bundle = Bundle(url: url), let id = bundle.bundleIdentifier,
+               id != Bundle.main.bundleIdentifier {
+                let name = FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "")
+                var apps = self.blockedApps.filter { $0["id"] != id }
+                apps.append(["id": id, "name": name])
+                UserDefaults.standard.set(apps, forKey: self.blockedAppsKey)
+            }
+            done()
+        }
+        if let host = sender?.window { panel.beginSheetModal(for: host, completionHandler: finish) }
+        else { finish(panel.runModal()) }
     }
     private func computerUse(_ body: [String: String], from sender: WKWebView?, replyHandler: @escaping (Any?, String?) -> Void) {
         switch body["operation"] {
@@ -382,6 +411,22 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             guard let value = body["value"], value == "true" || value == "false"
             else { replyHandler(nil, "Invalid computer use value"); return }
             UserDefaults.standard.set(value == "true", forKey: computerKey)
+            replyHandler(computerState(), nil)
+            broadcast("muse-computer-changed", except: sender)
+        case "keep-awake":
+            guard let value = body["value"], value == "true" || value == "false"
+            else { replyHandler(nil, "Invalid computer use value"); return }
+            UserDefaults.standard.set(value == "true", forKey: keepAwakeKey)
+            replyHandler(computerState(), nil)
+        case "block-app":
+            chooseBlockedApp(for: sender) { [weak self] in
+                guard let self else { return }
+                replyHandler(self.computerState(), nil)
+                self.broadcast("muse-computer-changed", except: sender)
+            }
+        case "unblock-app":
+            guard let id = body["id"] else { replyHandler(nil, "Invalid app"); return }
+            UserDefaults.standard.set(blockedApps.filter { $0["id"] != id }, forKey: blockedAppsKey)
             replyHandler(computerState(), nil)
             broadcast("muse-computer-changed", except: sender)
         case "request":
@@ -404,6 +449,8 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
                   let data = raw.data(using: .utf8),
                   let input = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
             else { replyHandler(nil, "Invalid computer use request"); return }
+            computer.blocked = Set(blockedApps.compactMap { $0["id"] })
+            computer.keepAwake = UserDefaults.standard.bool(forKey: keepAwakeKey)
             Task { @MainActor in
                 let output = await computer.run(tool, input)
                 replyHandler(["ok": output.ok, "text": output.text, "image": output.image ?? ""], nil)

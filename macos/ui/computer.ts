@@ -9,10 +9,13 @@ export const MAC_TOOLS = macToolNames;
 export const isMacTool = (name?: string): name is MacToolName =>
   MAC_TOOLS.includes(name as MacToolName);
 
+export type BlockedApp = { id: string; name: string };
 export type ComputerState = {
   enabled: boolean;
   accessibility: boolean;
   screen: boolean;
+  keepAwake: boolean;
+  blocked: BlockedApp[];
 };
 export const computerChanged = "muse-computer-changed";
 
@@ -29,6 +32,14 @@ export const computerAvailable = () => Boolean(bridge());
 export function parseComputerState(value: unknown): ComputerState | undefined {
   if (!value || typeof value !== "object") return undefined;
   const record = value as Record<string, unknown>;
+  const blocked = Array.isArray(record.blocked)
+    ? record.blocked.filter(
+        (item): item is BlockedApp =>
+          Boolean(item) &&
+          typeof item.id === "string" &&
+          typeof item.name === "string",
+      )
+    : [];
   return typeof record.enabled === "boolean" &&
     typeof record.accessibility === "boolean" &&
     typeof record.screen === "boolean"
@@ -36,6 +47,8 @@ export function parseComputerState(value: unknown): ComputerState | undefined {
         enabled: record.enabled,
         accessibility: record.accessibility,
         screen: record.screen,
+        keepAwake: record.keepAwake === true,
+        blocked,
       }
     : undefined;
 }
@@ -56,6 +69,18 @@ export async function enableComputer(value: boolean) {
       )
     : undefined;
 }
+async function send(body: Record<string, string>) {
+  const native = bridge();
+  return native
+    ? parseComputerState(await native.postMessage(body))
+    : undefined;
+}
+export const setKeepAwake = (value: boolean) =>
+  send({ operation: "keep-awake", value: value ? "true" : "false" });
+// The shell asks which app to block with its own file panel.
+export const blockApp = () => send({ operation: "block-app" });
+export const unblockApp = (id: string) =>
+  send({ operation: "unblock-app", id });
 export async function requestPermission(kind: "accessibility" | "screen") {
   const native = bridge();
   return native

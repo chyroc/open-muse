@@ -1,6 +1,7 @@
 import AppKit
 import ApplicationServices
 import Carbon.HIToolbox
+import IOKit.pwr_mgt
 import ScreenCaptureKit
 
 // Runs the mac_* custom tools on this Mac. Every entry point checks the macOS
@@ -20,6 +21,12 @@ final class Computer {
     static let settleDelay: UInt64 = 600_000_000
     private var pointsPerPixel: CGFloat = 1
     private var shotSize: CGSize = .zero
+    // Apps the person blocked: never shown, listed, opened or acted on.
+    var blocked: Set<String> = []
+    // Keeps the display awake while the assistant is working, and a minute after.
+    var keepAwake = false
+    private var awake: IOPMAssertionID = 0
+    private var awakeUntil = Date.distantPast
 
     var accessibility: Bool { AXIsProcessTrusted() }
     var screen: Bool { CGPreflightScreenCaptureAccess() }
@@ -31,6 +38,7 @@ final class Computer {
     func requestScreen() { _ = CGRequestScreenCaptureAccess() }
 
     func run(_ tool: String, _ input: [String: Any]) async -> Output {
+        if keepAwake { holdAwake() }
         switch tool {
         case "mac_screenshot": return await screenshot([:])
         case "mac_apps": return apps()
@@ -38,6 +46,24 @@ final class Computer {
         case "mac_action": return await act(input)
         default: return failure("This Mac does not provide \(tool).")
         }
+    }
+
+    private func holdAwake() {
+        awakeUntil = Date().addingTimeInterval(60)
+        guard awake == 0 else { return }
+        let reason = "Your assistant is using this Mac" as CFString
+        guard IOPMAssertionCreateWithName(kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString,
+                                          IOPMAssertionLevel(kIOPMAssertionLevelOn), reason, &awake) == kIOReturnSuccess
+        else { awake = 0; return }
+        Task { @MainActor in
+            while Date() < self.awakeUntil { try? await Task.sleep(nanoseconds: 5_000_000_000) }
+            IOPMAssertionRelease(self.awake)
+            self.awake = 0
+        }
+    }
+    private func isBlocked(_ app: NSRunningApplication?) -> Bool {
+        guard let id = app?.bundleIdentifier else { return false }
+        return blocked.contains(id)
     }
 
     private func json(_ value: [String: Any]) -> String {
@@ -61,7 +87,8 @@ final class Computer {
             config.width = max(1, Int(CGFloat(display.width) * scale))
             config.height = max(1, Int(CGFloat(display.height) * scale))
             config.showsCursor = true
-            let filter = SCContentFilter(display: display, excludingWindows: [])
+            let hidden = content.applications.filter { blocked.contains($0.bundleIdentifier) }
+            let filter = SCContentFilter(display: display, excludingApplications: hidden, exceptingWindows: [])
             let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
             pointsPerPixel = CGFloat(display.width) / CGFloat(config.width)
             shotSize = CGSize(width: config.width, height: config.height)
@@ -71,7 +98,9 @@ final class Computer {
             info["ok"] = true
             info["width"] = config.width
             info["height"] = config.height
-            info["frontmost_app"] = NSWorkspace.shared.frontmostApplication?.localizedName ?? ""
+            let front = NSWorkspace.shared.frontmostApplication
+            info["frontmost_app"] = isBlocked(front) ? "" : front?.localizedName ?? ""
+            if !hidden.isEmpty { info["note"] = "Apps the person blocked are hidden from this screenshot." }
             return Output(ok: true, text: json(info), image: data.base64EncodedString())
         } catch {
             return failure("The screen could not be captured.")
@@ -79,13 +108,15 @@ final class Computer {
     }
 
     private func apps() -> Output {
-        let running = NSWorkspace.shared.runningApplications
-            .filter { $0.activationPolicy == .regular }
-            .compactMap(\.localizedName)
+        let visible = NSWorkspace.shared.runningApplications
+            .filter { $0.activationPolicy == .regular && !isBlocked($0) }
+        let running = visible.compactMap(\.localizedName)
+        let pids = Set(visible.map(\.processIdentifier))
         let info = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
         // Window titles are only readable with Screen Recording; owners always are.
         let windows: [[String: Any]] = info
             .filter { ($0[kCGWindowLayer as String] as? Int) == 0 }
+            .filter { pids.contains(($0[kCGWindowOwnerPID as String] as? Int32) ?? -1) }
             .prefix(40)
             .map { window in
                 var row: [String: Any] = ["app": window[kCGWindowOwnerName as String] as? String ?? ""]
@@ -94,7 +125,7 @@ final class Computer {
             }
         return Output(ok: true, text: json([
             "ok": true,
-            "frontmost_app": NSWorkspace.shared.frontmostApplication?.localizedName ?? "",
+            "frontmost_app": isBlocked(NSWorkspace.shared.frontmostApplication) ? "" : NSWorkspace.shared.frontmostApplication?.localizedName ?? "",
             "apps": running,
             "windows": windows,
         ]))
@@ -122,6 +153,9 @@ final class Computer {
         for folder in folders {
             let url = URL(fileURLWithPath: folder).appendingPathComponent(name)
             guard FileManager.default.fileExists(atPath: url.path) else { continue }
+            if let id = Bundle(url: url)?.bundleIdentifier, blocked.contains(id) {
+                return failure("The person blocked this app for their assistant.")
+            }
             let configuration = NSWorkspace.OpenConfiguration()
             configuration.activates = true
             do {
@@ -146,6 +180,8 @@ final class Computer {
 
     private func act(_ input: [String: Any]) async -> Output {
         guard accessibility else { return failure("Accessibility is off for Open Muse, so it cannot control this Mac.") }
+        guard !isBlocked(NSWorkspace.shared.frontmostApplication)
+        else { return failure("The app in front is blocked for the assistant. Ask the person to switch apps.") }
         guard let action = input["action"] as? String else { return failure("Choose an action.") }
         let source = CGEventSource(stateID: .hidSystemState)
         let needsPoint = "Take a screenshot first, then give x and y inside it."

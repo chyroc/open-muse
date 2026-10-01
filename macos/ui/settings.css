@@ -333,3 +333,9 @@
     transition: none;
   }
 }
+.settings-blocked-row {
+  align-items: center;
+}
+.settings-blocked-row .icon-button {
+  margin-left: auto;
+}

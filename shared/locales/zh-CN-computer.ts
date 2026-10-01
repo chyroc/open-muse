@@ -42,4 +42,12 @@ export const zhComputer: Record<string, string> = {
   "Use your Mac": "使用你的 Mac",
   "Waiting for your iPhone": "等待你的 iPhone",
   "Waiting for another device": "等待另一台设备",
+  "Keep screen awake while working": "工作时保持屏幕唤醒",
+  "Your screen stays awake while your assistant works.":
+    "助手工作时，你的屏幕会保持唤醒。",
+  "Blocked apps": "已屏蔽的 App",
+  "Unblock {name}": "取消屏蔽 {name}",
+  "Your assistant can't see or use the apps you add here: they are left out of screenshots and app lists, and opening or acting on them is refused.":
+    "助手无法查看或使用你在这里添加的 App：它们不会出现在截图和 App 列表中，打开或操作它们的请求也会被拒绝。",
+  "Add app": "添加 App",
 };

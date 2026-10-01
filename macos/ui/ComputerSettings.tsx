@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "../../shared/i18n";
+import { X } from "lucide-react";
 import {
+  blockApp,
   computerAvailable,
   computerChanged,
   enableComputer,
   readComputer,
   requestPermission,
+  setKeepAwake,
+  unblockApp,
   type ComputerState,
 } from "./computer";
 import { Switch } from "./SettingsSwitch";
@@ -34,6 +38,10 @@ export function ComputerSettings() {
       window.removeEventListener(computerChanged, refresh);
     };
   }, [available, refresh]);
+  const change = (request: Promise<ComputerState | undefined>) =>
+    void request
+      .then((value) => value && setState(value))
+      .catch(() => setError(t("Could not change the app settings.")));
   const lead = (
     <p className="settings-lead">
       {t(
@@ -98,6 +106,15 @@ export function ComputerSettings() {
           }
         />
       </div>
+      <div className="settings-group">
+        <Switch
+          label={t("Keep screen awake while working")}
+          detail={t("Your screen stays awake while your assistant works.")}
+          checked={state?.keepAwake ?? false}
+          disabled={!state}
+          onChange={(value) => change(setKeepAwake(value))}
+        />
+      </div>
       <h2>{t("macOS permissions")}</h2>
       <div className="settings-group">
         {permission(
@@ -112,6 +129,39 @@ export function ComputerSettings() {
           t("Lets your assistant click, type and press keys."),
           state?.accessibility,
         )}
+      </div>
+      <h2>{t("Blocked apps")}</h2>
+      <div className="settings-group">
+        {state?.blocked.map((app) => (
+          <div className="settings-row settings-blocked-row" key={app.id}>
+            <div>
+              <strong>{app.name}</strong>
+            </div>
+            <button
+              className="icon-button"
+              aria-label={t("Unblock {name}", { name: app.name })}
+              onClick={() => change(unblockApp(app.id))}
+            >
+              <X size={15} />
+            </button>
+          </div>
+        ))}
+        <div className="settings-row">
+          <div>
+            <p>
+              {t(
+                "Your assistant can't see or use the apps you add here: they are left out of screenshots and app lists, and opening or acting on them is refused.",
+              )}
+            </p>
+          </div>
+          <button
+            className="settings-inline-button"
+            disabled={!state}
+            onClick={() => change(blockApp())}
+          >
+            {t("Add app")}
+          </button>
+        </div>
       </div>
       <h2>{t("Rules")}</h2>
       <div className="settings-group">
