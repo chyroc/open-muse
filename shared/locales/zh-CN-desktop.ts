@@ -138,6 +138,13 @@ export const zhDesktop: Record<string, string> = {
   "Chats go straight to your Ark project. No analytics or crash reports leave this Mac.":
     "对话直接发往你的 Ark 项目。不会有分析数据或崩溃报告离开这台 Mac。",
   "With the Open Muse service": "在 Open Muse 服务中",
+  "Report a problem": "报告问题",
+  "Copy diagnostics": "复制诊断信息",
+  "Copies the app and macOS versions, language and the state of each permission and switch, without keys, messages or files, for you to paste into a report.":
+    "复制 App 和 macOS 版本、语言，以及各项权限和开关的状态，不含密钥、消息或文件，方便你粘贴到问题报告中。",
+  "Copied. Paste it into your report.": "已复制，可粘贴到你的问题报告中。",
+  "Could not copy the diagnostics.": "无法复制诊断信息。",
+  Copy: "复制",
   "Your Muse account sign-in, your Ark key encrypted for that account, the devices you use, and the Upcoming items you let run while you are away.":
     "你的 Muse 账号登录信息、为该账号加密保存的 Ark 密钥、你使用的设备，以及你允许在离开时执行的待办。",
   "Open Muse runs no service of its own for chats; cloud use follows the agreement of the Ark account you connect. The software it ships includes open-source components under their own licenses.":

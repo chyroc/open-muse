@@ -229,8 +229,11 @@ Other sections:
   preference and web data store, turns off the login item, and starts the
   windows over at first launch. macOS privacy permissions stay in System
   Settings, and nothing in the cloud is deleted.
-- Help and support lists the shortcuts and where the Mac features live; Legal
-  shows the open source notices bundled with the app.
+- Help and support lists the shortcuts and where the Mac features live, and
+  Copy diagnostics puts a summary of the app and macOS versions, language and
+  each permission and switch on the clipboard for a problem report. It holds
+  no keys, identifiers, names, paths, messages or files, and is sent nowhere.
+  Legal shows the open source notices bundled with the app.
 
 The section list matches the reference, including the three names the reference
 leaves in English inside a Chinese interface. They are ordinary catalog entries

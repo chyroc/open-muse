@@ -370,7 +370,7 @@ export function SettingsWindow({ client }: { client: Client }) {
         )}
         {active.id === "file-system" && <FileSystemSettings />}
         {active.id === "dictation" && <DictationSettings />}
-        {active.id === "help" && <HelpSettings />}
+        {active.id === "help" && <HelpSettings signedIn={client.signedIn()} />}
         {active.id === "devices" && <DevicesSettings />}
         {active.id === "legal" && <LegalSettings />}
         {active.id === "secure-storage" && (

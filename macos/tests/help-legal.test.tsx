@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { zhCN } from "../../shared/locales/zh-CN";
 import { HelpSettings } from "../ui/HelpSettings";
 import { LegalSettings } from "../ui/LegalSettings";
+import { diagnosticReport } from "../ui/diagnostics";
 import { backgroundClient } from "../../src/background-client";
 import { shortcuts } from "../ui/Shortcuts";
 
@@ -51,6 +52,63 @@ describe("Mac help and legal settings", () => {
     await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
     expect(host!.textContent).toContain("only included in the Mac app bundle");
   });
+  it("copies a setup summary without keys or identifiers", async () => {
+    vi.stubGlobal("__OPEN_MUSE_VERSION__", "5.0 (12)");
+    vi.stubGlobal("__OPEN_MUSE_SYSTEM__", "macOS Version 15.1 (Build 24B83)");
+    Object.defineProperty(window, "webkit", {
+      configurable: true,
+      value: {
+        messageHandlers: {
+          museComputer: {
+            postMessage: async () => ({
+              enabled: true,
+              accessibility: true,
+              screen: false,
+              keepAwake: false,
+              blocked: [{ id: "com.example.secret", name: "Secret App" }],
+              fullDiskAccess: false,
+              blockedFolders: ["/Users/someone/Private"],
+              calendar: {
+                enabled: true,
+                events: "allowed",
+                reminders: "denied",
+              },
+              location: { enabled: false, permission: "not-asked" },
+            }),
+          },
+        },
+      },
+    });
+    const report = await diagnosticReport({ signedIn: true });
+    expect(report).toContain("Open Muse 5.0 (12)");
+    expect(report).toContain("macOS Version 15.1 (Build 24B83)");
+    expect(report).toContain("Connected: yes");
+    expect(report).toContain("Screen Recording: not allowed");
+    expect(report).toContain("blocked apps: 1; blocked folders: 1");
+    expect(report).toContain(
+      "Calendar and Reminders: on (Calendar allowed, Reminders denied)",
+    );
+    // Names and paths the person chose stay on this Mac.
+    expect(report).not.toContain("Secret App");
+    expect(report).not.toContain("/Users/someone");
+    const writeText = vi.fn(async () => {});
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    await mount(<HelpSettings signedIn />);
+    await act(async () => {
+      [...host!.querySelectorAll("button")]
+        .find((item) => item.textContent === "Copy")!
+        .click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(writeText).toHaveBeenCalledWith(
+      expect.stringContaining("Computer use: on"),
+    );
+    expect(host!.textContent).toContain("Copied. Paste it into your report.");
+    vi.unstubAllGlobals();
+  });
   it("names the Open Muse service only in builds that have one", async () => {
     const configured = vi
       .spyOn(backgroundClient, "configured")
@@ -73,6 +131,9 @@ describe("Mac help and legal settings", () => {
         expect(zhCN[key], key).toBeTruthy();
     expect(readFileSync("scripts/build-macos.mjs", "utf8")).toContain(
       '"notices.txt"',
+    );
+    expect(readFileSync("macos/OpenMuse.swift", "utf8")).toContain(
+      "window.__OPEN_MUSE_SYSTEM__ = ",
     );
   });
 });
