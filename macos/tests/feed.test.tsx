@@ -3,10 +3,12 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Client } from "../../src/api";
-import type {
-  InspirationItem,
-  InspirationSnapshot,
+import {
+  defaultFeedInstructions,
+  type InspirationItem,
+  type InspirationSnapshot,
 } from "../../shared/inspiration";
+import { zhCN } from "../../shared/locales/zh-CN";
 import { LocalDatabase } from "../../src/direct/storage";
 import {
   feedEditions,
@@ -233,6 +235,29 @@ describe("Mac feed presentation", () => {
 });
 
 describe("Mac feed instructions", () => {
+  it("shows the built-in default in Chinese without counting it as an edit", async () => {
+    vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", ["zh-CN"]);
+    try {
+      const client = clientStub();
+      await mount(
+        <FeedInstructions
+          client={asClient(client)}
+          initial={{ content: defaultFeedInstructions, revision: "default" }}
+          onSaved={vi.fn()}
+          onClose={vi.fn()}
+        />,
+      );
+      const field = host.querySelector("textarea")!;
+      expect(field.value).toBe(zhCN[defaultFeedInstructions]);
+      const save = [...host.querySelectorAll("button")].find(
+        (button) => button.textContent === zhCN.Save,
+      )!;
+      expect(save.disabled).toBe(true);
+      expect(client.saveFeedInstructions).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it("retains conflicts, reviews without replacement, and guards native close", async () => {
     const client = clientStub();
     const close = vi.fn();

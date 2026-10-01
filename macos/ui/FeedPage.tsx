@@ -21,7 +21,7 @@ import type {
 import { Markdown } from "../../src/components";
 import { useTask } from "../../src/useTask";
 import { Empty, Modal } from "./Chrome";
-import { FeedInstructions } from "./FeedInstructions";
+import { FeedInstructions, shownInstructions } from "./FeedInstructions";
 import {
   emptyFeedPresentation,
   feedEditions,
@@ -330,7 +330,7 @@ export function FeedPage({
             </Empty>
             <aside className="feed-prompt-card">
               <h2>{t("Your feed prompt")}</h2>
-              <p>{data.instructions.content}</p>
+              <p>{shownInstructions(data.instructions.content)}</p>
               <footer>
                 <button
                   className="pill-button"

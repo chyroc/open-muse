@@ -278,7 +278,7 @@ export function SettingsWindow({ client }: { client: Client }) {
               <Row
                 title={t("Interface language")}
                 detail={t(
-                  "Muse follows your system language list and keeps no separate override, so changing it in System Settings changes the app.",
+                  "Open Muse follows your system language list and keeps no separate override, so changing it in System Settings changes the app.",
                 )}
                 value={language.language === "zh-CN" ? "简体中文" : "English"}
               />

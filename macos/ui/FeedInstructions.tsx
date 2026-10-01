@@ -1,10 +1,19 @@
 import { t } from "../../shared/i18n";
 import { useEffect, useRef, useState } from "react";
 import type { Client } from "../../src/api";
-import type { InspirationSnapshot } from "../../shared/inspiration";
+import {
+  defaultFeedInstructions,
+  type InspirationSnapshot,
+} from "../../shared/inspiration";
 import { Modal } from "./Chrome";
 
 type Instructions = InspirationSnapshot["instructions"];
+// The built-in default is shown in the interface language; anything the person
+// wrote is shown as written. Saving still requires an actual edit.
+export const shownInstructions = (content: string) =>
+  content.trim() === defaultFeedInstructions
+    ? t(defaultFeedInstructions)
+    : content;
 export function FeedInstructions({
   client,
   initial,
@@ -16,14 +25,14 @@ export function FeedInstructions({
   onSaved: (value: Instructions) => void;
   onClose: () => void;
 }) {
-  const [draft, setDraft] = useState(initial.content);
+  const [draft, setDraft] = useState(shownInstructions(initial.content));
   const [baseline, setBaseline] = useState(initial);
   const [remote, setRemote] = useState<Instructions>();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmClose, setConfirmClose] = useState(false);
   const guard = useRef(false);
-  const dirty = draft.trim() !== baseline.content.trim();
+  const dirty = draft.trim() !== shownInstructions(baseline.content).trim();
   const saveRef = useRef<() => Promise<void>>(async () => {});
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -130,12 +139,12 @@ export function FeedInstructions({
         {remote && (
           <aside className="feed-cloud-copy">
             <h3>{t("Latest cloud version")}</h3>
-            <p>{remote.content}</p>
+            <p>{shownInstructions(remote.content)}</p>
             <button
               type="button"
               disabled={busy}
               onClick={() => {
-                setDraft(remote.content);
+                setDraft(shownInstructions(remote.content));
                 setBaseline(remote);
                 setRemote(undefined);
                 setError("");
