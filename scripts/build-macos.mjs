@@ -97,7 +97,46 @@ execFileSync(
   ["-c", "icns", iconset, "-o", path.join(resources, "AppIcon.icns")],
   { stdio: "inherit" },
 );
-execFileSync("codesign", ["--force", "--sign", "-", app], { stdio: "inherit" });
+// Keychain trusts the app by its code signature. An ad-hoc signature changes
+// with every build, so macOS asks for the Keychain password after each one.
+// A stable signing identity keeps one "Always Allow" valid across builds, and
+// keeps the Accessibility and Screen Recording grants too. Set
+// OPEN_MUSE_SIGN_IDENTITY to choose one; otherwise the first Apple Development
+// identity in the login keychain is used, and ad-hoc signing is the fallback.
+function signingIdentity() {
+  if (process.env.OPEN_MUSE_SIGN_IDENTITY)
+    return process.env.OPEN_MUSE_SIGN_IDENTITY;
+  try {
+    const found = execFileSync(
+      "security",
+      ["find-identity", "-v", "-p", "codesigning"],
+      { encoding: "utf8" },
+    );
+    return /"(Apple Development: [^"]+)"/.exec(found)?.[1] ?? "-";
+  } catch {
+    return "-";
+  }
+}
+function sign(identity) {
+  execFileSync("codesign", ["--force", "--sign", identity, app], {
+    stdio: identity === "-" ? "inherit" : "pipe",
+  });
+}
+const identity = signingIdentity();
+let stable = false;
+if (identity !== "-")
+  try {
+    sign(identity);
+    stable = true;
+  } catch {
+    // A remote shell cannot use a key in a locked login keychain.
+  }
+if (!stable) sign("-");
+console.log(
+  stable
+    ? "Signed with a stable development identity."
+    : "Signed ad hoc; macOS may ask for Keychain access after each build.",
+);
 const destination = path.join(output, "Open Muse.app");
 try {
   await rename(destination, path.join(staging, "Previous Open Muse.app"));
