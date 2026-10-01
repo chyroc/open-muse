@@ -21,6 +21,9 @@ export const zhCN: Record<string, string> = {
   "Not connected": "未连接",
   Replying: "正在回复",
   "Waiting for approval": "等待批准",
+  "Waiting for your Mac": "等待你的 Mac",
+  "Waiting for Open Muse on your Mac to finish this step":
+    "等待你 Mac 上的 Open Muse 完成这一步",
   "Connection interrupted": "连接已中断",
   Connected: "已连接",
   "Goals options": "目标选项",

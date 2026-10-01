@@ -7,6 +7,7 @@ import {
   Check,
   Copy,
   ExternalLink,
+  Laptop,
   LoaderCircle,
   RefreshCw,
   Settings2,
@@ -36,7 +37,12 @@ import type {
   Goal,
   Session,
 } from "../shared/types";
-import { eventText, pendingPermissions, taskState } from "../shared/types";
+import {
+  eventText,
+  pendingCustomTools,
+  pendingPermissions,
+  taskState,
+} from "../shared/types";
 import { canAutoApprove } from "../shared/approval-policy";
 import { AuthPanel } from "./AuthPanel";
 import { CheckInSettings } from "./CheckInSettings";
@@ -273,6 +279,10 @@ function Workspace({
       !canAutoApprove(event) || task.autoApprovalFailures.includes(event.id),
   );
   const automaticCount = pendingTools.length - permissions.length;
+  // The Mac app runs mac_* custom tools and answers them; this device waits.
+  const macTools = pendingCustomTools(currentEvents).filter((event) =>
+    event.name?.startsWith("mac_"),
+  );
   const state =
     automaticCount > 0 && !permissions.length
       ? "running"
@@ -624,9 +634,11 @@ function Workspace({
         ? t("Replying")
         : permissions.length
           ? t("Waiting for approval")
-          : task.error || loadError
-            ? t("Connection interrupted")
-            : t("Connected");
+          : macTools.length
+            ? t("Waiting for your Mac")
+            : task.error || loadError
+              ? t("Connection interrupted")
+              : t("Connected");
   const messageEvents = events.filter(
     (event) =>
       ["user.message", "agent.message"].includes(event.type) &&
@@ -918,6 +930,12 @@ function Workspace({
                         { count: permissions.length },
                       )}
                 </button>
+              )}
+              {macTools.length > 0 && (
+                <div className="approval-notice" role="status">
+                  <Laptop size={15} />
+                  {t("Waiting for Open Muse on your Mac to finish this step")}
+                </div>
               )}
               <ChatComposer
                 name={companion.name}
