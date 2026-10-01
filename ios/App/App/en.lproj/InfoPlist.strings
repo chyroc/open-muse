@@ -1,0 +1,2 @@
+/* Shown by iOS when Open Muse first asks to read a type of Health data. */
+"NSHealthShareUsageDescription" = "Open Muse reads the Health data you choose to share when you ask your companion about your activity, workouts, sleep, heart rate, or weight.";
