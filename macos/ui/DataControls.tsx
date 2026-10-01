@@ -7,7 +7,7 @@ import {
   draftInMainChat,
   memoryExportPrompt,
   memoryImportDraft,
-} from "./dataControls";
+} from "./dataExport";
 
 // Bring memory in from another assistant, or take everything out as a file.
 // Neither changes anything in MA by itself.

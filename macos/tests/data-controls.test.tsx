@@ -8,7 +8,7 @@ import { LocalDatabase } from "../../src/direct/storage";
 import { defaultIdentity } from "../../src/direct/identity";
 import { zhCN } from "../../shared/locales/zh-CN";
 import type { AgentEvent } from "../../shared/types";
-import { agentDataMarkdown, memoryImportDraft } from "../ui/dataControls";
+import { agentDataMarkdown, memoryImportDraft } from "../ui/dataExport";
 import { DataControls } from "../ui/DataControls";
 import { DesktopApp } from "../ui/DesktopApp";
 
@@ -167,7 +167,7 @@ describe("Mac data controls", () => {
   it("translates its copy and keeps the native contract", () => {
     for (const file of [
       "macos/ui/DataControls.tsx",
-      "macos/ui/dataControls.ts",
+      "macos/ui/dataExport.ts",
     ])
       for (const [, key] of readFileSync(file, "utf8").matchAll(
         /\bt\(\s*"([^"]+)"/g,
