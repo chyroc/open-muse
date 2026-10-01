@@ -1,7 +1,11 @@
-// The Quick Chat shortcut, held by the native shell as a macOS virtual key
-// code plus Carbon modifier flags.
+// Global shortcuts held by the native shell as a macOS virtual key code plus
+// Carbon modifier flags: Quick Chat, and the two dictation shortcuts. A code
+// of -1 means the shortcut is not set.
 export const carbon = { command: 256, shift: 512, option: 2048, control: 4096 };
+export type ShortcutId = "quickChat" | "dictationHold" | "dictationToggle";
 export type Shortcut = { code: number; modifiers: number; registered: boolean };
+export const shortcutSet = (shortcut?: Shortcut) =>
+  Boolean(shortcut && shortcut.code >= 0);
 
 // event.code to macOS virtual key code, for the keys a shortcut may use.
 const keyCodes: Record<string, number> = {
@@ -139,15 +143,26 @@ function parse(value: unknown): Shortcut | undefined {
       }
     : undefined;
 }
-async function call(body: Record<string, string>) {
+// Quick Chat is the shell's default shortcut, so its requests name no id.
+async function call(body: Record<string, string>, id: ShortcutId) {
   const native = bridge();
-  return native ? parse(await native.postMessage(body)) : undefined;
+  return native
+    ? parse(
+        await native.postMessage(id === "quickChat" ? body : { ...body, id }),
+      )
+    : undefined;
 }
-export const readShortcut = () => call({ operation: "read" });
-export const saveShortcut = (code: number, modifiers: number) =>
-  call({
-    operation: "write",
-    code: String(code),
-    modifiers: String(modifiers),
-  });
-export const resetShortcut = () => call({ operation: "reset" });
+export const readShortcut = (id: ShortcutId = "quickChat") =>
+  call({ operation: "read" }, id);
+export const saveShortcut = (
+  code: number,
+  modifiers: number,
+  id: ShortcutId = "quickChat",
+) =>
+  call(
+    { operation: "write", code: String(code), modifiers: String(modifiers) },
+    id,
+  );
+// Quick Chat returns to Option-Space; a dictation shortcut is removed.
+export const resetShortcut = (id: ShortcutId = "quickChat") =>
+  call({ operation: "reset" }, id);

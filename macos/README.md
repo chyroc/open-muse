@@ -132,16 +132,24 @@ macOS permissions. Each call still waits for an answer in the chat like the
 other `mac_*` tools.
 
 This is an incremental desktop implementation, not a verified one-to-one clone.
-Cloud artifact/media indexing and dictation into other apps still need their
-Mac-specific implementation and acceptance checks.
+Cloud artifact/media indexing still needs its Mac-specific implementation and
+acceptance checks.
 
 ## Dictation
 
-The composer microphone dictates through macOS speech recognition, on this Mac
-whenever the language supports it. Text streams into the draft and is never
-sent on its own; a second press or Escape stops listening. The Dictation
-section shows the microphone and speech recognition permissions and where
-speech is recognized. The UI identifies unfinished surfaces. No mock replies are
+The composer microphone, in the workspace and in Quick Chat, dictates through
+macOS speech recognition, on this Mac whenever the language supports it. Text
+streams into the draft; a second press or Escape stops listening, and the
+message is sent only when Automatically send is on. The Dictation section shows
+the microphone and speech recognition permissions, the microphone to use, the
+audio cues and where speech is recognized.
+
+Two optional global shortcuts dictate into Quick Chat over any app: Push to
+talk listens while its keys are held, and Hands-free mode starts and stops on
+each press. They are unset until recorded in the Dictation section, and a
+combination already used by another Open Muse shortcut is refused. Like the
+Quick Chat shortcut they are Carbon hot keys, which need no Accessibility
+permission and never see other keystrokes. The UI identifies unfinished surfaces. No mock replies are
 included in the app. Real cloud verification requires an authorized connection.
 
 ## Settings window

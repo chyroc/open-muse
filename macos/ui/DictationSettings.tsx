@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { systemLanguage, t } from "../../shared/i18n";
 import { Switch } from "./SettingsSwitch";
+import { ShortcutRow } from "./ShortcutSettings";
+import { shortcutAvailable } from "./shortcut";
 import {
   chooseInputDevice,
   dictationAvailable,
@@ -168,17 +170,32 @@ export function DictationSettings() {
             </p>
           </div>
         </div>
-        <div className="settings-row">
-          <div>
-            <strong>{t("Dictation in other apps")}</strong>
-            <p>
-              {t(
-                "Holding a key to dictate into any app is not built yet. Dictation works in the Open Muse message field.",
-              )}
-            </p>
-          </div>
-        </div>
       </div>
+      {shortcutAvailable() && (
+        <>
+          <h2>{t("Shortcuts")}</h2>
+          <div className="settings-group">
+            <ShortcutRow
+              id="dictationHold"
+              optional
+              title={t("Push to talk")}
+              detail={t(
+                "Hold the shortcut in any app to dictate into Quick chat, and let go to stop.",
+              )}
+              label={t("Change the Push to talk shortcut")}
+            />
+            <ShortcutRow
+              id="dictationToggle"
+              optional
+              title={t("Hands-free mode")}
+              detail={t(
+                "Press the shortcut to start dictating into Quick chat without holding, and press it again to stop.",
+              )}
+              label={t("Change the Hands-free mode shortcut")}
+            />
+          </div>
+        </>
+      )}
       {error && (
         <p className="settings-error" role="alert">
           {error}

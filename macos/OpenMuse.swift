@@ -80,7 +80,7 @@ private final class QuickPanel: NSPanel {
 }
 
 // Carbon delivers the global shortcut to a C callback, which forwards it here.
-nonisolated(unsafe) private var quickChatToggle: (() -> Void)?
+nonisolated(unsafe) private var hotKeyAction: ((UInt32, Bool) -> Void)?
 
 // A round button that stays on screen while the workspace window is closed.
 // It follows the pointer while dragged, and a press that did not move reopens
@@ -183,8 +183,11 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     private var floatingPanel: NSPanel?
     private var quickPanel: QuickPanel?
     private var quickWebView: WKWebView?
-    private var quickHotKey: EventHotKeyRef?
-    private var quickShortcutRegistered = false
+    private var hotKeyRefs: [String: EventHotKeyRef] = [:]
+    private var hotKeyRegistered: [String: Bool] = [:]
+    // Dictation asked for by a shortcut before the Quick Chat page was ready.
+    private var quickReady = false
+    private var pendingQuickDictation: String?
     private let menuBarKey = "presence.menuBar"
     private let computerKey = "computerUse.enabled"
     private let computer = Computer()
@@ -264,7 +267,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         window.makeKeyAndOrderFront(nil)
         NSApplication.shared.activate(ignoringOtherApps: true)
         updateStatusItem()
-        registerQuickChatShortcut()
+        registerHotKeys()
         #if SNAPSHOT_TOUR
         startSnapshotTour()
         #endif
@@ -422,7 +425,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         applyAppearance("system", from: nil)
         updateStatusItem()
         updateFloatingButton()
-        quickShortcutRegistered = applyQuickChatShortcut()
+        applyHotKeys()
         settingsWindow?.close()
         settingsWindow = nil
         settingsWebView = nil
@@ -735,59 +738,120 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         }
     }
     // Option-Space opens a small chat card over whatever app is in front, and
-    // pressing it again closes the card. Carbon hot keys need no Accessibility
-    // permission and never see other keystrokes.
-    private func registerQuickChatShortcut() {
-        quickChatToggle = { [weak self] in self?.toggleQuickChat() }
-        var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-        InstallEventHandler(GetApplicationEventTarget(), { _, _, _ in
-            DispatchQueue.main.async { quickChatToggle?() }
+    // pressing it again closes the card. The dictation shortcuts speak into that
+    // card: push to talk listens while held, hands-free starts and stops on each
+    // press. Carbon hot keys need no Accessibility permission and never see
+    // other keystrokes.
+    private func registerHotKeys() {
+        hotKeyAction = { [weak self] id, pressed in self?.hotKeyFired(id, pressed: pressed) }
+        var specs = [
+            EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed)),
+            EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyReleased)),
+        ]
+        InstallEventHandler(GetApplicationEventTarget(), { _, event, _ in
+            var key = EventHotKeyID()
+            GetEventParameter(event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID),
+                              nil, MemoryLayout<EventHotKeyID>.size, nil, &key)
+            let pressed = GetEventKind(event) == UInt32(kEventHotKeyPressed)
+            let id = key.id
+            DispatchQueue.main.async { hotKeyAction?(id, pressed) }
             return OSStatus(noErr)
-        }, 1, &spec, nil, nil)
-        quickShortcutRegistered = applyQuickChatShortcut()
+        }, 2, &specs, nil, nil)
+        applyHotKeys()
     }
-    // The shortcut is a device-local preference: a virtual key code plus Carbon
-    // modifiers, Option-Space unless the person chose another one.
-    private let quickKeyKey = "quickChat.keyCode"
-    private let quickModifiersKey = "quickChat.modifiers"
+    private func hotKeyFired(_ id: UInt32, pressed: Bool) {
+        switch id {
+        case Self.hotKeys["quickChat"]?.id: if pressed { toggleQuickChat() }
+        case Self.hotKeys["dictationHold"]?.id: quickDictate(pressed ? "start" : "stop")
+        case Self.hotKeys["dictationToggle"]?.id: if pressed { quickDictate("toggle") }
+        default: break
+        }
+    }
+    private func quickDictate(_ action: String) {
+        if action != "stop", !(quickPanel?.isVisible == true && (quickPanel?.alphaValue ?? 0) > 0) { showQuickChat() }
+        guard let view = quickWebView, quickReady else {
+            // Released before the card was ready: nothing was heard.
+            pendingQuickDictation = action == "stop" && pendingQuickDictation == "start" ? nil : action
+            return
+        }
+        view.evaluateJavaScript("window.dispatchEvent(new CustomEvent('muse-quick-dictate', {detail:'\(action)'}))", completionHandler: nil)
+    }
+    // Shortcuts are device-local preferences: a virtual key code plus Carbon
+    // modifiers. Quick Chat is Option-Space unless the person chose another
+    // one; the dictation shortcuts are unset until recorded.
+    private struct HotKey {
+        let id: UInt32
+        let codeKey: String
+        let modifiersKey: String
+        let fallback: (code: UInt32, modifiers: UInt32)?
+    }
+    private static let hotKeys: [String: HotKey] = [
+        "quickChat": HotKey(id: 1, codeKey: "quickChat.keyCode", modifiersKey: "quickChat.modifiers",
+                            fallback: (UInt32(kVK_Space), UInt32(optionKey))),
+        "dictationHold": HotKey(id: 2, codeKey: "dictation.holdKeyCode", modifiersKey: "dictation.holdModifiers", fallback: nil),
+        "dictationToggle": HotKey(id: 3, codeKey: "dictation.toggleKeyCode", modifiersKey: "dictation.toggleModifiers", fallback: nil),
+    ]
     private static let shortcutModifiers = UInt32(cmdKey | optionKey | controlKey | shiftKey)
-    private var quickShortcut: (code: UInt32, modifiers: UInt32) {
+    private func hotKey(_ name: String) -> (code: UInt32, modifiers: UInt32)? {
+        guard let slot = Self.hotKeys[name] else { return nil }
         let defaults = UserDefaults.standard
-        guard defaults.object(forKey: quickKeyKey) != nil else { return (UInt32(kVK_Space), UInt32(optionKey)) }
-        return (UInt32(defaults.integer(forKey: quickKeyKey)), UInt32(defaults.integer(forKey: quickModifiersKey)))
+        guard defaults.object(forKey: slot.codeKey) != nil else { return slot.fallback }
+        return (UInt32(defaults.integer(forKey: slot.codeKey)), UInt32(defaults.integer(forKey: slot.modifiersKey)))
     }
-    private func applyQuickChatShortcut() -> Bool {
-        if let quickHotKey { UnregisterEventHotKey(quickHotKey) }
-        quickHotKey = nil
-        let (code, modifiers) = quickShortcut
-        let id = EventHotKeyID(signature: OSType(0x4F4D_5143), id: 1)
-        let status = RegisterEventHotKey(code, modifiers, id, GetApplicationEventTarget(), 0, &quickHotKey)
-        updateQuickMenuItem()
-        return status == noErr
+    private var quickShortcut: (code: UInt32, modifiers: UInt32) {
+        hotKey("quickChat") ?? (UInt32(kVK_Space), UInt32(optionKey))
     }
-    private func shortcutState() -> [String: Any] {
-        let (code, modifiers) = quickShortcut
-        return ["code": Int(code), "modifiers": Int(modifiers), "registered": quickShortcutRegistered]
+    private func applyHotKey(_ name: String) {
+        guard let slot = Self.hotKeys[name] else { return }
+        if let ref = hotKeyRefs[name] { UnregisterEventHotKey(ref) }
+        hotKeyRefs[name] = nil
+        var registered = false
+        if let keys = hotKey(name) {
+            var ref: EventHotKeyRef?
+            let id = EventHotKeyID(signature: OSType(0x4F4D_5143), id: slot.id)
+            if RegisterEventHotKey(keys.code, keys.modifiers, id, GetApplicationEventTarget(), 0, &ref) == noErr, let ref {
+                hotKeyRefs[name] = ref
+                registered = true
+            }
+        }
+        hotKeyRegistered[name] = registered
+        if name == "quickChat" { updateQuickMenuItem() }
+    }
+    private func applyHotKeys() {
+        for name in Self.hotKeys.keys.sorted() { applyHotKey(name) }
+    }
+    private func shortcutState(_ name: String) -> [String: Any] {
+        let keys = hotKey(name)
+        return ["code": keys.map { Int($0.code) } ?? -1,
+                "modifiers": keys.map { Int($0.modifiers) } ?? 0,
+                "registered": hotKeyRegistered[name] ?? false]
     }
     private func shortcut(_ body: [String: String], replyHandler: @escaping (Any?, String?) -> Void) {
+        let name = body["id"] ?? "quickChat"
+        guard let slot = Self.hotKeys[name] else { replyHandler(nil, "Invalid shortcut"); return }
         switch body["operation"] {
         case "read":
-            replyHandler(shortcutState(), nil)
+            replyHandler(shortcutState(name), nil)
         case "write":
             guard let code = body["code"].flatMap(Int.init), (0...127).contains(code),
                   let modifiers = body["modifiers"].flatMap(UInt32.init),
                   modifiers & ~Self.shortcutModifiers == 0,
                   modifiers & UInt32(cmdKey | optionKey | controlKey) != 0
             else { replyHandler(nil, "Invalid shortcut"); return }
-            UserDefaults.standard.set(code, forKey: quickKeyKey)
-            UserDefaults.standard.set(Int(modifiers), forKey: quickModifiersKey)
-            quickShortcutRegistered = applyQuickChatShortcut()
-            replyHandler(shortcutState(), nil)
+            // One combination belongs to one Open Muse shortcut.
+            let taken = Self.hotKeys.keys.contains { other in
+                other != name && hotKey(other).map { $0.code == UInt32(code) && $0.modifiers == modifiers } == true
+            }
+            if taken { replyHandler(nil, localized("Another Open Muse shortcut already uses these keys.")); return }
+            UserDefaults.standard.set(code, forKey: slot.codeKey)
+            UserDefaults.standard.set(Int(modifiers), forKey: slot.modifiersKey)
+            applyHotKey(name)
+            replyHandler(shortcutState(name), nil)
         case "reset":
-            UserDefaults.standard.removeObject(forKey: quickKeyKey)
-            UserDefaults.standard.removeObject(forKey: quickModifiersKey)
-            quickShortcutRegistered = applyQuickChatShortcut()
-            replyHandler(shortcutState(), nil)
+            UserDefaults.standard.removeObject(forKey: slot.codeKey)
+            UserDefaults.standard.removeObject(forKey: slot.modifiersKey)
+            applyHotKey(name)
+            replyHandler(shortcutState(name), nil)
         default:
             replyHandler(nil, "Invalid shortcut operation")
         }
@@ -932,6 +996,13 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
                 switch body?["name"] {
                 case "quick-size": resizeQuickChat(body?["value"]); return
                 case "quick-close": hideQuickChat(); return
+                case "quick-ready":
+                    quickReady = true
+                    if let action = pendingQuickDictation {
+                        pendingQuickDictation = nil
+                        quickDictate(action)
+                    }
+                    return
                 case "quick-sent": webView?.evaluateJavaScript("window.dispatchEvent(new Event('muse-conversations-changed'))", completionHandler: nil); return
                 case "workspace": hideQuickChat(); showWorkspace(); return
                 case "settings": hideQuickChat()

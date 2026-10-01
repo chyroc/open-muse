@@ -178,7 +178,7 @@ describe("Mac quick chat", () => {
       expect(zhCN[key], key).toBeTruthy();
     const swift = readFileSync("macos/OpenMuse.swift", "utf8");
     // Option-Space is the default until the person records another one.
-    expect(swift).toContain("return (UInt32(kVK_Space), UInt32(optionKey))");
+    expect(swift).toContain("fallback: (UInt32(kVK_Space), UInt32(optionKey))");
     expect(swift).toContain('URL(string: "muse://app/#/quick")');
     expect(swift).toContain("override var canBecomeKey: Bool { true }");
     // Only the quick chat web view may resize or close the card.

@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { ArrowUp, Maximize2 } from "lucide-react";
+import { ArrowUp, Maximize2, Mic } from "lucide-react";
 import { t } from "../../shared/i18n";
 import { eventText, taskState } from "../../shared/types";
 import type { Client } from "../../src/api";
@@ -14,6 +14,8 @@ import { useTask } from "../../src/useTask";
 import { Avatar } from "./Chrome";
 import { chatMessages, shouldSendOnKey } from "./model";
 import { connectionReady } from "./startup";
+import { dictationAvailable } from "./dictation";
+import { useDictation } from "./useDictation";
 
 // How much of the main chat the card shows above its composer.
 export const QUICK_HISTORY = 6;
@@ -63,6 +65,15 @@ export function QuickChat({ client }: { client: Client }) {
     ),
   ).slice(-QUICK_HISTORY);
   const running = taskState(events, task.session?.status) === "running";
+  const sendRef = useRef<() => Promise<void>>(async () => {});
+  const dictation = useDictation({
+    draft,
+    setDraft,
+    onFinished: () => void sendRef.current(),
+    onError: setError,
+  });
+  const dictationRef = useRef(dictation);
+  dictationRef.current = dictation;
 
   const reload = useCallback(async () => {
     try {
@@ -95,8 +106,20 @@ export function QuickChat({ client }: { client: Client }) {
       if (event.key === "Escape" && !event.isComposing) post("quick-close");
     };
     window.addEventListener("keydown", key);
+    // The shell's dictation shortcuts: push to talk sends start and stop,
+    // hands-free sends toggle.
+    const dictate = (event: Event) => {
+      const action = (event as CustomEvent).detail;
+      const current = dictationRef.current;
+      if (action === "start") void current.start();
+      else if (action === "stop") void current.stop();
+      else if (action === "toggle") void current.toggle();
+    };
+    window.addEventListener("muse-quick-dictate", dictate);
     void reload();
+    post("quick-ready");
     return () => {
+      window.removeEventListener("muse-quick-dictate", dictate);
       alive.current = false;
       window.removeEventListener("muse-quick-shown", shown);
       window.removeEventListener(connectionReady, shown);
@@ -127,6 +150,7 @@ export function QuickChat({ client }: { client: Client }) {
     field.style.height = `${Math.min(field.scrollHeight, 120)}px`;
   }, [draft]);
 
+  sendRef.current = send;
   async function send() {
     const text = draft.trim();
     if (!text || busy || running) return;
@@ -215,6 +239,22 @@ export function QuickChat({ client }: { client: Client }) {
             }
           }}
         />
+        {dictationAvailable() && (
+          <button
+            className={`quick-icon quick-dictate ${dictation.listening ? "listening" : ""}`}
+            aria-label={
+              dictation.listening ? t("Stop dictation") : t("Dictate a message")
+            }
+            aria-pressed={dictation.listening}
+            title={
+              dictation.listening ? t("Stop dictation") : t("Dictate a message")
+            }
+            disabled={!ready}
+            onClick={() => void dictation.toggle()}
+          >
+            <Mic size={15} />
+          </button>
+        )}
         <button
           className="quick-send"
           aria-label={t("Send")}

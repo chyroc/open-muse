@@ -56,10 +56,18 @@ export const zhDesktop: Record<string, string> = {
   "Allow the microphone and speech recognition for Open Muse in System Settings.":
     "请在系统设置中允许 Open Muse 使用麦克风和语音识别。",
   "By Apple's speech service": "由 Apple 语音服务识别",
-  "Dictation in other apps": "在其他 App 中听写",
+  "Push to talk": "按住说话",
+  "Hold the shortcut in any app to dictate into Quick chat, and let go to stop.":
+    "在任意 App 中按住快捷键，即可向快速聊天听写；松开即停止。",
+  "Change the Push to talk shortcut": "更改「按住说话」快捷键",
+  "Hands-free mode": "免提模式",
+  "Press the shortcut to start dictating into Quick chat without holding, and press it again to stop.":
+    "按一下快捷键即可开始向快速聊天听写，无需按住；再按一次停止。",
+  "Change the Hands-free mode shortcut": "更改「免提模式」快捷键",
+  "Record shortcut": "录制快捷键",
+  "Another Open Muse shortcut already uses these keys.":
+    "这组按键已被 Open Muse 的另一个快捷键使用。",
   "Dictation needs the Open Muse Mac app.": "听写需要 Open Muse Mac App。",
-  "Holding a key to dictate into any app is not built yet. Dictation works in the Open Muse message field.":
-    "按住按键在任意 App 中听写的功能尚未实现。目前可在 Open Muse 的消息输入框中听写。",
   Microphone: "麦克风",
   "Press the microphone in the message field to dictate; text appears as you speak, and nothing is sent until you send it.":
     "点按消息输入框中的麦克风即可听写；文字会随你说话出现，在你发送前不会发出任何内容。",

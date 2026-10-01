@@ -119,6 +119,6 @@ describe("Mac Quick chat shortcut", () => {
     expect(zhCN.Shortcuts).toBeTruthy();
     const swift = readFileSync("macos/OpenMuse.swift", "utf8");
     expect(swift).toContain('name: "museShortcut"');
-    expect(swift).toContain("UnregisterEventHotKey(quickHotKey)");
+    expect(swift).toContain("UnregisterEventHotKey(ref)");
   });
 });

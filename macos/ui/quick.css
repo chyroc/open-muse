@@ -137,6 +137,24 @@
 .quick-send:active:not(:disabled) {
   transform: scale(0.88);
 }
+/* The microphone in the composer; it pulses while listening. */
+.quick-composer .quick-dictate {
+  margin-left: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 15px;
+  flex-shrink: 0;
+}
+.quick-dictate.listening {
+  color: var(--danger);
+  background: var(--fill-hover);
+  animation: quick-listen 1.4s ease-in-out infinite;
+}
+@keyframes quick-listen {
+  50% {
+    box-shadow: 0 0 0 4px var(--fill-hover);
+  }
+}
 @keyframes quick-in {
   from {
     opacity: 0;
@@ -150,6 +168,9 @@
   .quick-icon,
   .quick-send {
     transition: background 0.15s ease-out;
+  }
+  .quick-dictate.listening {
+    animation: none;
   }
 }
 @keyframes quick-fade {
