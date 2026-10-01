@@ -233,4 +233,27 @@ describe("Mac appearance control", () => {
     await act(async () => segment("Light").click());
     expect(document.documentElement.dataset.appearance).toBe("light");
   });
+  it("follows a choice made in another window", async () => {
+    await mount(<SettingsWindow client={await fixture()} />);
+    const checked = (selector: string) =>
+      host!.querySelector(`${selector}[aria-checked="true"]`);
+    expect(
+      checked(".settings-segments button")?.getAttribute("aria-label"),
+    ).toBe("System");
+    // Another window stores its choice; the shell broadcasts the change.
+    localStorage.setItem("muse.appearance", "dark");
+    await act(async () => {
+      window.dispatchEvent(new Event("muse-appearance-changed"));
+    });
+    expect(
+      checked(".settings-segments button")?.getAttribute("aria-label"),
+    ).toBe("Dark");
+    localStorage.setItem("muse.theme", "green");
+    await act(async () => {
+      window.dispatchEvent(new StorageEvent("storage", { key: "muse.theme" }));
+    });
+    expect(
+      checked(".settings-swatches button")?.getAttribute("data-swatch"),
+    ).toBe("green");
+  });
 });

@@ -117,6 +117,19 @@ export function SettingsWindow({ client }: { client: Client }) {
   const [manage, setManage] = useState(false);
   const [appearance, setAppearance] = useState<Appearance>(storedAppearance);
   const [theme, setTheme] = useState<ThemeColor>(storedTheme);
+  // The workspace and Quick Chat can change these too; the picker follows them.
+  useEffect(() => {
+    const follow = () => {
+      setAppearance(storedAppearance());
+      setTheme(storedTheme());
+    };
+    window.addEventListener("muse-appearance-changed", follow);
+    window.addEventListener("storage", follow);
+    return () => {
+      window.removeEventListener("muse-appearance-changed", follow);
+      window.removeEventListener("storage", follow);
+    };
+  }, []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const alive = useRef(true);
