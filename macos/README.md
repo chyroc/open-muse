@@ -25,7 +25,12 @@ Mac-specific build. No iOS or Android build is needed.
   assistant activity/approval panel, and a bottom-aligned message composer.
 - Return sends; Shift-Return inserts a newline; IME composition does not submit.
 - Command-N opens a side-chat draft; Command-K searches conversations;
-  Command-comma opens settings; Command-1 returns to the main chat.
+  Command-comma opens settings; Command-1 and Command-J return to the main chat;
+  Command-slash lists every shortcut; Shift-Escape focuses the message field;
+  Escape stops a running reply when no dialog or menu is open.
+- The rail's bottom button opens a menu with Settings and Keyboard shortcuts.
+- The pencil on the status panel avatar drafts an avatar or name change in the
+  main composer; nothing changes until the message is sent.
 - Opening or searching a chat does not create a cloud session. The first explicit
   send prepares the MA workspace; unconfirmed writes are not automatically retried.
 - Closing the window keeps the app running; clicking its Dock icon restores it.
@@ -33,10 +38,27 @@ Mac-specific build. No iOS or Android build is needed.
   authorization leaves the app usable and disconnected, reports the refusal with
   a retry, and never writes to secure storage, so the saved credential survives.
 
+## Companion, check-ins and Upcoming
+
+- When the main chat is in front, the first conversation opens with the
+  companion's welcome and naming question. Assistant messages render
+  `muse-choice` blocks as option buttons; one press answers through the shared
+  choice service, which never resends an unconfirmed answer.
+- After a quiet day, opening the main chat may start one short check-in grounded
+  in memory and goals, at most once a day and never while the welcome is
+  unresolved. General settings has a device-local switch for check-ins.
+- App-initiated prompts stay in MA history and are hidden from the chat.
+- The status panel's Upcoming tab lists the reminders and recurring tasks saved
+  in personal memory. A task opens a detail dialog, and right-click offers the
+  same actions: Edit drafts a chat message, Pause and Resume rewrite
+  `UPCOMING.md` with a revision check, and Remove asks first.
+- While connected, the app checks once a minute for occurrences that have come
+  due and delivers them into the main chat through the shared delivery service,
+  which claims each occurrence before sending and never sends it twice.
+
 This is an incremental desktop implementation, not a verified one-to-one clone.
-Cloud artifact/media indexing, attachments, dictation, desktop
-automation, and proactive scheduling still need their Mac-specific implementation
-and acceptance checks. The UI identifies unfinished surfaces. No mock replies are
+Cloud artifact/media indexing, attachments, dictation and desktop automation
+still need their Mac-specific implementation and acceptance checks. The UI identifies unfinished surfaces. No mock replies are
 included in the app. Real cloud verification requires an authorized connection.
 
 ## Settings window
