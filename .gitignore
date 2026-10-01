@@ -6,6 +6,7 @@ dist/
 coverage/
 .build/
 /resources/
+/resource/
 /references/
 /资料/
 *.ipa
