@@ -372,11 +372,6 @@ export function InspirationPage({
             {t("View generation conversation")}
           </a>
         )}
-        <p>
-          {t(
-            "Generated with MA when you ask. Posts, likes, and discussion links stay on this device. Background delivery is not enabled.",
-          )}
-        </p>
       </div>
       {kind === "feed" && data && (editing || editInstructions) && (
         <FeedInstructionsEditor

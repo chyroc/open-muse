@@ -316,8 +316,6 @@ export const zhCN: Record<string, string> = {
   "Continue generation": "继续生成",
   "Find new posts": "发现新动态",
   "Find new ideas": "发现新点子",
-  "Generated with MA when you ask. Posts, likes, and discussion links stay on this device. Background delivery is not enabled.":
-    "按需通过 MA 生成。动态、点赞和讨论链接保留在此设备上，尚未启用后台推送。",
   Idea: "点子",
   "Talk about this": "聊聊这个",
   "Feed instructions": "动态指令",
