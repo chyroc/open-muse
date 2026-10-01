@@ -333,3 +333,86 @@
     animation: none;
   }
 }
+/* Upcoming: reminders and recurring tasks in the status panel. */
+.upcoming-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.upcoming-list button {
+  width: 100%;
+  display: grid;
+  gap: 3px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--fill);
+  text-align: left;
+  transition:
+    background 0.15s ease-out,
+    transform 0.28s cubic-bezier(0.34, 1.4, 0.64, 1);
+  animation: upcoming-in 0.34s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+.upcoming-list button:hover {
+  background: var(--fill-hover);
+}
+.upcoming-list button:active {
+  transform: scale(0.98);
+}
+.upcoming-list strong {
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+.upcoming-list span,
+.upcoming-list small {
+  font-size: 12px;
+  color: var(--text-2);
+}
+.upcoming-list button.paused strong {
+  color: var(--text-2);
+}
+.upcoming-menu {
+  position: fixed;
+  top: auto;
+  right: auto;
+}
+.upcoming-dialog dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 16px;
+  margin: 0 0 16px;
+  font-size: 13px;
+}
+.upcoming-dialog dt {
+  color: var(--text-2);
+}
+.upcoming-dialog dd {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.upcoming-dialog .feed-dialog-actions p {
+  margin: 0 auto 0 0;
+  align-self: center;
+}
+@keyframes upcoming-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .upcoming-list button {
+    animation: upcoming-fade 0.15s ease-out both;
+    transition: background 0.15s ease-out;
+  }
+}
+@keyframes upcoming-fade {
+  from {
+    opacity: 0;
+  }
+}
+.pill-button.danger {
+  color: var(--danger);
+}

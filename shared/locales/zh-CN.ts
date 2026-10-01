@@ -2,6 +2,7 @@ import { zhErrors } from "./zh-CN-errors";
 import { zhLibrary } from "./zh-CN-library";
 import { zhAttachments } from "./zh-CN-attachments";
 import { zhAccount } from "./zh-CN-account";
+import { zhDesktop } from "./zh-CN-desktop";
 import { zhCheckIn } from "./zh-CN-checkin";
 import { zhUpcoming } from "./zh-CN-upcoming";
 import { zhHealth } from "./zh-CN-health";
@@ -12,6 +13,7 @@ export const zhCN: Record<string, string> = {
   ...zhLibrary,
   ...zhAttachments,
   ...zhAccount,
+  ...zhDesktop,
   ...zhCheckIn,
   ...zhUpcoming,
   ...zhHealth,

@@ -51,6 +51,10 @@ import { WorkspaceBoundary } from "./WorkspaceBoundary";
 import { AssistantContent, messageParts } from "./ChoiceContent";
 import { currentChoiceEvent } from "../../shared/chat-choices";
 import { digest } from "../../shared/crypto";
+import { UpcomingTab, upcomingChanged } from "./UpcomingTab";
+
+// How often the open app checks for reminders that have come due.
+const UPCOMING_CHECK_INTERVAL = 60000;
 import {
   discussionPrompt,
   type InspirationItem,
@@ -345,6 +349,32 @@ export function DesktopApp({ client }: { client: Client }) {
       window.removeEventListener(connectionReady, ready);
     };
   }, [reload, client]);
+  // Due reminders and recurring tasks go into the main chat while the app runs,
+  // even with the window closed. Each occurrence is claimed before it is sent
+  // and never sent twice; a busy main chat simply waits for the next check.
+  useEffect(() => {
+    if (!ready) return;
+    let alive = true;
+    const epoch = connectionVersion.current;
+    const deliver = () =>
+      void Promise.resolve()
+        .then(() => client.deliverUpcoming(systemLanguage()))
+        .then(async (record) => {
+          if (!record || !alive || connectionVersion.current !== epoch) return;
+          window.dispatchEvent(new Event(upcomingChanged));
+          await reload();
+          await refreshTask.current();
+        })
+        .catch(() => {
+          /* A reminder never interrupts the person; the next check retries reads only. */
+        });
+    deliver();
+    const timer = setInterval(deliver, UPCOMING_CHECK_INTERVAL);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [ready, client, connectionEpoch, reload]);
   // The first main conversation opens with the companion's welcome, and after
   // a quiet day the main chat may open with one check-in. Both start only while
   // the main chat is in front of the person, and neither interrupts them.
@@ -1198,6 +1228,13 @@ export function DesktopApp({ client }: { client: Client }) {
           onConfirm={confirm}
           onDocument={openDocument}
           onPrefill={prefillComposer}
+          upcoming={
+            <UpcomingTab
+              client={client}
+              connected={ready}
+              onEdit={prefillComposer}
+            />
+          }
         />
       )}
       {settings && (

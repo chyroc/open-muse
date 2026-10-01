@@ -1,5 +1,5 @@
 import { formatLocale, t } from "../../shared/i18n";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Check,
   Clock3,
@@ -97,6 +97,7 @@ export function StatusPanel({
   onConfirm,
   onDocument,
   onPrefill,
+  upcoming,
 }: {
   identity: CompanionIdentity;
   status: string;
@@ -109,6 +110,7 @@ export function StatusPanel({
   onConfirm: (result: "allow" | "deny", event: AgentEvent) => void;
   onDocument: (name: IdentityDocumentName) => void;
   onPrefill: (text: string) => void;
+  upcoming?: ReactNode;
 }) {
   const [menu, setMenu] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -252,7 +254,8 @@ export function StatusPanel({
             onOpen={onDocument}
           />
         )}
-        {tab === "upcoming" && (
+        {tab === "upcoming" && upcoming}
+        {tab === "upcoming" && !upcoming && (
           <Empty title={t("Upcoming tasks")}>
             <p>
               {t(
