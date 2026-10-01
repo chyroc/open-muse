@@ -172,6 +172,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     private var quickPanel: QuickPanel?
     private var quickWebView: WKWebView?
     private var quickHotKey: EventHotKeyRef?
+    private var quickShortcutRegistered = false
     private let menuBarKey = "presence.menuBar"
     private let computerKey = "computerUse.enabled"
     private let computer = Computer()
@@ -205,6 +206,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "musePresence")
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museComputer")
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museDictation")
+        configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museShortcut")
         configuration.userContentController.add(self, name: "museExport")
         configuration.userContentController.add(self, name: "museWindow")
         configuration.userContentController.addUserScript(WKUserScript(source: "window.__OPEN_MUSE_DESKTOP__ = true;", injectionTime: .atDocumentStart, forMainFrameOnly: true))
@@ -271,6 +273,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         if message.name == "musePresence" { presence(body, from: message.webView, replyHandler: replyHandler); return }
         if message.name == "museComputer" { computerUse(body, from: message.webView, replyHandler: replyHandler); return }
         if message.name == "museDictation" { dictate(body, from: message.webView, replyHandler: replyHandler); return }
+        if message.name == "museShortcut" { shortcut(body, replyHandler: replyHandler); return }
         // Keychain can wait for an OS authorization dialog. Never block AppKit
         // or discard the eventual reply while the user is deciding.
         DispatchQueue.global(qos: .userInitiated).async { [self] in
@@ -470,6 +473,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         let quick = menu.addItem(withTitle: localized("Quick chat"), action: #selector(toggleQuickChat), keyEquivalent: " ")
         quick.keyEquivalentModifierMask = [.option]
         quick.target = self
+        defer { updateQuickMenuItem() }
         menu.addItem(.separator())
         menu.addItem(withTitle: localized("Quit Open Muse"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
         item.menu = menu
@@ -538,8 +542,72 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             DispatchQueue.main.async { quickChatToggle?() }
             return OSStatus(noErr)
         }, 1, &spec, nil, nil)
+        quickShortcutRegistered = applyQuickChatShortcut()
+    }
+    // The shortcut is a device-local preference: a virtual key code plus Carbon
+    // modifiers, Option-Space unless the person chose another one.
+    private let quickKeyKey = "quickChat.keyCode"
+    private let quickModifiersKey = "quickChat.modifiers"
+    private static let shortcutModifiers = UInt32(cmdKey | optionKey | controlKey | shiftKey)
+    private var quickShortcut: (code: UInt32, modifiers: UInt32) {
+        let defaults = UserDefaults.standard
+        guard defaults.object(forKey: quickKeyKey) != nil else { return (UInt32(kVK_Space), UInt32(optionKey)) }
+        return (UInt32(defaults.integer(forKey: quickKeyKey)), UInt32(defaults.integer(forKey: quickModifiersKey)))
+    }
+    private func applyQuickChatShortcut() -> Bool {
+        if let quickHotKey { UnregisterEventHotKey(quickHotKey) }
+        quickHotKey = nil
+        let (code, modifiers) = quickShortcut
         let id = EventHotKeyID(signature: OSType(0x4F4D_5143), id: 1)
-        RegisterEventHotKey(UInt32(kVK_Space), UInt32(optionKey), id, GetApplicationEventTarget(), 0, &quickHotKey)
+        let status = RegisterEventHotKey(code, modifiers, id, GetApplicationEventTarget(), 0, &quickHotKey)
+        updateQuickMenuItem()
+        return status == noErr
+    }
+    private func shortcutState() -> [String: Any] {
+        let (code, modifiers) = quickShortcut
+        return ["code": Int(code), "modifiers": Int(modifiers), "registered": quickShortcutRegistered]
+    }
+    private func shortcut(_ body: [String: String], replyHandler: @escaping (Any?, String?) -> Void) {
+        switch body["operation"] {
+        case "read":
+            replyHandler(shortcutState(), nil)
+        case "write":
+            guard let code = body["code"].flatMap(Int.init), (0...127).contains(code),
+                  let modifiers = body["modifiers"].flatMap(UInt32.init),
+                  modifiers & ~Self.shortcutModifiers == 0,
+                  modifiers & UInt32(cmdKey | optionKey | controlKey) != 0
+            else { replyHandler(nil, "Invalid shortcut"); return }
+            UserDefaults.standard.set(code, forKey: quickKeyKey)
+            UserDefaults.standard.set(Int(modifiers), forKey: quickModifiersKey)
+            quickShortcutRegistered = applyQuickChatShortcut()
+            replyHandler(shortcutState(), nil)
+        case "reset":
+            UserDefaults.standard.removeObject(forKey: quickKeyKey)
+            UserDefaults.standard.removeObject(forKey: quickModifiersKey)
+            quickShortcutRegistered = applyQuickChatShortcut()
+            replyHandler(shortcutState(), nil)
+        default:
+            replyHandler(nil, "Invalid shortcut operation")
+        }
+    }
+    // The menu bar item shows the current shortcut when AppKit can draw it.
+    private func updateQuickMenuItem() {
+        guard let item = statusItem?.menu?.items.first(where: { $0.action == #selector(toggleQuickChat) }) else { return }
+        let (code, modifiers) = quickShortcut
+        let keys: [UInt32: String] = [UInt32(kVK_Space): " ", UInt32(kVK_Return): "\r", UInt32(kVK_Tab): "\t"]
+        let letters = "asdfhgzxcv bqweryt123465=97-80]ou[ip lj'k;\\,/nm."
+        var key = keys[code] ?? ""
+        if key.isEmpty, code < letters.count {
+            let character = letters[letters.index(letters.startIndex, offsetBy: Int(code))]
+            if character != " " { key = String(character) }
+        }
+        item.keyEquivalent = key
+        var mask: NSEvent.ModifierFlags = []
+        if modifiers & UInt32(cmdKey) != 0 { mask.insert(.command) }
+        if modifiers & UInt32(optionKey) != 0 { mask.insert(.option) }
+        if modifiers & UInt32(controlKey) != 0 { mask.insert(.control) }
+        if modifiers & UInt32(shiftKey) != 0 { mask.insert(.shift) }
+        item.keyEquivalentModifierMask = mask
     }
     @objc private func toggleQuickChat() {
         if let panel = quickPanel, panel.isVisible, panel.alphaValue > 0 { hideQuickChat() } else { showQuickChat() }

@@ -256,3 +256,23 @@
 .settings-inline-button:active:not(:disabled) {
   transform: scale(0.95);
 }
+/* The shortcut recorder: shows the keys, and listens while focused. */
+.settings-shortcut-row {
+  align-items: center;
+}
+.shortcut-field {
+  margin-left: auto;
+  flex-shrink: 0;
+  min-width: 96px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.shortcut-field.recording {
+  box-shadow: inset 0 0 0 2px var(--accent);
+  color: var(--text-2);
+}

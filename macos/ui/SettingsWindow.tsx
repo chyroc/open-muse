@@ -28,6 +28,8 @@ import { PresenceSettings } from "./PresenceSettings";
 import { CheckInSwitch } from "./CheckInSwitch";
 import { ComputerSettings } from "./ComputerSettings";
 import { DictationSettings } from "./DictationSettings";
+import { ShortcutSettings } from "./ShortcutSettings";
+import { shortcutAvailable } from "./shortcut";
 import {
   appearances,
   saveAppearance,
@@ -229,6 +231,8 @@ export function SettingsWindow({ client }: { client: Client }) {
             )}
             <h2>{t("Desktop")}</h2>
             <PresenceSettings />
+            {shortcutAvailable() && <h2>{t("Shortcuts")}</h2>}
+            <ShortcutSettings />
             {client.signedIn() && <h2>{t("Check-ins")}</h2>}
             <CheckInSwitch client={client} />
             <h2>{t("Language")}</h2>
