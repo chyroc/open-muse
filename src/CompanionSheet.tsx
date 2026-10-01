@@ -1,6 +1,7 @@
 import { formatLocale, t } from "../shared/i18n";
 import { useEffect, useRef, useState } from "react";
 import {
+  CalendarClock,
   ChevronDown,
   Fingerprint,
   Heart,
@@ -25,11 +26,13 @@ import type { AgentEvent, Session } from "../shared/types";
 import type { Client } from "./api";
 import { CompanionAvatar } from "./ChatUI";
 import { Activity, Markdown, PermissionCard } from "./components";
+import { UpcomingPanel } from "./UpcomingPanel";
 import "./identity.css";
 
 const tabs = [
   { name: "Activity", icon: List },
   { name: "Approvals", icon: ShieldCheck },
+  { name: "Upcoming", icon: CalendarClock },
   { name: "Desktop", icon: Monitor },
   { name: "Recent", icon: History },
   { name: "Identity", icon: Fingerprint },
@@ -336,6 +339,9 @@ export function CompanionSheet({
               </div>
             )}
           </section>
+        )}
+        {tab === "Upcoming" && (
+          <UpcomingPanel client={client} name={identity.name} />
         )}
         {tab === "Desktop" && (
           <section className="companion-empty">

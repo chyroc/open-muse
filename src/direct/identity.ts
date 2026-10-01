@@ -13,6 +13,7 @@ import type { conversationArchive } from "../../shared/conversation-history";
 import { LocalDatabase } from "./storage";
 import { defaultFeedInstructions } from "../../shared/inspiration";
 import { emptyGoalsDocument, parseGoals } from "../../shared/goals";
+import { emptyUpcomingDocument, parseUpcoming } from "../../shared/upcoming";
 import { memoryStoreName } from "../../shared/workspace-spec";
 
 type Store = { id: string; metadata?: Record<string, string> };
@@ -259,6 +260,36 @@ export class DirectIdentity {
     if (!current || current.content !== content)
       await this.write(store, "GOALS.md", content, current);
     return this.goalsDocument();
+  }
+  async upcomingDocument() {
+    const store = await this.store(false);
+    return (
+      (store ? await this.document(store, "UPCOMING.md") : undefined) ?? {
+        content: emptyUpcomingDocument,
+        revision: digest(emptyUpcomingDocument),
+        id: undefined,
+      }
+    );
+  }
+  async saveUpcomingDocument(content: string, revision: string) {
+    parseUpcoming(content);
+    const store = await this.ensure();
+    const current = await this.document(store, "UPCOMING.md");
+    if (await this.db.get<Write | null>(this.writeKey(store, "UPCOMING.md")))
+      throw new ApiError(
+        409,
+        t(
+          "The previous change to upcoming items is unconfirmed. Refresh before trying again.",
+        ),
+      );
+    if ((current?.revision ?? digest(emptyUpcomingDocument)) !== revision)
+      throw new ApiError(
+        409,
+        t("Upcoming items changed. Refresh and review them before saving."),
+      );
+    if (!current || current.content !== content)
+      await this.write(store, "UPCOMING.md", content, current);
+    return this.upcomingDocument();
   }
   async feedInstructions() {
     const store = await this.store(false);

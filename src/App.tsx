@@ -400,12 +400,19 @@ function Workspace({
       (welcome && welcome.phase !== "confirmed" && welcome.phase !== "skipped")
     )
       return;
-    // Check-ins start only while the main chat is in front of the person.
-    const run = () => {
+    // Due reminders, then check-ins, start only while the main chat is in
+    // front of the person.
+    const run = (checkIn = true) => {
       if (document.hidden || checkInJob.current) return;
       checkInJob.current = true;
       void client
-        .startCheckIn(systemLanguage())
+        .deliverUpcoming(systemLanguage())
+        .catch(() => undefined)
+        .then(async (reminder) =>
+          reminder || !checkIn
+            ? reminder
+            : await client.startCheckIn(systemLanguage()),
+        )
         .then((record) => {
           if (record && alive.current) void reload();
         })
@@ -416,9 +423,15 @@ function Workspace({
           checkInJob.current = false;
         });
     };
+    const visible = () => run();
     run();
-    document.addEventListener("visibilitychange", run);
-    return () => document.removeEventListener("visibilitychange", run);
+    // Reminders fall due while the app stays open; check-ins wait for a return.
+    const tick = setInterval(() => run(false), 60000);
+    document.addEventListener("visibilitychange", visible);
+    return () => {
+      clearInterval(tick);
+      document.removeEventListener("visibilitychange", visible);
+    };
   }, [
     client,
     loading,

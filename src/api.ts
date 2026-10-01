@@ -29,6 +29,7 @@ import { DirectGoals } from "./direct/goals";
 import { DirectChoices } from "./direct/choices";
 import { DirectWelcome } from "./direct/welcome";
 import { DirectCheckIn } from "./direct/checkin";
+import { DirectUpcoming } from "./direct/upcoming";
 import { DirectLibrary } from "./direct/library";
 import { DirectAttachments } from "./direct/attachments";
 import {
@@ -148,6 +149,7 @@ type Runtime = {
   choices?: DirectChoices;
   welcome?: DirectWelcome;
   checkin?: DirectCheckIn;
+  upcoming?: DirectUpcoming;
   redact: (text: string) => string;
   abort: AbortController;
 };
@@ -1070,6 +1072,42 @@ export class Client {
   checkInState() {
     return this.checkInService(this.context()).state();
   }
+  private upcomingService(r: Runtime) {
+    return (r.upcoming ??= new DirectUpcoming(r.key, this.db, r.companion, {
+      main: async () => {
+        const { mainId } = await this.conversations(r).index();
+        return mainId ? r.ark.get(validId(mainId)) : undefined;
+      },
+      history: (id) =>
+        this.collect<AgentEvent>(
+          r.ark,
+          `/sessions/${validId(id)}/events?order=asc&limit=200`,
+        ),
+      send: (id, text, eventId) =>
+        this.submit(id, { type: "user.message", text }, undefined, {
+          runtime: r,
+          eventId,
+        }),
+    }));
+  }
+  upcoming() {
+    return this.upcomingService(this.context()).list();
+  }
+  changeUpcoming(
+    id: string,
+    action: "pause" | "resume" | "delete",
+    revision: string,
+  ) {
+    validId(id);
+    return this.upcomingService(this.context()).change(
+      id,
+      z.enum(["pause", "resume", "delete"]).parse(action),
+      z.string().parse(revision),
+    );
+  }
+  deliverUpcoming(language: string) {
+    return this.upcomingService(this.context()).start(language);
+  }
   setCheckIn(enabled: boolean) {
     return this.checkInService(this.context()).setEnabled(
       z.boolean().parse(enabled),
@@ -1159,9 +1197,12 @@ export class Client {
       welcome_reply: _welcome,
       ...original
     } = event;
-    const annotated = await this.checkInService(r).annotate(
+    const annotated = await this.upcomingService(r).annotate(
       id,
-      await this.welcomeService(r).annotate(id, original),
+      await this.checkInService(r).annotate(
+        id,
+        await this.welcomeService(r).annotate(id, original),
+      ),
     );
     if (event.type === "agent.message") {
       const reply = await this.choiceService(r).reply(id, event.id);
