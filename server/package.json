@@ -7,14 +7,16 @@
   },
   "scripts": {
     "dev": "wrangler dev --port 4311",
-    "check": "tsc --noEmit && vitest run",
+    "check": "tsc --noEmit && vitest run && TEST_DB=pg vitest run",
     "test": "vitest run",
     "build": "wrangler deploy --dry-run --outdir dist",
     "db:local": "wrangler d1 migrations apply DB --local",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "test:pg": "TEST_DB=pg vitest run"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "4.20260114.0",
+    "@electric-sql/pglite": "^0.5.8",
     "miniflare": "4.20260114.0",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4",

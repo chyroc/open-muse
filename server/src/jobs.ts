@@ -219,14 +219,14 @@ export async function tick(
     `SELECT owner_id FROM (
     SELECT owner_id,next_check_at AS due_at FROM runs WHERE phase NOT IN ('complete','failed','needs_attention') AND next_check_at<=?
     UNION ALL SELECT owner_id,next_run_at AS due_at FROM schedules WHERE enabled=1 AND next_run_at<=?
-  ) WHERE owner_id IN (SELECT value FROM json_each(?)) OR (owner_id GLOB 'muse_user_*' AND owner_id IN (
+  ) AS due WHERE owner_id IN (${owners.map(() => "?").join(",") || "NULL"}) OR (substr(owner_id,1,10)='muse_user_' AND owner_id IN (
     SELECT owner_id FROM account_credentials WHERE encrypted IS NOT NULL AND issuer=? AND last_seen_at>=?))
   GROUP BY owner_id ORDER BY min(due_at),owner_id LIMIT 20`,
   )
     .bind(
       clock(),
       clock(),
-      JSON.stringify(owners),
+      ...owners,
       issuer,
       clock() - ACCOUNT_ACTIVITY_WINDOW,
     )

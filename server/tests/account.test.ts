@@ -250,10 +250,12 @@ describe("Per-account encrypted Ark credentials", () => {
       credential: { apiKey: sharedKey },
     });
     await rewrapRetiredKeys(rotated);
-    const keyIds = await env.DB.prepare(
-      "SELECT json_extract(encrypted,'$.keyId') AS id FROM account_credentials WHERE encrypted IS NOT NULL",
-    ).all<{ id: string }>();
-    expect(new Set(keyIds.results.map((row) => row.id))).toEqual(
+    const sealed = await env.DB.prepare(
+      "SELECT encrypted FROM account_credentials WHERE encrypted IS NOT NULL",
+    ).all<{ encrypted: string }>();
+    expect(
+      new Set(sealed.results.map((row) => JSON.parse(row.encrypted).keyId)),
+    ).toEqual(
       new Set(["v2"]),
     );
     const retired = {

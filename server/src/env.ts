@@ -1,5 +1,7 @@
+import type { Database } from "./database";
+
 export interface Env {
-  DB: D1Database;
+  DB: Database;
   OWNER_ID: string;
   // Trusted device-token hash -> {ownerId, deviceLabel}. Never client-selected.
   DEVICE_TOKEN_HASHES?: string;

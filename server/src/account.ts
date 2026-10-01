@@ -32,7 +32,7 @@ export class AccountCredentials {
     const issuer = supabaseOrigin(this.env.SUPABASE_AUTH_URL);
     return this.env.DB.prepare(
       `UPDATE account_credentials SET last_seen_at=?,issuer=?
-      WHERE owner_id=? AND (COALESCE(last_seen_at,0)<? OR issuer IS NOT ?)`,
+      WHERE owner_id=? AND (COALESCE(last_seen_at,0)<? OR issuer IS DISTINCT FROM ?)`,
     )
       .bind(now, issuer, this.owner, now - 3_600_000, issuer)
       .run();
@@ -201,9 +201,10 @@ export async function rewrapRetiredKeys(env: Env, limit = 20) {
   ] as const) {
     const rows = await env.DB.prepare(
       `SELECT owner_id,revision,encrypted FROM ${table}
-      WHERE encrypted IS NOT NULL AND json_extract(encrypted,'$.keyId')<>? LIMIT ?`,
+      WHERE encrypted IS NOT NULL AND encrypted NOT LIKE ? LIMIT ?`,
     )
-      .bind(current, limit)
+      // Sealed values are JSON envelopes naming the key that sealed them.
+      .bind(`%"keyId":"${current}"%`, limit)
       .all<{ owner_id: string; revision: number; encrypted: string }>();
     for (const row of rows.results) {
       try {

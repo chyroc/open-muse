@@ -1,3 +1,4 @@
+import type { Database } from "./database";
 import type {
   BackgroundPhase,
   BackgroundRun,
@@ -26,11 +27,11 @@ export interface Run extends BackgroundRun {
 }
 const summary = "id, phase, session_id, error, created_at, scheduled_for";
 export type AuthorizationBinding = { revision: number | null; hash: string };
-const authorizationGuard = `(?=0 OR (? IS NULL AND NOT EXISTS(SELECT 1 FROM ark_connections WHERE owner_id=?))
+const authorizationGuard = `(?=0 OR (CAST(? AS BIGINT) IS NULL AND NOT EXISTS(SELECT 1 FROM ark_connections WHERE owner_id=?))
   OR EXISTS(SELECT 1 FROM ark_connections WHERE owner_id=? AND revision=? AND encrypted IS NOT NULL))`;
 export class Repository {
   constructor(
-    readonly db: D1Database,
+    readonly db: Database,
     readonly owner: string,
   ) {}
   async schedule(): Promise<BackgroundSchedule> {
@@ -100,12 +101,13 @@ export class Repository {
     const id = crypto.randomUUID();
     await this.db
       .prepare(
-        `INSERT OR IGNORE INTO runs(id,owner_id,request_key,scheduled_for,phase,marker,event_id,next_check_at,created_at,updated_at,deadline_at,connection_hash)
+        `INSERT INTO runs(id,owner_id,request_key,scheduled_for,phase,marker,event_id,next_check_at,created_at,updated_at,deadline_at,connection_hash)
       SELECT ?,?,?,?,'queued',?,?,?,?,?,?,?
       WHERE (SELECT count(*) FROM runs WHERE owner_id=? AND created_at>?) < ?
       AND NOT EXISTS(SELECT 1 FROM runs WHERE owner_id=? AND phase NOT IN ('complete','failed'))
       AND (?=0 OR EXISTS(SELECT 1 FROM schedules WHERE owner_id=? AND enabled=1 AND next_run_at=?))
-      AND ${authorizationGuard}`,
+      AND ${authorizationGuard}
+      ON CONFLICT DO NOTHING`,
       )
       .bind(
         id,
@@ -279,8 +281,9 @@ export class Repository {
     const inserts = items.map((item, i) =>
       this.db
         .prepare(
-          `INSERT OR IGNORE INTO feed_items(id,owner_id,run_id,session_id,event_id,position,content,created_at)
-      SELECT ?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM runs WHERE id=? AND owner_id=? AND lease_token=? AND lease_until>? AND phase IN ('sending','running'))`,
+          `INSERT INTO feed_items(id,owner_id,run_id,session_id,event_id,position,content,created_at)
+      SELECT ?,?,?,?,?,?,?,? WHERE EXISTS(SELECT 1 FROM runs WHERE id=? AND owner_id=? AND lease_token=? AND lease_until>? AND phase IN ('sending','running'))
+      ON CONFLICT DO NOTHING`,
         )
         .bind(
           `${run.id}:${i}`,

@@ -1,3 +1,4 @@
+import type { Database } from "./database";
 import { edgeFetch } from "./fetch";
 import { z } from "zod";
 import {
@@ -321,7 +322,7 @@ export class ConnectionStore {
       config,
     );
     const mutation = crypto.randomUUID();
-    const credential = `(? IS NULL OR EXISTS(SELECT 1 FROM account_credentials WHERE owner_id=? AND revision=? AND encrypted IS NOT NULL))`;
+    const credential = `(CAST(? AS BIGINT) IS NULL OR EXISTS(SELECT 1 FROM account_credentials WHERE owner_id=? AND revision=? AND encrypted IS NOT NULL))`;
     const results = await this.env.DB.batch([
       this.env.DB.prepare(
         `INSERT INTO ark_connections(owner_id,revision,encrypted,updated_at,mutation_id)
@@ -406,7 +407,7 @@ export class ConnectionStore {
 // Runs only after the guarded mutation committed in the same batch. Disables
 // schedules and stops unfinished work without cancelling accepted MA writes.
 export function revokeBackground(
-  db: D1Database,
+  db: Database,
   owner: string,
   now: number,
   guard: "ark_connections" | "account_credentials" | "account_workspaces",

@@ -200,7 +200,7 @@ describe("Account device registry", () => {
     };
     await rewrapRetiredKeys(env, 100);
     const old = await env.DB.prepare(
-      "SELECT count(*) AS n FROM account_devices WHERE json_extract(encrypted,'$.keyId')='v1'",
+      `SELECT count(*) AS n FROM account_devices WHERE encrypted LIKE '%"keyId":"v1"%'`,
     ).first<{ n: number }>();
     expect(old?.n).toBe(0);
     env = {

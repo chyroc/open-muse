@@ -1,9 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { database } from "./database";
+import { database, postgresTests } from "./database";
 
 // Replays 0006 on rows written before ownership records existed.
-describe("Revoking unverified account bindings", () => {
+// These tests exercise the D1 migrations; Postgres starts from the final schema.
+describe.skipIf(postgresTests)("Revoking unverified account bindings", () => {
   let fixture: Awaited<ReturnType<typeof database>>;
   beforeAll(async () => {
     fixture = await database();

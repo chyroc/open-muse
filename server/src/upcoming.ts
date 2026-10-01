@@ -419,7 +419,7 @@ export async function deliverDueUpcoming(
   if (!issuer) return;
   const due = await env.DB.prepare(
     `SELECT t.owner_id FROM upcoming_targets t JOIN account_credentials c ON c.owner_id=t.owner_id
-    WHERE t.enabled=1 AND t.state='active' AND t.next_check_at<=? AND t.owner_id GLOB 'muse_user_*'
+    WHERE t.enabled=1 AND t.state='active' AND t.next_check_at<=? AND substr(t.owner_id,1,10)='muse_user_'
       AND c.encrypted IS NOT NULL AND c.issuer=? AND c.last_seen_at>=?
     ORDER BY t.next_check_at,t.owner_id LIMIT 20`,
   )
