@@ -40,6 +40,13 @@ export const zhComputer: Record<string, string> = {
   "Your assistant can read your events and open reminders on this Mac when you ask. It never changes them, and each read waits for your approval.":
     "你提出请求时，助手可以读取这台 Mac 上的日历事件和未完成的提醒事项。它不会修改这些内容，每次读取都要经过你的批准。",
   Calendar: "日历",
+  "Find this Mac's approximate location": "获取这台 Mac 的大致位置",
+  "Location is off on this Mac. Turn it on in Settings, or decline.":
+    "这台 Mac 的位置已关闭。请在设置中开启，或拒绝此请求。",
+  Location: "位置",
+  "Your assistant can find this Mac's approximate location when the answer depends on where you are. Each lookup waits for your approval.":
+    "当回答取决于你所在的位置时，助手可以获取这台 Mac 的大致位置。每次获取都要经过你的批准。",
+  "Location Services": "定位服务",
   Reminders: "提醒事项",
   "Open {target}": "打开 {target}",
   "Click at {point}": "点按 {point}",

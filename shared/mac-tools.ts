@@ -141,6 +141,17 @@ export const macTools = [
       additionalProperties: false,
     },
   },
+  {
+    type: "custom",
+    name: "mac_location",
+    description:
+      "Find the user's approximate current location from their Mac: a position rounded to about a kilometre, with the city, region, country and time zone when known. Use when the answer depends on where the user is now, such as local weather, nearby places or local time, and they have not said where they are. The user approves each call on the Mac and can turn this off; if declined or unavailable, ask them instead.",
+    input_schema: {
+      type: "object",
+      properties: {},
+      additionalProperties: false,
+    },
+  },
 ] as const;
 
 export type MacToolName = (typeof macTools)[number]["name"];

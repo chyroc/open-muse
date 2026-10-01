@@ -3,11 +3,12 @@ import { MonitorSmartphone } from "lucide-react";
 import { t } from "../../shared/i18n";
 import type { AgentEvent } from "../../shared/types";
 import {
-  CALENDAR_TOOL,
   computerAvailable,
   computerChanged,
   describeCall,
+  macSwitch,
   readComputer,
+  type MacSwitch,
   type ComputerState,
 } from "./computer";
 import type { SettingsSectionId } from "./settings";
@@ -44,16 +45,31 @@ export function ComputerRequests({
       window.removeEventListener(computerChanged, refresh);
     };
   }, []);
-  // Calendar reads follow their own connector switch; everything else needs
-  // computer use. The card offers to allow only when every call can run.
-  const asksCalendar = calls.some((call) => call.name === CALENDAR_TOOL);
-  const asksComputer = calls.some((call) => call.name !== CALENDAR_TOOL);
-  const calendarOn = state?.calendar.enabled ?? false;
-  const computerOn = state?.enabled ?? false;
-  const enabled =
-    (!asksCalendar || calendarOn) && (!asksComputer || computerOn);
+  // Calendar and location reads follow their own connector switches;
+  // everything else needs computer use. The card offers to allow only when
+  // every call can run, and points to the first switch that is off.
+  const on: Record<MacSwitch, boolean> = {
+    computer: state?.enabled ?? false,
+    calendar: state?.calendar.enabled ?? false,
+    location: state?.location.enabled ?? false,
+  };
+  const off = [...new Set(calls.map((call) => macSwitch(call.name)))].find(
+    (kind) => !on[kind],
+  );
+  const enabled = !off;
   const settingsSection: SettingsSectionId =
-    asksComputer && !computerOn ? "computer-use" : "connectors";
+    off === "computer" ? "computer-use" : "connectors";
+  const offText: Record<MacSwitch, string> = {
+    computer: t(
+      "Computer use is off on this Mac. Turn it on in Settings, or decline.",
+    ),
+    calendar: t(
+      "Calendar and Reminders are off on this Mac. Turn them on in Settings, or decline.",
+    ),
+    location: t(
+      "Location is off on this Mac. Turn it on in Settings, or decline.",
+    ),
+  };
   return (
     <section
       className="computer-requests"
@@ -69,17 +85,7 @@ export function ComputerRequests({
           <li key={call.id}>{describeCall(call)}</li>
         ))}
       </ul>
-      {!enabled && (
-        <p className="computer-off">
-          {asksComputer && !computerOn
-            ? t(
-                "Computer use is off on this Mac. Turn it on in Settings, or decline.",
-              )
-            : t(
-                "Calendar and Reminders are off on this Mac. Turn them on in Settings, or decline.",
-              )}
-        </p>
-      )}
+      {off && <p className="computer-off">{offText[off]}</p>}
       <div className="computer-actions">
         <button
           className="pill-button"

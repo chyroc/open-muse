@@ -195,6 +195,8 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     // separate from computer use, and read only.
     private let calendarKey = "connectors.calendar.enabled"
     private let calendar = LocalCalendar()
+    private let locationKey = "connectors.location.enabled"
+    private let location = LocalLocation()
     private let dictation = Dictation()
     // Read aloud reports back to the window that asked.
     private let speaker = Speaker()
@@ -466,7 +468,9 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
          "blockedFolders": blockedFolders,
          "calendar": ["enabled": UserDefaults.standard.bool(forKey: calendarKey),
                       "events": LocalCalendar.state(.event),
-                      "reminders": LocalCalendar.state(.reminder)]]
+                      "reminders": LocalCalendar.state(.reminder)],
+         "location": ["enabled": UserDefaults.standard.bool(forKey: locationKey),
+                      "permission": location.state]]
     }
     private func chooseBlockedApp(for sender: WKWebView?, done: @escaping () -> Void) {
         let panel = NSOpenPanel()
@@ -525,6 +529,23 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             let pane = type == .event ? "Privacy_Calendars" : "Privacy_Reminders"
             if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(pane)") { NSWorkspace.shared.open(url) }
             replyHandler(computerState(), nil)
+        case "location-enable":
+            guard let value = body["value"], value == "true" || value == "false"
+            else { replyHandler(nil, "Invalid location value"); return }
+            UserDefaults.standard.set(value == "true", forKey: locationKey)
+            replyHandler(computerState(), nil)
+            broadcast("muse-computer-changed", except: sender)
+        case "location-request":
+            if location.state == "not-asked" {
+                location.request { [weak self] in
+                    guard let self else { return }
+                    replyHandler(self.computerState(), nil)
+                    self.broadcast("muse-computer-changed", except: sender)
+                }
+                return
+            }
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices") { NSWorkspace.shared.open(url) }
+            replyHandler(computerState(), nil)
         case "keep-awake":
             guard let value = body["value"], value == "true" || value == "false"
             else { replyHandler(nil, "Invalid computer use value"); return }
@@ -576,6 +597,15 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             replyHandler(computerState(), nil)
         case "run":
             guard sender === webView else { replyHandler(nil, "Only the workspace window runs computer use"); return }
+            if body["tool"] == LocalLocation.tool {
+                guard UserDefaults.standard.bool(forKey: locationKey)
+                else { replyHandler(nil, localized("Location is off on this Mac.")); return }
+                Task { @MainActor in
+                    let output = await location.run()
+                    replyHandler(["ok": output.ok, "text": output.text, "image": ""], nil)
+                }
+                return
+            }
             if body["tool"] == LocalCalendar.tool {
                 guard UserDefaults.standard.bool(forKey: calendarKey)
                 else { replyHandler(nil, localized("Calendar and Reminders are off on this Mac.")); return }

@@ -15,21 +15,24 @@ import {
   computerAvailable,
   computerChanged,
   enableCalendar,
+  enableLocation,
   readComputer,
   requestCalendar,
+  requestLocation,
   type CalendarPermission,
-  type CalendarState,
+  type ComputerState,
 } from "./computer";
 
-// Calendar and Reminders on this Mac: off until turned on here, read only, and
-// every read still waits for approval in the conversation.
-function CalendarConnector({ term }: { term: string }) {
-  const [state, setState] = useState<CalendarState>();
+// Local connectors on this Mac: Calendar and Reminders, and Location. Each is
+// off until turned on here, only reads, and every read still waits for
+// approval in the conversation.
+function LocalConnectors({ term }: { term: string }) {
+  const [state, setState] = useState<ComputerState>();
   const [error, setError] = useState("");
   const refresh = useCallback(
     () =>
       void readComputer()
-        .then((value) => value && setState(value.calendar))
+        .then((value) => value && setState(value))
         .catch(() => setError(t("Could not read the app settings."))),
     [],
   );
@@ -43,20 +46,14 @@ function CalendarConnector({ term }: { term: string }) {
       window.removeEventListener(computerChanged, refresh);
     };
   }, [refresh]);
-  const name = t("Calendar and Reminders");
-  const detail = t(
-    "Your assistant can read your events and open reminders on this Mac when you ask. It never changes them, and each read waits for your approval.",
-  );
-  if (term && !`${name} ${detail}`.toLocaleLowerCase().includes(term))
-    return null;
-  const change = (request: Promise<{ calendar: CalendarState } | undefined>) =>
+  const change = (request: Promise<ComputerState | undefined>) =>
     void request
-      .then((value) => value && setState(value.calendar))
+      .then((value) => value && setState(value))
       .catch(() => setError(t("Could not change the app settings.")));
   const permission = (
-    kind: "events" | "reminders",
     title: string,
-    value?: CalendarPermission,
+    value: CalendarPermission | undefined,
+    request: () => Promise<ComputerState | undefined>,
   ) => (
     <div className="settings-row">
       <div>
@@ -68,28 +65,68 @@ function CalendarConnector({ term }: { term: string }) {
         <button
           className="settings-inline-button"
           disabled={!state}
-          onClick={() => change(requestCalendar(kind))}
+          onClick={() => change(request())}
         >
           {value === "denied" ? t("Open System Settings") : t("Allow")}
         </button>
       )}
     </div>
   );
+  const calendar = {
+    name: t("Calendar and Reminders"),
+    detail: t(
+      "Your assistant can read your events and open reminders on this Mac when you ask. It never changes them, and each read waits for your approval.",
+    ),
+  };
+  const location = {
+    name: t("Location"),
+    detail: t(
+      "Your assistant can find this Mac's approximate location when the answer depends on where you are. Each lookup waits for your approval.",
+    ),
+  };
+  const shown = (item: { name: string; detail: string }) =>
+    !term || `${item.name} ${item.detail}`.toLocaleLowerCase().includes(term);
+  if (!shown(calendar) && !shown(location)) return null;
   return (
     <>
       <h2>{t("On this Mac")}</h2>
       <div className="settings-group">
-        <Switch
-          label={name}
-          detail={detail}
-          checked={state?.enabled ?? false}
-          disabled={!state}
-          onChange={(value) => change(enableCalendar(value))}
-        />
-        {state?.enabled && (
+        {shown(calendar) && (
           <>
-            {permission("events", t("Calendar"), state.events)}
-            {permission("reminders", t("Reminders"), state.reminders)}
+            <Switch
+              label={calendar.name}
+              detail={calendar.detail}
+              checked={state?.calendar.enabled ?? false}
+              disabled={!state}
+              onChange={(value) => change(enableCalendar(value))}
+            />
+            {state?.calendar.enabled && (
+              <>
+                {permission(t("Calendar"), state.calendar.events, () =>
+                  requestCalendar("events"),
+                )}
+                {permission(t("Reminders"), state.calendar.reminders, () =>
+                  requestCalendar("reminders"),
+                )}
+              </>
+            )}
+          </>
+        )}
+        {shown(location) && (
+          <>
+            <Switch
+              label={location.name}
+              detail={location.detail}
+              checked={state?.location.enabled ?? false}
+              disabled={!state}
+              onChange={(value) => change(enableLocation(value))}
+            />
+            {state?.location.enabled &&
+              permission(
+                t("Location Services"),
+                state.location.permission,
+                requestLocation,
+              )}
           </>
         )}
       </div>
@@ -237,7 +274,7 @@ export function ConnectorsSettings({
           </div>
         )}
       </div>
-      {computerAvailable() && <CalendarConnector term={term} />}
+      {computerAvailable() && <LocalConnectors term={term} />}
       {notice && <p className="settings-lead settings-after">{notice}</p>}
       <p className="settings-lead settings-after">
         {t(

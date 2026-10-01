@@ -348,8 +348,11 @@ describe("Mac computer use", () => {
   });
   it("keeps the native tool list, permission checks and copy in step", () => {
     const swift = readFileSync("macos/Computer.swift", "utf8");
-    // Calendar reads have their own executor; see calendar.test.tsx.
-    for (const tool of MAC_TOOLS.filter((name) => name !== "mac_calendar"))
+    // Calendar and location reads have their own executors; see
+    // calendar.test.tsx and location.test.tsx.
+    for (const tool of MAC_TOOLS.filter(
+      (name) => name !== "mac_calendar" && name !== "mac_location",
+    ))
       expect(swift).toContain(`"${tool}"`);
     expect(swift).toContain("AXIsProcessTrusted()");
     expect(swift).toContain("CGPreflightScreenCaptureAccess()");

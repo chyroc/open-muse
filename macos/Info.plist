@@ -17,5 +17,7 @@
 <key>NSSpeechRecognitionUsageDescription</key><string>Open Muse turns your dictation into text for the message you are writing.</string>
 <key>NSCalendarsFullAccessUsageDescription</key><string>Open Muse reads your calendar events when you ask your assistant about your schedule. It never changes them.</string>
 <key>NSRemindersFullAccessUsageDescription</key><string>Open Muse reads your open reminders when you ask your assistant about your to-dos. It never changes them.</string>
+<key>NSLocationUsageDescription</key><string>Open Muse finds this Mac's approximate location when you ask your assistant about where you are.</string>
+<key>NSLocationWhenInUseUsageDescription</key><string>Open Muse finds this Mac's approximate location when you ask your assistant about where you are.</string>
 <key>NSHumanReadableCopyright</key><string>Open Muse · Independent Managed Agents client</string>
 </dict></plist>

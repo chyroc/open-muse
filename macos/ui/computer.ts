@@ -18,6 +18,20 @@ export type CalendarState = {
   reminders: CalendarPermission;
 };
 export const CALENDAR_TOOL = "mac_calendar";
+// Location: an approximate position, also a read-only local connector.
+export type LocationState = {
+  enabled: boolean;
+  permission: CalendarPermission;
+};
+export const LOCATION_TOOL = "mac_location";
+// The switch each Mac tool depends on: its own connector, or computer use.
+export type MacSwitch = "computer" | "calendar" | "location";
+export const macSwitch = (name?: string): MacSwitch =>
+  name === CALENDAR_TOOL
+    ? "calendar"
+    : name === LOCATION_TOOL
+      ? "location"
+      : "computer";
 export type ComputerState = {
   enabled: boolean;
   accessibility: boolean;
@@ -27,6 +41,7 @@ export type ComputerState = {
   fullDiskAccess: boolean;
   blockedFolders: string[];
   calendar: CalendarState;
+  location: LocationState;
 };
 export const computerChanged = "muse-computer-changed";
 
@@ -54,6 +69,19 @@ function parseCalendar(value: unknown): CalendarState {
     enabled: record.enabled === true,
     events: permission(record.events),
     reminders: permission(record.reminders),
+  };
+}
+
+function parseLocation(value: unknown): LocationState {
+  const record = (value && typeof value === "object" ? value : {}) as Record<
+    string,
+    unknown
+  >;
+  return {
+    enabled: record.enabled === true,
+    permission: permissions.includes(record.permission as CalendarPermission)
+      ? (record.permission as CalendarPermission)
+      : "not-asked",
   };
 }
 
@@ -85,6 +113,7 @@ export function parseComputerState(value: unknown): ComputerState | undefined {
             )
           : [],
         calendar: parseCalendar(record.calendar),
+        location: parseLocation(record.location),
       }
     : undefined;
 }
@@ -123,6 +152,9 @@ export const unblockFolder = (path: string) =>
 export const openFullDiskAccess = () => send({ operation: "full-disk-access" });
 export const enableCalendar = (value: boolean) =>
   send({ operation: "calendar-enable", value: value ? "true" : "false" });
+export const enableLocation = (value: boolean) =>
+  send({ operation: "location-enable", value: value ? "true" : "false" });
+export const requestLocation = () => send({ operation: "location-request" });
 // Asks macOS the first time; afterwards opens the matching privacy pane.
 export const requestCalendar = (kind: "events" | "reminders") =>
   send({ operation: "calendar-request", kind });
@@ -222,6 +254,8 @@ export function describeCall(event: AgentEvent) {
       return t("Look at your screen");
     case "mac_apps":
       return t("List the open apps and windows");
+    case "mac_location":
+      return t("Find this Mac's approximate location");
     case "mac_calendar": {
       const day = (value: unknown) => {
         const date = typeof value === "string" ? new Date(value) : undefined;

@@ -131,6 +131,11 @@ Connectors > On this Mac, separate from computer use, together with the two
 macOS permissions. Each call still waits for an answer in the chat like the
 other `mac_*` tools.
 
+`mac_location` returns this Mac's approximate location through Core Location:
+a position rounded to about a kilometre, and the city, region, country and time
+zone that macOS finds for it. It has its own switch and Location Services
+permission under Connectors > On this Mac, and each call waits for approval.
+
 This is an incremental desktop implementation, not a verified one-to-one clone.
 Cloud artifact/media indexing still needs its Mac-specific implementation and
 acceptance checks.
@@ -207,7 +212,8 @@ Other sections:
   pages, a browser and files in its cloud environment, the Lark CLI and its
   skills (Connect drafts a sign-in request in the main chat), personal memory,
   this Mac and Apple Health on the iPhone. In the Mac app, On this Mac turns
-  Calendar and Reminders on or off and requests their permissions.
+  Calendar and Reminders, and Location, on or off and requests their
+  permissions.
 - File system access shows Full Disk Access and keeps a Blocked folders list;
   the assistant's open action refuses anything inside a blocked folder.
 - Secure storage lists the secrets kept in the account's MA vault and adds or
