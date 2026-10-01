@@ -6,18 +6,31 @@
 }
 .edit-profile {
   position: absolute;
-  top: 132px;
-  left: calc(50% + 18px);
-  width: 27px;
-  height: 27px;
+  top: 128px;
+  left: calc(50% + 20px);
+  width: 30px;
+  height: 30px;
 }
+/* A white badge on the avatar's lower right; it stays positioned even though
+   it also anchors its menu. */
 .edit-profile > .icon-button {
-  background: var(--fill-hover);
-  width: 27px;
-  height: 27px;
+  background: var(--surface);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 1px 4px var(--shadow);
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  transition: transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.edit-profile > .icon-button:active {
+  transform: scale(0.9);
 }
 .status-menu-anchor {
   position: relative;
+}
+.edit-profile.status-menu-anchor {
+  position: absolute;
 }
 .status-menu {
   position: absolute;
@@ -429,4 +442,38 @@
   font-size: 12px;
   line-height: 1.5;
   color: var(--text-2);
+}
+/* The status line under the name, with a dot for the connection state. */
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+}
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--text-3, var(--text-2));
+  opacity: 0.6;
+}
+.status-line.is-online .status-dot {
+  background: #2f9e44;
+  opacity: 1;
+  box-shadow: 0 0 0 3px #2f9e4426;
+}
+.status-line.is-busy .status-dot {
+  background: #e8a90c;
+  opacity: 1;
+  animation: status-busy 1.4s ease-in-out infinite;
+}
+@keyframes status-busy {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .status-line.is-busy .status-dot {
+    animation: none;
+  }
 }

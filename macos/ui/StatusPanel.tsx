@@ -98,6 +98,7 @@ export function StatusPanel({
   onDocument,
   onPrefill,
   upcoming,
+  tone = "offline",
 }: {
   identity: CompanionIdentity;
   status: string;
@@ -111,6 +112,8 @@ export function StatusPanel({
   onDocument: (name: IdentityDocumentName) => void;
   onPrefill: (text: string) => void;
   upcoming?: ReactNode;
+  // Green while connected, amber while working, grey otherwise.
+  tone?: "online" | "busy" | "offline";
 }) {
   const [menu, setMenu] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -219,7 +222,10 @@ export function StatusPanel({
           )}
         </div>
         <h2>{identity.name}</h2>
-        <p className="subtle">{status}</p>
+        <p className={`status-line is-${tone}`}>
+          <span className="status-dot" aria-hidden="true" />
+          {status}
+        </p>
       </div>
       <div
         className="status-tabs"

@@ -40,14 +40,12 @@ export function Rail({
   onSearch,
   onSettings,
   onShortcuts,
-  onStatus,
 }: {
   page: Page;
   onNavigate: (page: Page) => void;
   onSearch: () => void;
   onSettings: () => void;
   onShortcuts: () => void;
-  onStatus: () => void;
 }) {
   const [menu, setMenu] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -87,13 +85,6 @@ export function Rail({
   return (
     <nav className="rail" aria-label={t("Main navigation")}>
       <div className="window-drag-space" />
-      <button
-        className="rail-avatar"
-        aria-label={t("Assistant status")}
-        onClick={onStatus}
-      >
-        <Avatar />
-      </button>
       <div className="rail-items">
         {items.map(({ id, label, Icon }, i) => (
           <div key={id}>

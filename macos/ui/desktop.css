@@ -107,14 +107,6 @@ h3 {
   flex-shrink: 0;
   -webkit-app-region: drag;
 }
-.rail-avatar {
-  width: 52px;
-  height: 52px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-}
 .rail-items {
   position: absolute;
   top: 50%;
@@ -458,7 +450,7 @@ h3 {
   padding-top: 66px;
 }
 .status-profile h2 {
-  margin: 10px 0 4px;
+  margin: 20px 0 4px;
   line-height: 24px;
 }
 .status-profile p {
@@ -1459,5 +1451,38 @@ h3 {
 @media (prefers-reduced-motion: reduce) {
   .icon-button.dictate.listening {
     animation: none;
+  }
+}
+/* The companion at the top of the conversation while the status panel is closed. */
+.toolbar-avatar {
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  font-size: 11px;
+  color: var(--text-2);
+  animation: toolbar-avatar-in 0.34s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+  transition: transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.toolbar-avatar .desktop-avatar {
+  transform: scale(0.7);
+  margin: -7px 0 -9px;
+}
+.toolbar-avatar:active {
+  transform: translateX(-50%) scale(0.94);
+}
+@keyframes toolbar-avatar-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.85);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toolbar-avatar {
+    animation: rail-menu-fade 0.15s ease-out both;
   }
 }

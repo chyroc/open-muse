@@ -94,7 +94,6 @@ describe("Mac workspace navigation", () => {
         onSearch: noop,
         onSettings: noop,
         onShortcuts: noop,
-        onStatus: noop,
       }),
     );
     for (const label of [
@@ -105,7 +104,6 @@ describe("Mac workspace navigation", () => {
       "Goals",
       "Library",
       "Settings",
-      "Assistant status",
     ])
       expect(html).toContain(`aria-label="${label}"`);
     expect(html).toContain('aria-current="page"');

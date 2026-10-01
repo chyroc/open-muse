@@ -26,7 +26,6 @@ describe("Apple UI localization", () => {
           onSearch={noop}
           onSettings={noop}
           onShortcuts={noop}
-          onStatus={noop}
         />,
       );
       expect(rail).toContain(

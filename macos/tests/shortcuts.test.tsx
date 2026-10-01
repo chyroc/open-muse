@@ -122,6 +122,23 @@ describe("Mac rail menu and shortcuts", () => {
     expect(document.activeElement?.tagName).toBe("TEXTAREA");
     expect(send).toHaveBeenCalledTimes(1);
   });
+  it("moves the companion into the toolbar while the status panel is closed", async () => {
+    await mount();
+    expect(host!.querySelector(".rail-avatar")).toBeNull();
+    expect(host!.querySelector(".toolbar-avatar")).toBeNull();
+    // This fixture's session is running, so the dot shows work in progress.
+    expect(host!.querySelector(".status-line.is-busy")).toBeTruthy();
+    await act(async () =>
+      host!
+        .querySelector<HTMLButtonElement>('[aria-label="Close panel"]')!
+        .click(),
+    );
+    const avatar = host!.querySelector<HTMLButtonElement>(".toolbar-avatar")!;
+    expect(avatar.textContent).toContain("Muse");
+    await act(async () => avatar.click());
+    expect(host!.querySelector(".status-panel")).toBeTruthy();
+    expect(host!.querySelector(".toolbar-avatar")).toBeNull();
+  });
   it("translates every shortcut", () => {
     for (const { label } of shortcuts) expect(zhCN[label], label).toBeTruthy();
   });

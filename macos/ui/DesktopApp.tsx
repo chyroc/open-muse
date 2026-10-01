@@ -80,7 +80,7 @@ import {
   type Session,
 } from "../../shared/types";
 import { canAutoApprove } from "../../shared/approval-policy";
-import { ArchiveToggle, Empty, Modal, Rail } from "./Chrome";
+import { ArchiveToggle, Avatar, Empty, Modal, Rail } from "./Chrome";
 import { ShortcutsDialog } from "./Shortcuts";
 import { CommandPalette, paletteItems } from "./Palette";
 import { FindBar, findMatches, partKey } from "./FindBar";
@@ -896,12 +896,6 @@ export function DesktopApp({ client }: { client: Client }) {
               )
             : openSettings()
         }
-        onStatus={() => {
-          if (route.page !== "chat") {
-            navigate("/");
-            setStatusOpen(true);
-          } else setStatusOpen((value) => !value);
-        }}
       />
       {drawer && !document && (
         <aside className="chat-drawer" aria-label={t("Side chats")}>
@@ -1150,6 +1144,18 @@ export function DesktopApp({ client }: { client: Client }) {
                 {chatTitle}
               </button>
               <div className="toolbar-spacer" />
+              {route.page === "chat" && !statusOpen && (
+                // With the status panel closed, the companion sits at the top
+                // of the conversation and reopens it.
+                <button
+                  className="toolbar-avatar"
+                  aria-label={t("Assistant status")}
+                  onClick={() => setStatusOpen(true)}
+                >
+                  <Avatar />
+                  <span>{name}</span>
+                </button>
+              )}
               {inspirationPage && (
                 <button
                   className="glass-pill"
@@ -1608,6 +1614,15 @@ export function DesktopApp({ client }: { client: Client }) {
                   : id
                     ? t("Reconnecting…")
                     : t("Ready")
+          }
+          tone={
+            !ready
+              ? "offline"
+              : running
+                ? "busy"
+                : task.connected || !id
+                  ? "online"
+                  : "offline"
           }
           tab={statusTab}
           onTab={setStatusTab}
