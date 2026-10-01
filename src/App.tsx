@@ -29,7 +29,7 @@ import { isWelcomeReply } from "../shared/welcome";
 import { currentChoiceEvent } from "../shared/chat-choices";
 import { digest, uuid } from "../shared/crypto";
 import { goalPrompt, goalStarter, type GoalCategory } from "../shared/goals";
-import { Activity, Markdown, PermissionCard } from "./components";
+import { Markdown, PermissionCard } from "./components";
 import type {
   AgentEvent,
   AppConfig,
@@ -863,7 +863,6 @@ function Workspace({
                   </div>
                 );
               })}
-              <Activity events={events} running={state === "running"} />
               {permissions.some((event) =>
                 task.autoApprovalFailures.includes(event.id),
               ) && (

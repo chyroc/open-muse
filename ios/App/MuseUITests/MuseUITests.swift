@@ -102,6 +102,8 @@ final class MuseLiveUITests: XCTestCase {
         tap(app.buttons["Send message"])
         XCTAssertTrue(contains("Example Domain").waitForExistence(timeout: 180), app.debugDescription)
         XCTAssertFalse(app.buttons["Approve"].exists)
+        // Execution records live in the companion panel, not the chat stream.
+        tap(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "status:")).firstMatch)
         tap(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "View execution log")).firstMatch)
         XCTAssertTrue(contains("web_fetch").waitForExistence(timeout: 15), app.debugDescription)
         capture("live-07-web-fetch-auto-approval")
@@ -118,6 +120,8 @@ final class MuseLiveUITests: XCTestCase {
         tap(app.buttons["Send message"])
         XCTAssertTrue(app.staticTexts["muse-direct-84"].waitForExistence(timeout: 180), app.debugDescription)
         XCTAssertFalse(app.buttons["Approve"].exists)
+        // Execution records live in the companion panel, not the chat stream.
+        tap(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "status:")).firstMatch)
         tap(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "View execution log")).firstMatch)
         XCTAssertTrue(contains("bash").waitForExistence(timeout: 15), app.debugDescription)
         XCTAssertFalse(contains("Web tool auto-approved").exists)
