@@ -40,10 +40,28 @@ export interface ChoiceMessage {
   invalid?: boolean;
 }
 
+// A reply that wrote a question as an XML-style <muse-choice> tag instead of
+// the fenced JSON block is shown as plain text: the question, then its
+// options as a list. It never becomes tappable controls.
+const looseChoice = /<muse-choice\b([^>]*)>([\s\S]*?)<\/muse-choice>/g;
+export function readableLooseChoices(text: string) {
+  return text.replace(looseChoice, (_, attributes: string, body: string) => {
+    const question = /question\s*=\s*"([^"]*)"/.exec(attributes)?.[1]?.trim();
+    const options = body
+      .split(/\n|(?:^|\s)[-*•]\s+/)
+      .map((option) => option.replace(/^[-*•]\s+/, "").trim())
+      .filter(Boolean);
+    return ["", question, options.map((option) => `- ${option}`).join("\n")]
+      .filter((part) => part !== undefined)
+      .join("\n\n");
+  });
+}
+
 // Only a dedicated, top-level fenced block creates controls. Ordinary lists,
 // quoted examples, code blocks and arbitrary HTML never become actions.
-export function parseChoiceMessage(text: string): ChoiceMessage {
-  if (text.length > 64000) return { text };
+export function parseChoiceMessage(raw: string): ChoiceMessage {
+  if (raw.length > 64000) return { text: raw };
+  const text = readableLooseChoices(raw);
   const lines = text.split("\n");
   let fence: { marker: string; start: number; choice: boolean } | undefined;
   const blocks: { start: number; end: number; raw: string; closed: boolean }[] =
