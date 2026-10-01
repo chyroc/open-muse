@@ -86,6 +86,7 @@ import { CommandPalette, paletteItems } from "./Palette";
 import { FindBar, findMatches, partKey } from "./FindBar";
 import { MessageActions } from "./MessageActions";
 import { registerThisMac } from "./devices";
+import { useUnreadBadge } from "./unread";
 import { readReactions, setReaction, type Mood } from "./reactions";
 import {
   dictationAvailable,
@@ -873,6 +874,7 @@ export function DesktopApp({ client }: { client: Client }) {
     setQuery("");
   };
   const messages = chatMessages(events);
+  useUnreadBadge(id, messages);
   const parts = messageParts(messages, events);
   const found = findMatches(parts, find ?? "", (event) =>
     messageAttachments(event, fileNames).map((item) => item.name),

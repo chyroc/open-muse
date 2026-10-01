@@ -861,6 +861,12 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
                 }
             }
             if body?["name"] == "appearance" { applyAppearance(body?["value"], from: message.webView) }
+            // Only the workspace counts unread replies; the label is a short count.
+            if body?["name"] == "badge", message.webView === webView {
+                let label = body?["value"] ?? ""
+                guard label.isEmpty || label.range(of: "^[1-9][0-9]?\\+?$", options: .regularExpression) != nil else { return }
+                NSApp.dockTile.badgeLabel = label.isEmpty ? nil : label
+            }
             return
         }
         guard message.name == "museExport", let value = message.body as? [String: String], let id = value["id"], let name = value["name"], let content = value["content"], content.utf8.count <= 20_000_000 else { return }
