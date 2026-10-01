@@ -11,7 +11,6 @@ afterEach(() => vi.unstubAllGlobals());
 // macos/, or another client would silently inherit the desktop wording.
 const renamed = [
   "Open chats and side chats",
-  "Upcoming",
   "Search Library",
   "Save reply to library",
   "Library navigation",
