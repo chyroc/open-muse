@@ -1,4 +1,4 @@
-import { t } from "../shared/i18n";
+import { systemLanguage, t } from "../shared/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Building2,
@@ -21,6 +21,19 @@ import type { Client } from "./api";
 import { Markdown } from "./components";
 import { PageHeader, Sheet } from "./MusePages";
 import "./goals.css";
+
+// In Chinese, career goals are named 事业 here. The shared catalog
+// keeps the desktop wording, and English reads the shared source string.
+const careerInChinese = (id: GoalCategory) =>
+  id === "career" && systemLanguage() === "zh-CN";
+function categoryLabel(id: GoalCategory) {
+  if (careerInChinese(id)) return t("Career, as a goal category");
+  return t(goalCategories.find((item) => item.id === id)!.label);
+}
+function categoryTopic(id: GoalCategory) {
+  if (careerInChinese(id)) return t("career, as a goal topic");
+  return t(goalCategories.find((item) => item.id === id)!.topic);
+}
 
 const icons = {
   health: Heart,
@@ -55,10 +68,16 @@ export function GoalCategories({
             <button
               key={category.id}
               onClick={() => onChoose(category.id)}
-              aria-label={t(`Create a ${category.topic || "new"} goal`)}
+              aria-label={
+                careerInChinese(category.id)
+                  ? t("Create a {category} goal", {
+                      category: categoryTopic(category.id),
+                    })
+                  : t(`Create a ${category.topic || "new"} goal`)
+              }
             >
               <Icon size={25} strokeWidth={1.7} />
-              <span>{t(category.label)}</span>
+              <span>{categoryLabel(category.id)}</span>
               <Plus size={23} strokeWidth={1.6} />
             </button>
           );
@@ -239,9 +258,7 @@ export function GoalsPage({
             category === "custom"
               ? t("Create a goal")
               : t("Create a {category} goal", {
-                  category: t(
-                    goalCategories.find((item) => item.id === category)!.topic,
-                  ),
+                  category: categoryTopic(category),
                 })
           }
           onClose={() => setCategory(undefined)}

@@ -27,7 +27,7 @@ const renamed = [
 // Keys other clients share. Their wording must not move with the Mac rail.
 const shared: Record<string, string> = {
   Chat: "对话",
-  Ideas: "灵感",
+  Ideas: "点子",
   Library: "资料库",
   "Saved to Library": "已保存到资料库",
   "Refresh Library": "刷新资料库",

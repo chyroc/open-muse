@@ -1,7 +1,7 @@
 // Only app-authored errors are translated; upstream diagnostics remain verbatim.
 export const zhErrors: Record<string, string> = {
   "This main chat's configuration cannot be safely updated. Its history is intact. Open a side chat to continue.":
-    "无法安全更新此主对话的配置。历史记录完整保留，可新建分支对话继续。",
+    "无法安全更新此主要聊天的配置。历史记录完整保留，可新建旁聊继续。",
   "Invalid resource ID.": "资源 ID 无效。",
   "Check the API key and project name format.":
     "请检查 API Key 和项目名称格式。",
@@ -93,19 +93,19 @@ export const zhErrors: Record<string, string> = {
     "选择结果尚未确认。请刷新历史记录；不会再次发送。",
   "Conversation links are inconsistent. No messages were sent.":
     "对话关联不一致。未发送任何消息。",
-  "The main chat cannot be archived.": "主对话无法归档。",
+  "The main chat cannot be archived.": "主要聊天无法归档。",
   "This chat has continued. Refresh before sending; no message was submitted to the older conversation.":
     "此对话已延续到新会话。发送前请刷新；未向旧会话提交消息。",
   "Your main conversation is being prepared. Resume it before sending.":
-    "主对话正在准备中。发送前请先继续准备。",
+    "主要聊天正在准备中。发送前请先继续准备。",
   "A main-chat message is unconfirmed or still being sent. Refresh history before submitting another.":
-    "主对话中有消息尚未确认或仍在发送。请先刷新历史记录，再提交下一条。",
+    "主要聊天中有消息尚未确认或仍在发送。请先刷新历史记录，再提交下一条。",
   "The main conversation update is unfinished. Return to the main chat and resume it first.":
-    "主对话更新尚未完成。请先返回主对话并继续。",
+    "主要聊天更新尚未完成。请先返回主要聊天并继续。",
   "Another operation is updating this conversation. Refresh to continue.":
     "另一个操作正在更新此对话。请刷新后继续。",
   "The main chat has ended. Open a side chat to continue; its history is preserved.":
-    "主对话已结束。请打开分支对话继续；历史记录已保留。",
+    "主要聊天已结束。请打开旁聊继续；历史记录已保留。",
   "A conversation creation is unconfirmed. Refresh history and try again later; no duplicate was created.":
     "对话创建结果尚未确认。请刷新历史记录，稍后再试；未重复创建。",
   "The previous conversation was recovered. Open it from the sidebar before starting another.":
@@ -115,7 +115,7 @@ export const zhErrors: Record<string, string> = {
   "The conversation creation result is unconfirmed. Refresh history before retrying.":
     "对话创建结果尚未确认。请刷新历史记录后再重试。",
   "The main conversation update is unconfirmed. Refresh before trying again; no duplicate was created.":
-    "主对话更新结果尚未确认。请刷新后再试；未重复创建。",
+    "主要聊天更新结果尚未确认。请刷新后再试；未重复创建。",
   "Another window is continuing this chat. Refresh history before sending.":
     "另一个窗口正在延续此对话。发送前请刷新历史记录。",
   "The continuation result is unconfirmed. Refresh before trying again.":
@@ -123,7 +123,7 @@ export const zhErrors: Record<string, string> = {
   "Conversation state changed. Refresh history before continuing.":
     "对话状态已更改。请刷新历史记录后继续。",
   "The main conversation changed during continuation. Its history has not been replaced.":
-    "主对话在延续过程中发生了更改。历史记录未被替换。",
+    "主要聊天在延续过程中发生了更改。历史记录未被替换。",
   "Goal already exists.": "目标已存在。",
   "Your goals changed. Refresh and review the latest progress before saving.":
     "目标已更改。保存前请刷新并检查最新进展。",
@@ -250,23 +250,23 @@ export const zhErrors: Record<string, string> = {
     "另一个窗口已提交此目标。请刷新查看。",
   "The generated response is too large.": "生成的回复过长。",
   "Your idea context is too large. No generation request was sent.":
-    "灵感上下文过长。未发送生成请求。",
+    "点子上下文过长。未发送生成请求。",
   "The connection changed. Reopen Ideas before continuing; no new request was sent.":
-    "连接已更改。请重新打开灵感页后继续；未发送新请求。",
+    "连接已更改。请重新打开点子页后继续；未发送新请求。",
   "The connection changed. Reopen Ideas to use the current account.":
-    "连接已更改。请重新打开灵感页以使用当前账号。",
+    "连接已更改。请重新打开点子页以使用当前账号。",
   "Feedback must be 600 characters or fewer.": "反馈不能超过 600 个字符。",
   "This idea's submission is unconfirmed. Refresh history; it will not be sent again.":
-    "此灵感的提交结果尚未确认。请刷新历史记录；不会再次发送。",
+    "此点子的提交结果尚未确认。请刷新历史记录；不会再次发送。",
   "Choose at least one included item.": "请至少选择一项内容。",
   "This idea is too large to send. No conversation was created.":
-    "此灵感过长，无法发送。未创建对话。",
+    "此点子过长，无法发送。未创建对话。",
   "Another window is starting this idea. Refresh to continue.":
-    "另一个窗口正在启动此灵感。请刷新后继续。",
+    "另一个窗口正在启动此点子。请刷新后继续。",
   "Your assistant is still working. Finish or stop the current task before starting this idea.":
-    "助手仍在工作。请先完成或停止当前任务，再启动此灵感。",
+    "助手仍在工作。请先完成或停止当前任务，再启动此点子。",
   "A main-chat message is still unconfirmed. Refresh its history before starting this idea.":
-    "主对话中仍有消息尚未确认。启动此灵感前，请刷新历史记录。",
+    "主要聊天中仍有消息尚未确认。启动此点子前，请刷新历史记录。",
   "Another window submitted this idea. Refresh to see it.":
-    "另一个窗口已提交此灵感。请刷新查看。",
+    "另一个窗口已提交此点子。请刷新查看。",
 };

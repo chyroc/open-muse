@@ -27,9 +27,9 @@ export const zhCN: Record<string, string> = {
   Retry: "重试",
   "If submission is unconfirmed, refresh history before trying again.":
     "如果提交结果尚未确认，请先刷新历史记录，再决定是否重试。",
-  "Main chat": "主对话",
+  "Main chat": "主要聊天",
   Me: "我",
-  "New side chat": "新建分支对话",
+  "New side chat": "新建旁聊",
   "Not connected": "未连接",
   Replying: "正在回复",
   "Waiting for approval": "等待批准",
@@ -44,8 +44,8 @@ export const zhCN: Record<string, string> = {
   "Add an Ark API key to start chatting": "添加 Ark API Key 后开始对话",
   "Refresh history": "刷新历史记录",
   "Loading conversation…": "正在加载对话…",
-  "Start a side chat": "开始分支对话",
-  "Your main chat": "主对话",
+  "Start a side chat": "开始旁聊",
+  "Your main chat": "主要聊天",
   "A little space for a new topic.": "为新话题留一处独立空间。",
   "One conversation you can always come back to.": "随时回来，继续这段对话。",
   "Automatic approval did not finish. Refresh history before handling it manually.":
@@ -55,7 +55,7 @@ export const zhCN: Record<string, string> = {
   "Unlink goal": "取消关联目标",
   "Approving web reads…": "正在批准网页读取…",
   "Main navigation": "主导航",
-  "Archive side chat": "归档分支对话",
+  "Archive side chat": "归档旁聊",
   Message: "消息",
   Copied: "已复制",
   "Copy text": "复制文本",
@@ -143,7 +143,7 @@ export const zhCN: Record<string, string> = {
   "Background Feed results": "后台动态结果",
   "Prepared for you": "为你准备",
   "Personalized ideas from your cloud memory, not live news. Cached posts remain on this device.":
-    "根据云端记忆生成的个性化灵感，并非实时新闻。缓存的内容保留在此设备上。",
+    "根据云端记忆生成的个性化点子，并非实时新闻。缓存的内容保留在此设备上。",
   Source: "来源",
   "Event:": "事件：",
   "No background posts yet. Results appear here after a confirmed generation.":
@@ -163,9 +163,9 @@ export const zhCN: Record<string, string> = {
   "Keyboard dictation": "键盘听写",
   Conversations: "对话",
   "Close sidebar": "关闭侧边栏",
-  "Archived side chats": "已归档的分支对话",
-  "Side chats": "分支对话",
-  "Show side chats": "显示分支对话",
+  "Archived side chats": "已归档的旁聊",
+  "Side chats": "旁聊",
+  "Show side chats": "显示旁聊",
   "Show archived chats": "显示已归档对话",
   Running: "运行中",
   Restore: "恢复",
@@ -175,7 +175,7 @@ export const zhCN: Record<string, string> = {
   "Try another search.": "试试其他搜索词。",
   "Archived chats stay available here.": "已归档的对话仍可在此查看。",
   "Side chats are an optional way to organize conversations by topic.":
-    "可以使用分支对话，按话题整理交流内容。",
+    "可以使用旁聊，按话题整理交流内容。",
   "Search conversations": "搜索对话",
   Search: "搜索",
   Conversation: "对话",
@@ -207,10 +207,10 @@ export const zhCN: Record<string, string> = {
   "These are starting templates.": "这些是初始模板。",
   "Connect to MA": "连接 MA",
   "Personal memory will be connected with your next message. Your main chat keeps its earlier messages and context.":
-    "发送下一条消息时会关联个人记忆。主对话会保留之前的消息和上下文。",
+    "发送下一条消息时会关联个人记忆。主要聊天会保留之前的消息和上下文。",
   "This older side chat does not have personal memory attached. Its history is unchanged. New side chats can use your saved identity and memory.":
-    "此较早的分支对话未关联个人记忆，历史记录保持不变。新建分支对话可以使用已保存的身份和记忆。",
-  "Start a side chat with memory": "新建关联记忆的分支对话",
+    "此较早的旁聊未关联个人记忆，历史记录保持不变。新建旁聊可以使用已保存的身份和记忆。",
+  "Start a side chat with memory": "新建关联记忆的旁聊",
   "Personal memory is attached to this conversation.": "此对话已关联个人记忆。",
   "Thinking things through": "正在思考",
   "Nothing in progress": "暂无进行中的任务",
@@ -253,9 +253,9 @@ export const zhCN: Record<string, string> = {
   "Open your plan": "打开计划",
   "Refresh goals": "刷新目标",
   Goals: "目标",
-  Tracking: "跟踪中",
+  Tracking: "追踪",
   "Loading goals…": "正在加载目标…",
-  "Nothing is being tracked yet": "暂无跟踪中的目标",
+  "Nothing is being tracked yet": "尚未追踪任何内容",
   "First, we’ll work out your goal together in chat. I’ll ask a few questions to understand what you’re after.":
     "先在对话中一起明确目标。我会问几个问题，了解想达成的结果。",
   "Once you agree on a plan, it appears here so we can keep track of your progress.":
@@ -297,14 +297,14 @@ export const zhCN: Record<string, string> = {
   "Searching the web": "正在搜索网页",
   "Reading a web page": "正在读取网页",
   Feed: "动态",
-  Ideas: "灵感",
+  Ideas: "点子",
   "Loading…": "正在加载…",
   "Prompt instructions": "提示指令",
   "Your feed is shaped by these instructions. Changes apply to future posts.":
     "这些指令决定动态内容，更改仅适用于之后生成的动态。",
   "Got it": "知道了",
   "A feed that gets to know you": "越来越懂你的动态",
-  "A little inspiration, just for you": "为你准备的一点灵感",
+  "A little inspiration, just for you": "为你准备的点子",
   "Discover useful things shaped by your conversations, interests, and goals.":
     "根据对话、兴趣和目标，发现有用的内容。",
   "Explore things Muse can help with, shaped by what matters to you.":
@@ -315,10 +315,10 @@ export const zhCN: Record<string, string> = {
   "Latest activity:": "最新活动：",
   "Continue generation": "继续生成",
   "Find new posts": "发现新动态",
-  "Find new ideas": "发现新灵感",
+  "Find new ideas": "发现新点子",
   "Generated with MA when you ask. Posts, likes, and discussion links stay on this device. Background delivery is not enabled.":
     "按需通过 MA 生成。动态、点赞和讨论链接保留在此设备上，尚未启用后台推送。",
-  Idea: "灵感",
+  Idea: "点子",
   "Talk about this": "聊聊这个",
   "Feed instructions": "动态指令",
   "Close feed instructions": "关闭动态指令",
@@ -486,18 +486,18 @@ export const zhCN: Record<string, string> = {
   "Assistant status": "助手状态",
   "Search (⌘K)": "搜索（⌘K）",
   "Settings (⌘,)": "设置（⌘,）",
-  "Show active side chats": "显示未归档的分支对话",
-  "Show archived side chats": "显示已归档的分支对话",
+  "Show active side chats": "显示未归档的旁聊",
+  "Show archived side chats": "显示已归档的旁聊",
   "Close the document before leaving this workspace. Your draft is preserved.":
     "请先关闭文档，再离开此工作区。草稿已保留。",
   "Close the document before switching workspaces or accounts. Your draft is preserved.":
     "请先关闭文档，再切换工作区或账号。草稿已保留。",
   "This message and its quoted post exceed the message limit. Shorten your message or remove the quote.":
     "消息及引用动态超出长度限制。请缩短消息或移除引用。",
-  "Side chat": "分支对话",
+  "Side chat": "旁聊",
   "Close the document before switching accounts. Your draft is preserved.":
     "请先关闭文档，再切换账号。草稿已保留。",
-  "Search side chats": "搜索分支对话",
+  "Search side chats": "搜索旁聊",
   "Opening document…": "正在打开文档…",
   "Opening ideas…": "正在打开点子…",
   "Open chats and side chats": "打开聊天和旁聊",
@@ -670,7 +670,7 @@ export const zhCN: Record<string, string> = {
   "Thinking of new ways to help…": "正在思考新的帮助方式…",
   "Checking idea submission. Refresh reads history; it never resends an unconfirmed request.":
     "正在检查点子提交状态。刷新只会读取历史记录，不会再次发送尚未确认的请求。",
-  "Refresh ideas": "刷新灵感",
+  "Refresh ideas": "刷新点子",
   "Generated with MA when you ask. Feedback is saved on this Mac and shapes future ideas. Automatic background suggestions are not connected yet.":
     "按需通过 MA 生成。反馈保存在此 Mac 上，用于调整之后的点子。尚未接入后台自动建议。",
   "Assistant identity": "助手身份",
@@ -732,7 +732,7 @@ export const zhCN: Record<string, string> = {
   Finance: "财务",
   Career: "职业",
   Interests: "兴趣",
-  Productivity: "效率",
+  Productivity: "效率提升",
   "Something else": "其他目标",
   "Today {time}": "今天 {time}",
   "{name} status: {status}": "{name} 的状态：{status}",
@@ -754,7 +754,7 @@ export const zhCN: Record<string, string> = {
     "「{title}」将从个人记忆中移除，无法在此撤销。对话历史会保留。",
   "Choose {label}": "选择{label}",
   "Feed post: {title}": "动态：{title}",
-  "View idea: {title}": "查看灵感：{title}",
+  "View idea: {title}": "查看点子：{title}",
   "Idea feedback: {title}": "点子反馈：{title}",
   "Options for {title}": "{title}的选项",
   "Open goal: {title}": "打开目标：{title}",
@@ -784,7 +784,7 @@ export const zhCN: Record<string, string> = {
   "Create a finance goal": "创建财务目标",
   "Create a career goal": "创建职业目标",
   "Create a personal interest goal": "创建兴趣目标",
-  "Create a productivity goal": "创建效率目标",
+  "Create a productivity goal": "创建效率提升目标",
   "Collapse subgoals for {title}": "收起{title}的子目标",
   "Expand subgoals for {title}": "展开{title}的子目标",
   "Mark {title} not complete": "将{title}标记为未完成",
@@ -793,7 +793,7 @@ export const zhCN: Record<string, string> = {
     "「{title}」及其 {count} 个子目标将从个人记忆中移除，无法在此撤销。对话历史会保留。",
   "“{title}” and its {count} subgoal will be removed from personal memory. This cannot be undone here. Conversation history is preserved.":
     "「{title}」及其 {count} 个子目标将从个人记忆中移除，无法在此撤销。对话历史会保留。",
-  "Finding ideas for you…": "正在寻找适合的灵感…",
+  "Finding ideas for you…": "正在寻找适合的点子…",
   "Configuration uploaded": "已上传配置",
   "The generation request is confirmed: {phase}. See recent runs for details.":
     "已确认生成请求：{phase}。详情请查看最近运行。",
@@ -811,7 +811,9 @@ export const zhCN: Record<string, string> = {
   career: "职业",
   interests: "兴趣",
   "personal interest": "兴趣",
-  productivity: "效率",
+  productivity: "效率提升",
+  "Career, as a goal category": "事业",
+  "career, as a goal topic": "事业",
   queued: "排队中",
   preparing: "准备中",
   creating: "创建中",
@@ -884,7 +886,7 @@ export const zhCN: Record<string, string> = {
   "Opening goals…": "正在打开目标…",
   "The workspace changed. Reopen Goals to continue the saved conversation.":
     "工作区已更改。请重新打开目标页，继续已保存的对话。",
-  "side chat": "分支对话",
+  "side chat": "旁聊",
   "Replace the composer draft?": "替换消息草稿？",
   "Your existing message has not been sent. Replace it with the goal prompt?":
     "现有消息尚未发送。要用目标提示词替换吗？",
