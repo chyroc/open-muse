@@ -44,6 +44,18 @@ own Keychain items and web data for that lowercase name. It starts signed out,
 never reads the person's own login, and keeps its data between launches of the
 same profile, which suits acceptance runs and screenshots.
 
+### Snapshot tour
+
+`OPEN_MUSE_SNAPSHOT_TOUR=1 node scripts/build-macos.mjs` builds an acceptance
+app that also accepts `--snapshot-tour <dir>`. Launched with it (best together
+with an acceptance profile), the app renders every workspace page, every
+settings section and Quick Chat in light and then dark appearance into PNGs in
+`<dir>`, writes `tour.txt` with one result per image, restores the appearance to
+follow the system, and quits. The images come from the web views' own
+snapshots, so the tour needs no Screen Recording permission and never clicks,
+types or sends anything. Pass `-AppleLanguages '(en)'` or `'(zh-Hans)'` to pick
+the language for one run. Builds without the variable do not contain the tour.
+
 ## Desktop workspace
 
 - A 74-point navigation rail, continuous main chat, searchable side-chat drawer,

@@ -260,6 +260,9 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         NSApplication.shared.activate(ignoringOtherApps: true)
         updateStatusItem()
         registerQuickChatShortcut()
+        #if SNAPSHOT_TOUR
+        startSnapshotTour()
+        #endif
     }
     private func makeWebView(_ frame: NSRect) -> WKWebView {
         let view = WKWebView(frame: frame, configuration: configuration)
@@ -1014,3 +1017,84 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 }
+
+#if SNAPSHOT_TOUR
+// Acceptance builds only (OPEN_MUSE_SNAPSHOT_TOUR=1). With --snapshot-tour <dir>
+// the app renders each page, settings section and Quick Chat in both
+// appearances into PNGs from the web views' own snapshots, then quits. It needs
+// no screen recording permission and never clicks, types or sends anything.
+extension OpenMuseApp {
+    static let tourPages = ["chat", "feed", "ideas", "goals", "library"]
+    static let tourSections = [
+        "general", "connectors", "computer-use", "file-system", "dictation", "wallet",
+        "secure-storage", "permissions", "message-channels", "devices", "data-controls",
+        "help", "legal",
+    ]
+
+    func startSnapshotTour() {
+        let arguments = CommandLine.arguments
+        guard let index = arguments.firstIndex(of: "--snapshot-tour"), index + 1 < arguments.count else { return }
+        let folder = URL(fileURLWithPath: arguments[index + 1], isDirectory: true)
+        Task { @MainActor in
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            var log: [String] = []
+            await tourPause(4)
+            for appearance in ["light", "dark"] {
+                await tourScript(webView, "localStorage.setItem('muse.appearance', '\(appearance)'); true")
+                applyAppearance(appearance, from: nil)
+                await tourPause(0.8)
+                for page in Self.tourPages {
+                    await tourScript(webView, "location.hash = '#/\(page == "chat" ? "" : page)'; true")
+                    await tourPause(1.2)
+                    log.append(await tourSnapshot(webView, folder, "\(appearance)-workspace-\(page)"))
+                }
+                openSettings()
+                await tourPause(3)
+                for section in Self.tourSections {
+                    await tourScript(settingsWebView, "location.hash = '#/settings/\(section)'; true")
+                    await tourPause(1.2)
+                    log.append(await tourSnapshot(settingsWebView, folder, "\(appearance)-settings-\(section)"))
+                }
+                settingsWindow?.orderOut(nil)
+                showQuickChat()
+                await tourPause(2.5)
+                log.append(await tourSnapshot(quickWebView, folder, "\(appearance)-quick-chat"))
+                hideQuickChat()
+                await tourPause(0.6)
+            }
+            await tourScript(webView, "localStorage.removeItem('muse.appearance'); true")
+            applyAppearance("system", from: nil)
+            let report = log.joined(separator: "\n") + "\n"
+            try? report.write(to: folder.appendingPathComponent("tour.txt"), atomically: true, encoding: .utf8)
+            NSApplication.shared.terminate(nil)
+        }
+    }
+
+    private func tourPause(_ seconds: Double) async {
+        try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+    }
+
+    private func tourScript(_ view: WKWebView?, _ script: String) async {
+        guard let view else { return }
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            view.evaluateJavaScript(script) { _, _ in done.resume() }
+        }
+    }
+
+    private func tourSnapshot(_ view: WKWebView?, _ folder: URL, _ name: String) async -> String {
+        guard let view else { return "\(name): no view" }
+        let image: NSImage? = await withCheckedContinuation { (done: CheckedContinuation<NSImage?, Never>) in
+            view.takeSnapshot(with: nil) { image, _ in done.resume(returning: image) }
+        }
+        guard let tiff = image?.tiffRepresentation, let bitmap = NSBitmapImageRep(data: tiff),
+              let png = bitmap.representation(using: .png, properties: [:])
+        else { return "\(name): snapshot failed" }
+        do {
+            try png.write(to: folder.appendingPathComponent("\(name).png"))
+            return "\(name): ok"
+        } catch {
+            return "\(name): \(error.localizedDescription)"
+        }
+    }
+}
+#endif
