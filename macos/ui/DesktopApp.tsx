@@ -80,6 +80,7 @@ import { canAutoApprove } from "../../shared/approval-policy";
 import { ArchiveToggle, Empty, Modal, Rail } from "./Chrome";
 import { ShortcutsDialog } from "./Shortcuts";
 import { CommandPalette, paletteItems } from "./Palette";
+import { FindBar, findMatches, partKey } from "./FindBar";
 import {
   SentFiles,
   StagedFiles,
@@ -145,6 +146,9 @@ export function DesktopApp({ client }: { client: Client }) {
   const [prefill, setPrefill] = useState(0);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [paletteGoals, setPaletteGoals] = useState<Goal[]>([]);
+  // Find in the open conversation; undefined while the bar is closed.
+  const [find, setFind] = useState<string>();
+  const [findAt, setFindAt] = useState(0);
   // Files staged for each draft; they are sent only with that draft.
   const [stagedBy, setStagedBy] = useState<Record<string, Staged[]>>({});
   const [fileNames, setFileNames] = useState<Record<string, string>>({});
@@ -297,11 +301,15 @@ export function DesktopApp({ client }: { client: Client }) {
       }
       if (action === "main-chat") navigate("/");
       if (action === "shortcuts") setShortcutsOpen(true);
+      if (action === "find") setFind((value) => value ?? "");
     };
     const key = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !event.metaKey && !event.isComposing) {
         // Escape belongs to an open dialog or menu first.
-        if (window.document.querySelector("dialog[open], [role=menu]")) return;
+        if (
+          window.document.querySelector("dialog[open], [role=menu], .find-bar")
+        )
+          return;
         if (event.shiftKey) {
           event.preventDefault();
           composer.current?.focus();
@@ -309,6 +317,14 @@ export function DesktopApp({ client }: { client: Client }) {
         return;
       }
       if (!event.metaKey || event.altKey) return;
+      if (
+        event.key.toLowerCase() === "f" ||
+        (event.key.toLowerCase() === "k" && event.shiftKey)
+      ) {
+        event.preventDefault();
+        command(new CustomEvent("muse-command", { detail: "find" }));
+        return;
+      }
       if (event.key === "/" || event.key.toLowerCase() === "j") {
         event.preventDefault();
         command(
@@ -663,6 +679,26 @@ export function DesktopApp({ client }: { client: Client }) {
   };
   const messages = chatMessages(events);
   const parts = messageParts(messages, events);
+  const found = findMatches(parts, find ?? "", (event) =>
+    messageAttachments(event, fileNames).map((item) => item.name),
+  );
+  const current = found.length ? found[findAt % found.length] : undefined;
+  // The current match scrolls into the middle of the conversation.
+  useEffect(() => {
+    if (!current) return;
+    setAway(true);
+    scroll.current
+      ?.querySelector(`[data-part="${CSS.escape(current)}"]`)
+      ?.scrollIntoView?.({
+        block: "center",
+        behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)")
+          .matches
+          ? "auto"
+          : "smooth",
+      });
+  }, [current]);
+  // Find belongs to one conversation.
+  useEffect(() => setFind(undefined), [id]);
   const activeChoice = currentChoiceEvent(currentEvents)?.id;
   const chatTitle = route.newSide
     ? t("New side chat")
@@ -1011,6 +1047,27 @@ export function DesktopApp({ client }: { client: Client }) {
                 </div>
               )}
             </header>
+            {find !== undefined && (
+              <FindBar
+                query={find}
+                onQuery={(value) => {
+                  setFind(value);
+                  setFindAt(0);
+                }}
+                count={found.length}
+                position={found.length ? findAt % found.length : 0}
+                onStep={(step) =>
+                  setFindAt(
+                    (value) =>
+                      (value + step + found.length) % (found.length || 1),
+                  )
+                }
+                onClose={() => {
+                  setFind(undefined);
+                  composer.current?.focus();
+                }}
+              />
+            )}
             <div
               className="chat-scroll"
               ref={scroll}
@@ -1060,7 +1117,8 @@ export function DesktopApp({ client }: { client: Client }) {
                 {parts.map(({ event, part }) => (
                   <article
                     key={`${event.id}:${part}`}
-                    className={`message ${event.type === "user.message" ? "from-user" : "from-assistant"}`}
+                    data-part={partKey({ event, part })}
+                    className={`message ${event.type === "user.message" ? "from-user" : "from-assistant"}${found.includes(partKey({ event, part })) ? " found" : ""}${current === partKey({ event, part }) ? " current" : ""}`}
                   >
                     <div className="message-bubble">
                       {event.type === "agent.message" ? (

@@ -7,6 +7,7 @@ export const shortcuts: { keys: string; label: string }[] = [
   { keys: "⌘N", label: "New side chat" },
   { keys: "⌘1", label: "Main chat" },
   { keys: "⌘J", label: "Jump to the main chat" },
+  { keys: "⌘F", label: "Find in the chat" },
   { keys: "⌘,", label: "Settings" },
   { keys: "⌘/", label: "Keyboard shortcuts" },
   { keys: "⇧⎋", label: "Focus the message field" },

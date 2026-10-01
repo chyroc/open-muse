@@ -1242,3 +1242,59 @@ h3 {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Find in the open conversation. */
+.find-bar {
+  position: absolute;
+  top: 56px;
+  right: 18px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 6px 5px 11px;
+  border-radius: 14px;
+  background: var(--dialog);
+  backdrop-filter: blur(16px);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 6px 22px var(--shadow);
+  color: var(--text-2);
+  animation: find-in 0.28s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+.find-bar input {
+  width: 190px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+}
+.find-count {
+  min-width: 64px;
+  font-size: 12px;
+  text-align: right;
+  white-space: nowrap;
+}
+.message.found .message-bubble {
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.message.found.current .message-bubble {
+  box-shadow: 0 0 0 2px var(--accent);
+  transition: box-shadow 0.2s ease-out;
+}
+@keyframes find-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .find-bar {
+    animation: find-fade 0.15s ease-out both;
+  }
+}
+@keyframes find-fade {
+  from {
+    opacity: 0;
+  }
+}

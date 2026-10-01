@@ -23,4 +23,11 @@ export const zhDesktop: Record<string, string> = {
   "No results": "没有结果",
   Commands: "命令",
   Chats: "对话",
+  "Find in this chat": "在此对话中查找",
+  "{position} of {count}": "第 {position} 个，共 {count} 个",
+  "No matches": "没有匹配项",
+  "Previous match": "上一个匹配项",
+  "Next match": "下一个匹配项",
+  "Close find": "关闭查找",
+  "Find in the chat": "在对话中查找",
 };
