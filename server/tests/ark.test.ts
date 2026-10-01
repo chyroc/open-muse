@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { ArkRemote } from "../src/ark";
+import { ArkRemote, BACKGROUND_SYSTEM } from "../src/ark";
 import type { Env } from "../src/env";
 
 const env = {
@@ -52,6 +52,7 @@ function fixture(
         agent: options.sessionAgent ?? {
           id: "agent-test",
           version: 1,
+          system: BACKGROUND_SYSTEM,
           tools: [],
           mcp_servers: [],
           skills: [],
@@ -157,15 +158,34 @@ describe("Constrained MA adapter", () => {
     expect(f.calls.at(-2)?.url).toContain("/sessions/session-new");
     expect(f.calls.at(-1)?.method).toBe("POST");
   });
+  it("accepts the empty overrides as Ark reports them in the session", async () => {
+    const f = fixture({
+      uploaded: true,
+      sessionAgent: {
+        id: "agent-test",
+        version: 1,
+        system: BACKGROUND_SYSTEM,
+        tools: null,
+        mcp_servers: null,
+        skills: null,
+        multiagent: null,
+      },
+    });
+    await f.remote.send("session-new", "event-stable", "prompt");
+    expect(f.calls.at(-1)?.method).toBe("POST");
+  });
   it("does not trust ignored or incomplete overrides, changed versions, or child agents", async () => {
     const safe = {
       id: "agent-test",
       version: 1,
+      system: BACKGROUND_SYSTEM,
       tools: [],
       mcp_servers: [],
       skills: [],
     };
     for (const sessionAgent of [
+      { ...safe, system: "Agent's own system prompt" },
+      { ...safe, system: undefined },
       { ...safe, tools: [{ type: "bash" }] },
       { ...safe, mcp_servers: [{ url: "https://example.com" }] },
       { ...safe, skills: [{ id: "skill-one" }] },

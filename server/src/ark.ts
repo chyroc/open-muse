@@ -22,6 +22,12 @@ const validId = (value: unknown) => {
   return value;
 };
 const base = "https://ark.cn-beijing.volces.com/api/v3";
+export const BACKGROUND_SYSTEM =
+  "Generate personalized Feed ideas from the provided context. You have no tools, skills, MCP servers, child agents, or mounted memory. Return only the requested JSON. Never claim to have researched news or performed actions.";
+// Ark reports an overridden empty list as null in the session snapshot; an
+// omitted override shows the agent's own list instead.
+const none = (items: unknown) =>
+  items === null || (Array.isArray(items) && items.length === 0);
 export class ArkRemote implements Remote {
   readonly owner: string;
   private ark: ArkClient;
@@ -117,6 +123,7 @@ export class ArkRemote implements Remote {
       agent?: {
         id: string;
         version: number;
+        system?: string;
         tools?: unknown[];
         mcp_servers?: unknown[];
         skills?: unknown[];
@@ -128,9 +135,8 @@ export class ArkRemote implements Remote {
       result.id !== session ||
       agent?.id !== this.env.ARK_AGENT_ID ||
       String(agent?.version) !== this.env.ARK_AGENT_VERSION ||
-      ![agent?.tools, agent?.mcp_servers, agent?.skills].every(
-        (items) => Array.isArray(items) && items.length === 0,
-      ) ||
+      agent?.system !== BACKGROUND_SYSTEM ||
+      ![agent?.tools, agent?.mcp_servers, agent?.skills].every(none) ||
       agent?.multiagent
     )
       throw new HttpError(
@@ -218,8 +224,7 @@ export class ArkRemote implements Remote {
                 type: "agent_with_overrides",
                 id: this.env.ARK_AGENT_ID,
                 version: Number(this.env.ARK_AGENT_VERSION),
-                system:
-                  "Generate personalized Feed ideas from the provided context. You have no tools, skills, MCP servers, child agents, or mounted memory. Return only the requested JSON. Never claim to have researched news or performed actions.",
+                system: BACKGROUND_SYSTEM,
                 tools: [],
                 mcp_servers: [],
                 skills: [],
