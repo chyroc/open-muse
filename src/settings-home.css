@@ -148,3 +148,16 @@
 .ios-switch:disabled {
   opacity: 0.5;
 }
+.muse-sheet.grouped .privacy-grid {
+  margin: 0;
+  padding: 20px 18px;
+  border-radius: 20px;
+  background: #fff;
+}
+.muse-sheet.grouped .about-line {
+  margin-top: 14px;
+  padding: 14px 18px;
+  border: 0;
+  border-radius: 20px;
+  background: #fff;
+}
