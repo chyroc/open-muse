@@ -135,12 +135,13 @@ Appearance is a real three-way choice: light, dark, or follow macOS. It is a
 device-local presentation preference with no credential, cloud record or identity
 scope, it is applied to both windows at once, and the shell matches the window
 chrome and native dialogs to it. Choosing "system" keeps following macOS as it
-changes; choosing light or dark stops following it. Accent themes, the startup,
-menu-bar and floating-button switches, the shortcut recorder, usage and update
-checks remain pending Mac features, not dropped ones, and connectors, computer
-use, file system access, dictation, wallet, message channels, devices, help and
-legal keep their place in the list and explain why they are not connected. None
-of them render a control that does nothing.
+changes; choosing light or dark stops following it. General also holds the
+Run on startup, menu bar and floating button switches and the check-in switch,
+and Computer use has its own section. Accent themes, the shortcut recorder,
+usage and update checks remain pending Mac features, not dropped ones, and
+connectors, file system access, dictation, wallet, message channels, devices,
+help and legal keep their place in the list and explain why they are not
+connected. None of them render a control that does nothing.
 
 The section list matches the reference, including the three names the reference
 leaves in English inside a Chinese interface. They are ordinary catalog entries
