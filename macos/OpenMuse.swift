@@ -1126,6 +1126,9 @@ extension OpenMuseApp {
                     await tourScript(webView, "location.hash = '#/\(page == "chat" ? "" : page)'; true")
                     await tourPause(1.2)
                     log.append(await tourSnapshot(webView, folder, "\(appearance)-workspace-\(page)"))
+                    if await tourScrollEnd(webView) != nil {
+                        log.append(await tourSnapshot(webView, folder, "\(appearance)-workspace-\(page)-end"))
+                    }
                 }
                 openSettings()
                 await tourPause(3)
@@ -1133,6 +1136,9 @@ extension OpenMuseApp {
                     await tourScript(settingsWebView, "location.hash = '#/settings/\(section)'; true")
                     await tourPause(1.2)
                     log.append(await tourSnapshot(settingsWebView, folder, "\(appearance)-settings-\(section)"))
+                    if await tourScrollEnd(settingsWebView) != nil {
+                        log.append(await tourSnapshot(settingsWebView, folder, "\(appearance)-settings-\(section)-end"))
+                    }
                 }
                 settingsWindow?.orderOut(nil)
                 showQuickChat()
@@ -1158,6 +1164,28 @@ extension OpenMuseApp {
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
             view.evaluateJavaScript(script) { _, _ in done.resume() }
         }
+    }
+
+    // A page taller than its window is also captured scrolled to the end, so
+    // content below the first screen is seen too. Returns nil when nothing
+    // scrolls; the next route starts from the top again.
+    private func tourScrollEnd(_ view: WKWebView?) async -> Bool? {
+        guard let view else { return nil }
+        let script = """
+        (() => {
+          const scrollers = [document.scrollingElement, ...document.querySelectorAll("*")].filter((node) =>
+            node && node.scrollHeight > node.clientHeight + 8 &&
+            (node === document.scrollingElement || /auto|scroll/.test(getComputedStyle(node).overflowY)));
+          scrollers.forEach((node) => { node.scrollTop = node.scrollHeight; });
+          return scrollers.length > 0;
+        })()
+        """
+        let scrolled: Bool = await withCheckedContinuation { (done: CheckedContinuation<Bool, Never>) in
+            view.evaluateJavaScript(script) { value, _ in done.resume(returning: (value as? Bool) ?? false) }
+        }
+        guard scrolled else { return nil }
+        await tourPause(0.8)
+        return true
     }
 
     private func tourSnapshot(_ view: WKWebView?, _ folder: URL, _ name: String) async -> String {

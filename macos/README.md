@@ -50,7 +50,8 @@ same profile, which suits acceptance runs and screenshots.
 app that also accepts `--snapshot-tour <dir>`. Launched with it (best together
 with an acceptance profile), the app renders every workspace page, every
 settings section and Quick Chat in light and then dark appearance into PNGs in
-`<dir>`, writes `tour.txt` with one result per image, restores the appearance to
+`<dir>`, adding an `-end` image scrolled to the bottom of any page taller than
+its window, writes `tour.txt` with one result per image, restores the appearance to
 follow the system, and quits. The images come from the web views' own
 snapshots, so the tour needs no Screen Recording permission and never clicks,
 types or sends anything. Pass `-AppleLanguages '(en)'` or `'(zh-Hans)'` to pick
