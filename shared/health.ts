@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { formatLocale, t } from "./i18n";
 import type { AgentEvent } from "./types";
+import { isoInput, isoTime } from "./upcoming";
 
 // Apple Health reads are an MA custom tool answered by the iPhone app. The
 // agent asks; the person shares each request explicitly; the app answers with
@@ -53,14 +54,14 @@ const day = 86400000;
 export const healthQueryInput = z
   .object({
     metric: z.enum(healthMetrics),
-    start: z.string().datetime({ offset: true }),
-    end: z.string().datetime({ offset: true }),
+    start: isoInput,
+    end: isoInput,
     granularity: z.enum(["total", "day", "hour"]).optional(),
   })
   .strict()
   .transform((query, context) => {
-    const start = Date.parse(query.start);
-    const end = Date.parse(query.end);
+    const start = isoTime(query.start);
+    const end = isoTime(query.end);
     const granularity =
       query.granularity ?? (end - start > day ? "day" : "total");
     if (!(end > start) || end - start > 366 * day)

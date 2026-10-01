@@ -46,6 +46,15 @@ describe("Apple Health requests", () => {
       }),
     );
     expect(week?.granularity).toBe("day");
+    expect(
+      parseHealthRequest(
+        request({
+          metric: "steps",
+          start: "2026-10-01T00:00+08:00",
+          end: "2026-10-01T12:00:00+0800",
+        }),
+      )?.endMs,
+    ).toBe(Date.parse("2026-10-01T04:00:00Z"));
     for (const input of [
       {
         metric: "blood",

@@ -3,13 +3,21 @@ import { ApiError } from "../../shared/ark";
 import { uuid } from "../../shared/crypto";
 import { checkInPolicy } from "../../shared/checkin";
 import {
+  deliveredOccurrences,
   dueOccurrence,
+  isReminderPrompt,
+  reminderBatch,
   parseUpcoming,
   reminderPrompt,
   serializeUpcoming,
   type UpcomingItem,
 } from "../../shared/upcoming";
-import type { AgentEvent, Session } from "../../shared/types";
+import {
+  pendingCustomTools,
+  pendingPermissions,
+  type AgentEvent,
+  type Session,
+} from "../../shared/types";
 import { InitiationLog, type InitiationRecord, type Send } from "./initiations";
 import type { LocalDatabase } from "./storage";
 
@@ -53,6 +61,7 @@ export class DirectUpcoming extends InitiationLog<UpcomingState> {
       { delivered: {}, records: [] },
       "reminder",
       "The reminder is unconfirmed. Refresh history; it will not be sent again.",
+      isReminderPrompt,
     );
   }
   async list() {
@@ -134,14 +143,36 @@ export class DirectUpcoming extends InitiationLog<UpcomingState> {
       if (session !== main?.id)
         await this.reconcile(session, await this.remote.history(session), true);
     if (!main) return undefined;
-    await this.reconcile(main.id, await this.remote.history(main.id), true);
+    const history = await this.remote.history(main.id);
+    await this.reconcile(main.id, history, true);
     state = await this.state();
+    // A session waiting on an approval or a tool result is waiting on the
+    // person; the reminder stays due until it is free.
     if (
       main.status !== "idle" ||
+      pendingPermissions(history).length ||
+      pendingCustomTools(history).length ||
       state.records.some((record) => record.phase === "sending")
     )
       return undefined;
-    const due = dueNow((await this.list()).items);
+    // Another device open at the same time may already have delivered it;
+    // record that here so it is not looked up again.
+    const elsewhere = deliveredOccurrences(history);
+    const candidates = dueNow((await this.list()).items);
+    const seen = candidates.filter(({ item, at }) =>
+      elsewhere.has(`${item.id}@${at}`),
+    );
+    if (seen.length)
+      await this.db.update<UpcomingState>(this.key, (old) => {
+        const current = old ?? this.empty;
+        const delivered = { ...current.delivered };
+        for (const { item, at } of seen)
+          delivered[item.id] = Math.max(delivered[item.id] ?? 0, at);
+        return { ...current, delivered };
+      });
+    const due = candidates
+      .filter((entry) => !seen.includes(entry))
+      .slice(0, reminderBatch);
     if (!due.length) return undefined;
     const latest = state.records.at(-1)?.eventId;
     const record: InitiationRecord = {

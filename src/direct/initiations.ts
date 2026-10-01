@@ -22,6 +22,9 @@ export class InitiationLog<S extends InitiationState> {
     protected empty: S,
     private kind: NonNullable<AgentEvent["app_initiation"]>,
     private unconfirmed: string,
+    // Recognizes the app's own prompt text, including one sent by another
+    // device or one whose record has rolled out of this log.
+    private matches: (text: string) => boolean,
   ) {}
   async state(): Promise<S> {
     return (await this.db.get<S>(this.key)) ?? this.empty;
@@ -110,12 +113,14 @@ export class InitiationLog<S extends InitiationState> {
   async annotate(session: string, event: AgentEvent): Promise<AgentEvent> {
     if (event.type !== "user.message") return event;
     const { records } = await this.state();
-    return records.some(
-      (record) =>
-        record.session === session &&
-        record.eventId === event.id &&
-        eventText(event) === record.text,
-    )
+    const text = eventText(event);
+    return this.matches(text) ||
+      records.some(
+        (record) =>
+          record.session === session &&
+          record.eventId === event.id &&
+          text === record.text,
+      )
       ? { ...event, app_initiation: this.kind }
       : event;
   }

@@ -111,7 +111,63 @@ describe("Check-in policy", () => {
       replyId: "answer",
     };
     // The last message is the reply to an unanswered check-in.
-    expect(checkInDue({ ...base, records: [record] })).toBe(false);
+    const unanswered = [
+      ...history,
+      message("evt-1", "user.message", morning - 21 * hour, "prompt"),
+      message("reply", "agent.message", morning - 20.9 * hour),
+    ];
+    expect(
+      checkInDue({ ...base, history: unanswered, records: [record] }),
+    ).toBe(false);
+    // The same holds for a welcome or reminder prompt from any device.
+    for (const tag of ["welcome", "reminder"])
+      expect(
+        checkInDue({
+          ...base,
+          history: [
+            ...history,
+            message(
+              "app",
+              "user.message",
+              morning - 21 * hour,
+              `<open-muse-${tag}>x`,
+            ),
+            message("reply", "agent.message", morning - 20.9 * hour),
+          ],
+        }),
+      ).toBe(false);
+    // Once the person answers the welcome, the conversation counts.
+    expect(
+      checkInDue({
+        ...base,
+        history: [
+          message(
+            "w",
+            "user.message",
+            morning - 30 * hour,
+            "<open-muse-welcome>x",
+          ),
+          message("name", "agent.message", morning - 29 * hour),
+          message("kit", "user.message", morning - 28 * hour, "Kit"),
+          message("ok", "agent.message", morning - 27 * hour),
+        ],
+      }),
+    ).toBe(true);
+    // A session waiting on a tool result is waiting on the person.
+    expect(
+      checkInDue({
+        ...base,
+        history: [
+          ...history,
+          { id: "tool", type: "agent.custom_tool_use", name: "health_read" },
+          {
+            id: "idle",
+            type: "session.status_idle",
+            stop_reason: { type: "requires_action", event_ids: ["tool"] },
+          },
+        ],
+      }),
+    ).toBe(false);
     const answered = { ...record, replyId: "older" };
     expect(checkInDue({ ...base, records: [answered] })).toBe(true);
     expect(
@@ -156,9 +212,10 @@ describe("Check-in initiation", () => {
     expect(
       (await f.service.annotate(f.session.id, initiation)).app_initiation,
     ).toBe("checkin");
-    expect(
-      (await f.service.annotate("other", initiation)).app_initiation,
-    ).toBeUndefined();
+    // The prompt is recognized wherever it appears, such as another device.
+    expect((await f.service.annotate("other", initiation)).app_initiation).toBe(
+      "checkin",
+    );
     expect(
       (await f.service.annotate(f.session.id, f.events[0])).app_initiation,
     ).toBeUndefined();
@@ -191,7 +248,7 @@ describe("Check-in initiation", () => {
       ).toBe("checkin");
   });
 
-  it("does nothing when disabled, without a main chat, or for a typed copy", async () => {
+  it("does nothing when disabled, without a main chat, or for other text", async () => {
     const f = fixture();
     await f.service.setEnabled(false);
     expect(await f.service.start("en")).toBeUndefined();
@@ -201,7 +258,11 @@ describe("Check-in initiation", () => {
     expect(f.remote.send).not.toHaveBeenCalled();
     await f.service.start("en");
     const initiation = f.events.at(-1)!;
-    const typed = { ...initiation, id: "typed" };
+    const typed = {
+      ...initiation,
+      id: "typed",
+      content: [{ type: "text", text: "<open-muse-checkin> hello" }],
+    };
     expect(
       (await f.service.annotate(f.session.id, typed)).app_initiation,
     ).toBeUndefined();

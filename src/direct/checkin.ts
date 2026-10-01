@@ -3,6 +3,7 @@ import {
   checkInDue,
   checkInPolicy,
   checkInPrompt,
+  isCheckInPrompt,
   type CheckInRecord,
 } from "../../shared/checkin";
 import type { AgentEvent, Session } from "../../shared/types";
@@ -34,6 +35,7 @@ export class DirectCheckIn extends InitiationLog<CheckInState> {
       { enabled: true, records: [] },
       "checkin",
       "The check-in is unconfirmed. Refresh history; it will not be sent again.",
+      isCheckInPrompt,
     );
   }
   setEnabled(enabled: boolean) {

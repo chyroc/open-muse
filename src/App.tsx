@@ -195,6 +195,7 @@ function Workspace({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [welcome, setWelcome] = useState<WelcomeState>();
+  const welcomePhase = welcome?.phase;
   const [welcomeBusy, setWelcomeBusy] = useState(false);
   const [welcomeError, setWelcomeError] = useState("");
   const checkedWelcome = useRef(false);
@@ -403,7 +404,9 @@ function Workspace({
       isSideDraft ||
       taskRoute ||
       welcomeBusy ||
-      (welcome && welcome.phase !== "confirmed" && welcome.phase !== "skipped")
+      (welcomePhase &&
+        welcomePhase !== "confirmed" &&
+        welcomePhase !== "skipped")
     )
       return;
     // Due reminders, then check-ins, start only while the main chat is in
@@ -446,7 +449,7 @@ function Workspace({
     tab,
     isSideDraft,
     taskRoute,
-    welcome,
+    welcomePhase,
     welcomeBusy,
     reload,
   ]);

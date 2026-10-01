@@ -5,7 +5,11 @@ import { digest, uuid } from "../shared/crypto";
 import { t } from "../shared/i18n";
 import { identityInstructions } from "../shared/identity";
 import {
+  deliveredOccurrences,
   describeSchedule,
+  isReminderPrompt,
+  isoTime,
+  reminderBatch,
   dueOccurrence,
   emptyUpcomingDocument,
   nextOccurrence,
@@ -109,6 +113,41 @@ describe("Upcoming schedules", () => {
       schedule: { kind: "once", at: "2026-09-01T09:00:00Z" },
     });
     expect(dueOccurrence(old, 0, now)).toBe(undefined);
+  });
+
+  it("reads the ISO 8601 forms agents write, the same way everywhere", () => {
+    const at = Date.parse("2026-10-01T01:00:00Z");
+    for (const value of [
+      "2026-10-01T09:00:00+08:00",
+      "2026-10-01T09:00+08:00",
+      "2026-10-01T09:00:00+0800",
+      "2026-10-01T09:00:00.000000+08:00",
+      "2026-10-01T01:00:00Z",
+    ])
+      expect(isoTime(value)).toBe(at);
+    for (const value of ["2026-10-01", "2026-10-01 09:00:00+08:00", "tomorrow"])
+      expect(isoTime(value)).toBeNaN();
+    expect(
+      parseUpcoming(
+        serializeUpcoming([
+          item({
+            schedule: { kind: "once", at: "2026-10-02T10:00+08:00" },
+            created_at: "2026-09-30T08:00:00+0800",
+          }),
+        ]),
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("does not replay an occurrence that passed while an item was paused", () => {
+    const daily = item({ schedule: { kind: "daily", time: "09:00" } });
+    const now = Date.parse("2026-10-05T22:00:00Z");
+    expect(dueOccurrence(daily, 0, now)).toBe(
+      Date.parse("2026-10-05T16:00:00Z"),
+    );
+    expect(
+      dueOccurrence({ ...daily, updated_at: "2026-10-05T21:00:00Z" }, 0, now),
+    ).toBe(undefined);
   });
 
   it("validates the stored document without discarding data", () => {
@@ -286,6 +325,102 @@ describe("Upcoming delivery", () => {
     await expect(g.service.start("en")).rejects.toThrow("busy");
     expect(await g.service.start("en")).toBeUndefined();
     expect(g.remote.send).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips an occurrence another device already delivered", async () => {
+    const f = fixture([daily], before);
+    await f.service.start("en");
+    f.clock.now += 2 * hour;
+    const due = Date.parse("2026-10-05T16:00:00Z");
+    f.events.push({
+      id: "elsewhere",
+      type: "user.message",
+      content: [
+        {
+          type: "text",
+          text: reminderPrompt("en", new Date(due), [{ item: daily, at: due }]),
+        },
+      ],
+    });
+    expect(await f.service.start("en")).toBeUndefined();
+    expect(f.remote.send).not.toHaveBeenCalled();
+    // Recorded locally, so the next minute does not read history again.
+    const reads = f.remote.history.mock.calls.length;
+    f.clock.now += 60000;
+    expect(await f.service.start("en")).toBeUndefined();
+    expect(f.remote.history.mock.calls.length).toBe(reads);
+    expect(
+      deliveredOccurrences([
+        {
+          id: "typed",
+          type: "user.message",
+          content: [
+            {
+              type: "text",
+              text: "- id standup, daily, due 2026-10-05T16:00:00.000Z: x",
+            },
+          ],
+        },
+      ]).size,
+    ).toBe(0);
+  });
+
+  it("waits while the conversation is blocked on a tool result", async () => {
+    const f = fixture([daily], before);
+    await f.service.start("en");
+    f.clock.now += 2 * hour;
+    f.events.push(
+      { id: "tool", type: "agent.custom_tool_use", name: "health_read" },
+      {
+        id: "idle",
+        type: "session.status_idle",
+        stop_reason: { type: "requires_action", event_ids: ["tool"] },
+      },
+    );
+    expect(await f.service.start("en")).toBeUndefined();
+    f.events.push({
+      id: "result",
+      type: "user.custom_tool_result",
+      custom_tool_use_id: "tool",
+    });
+    expect((await f.service.start("en"))?.phase).toBe("confirmed");
+  });
+
+  it("delivers a large batch in bounded messages, recognized on any device", async () => {
+    const many = Array.from({ length: reminderBatch + 2 }, (_, index) =>
+      item({
+        id: `item-${index}`,
+        instruction: "x".repeat(2000),
+        schedule: { kind: "daily", time: "09:00" },
+      }),
+    );
+    const f = fixture(many, before);
+    await f.service.start("en");
+    f.clock.now += 2 * hour;
+    await f.service.start("en");
+    const first = f.remote.send.mock.calls[0][1];
+    expect(first.length).toBeLessThan(16000);
+    expect(deliveredOccurrences([f.events.at(-1)!]).size).toBe(reminderBatch);
+    expect(isReminderPrompt(first)).toBe(true);
+    expect(
+      (
+        await new DirectUpcoming(
+          "other-device",
+          f.db,
+          f.identity,
+          f.remote,
+        ).annotate("main", f.events.at(-1)!)
+      ).app_initiation,
+    ).toBe("reminder");
+    f.events.push({
+      id: "reply",
+      type: "agent.message",
+      content: [{ type: "text", text: "Done." }],
+    });
+    f.clock.now += 60000;
+    await f.service.start("en");
+    expect(f.remote.send).toHaveBeenCalledTimes(2);
+    expect(deliveredOccurrences([f.events.at(-1)!]).size).toBe(2);
   });
 
   it("shares one delivery between concurrent runs and views", async () => {
