@@ -98,17 +98,17 @@ export function SettingsHome({
         />
       )}
       {section === "checkins" && (
-        <Sheet title={t("Check-ins")} onClose={close}>
-          <CheckInSettings client={client} />
+        <Sheet title={t("Check-ins")} onClose={close} grouped>
+          <CheckInSettings client={client} bare />
         </Sheet>
       )}
       {section === "account" && (
-        <Sheet title={t("Account and workspace")} onClose={close}>
+        <Sheet title={t("Account and workspace")} onClose={close} grouped>
           <AuthPanel client={client} onChanged={onConnection} />
         </Sheet>
       )}
       {section === "about" && (
-        <Sheet title={t("About")} onClose={close}>
+        <Sheet title={t("About")} onClose={close} grouped>
           <section className="privacy-grid">
             <div>
               <ShieldCheck size={22} />

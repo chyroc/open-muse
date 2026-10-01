@@ -88,3 +88,63 @@
   flex: 0 0 auto;
   color: #c7c7cc;
 }
+/* Settings and its sheets sit on gray, with white grouped lists. */
+.companion-main:has(.settings-home),
+.muse-sheet.grouped {
+  background: #f2f2f7;
+}
+.muse-sheet.grouped .settings-card {
+  background: #fff;
+}
+.settings-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 52px;
+  padding: 0 18px;
+  border-radius: 20px;
+  background: #fff;
+  font-size: 17px;
+}
+.settings-footnote {
+  margin: 8px 18px 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #8e8e93;
+}
+/* A system-style switch; the thumb overshoots slightly as it settles. */
+.ios-switch {
+  appearance: none;
+  position: relative;
+  flex: 0 0 auto;
+  width: 51px;
+  height: 31px;
+  margin: 0;
+  border-radius: 31px;
+  background: #e9e9eb;
+  transition: background-color 200ms ease-out;
+}
+.ios-switch::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 3px 8px rgb(0 0 0 / 15%),
+    0 1px 1px rgb(0 0 0 / 16%);
+  transition: transform 320ms cubic-bezier(0.34, 1.36, 0.64, 1);
+}
+.ios-switch:checked {
+  background: #34c759;
+}
+.ios-switch:checked::before {
+  transform: translateX(20px);
+}
+.ios-switch:disabled {
+  opacity: 0.5;
+}

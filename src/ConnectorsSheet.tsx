@@ -130,7 +130,7 @@ export function ConnectorsSheet({
     lark(),
   ].filter(matches);
   return (
-    <Sheet title={t("Connectors")} onClose={onClose}>
+    <Sheet title={t("Connectors")} onClose={onClose} grouped>
       <div className="connectors">
         <label className="connector-search">
           <Search size={18} aria-hidden="true" />
@@ -183,9 +183,8 @@ export function ConnectorsSheet({
                     <span className="connector-icon" data-id={id}>
                       <Icon size={20} aria-hidden="true" />
                     </span>
-                    <span className="connector-name">
+                    <span className="connector-name" title={detail}>
                       {name}
-                      <small>{detail}</small>
                     </span>
                     <button
                       className="connector-connect"

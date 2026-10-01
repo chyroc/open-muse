@@ -11,7 +11,7 @@
   padding: 0 16px;
   min-height: 44px;
   border-radius: 22px;
-  background: #f2f2f4;
+  background: #fff;
   color: #8e8e93;
 }
 .connector-search input {
@@ -27,7 +27,7 @@
   margin: 0;
   padding: 0 16px;
   border-radius: 20px;
-  background: #f7f7f8;
+  background: #fff;
 }
 .connector-group li + li {
   border-top: 1px solid #e5e5ea;

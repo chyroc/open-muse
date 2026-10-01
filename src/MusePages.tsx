@@ -29,10 +29,13 @@ export function Sheet({
   title,
   children,
   onClose,
+  grouped = false,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
+  // A gray sheet for white grouped lists, as in system settings.
+  grouped?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -51,7 +54,7 @@ export function Sheet({
   }, []);
   return (
     <dialog
-      className="muse-sheet"
+      className={grouped ? "muse-sheet grouped" : "muse-sheet"}
       tabIndex={-1}
       ref={ref}
       aria-label={title}
