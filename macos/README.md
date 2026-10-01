@@ -63,7 +63,8 @@ Recording permissions.
   Run on startup; a login item macOS still holds for approval reads as pending.
 - Option-Space, or Quick chat in the menu bar icon, opens a small card over the
   app in front that shows and sends into the main chat. Pressing it again,
-  Escape or clicking elsewhere puts it away.
+  Escape or clicking elsewhere puts it away. General > Shortcuts records another
+  combination with Command, Option or Control and reports one macOS refuses.
 - Both windows render before the Keychain login is restored. A pending or denied
   authorization leaves the app usable and disconnected, reports the refusal with
   a retry, and never writes to secure storage, so the saved credential survives.
@@ -145,8 +146,8 @@ scope, it is applied to both windows at once, and the shell matches the window
 chrome and native dialogs to it. Choosing "system" keeps following macOS as it
 changes; choosing light or dark stops following it. General also holds the
 Run on startup, menu bar and floating button switches and the check-in switch,
-and Computer use and Dictation have their own sections. Accent themes, the shortcut recorder,
-usage and update checks remain pending Mac features, not dropped ones, and
+and Computer use and Dictation have their own sections. Accent themes, usage
+and update checks remain pending Mac features, not dropped ones, and
 connectors, file system access, wallet, message channels, devices,
 help and legal keep their place in the list and explain why they are not
 connected. None of them render a control that does nothing.
