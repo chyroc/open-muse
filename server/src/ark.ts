@@ -24,10 +24,10 @@ const validId = (value: unknown) => {
 const base = "https://ark.cn-beijing.volces.com/api/v3";
 export const BACKGROUND_SYSTEM =
   "Generate personalized Feed ideas from the provided context. You have no tools, skills, MCP servers, child agents, or mounted memory. Return only the requested JSON. Never claim to have researched news or performed actions.";
-// Ark reports an overridden empty list as null in the session snapshot; an
-// omitted override shows the agent's own list instead.
+// A session snapshot shows the effective lists: Ark omits an overridden empty
+// list, while an omitted override shows the agent's own list instead.
 const none = (items: unknown) =>
-  items === null || (Array.isArray(items) && items.length === 0);
+  items == null || (Array.isArray(items) && items.length === 0);
 export class ArkRemote implements Remote {
   readonly owner: string;
   private ark: ArkClient;

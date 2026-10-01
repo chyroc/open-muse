@@ -159,20 +159,22 @@ describe("Constrained MA adapter", () => {
     expect(f.calls.at(-1)?.method).toBe("POST");
   });
   it("accepts the empty overrides as Ark reports them in the session", async () => {
-    const f = fixture({
-      uploaded: true,
-      sessionAgent: {
-        id: "agent-test",
-        version: 1,
-        system: BACKGROUND_SYSTEM,
-        tools: null,
-        mcp_servers: null,
-        skills: null,
-        multiagent: null,
-      },
-    });
-    await f.remote.send("session-new", "event-stable", "prompt");
-    expect(f.calls.at(-1)?.method).toBe("POST");
+    for (const lists of [
+      {},
+      { tools: null, mcp_servers: null, skills: null, multiagent: null },
+    ]) {
+      const f = fixture({
+        uploaded: true,
+        sessionAgent: {
+          id: "agent-test",
+          version: 1,
+          system: BACKGROUND_SYSTEM,
+          ...lists,
+        },
+      });
+      await f.remote.send("session-new", "event-stable", "prompt");
+      expect(f.calls.at(-1)?.method).toBe("POST");
+    }
   });
   it("does not trust ignored or incomplete overrides, changed versions, or child agents", async () => {
     const safe = {
@@ -190,7 +192,6 @@ describe("Constrained MA adapter", () => {
       { ...safe, mcp_servers: [{ url: "https://example.com" }] },
       { ...safe, skills: [{ id: "skill-one" }] },
       { ...safe, version: 2 },
-      { ...safe, tools: undefined },
       { ...safe, multiagent: { type: "coordinator" } },
     ]) {
       const f = fixture({ uploaded: true, sessionAgent });
