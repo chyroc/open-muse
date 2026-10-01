@@ -45,6 +45,7 @@ describe("Apple UI localization", () => {
           busy={false}
           onConfirm={noop}
           onDocument={noop}
+          onPrefill={noop}
         />,
       );
       expect(panel).toContain(

@@ -123,6 +123,7 @@ export function DesktopApp({ client }: { client: Client }) {
   const [ready, setReady] = useState(client.signedIn());
   const [loading, setLoading] = useState(false);
   const [menu, setMenu] = useState(false);
+  const [prefill, setPrefill] = useState(0);
   const name = identity.name;
   const [away, setAway] = useState(false);
   const scroll = useRef<HTMLDivElement>(null);
@@ -209,6 +210,14 @@ export function DesktopApp({ client }: { client: Client }) {
   // The Mac app answers with its own settings window; the panel is the fallback.
   function openSettings() {
     if (!openNativeSettings()) setSettings(true);
+  }
+  // The avatar menu seeds the main composer and leaves the sending to the user.
+  // Attachments and any open document are untouched, and nothing is created.
+  function prefillComposer(text: string) {
+    const key = index.mainId ?? "main";
+    setDrafts((old) => ({ ...old, [key]: text }));
+    setGoalDrafts((old) => ({ ...old, [key]: false }));
+    setPrefill((value) => value + 1);
   }
   const goPage = (page: Page) => {
     // Reselecting Library closes the side-by-side chat and keeps the category.
@@ -355,6 +364,14 @@ export function DesktopApp({ client }: { client: Client }) {
     if (route.page === "library" && splitChat && draft)
       composer.current?.focus();
   }, [route.page, splitChat, draft]);
+  // A seeded composer takes focus with the caret after the prompt.
+  useEffect(() => {
+    if (!prefill) return;
+    const field = composer.current;
+    if (!field) return;
+    field.focus();
+    field.setSelectionRange(field.value.length, field.value.length);
+  }, [prefill]);
   useEffect(() => {
     if (route.page !== "goals") setGoalConversation(undefined);
   }, [route.page]);
@@ -1092,6 +1109,7 @@ export function DesktopApp({ client }: { client: Client }) {
           busy={busy}
           onConfirm={confirm}
           onDocument={openDocument}
+          onPrefill={prefillComposer}
         />
       )}
       {settings && (

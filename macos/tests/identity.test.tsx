@@ -20,6 +20,7 @@ describe("Mac identity workspace", () => {
         busy={false}
         onConfirm={noop}
         onDocument={noop}
+        onPrefill={noop}
       />,
     );
     for (const label of ["Activity", "Approvals", "Upcoming", "Identity"])

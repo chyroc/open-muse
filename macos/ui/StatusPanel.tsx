@@ -1,7 +1,9 @@
 import { formatLocale, t } from "../../shared/i18n";
+import { useEffect, useRef, useState } from "react";
 import {
   Check,
   Clock3,
+  CircleUserRound,
   Fingerprint,
   Heart,
   List,
@@ -94,6 +96,7 @@ export function StatusPanel({
   busy,
   onConfirm,
   onDocument,
+  onPrefill,
 }: {
   identity: CompanionIdentity;
   status: string;
@@ -105,7 +108,51 @@ export function StatusPanel({
   busy: boolean;
   onConfirm: (result: "allow" | "deny", event: AgentEvent) => void;
   onDocument: (name: IdentityDocumentName) => void;
+  onPrefill: (text: string) => void;
 }) {
+  const [menu, setMenu] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const items = useRef<HTMLDivElement>(null);
+  // Opening with the keyboard lands on the first entry.
+  useEffect(() => {
+    if (menu) items.current?.querySelector("button")?.focus();
+  }, [menu]);
+  function closeMenu(restoreFocus: boolean) {
+    setMenu(false);
+    if (restoreFocus) trigger.current?.focus();
+  }
+  function moveFocus(step: number) {
+    const buttons = [...(items.current?.querySelectorAll("button") ?? [])];
+    if (!buttons.length) return;
+    const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    buttons[(at + step + buttons.length) % buttons.length]?.focus();
+  }
+  // The menu closes the same way the other desktop menus do.
+  useEffect(() => {
+    if (!menu) return;
+    const close = (event: Event) => {
+      if (event instanceof KeyboardEvent) {
+        if (event.key !== "Escape") return;
+        // Escape hands focus back to the control that opened the menu.
+        trigger.current?.focus();
+        setMenu(false);
+        return;
+      }
+      if (
+        event.type === "click" &&
+        event.target instanceof Element &&
+        event.target.closest(".status-menu-anchor")
+      )
+        return;
+      setMenu(false);
+    };
+    window.addEventListener("keydown", close);
+    window.addEventListener("click", close);
+    return () => {
+      window.removeEventListener("keydown", close);
+      window.removeEventListener("click", close);
+    };
+  }, [menu]);
   const tabs = [
     { id: "activity", label: statusTabLabel("activity"), Icon: List },
     { id: "approvals", label: statusTabLabel("approvals"), Icon: ShieldCheck },
@@ -123,13 +170,52 @@ export function StatusPanel({
       </button>
       <div className="status-profile">
         <Avatar large />
-        <button
-          className="edit-profile icon-button"
-          aria-label={t("Edit assistant name")}
-          onClick={() => onDocument("IDENTITY.md")}
-        >
-          <Pencil size={13} />
-        </button>
+        <div className="edit-profile status-menu-anchor">
+          <button
+            className="icon-button"
+            aria-label={t("Edit avatar and name")}
+            aria-haspopup="menu"
+            aria-expanded={menu}
+            ref={trigger}
+            onClick={() => setMenu((open) => !open)}
+          >
+            <Pencil size={13} />
+          </button>
+          {menu && (
+            <div
+              className="status-menu"
+              role="menu"
+              ref={items}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                  event.preventDefault();
+                  moveFocus(event.key === "ArrowDown" ? 1 : -1);
+                }
+              }}
+            >
+              <button
+                role="menuitem"
+                onClick={() => {
+                  setMenu(false);
+                  onPrefill(`${t("Change your avatar to")} `);
+                }}
+              >
+                <CircleUserRound size={16} />
+                {t("Change avatar")}
+              </button>
+              <button
+                role="menuitem"
+                onClick={() => {
+                  setMenu(false);
+                  onPrefill(`${t("Change your name to")} `);
+                }}
+              >
+                <Pencil size={16} />
+                {t("Edit name")}
+              </button>
+            </div>
+          )}
+        </div>
         <h2>{identity.name}</h2>
         <p className="subtle">{status}</p>
       </div>
