@@ -254,6 +254,13 @@ describe("Durable background Feed", () => {
       "daily limit",
     );
   });
+  it("keeps a released run due for a clock tick that arrives slightly early", async () => {
+    await enqueue();
+    const run = (await repo.claim(now))!;
+    await repo.release(run, now);
+    // The next tick is one interval later, give or take a few seconds.
+    expect(await repo.claim(now + POLL_INTERVAL - 1000)).toBeTruthy();
+  });
   it("fences stale workers and preserves the current lease", async () => {
     await enqueue();
     const run = (await repo.claim(now))!;

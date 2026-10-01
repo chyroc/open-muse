@@ -10,7 +10,7 @@ import { HttpError } from "./env";
 import {
   DAILY_RUN_LIMIT,
   nextDaily,
-  POLL_INTERVAL,
+  RECHECK_AFTER,
   RUN_DEADLINE,
 } from "./schedule";
 
@@ -263,7 +263,7 @@ export class Repository {
         "UPDATE runs SET lease_token=NULL,lease_until=NULL,next_check_at=?,error=?,updated_at=? WHERE id=? AND owner_id=? AND lease_token=?",
       )
       .bind(
-        now + POLL_INTERVAL,
+        now + RECHECK_AFTER,
         error,
         now,
         run.id,

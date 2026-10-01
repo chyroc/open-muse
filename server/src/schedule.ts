@@ -64,5 +64,9 @@ export function nextDaily(now: number, timezone: string, time: string): number {
 }
 
 export const POLL_INTERVAL = 5 * minute;
+// A run is checked again one tick later. The clock fires every POLL_INTERVAL
+// but not to the millisecond, so the next check is due a little early: a tick
+// arriving a second sooner must not skip the run for a whole interval.
+export const RECHECK_AFTER = POLL_INTERVAL - minute;
 export const RUN_DEADLINE = 60 * minute;
 export const DAILY_RUN_LIMIT = 3;
