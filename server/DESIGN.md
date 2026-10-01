@@ -147,9 +147,11 @@ deploying a Worker or writing a cron expression.
 - Use persisted jobs for durable work. Workers have CPU, memory, and invocation
   lifetime limits; response completion or client disconnection is not a durable
   background execution mechanism.
-- Test mainland client access and Worker-to-Ark connectivity separately. Neither
-  has been verified for this proposal. Ordinary Cloudflare deployment does not
-  imply mainland hosting; China Network has separate availability, product,
+- Worker-to-Ark and Worker-to-Volcengine-Auth requests work. `*.workers.dev`
+  is not reliably reachable from mainland networks (wrong DNS answers, reset
+  TLS handshakes), which is why the veFaaS clock runs outside the mainland; see
+  [Deploying](DEPLOY.md). Mainland clients need a custom domain on the Worker.
+  Ordinary Cloudflare deployment does not imply mainland hosting; China Network has separate availability, product,
   subscription, and ICP requirements. Review data residency before uploading
   personal content.
 
