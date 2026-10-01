@@ -2,7 +2,8 @@
 
 Cloudflare Workers API for the iOS and macOS apps. It verifies Muse account
 sessions, keeps each account's Ark API key encrypted, records account workspace
-ownership, and runs background Feed work. No website, static assets, chat
+ownership, and runs background Feed work. Login and the schedule clock can run
+on Volcengine (Supabase Auth and a veFaaS timer); see [Deploying](DEPLOY.md). No website, static assets, chat
 proxy, or native app binaries are hosted here. Clients call Ark directly with
 the account's key.
 
@@ -15,8 +16,9 @@ controls in Settings, under **While you're away**. Background results currently
 appear in that card, not in the main Feed tab. Push notifications are not
 implemented.
 
-Cron runs every five minutes; each invocation advances a persisted stage instead
-of waiting for the agent. Generation and delivery are not exact-time guarantees.
+A clock ticks every five minutes: Workers Cron, or a signed external trigger
+such as a Volcengine veFaaS timer when `SCHEDULER_SOURCE=external`. Each tick
+advances a persisted stage instead of waiting for the agent. Generation and delivery are not exact-time guarantees.
 Missed schedule occurrences do not create a catch-up burst. Nonexistent daylight
 saving times are skipped. Only one unresolved run is allowed per owner, with at
 most three new runs per rolling 24 hours, including manual requests. After an
@@ -452,10 +454,11 @@ an HTTP request's owner. Migrate device-token maps before deploying this version
 The uploaded app agent is version-pinned and reused with per-session overrides:
 empty tools, MCP servers, and skills, plus a background-only system instruction.
 Coordinator agents are rejected. The Worker verifies the effective session's
-agent ID/version and empty execution capabilities before submitting any message.
-If Ark omits or ignores those restrictions, the job stops for review. No source
-agent is modified. This contract still requires live MA acceptance. Sessions
-mount neither memories nor credential vaults.
+agent ID/version, the background system instruction, and empty execution
+capabilities before submitting any message. Ark leaves an overridden empty list
+out of the session, while an ignored override shows the agent's own list; a
+present list or a different instruction stops the job for review. No source
+agent is modified. Sessions mount neither memories nor credential vaults.
 The server reads bounded SOUL, MEMORY, GOALS, and FEED documents into the prompt.
 This mode produces personalized ideas, not web research or current news. It does
 not access device-local likes or main-chat selection. Tool access remains out
@@ -482,8 +485,10 @@ with Worker secrets rather than committing them. Cloudflare management tokens
 belong only in local tooling, never in Worker bindings or an app bundle.
 
 No cloud deployment, real MA call, or notification delivery is established by a
-passing local build. Do not enable scheduled generation until the dedicated MA
-configuration, limits, and access policy have been verified.
+passing local build. [Deploying](DEPLOY.md) describes the Volcengine and
+Cloudflare setup and how to check a live deployment. Outbound Auth and Ark
+requests use `redirect: "manual"` because Workers reject `"error"`; any redirect
+response fails the request.
 
 See [design boundaries](DESIGN.md) for authorization, uncertain-write recovery,
 data residency, and later sync/notification work.
