@@ -21,6 +21,7 @@ export interface AgentEvent {
   evaluated_permission?: "allow" | "ask" | "deny";
   tool_use_id?: string;
   mcp_tool_use_id?: string;
+  custom_tool_use_id?: string;
   session_thread_id?: string;
   result?: "allow" | "deny";
   // Local audit marker; not sent to Ark.
@@ -143,7 +144,8 @@ export function taskState(
   return state;
 }
 
-export function pendingPermissions(events: AgentEvent[]) {
+// The calls the session is blocked on, if its latest status asks for action.
+function blockingIds(events: AgentEvent[]) {
   const lastStatus = [...events]
     .reverse()
     .find(
@@ -155,14 +157,38 @@ export function pendingPermissions(events: AgentEvent[]) {
     lastStatus?.type !== "session.status_idle" ||
     lastStatus.stop_reason?.type !== "requires_action"
   )
-    return [];
-  const ids = new Set(lastStatus.stop_reason.event_ids ?? []);
+    return new Set<string>();
+  return new Set(lastStatus.stop_reason.event_ids ?? []);
+}
+
+// Custom tool calls also block the session, but they are answered with a
+// tool result from the client that runs them, never with a confirmation.
+export function pendingPermissions(events: AgentEvent[]) {
+  const ids = blockingIds(events);
   const confirmed = new Set(
     events
       .filter((event) => event.type === "user.tool_confirmation")
       .map((event) => event.tool_use_id),
   );
   return events.filter(
-    (event) => ids.has(event.id) && !confirmed.has(event.id),
+    (event) =>
+      ids.has(event.id) &&
+      !confirmed.has(event.id) &&
+      event.type !== "agent.custom_tool_use",
+  );
+}
+
+export function pendingCustomTools(events: AgentEvent[]) {
+  const ids = blockingIds(events);
+  const answered = new Set(
+    events
+      .filter((event) => event.type === "user.custom_tool_result")
+      .map((event) => event.custom_tool_use_id),
+  );
+  return events.filter(
+    (event) =>
+      event.type === "agent.custom_tool_use" &&
+      ids.has(event.id) &&
+      !answered.has(event.id),
   );
 }

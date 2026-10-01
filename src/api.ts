@@ -8,6 +8,7 @@ import { boundedSignal } from "../shared/abort";
 import { canAutoApprove } from "../shared/approval-policy";
 import {
   eventText,
+  pendingCustomTools,
   pendingPermissions,
   type AgentEvent,
   type AppConfig,
@@ -93,6 +94,44 @@ const messageInput = z.discriminatedUnion("type", [
     })
     .strict(),
 ]);
+// A client's answers to the custom tools it ran: text and PNG/JPEG images only.
+const customToolResults = z
+  .array(
+    z
+      .object({
+        custom_tool_use_id: z.string().min(1).max(200),
+        is_error: z.boolean(),
+        content: z
+          .array(
+            z.discriminatedUnion("type", [
+              z
+                .object({ type: z.literal("text"), text: z.string().max(64000) })
+                .strict(),
+              z
+                .object({
+                  type: z.literal("image"),
+                  source: z
+                    .object({
+                      type: z.literal("base64"),
+                      media_type: z.enum(["image/png", "image/jpeg"]),
+                      data: z
+                        .string()
+                        .max(8_000_000)
+                        .regex(/^[A-Za-z0-9+/]+={0,2}$/),
+                    })
+                    .strict(),
+                })
+                .strict(),
+            ]),
+          )
+          .min(1)
+          .max(6),
+      })
+      .strict(),
+  )
+  .min(1)
+  .max(8);
+export type CustomToolResult = z.infer<typeof customToolResults>[number];
 type Approval = {
   state: "sending" | "failed" | "confirmed";
   event: AgentEvent;
@@ -1335,6 +1374,59 @@ export class Client {
       if (autoKey && autoRecord && autoRecord.state !== "confirmed")
         await this.db.set(autoKey, { ...autoRecord, state: "failed" });
       throw error;
+    } finally {
+      this.sends.delete(lock);
+    }
+  }
+  // Answers custom tool calls this client ran. Only calls the session is still
+  // blocked on are answered, history is read first so an existing result is
+  // never sent again, and a failed or unconfirmed write is not retried.
+  async answerCustomTools(
+    id: string,
+    results: CustomToolResult[],
+    signal?: AbortSignal,
+  ): Promise<Page<AgentEvent>> {
+    const input = customToolResults.parse(results);
+    const r = this.context();
+    r.abort.signal.throwIfAborted();
+    validId(id);
+    const lock = `${r.key}:${id}`;
+    if (this.sends.has(lock))
+      throw new ApiError(
+        409,
+        t("The previous operation is still being submitted."),
+      );
+    this.sends.add(lock);
+    try {
+      const history = await this.collect<AgentEvent>(
+        r.ark,
+        `/sessions/${validId(id)}/events?order=asc&limit=200`,
+        signal,
+      );
+      const pending = new Set(pendingCustomTools(history).map((e) => e.id));
+      if (
+        new Set(input.map((item) => item.custom_tool_use_id)).size !==
+          input.length ||
+        input.some((item) => !pending.has(item.custom_tool_use_id))
+      )
+        throw new ApiError(
+          409,
+          t("The tool is no longer pending; refresh history."),
+        );
+      const events = input.map((item) => ({
+        id: `evt-${uuid()}`,
+        type: "user.custom_tool_result",
+        ...item,
+      }));
+      const result = await r.ark.request<Page<AgentEvent>>(
+        `/sessions/${validId(id)}/events`,
+        { method: "POST", body: JSON.stringify({ events }), signal },
+      );
+      const rows = Array.isArray(result.data) ? result.data : [];
+      return {
+        ...result,
+        data: await Promise.all(rows.map((e) => this.annotate(r, id, e))),
+      };
     } finally {
       this.sends.delete(lock);
     }
