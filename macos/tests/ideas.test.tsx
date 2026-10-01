@@ -543,3 +543,14 @@ describe("Mac Ideas UI", () => {
     expect(stub.client.send).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("Mac ideas prompt", () => {
+  it("allows recurring work only as an Upcoming item the person agrees to", async () => {
+    const { readFileSync } = await import("node:fs");
+    const source = readFileSync("macos/ui/ideas.ts", "utf8");
+    expect(source).not.toContain("Automatic scheduling is not connected");
+    expect(source).toContain(
+      "set up only after the person starts the idea and agrees",
+    );
+  });
+});
