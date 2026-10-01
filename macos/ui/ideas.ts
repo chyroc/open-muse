@@ -94,12 +94,22 @@ export function parseMacIdeas(raw: string) {
   return { content, details };
 }
 
+// Ideas retire on their own after about two weeks.
+export const IDEA_LIFETIME = 14 * 24 * 60 * 60 * 1000;
 export function ideaSections(
   items: InspirationItem[],
   feedback: Presentation["feedback"],
+  now = Date.now(),
 ) {
+  const fresh = (item: InspirationItem) => {
+    const created = Date.parse(item.created_at);
+    return !Number.isFinite(created) || now - created < IDEA_LIFETIME;
+  };
   const available = items.filter(
-    (item) => item.kind === "ideas" && feedback[item.id]?.direction !== "down",
+    (item) =>
+      item.kind === "ideas" &&
+      feedback[item.id]?.direction !== "down" &&
+      fresh(item),
   );
   const featured = available.slice(0, 4);
   const groups = new Map<string, InspirationItem[]>();

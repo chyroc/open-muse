@@ -37,7 +37,8 @@ const item = (id = "one", category = "Learning"): InspirationItem => ({
   kind: "ideas",
   session_id: "generation",
   event_id: "answer",
-  created_at: "2026-09-30T09:00:00Z",
+  // Recent, so the fixture never ages past the two-week lifetime.
+  created_at: new Date(Date.now() - 3600_000).toISOString(),
   title: `Idea ${id}`,
   body: "A useful plan for learning.",
   emoji: "🌱",
@@ -541,6 +542,28 @@ describe("Mac Ideas UI", () => {
     expect(host.textContent).toContain("Open conversation");
     await click("Open conversation");
     expect(stub.client.send).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Mac idea lifetime", () => {
+  it("retires ideas after about two weeks", async () => {
+    const { ideaSections, IDEA_LIFETIME } = await import("../ui/ideas");
+    const now = Date.parse("2026-10-20T00:00:00Z");
+    const item = (id: string, age: number) =>
+      ({
+        id,
+        kind: "ideas",
+        category: "",
+        created_at: new Date(now - age).toISOString(),
+      }) as never;
+    const sections = ideaSections(
+      [item("new", 3600_000), item("old", IDEA_LIFETIME + 1)],
+      {},
+      now,
+    );
+    expect(sections.featured.map((idea: { id: string }) => idea.id)).toEqual([
+      "new",
+    ]);
   });
 });
 
