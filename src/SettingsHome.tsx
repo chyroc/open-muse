@@ -33,6 +33,29 @@ export function SettingsHome({
   onDraft: (text: string) => void;
 }) {
   const [section, setSection] = useState<Section>();
+  const [resetting, setResetting] = useState(false);
+  const [resetError, setResetError] = useState("");
+  async function reset() {
+    if (
+      resetting ||
+      !window.confirm(
+        t(
+          "Reset this device? This removes the saved Ark API key and sign-ins from this device and deletes all local data, including the conversation list, saved replies, Feed, and settings. Open Muse restarts as if newly installed. Your agents, conversations, and memory in the cloud are not deleted.",
+        ),
+      )
+    )
+      return;
+    setResetting(true);
+    setResetError("");
+    try {
+      await client.resetDevice();
+      location.hash = "/";
+      location.reload();
+    } catch (reason) {
+      setResetError((reason as Error).message);
+      setResetting(false);
+    }
+  }
   const signedIn = client.signedIn();
   const close = () => setSection(undefined);
   return (
@@ -88,6 +111,22 @@ export function SettingsHome({
           onClick={() => setSection("about")}
         />
       </ul>
+      <ul className="settings-list">
+        <li>
+          <button
+            className="settings-list-row settings-destructive"
+            disabled={resetting}
+            onClick={() => void reset()}
+          >
+            <span>{resetting ? t("Resetting…") : t("Reset this device")}</span>
+          </button>
+        </li>
+      </ul>
+      {resetError && (
+        <p className="settings-footnote" role="alert">
+          {resetError}
+        </p>
+      )}
       {section === "connectors" && (
         <ConnectorsSheet
           onClose={close}

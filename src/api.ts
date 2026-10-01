@@ -20,7 +20,13 @@ import {
   type WorkspaceStatus,
 } from "../shared/types";
 import { DirectAuth, type AccountProvider } from "./direct/auth";
-import { LocalDatabase, type CredentialStore } from "./direct/storage";
+import {
+  backgroundCredentials,
+  credentials,
+  LocalDatabase,
+  type CredentialStore,
+} from "./direct/storage";
+import { resetDevice } from "./direct/reset";
 import { ARK_BASE_URL, directFetch } from "./direct/transport";
 import { DirectWorkspace } from "./direct/workspace";
 import { exportBackgroundConfiguration } from "./direct/background-export";
@@ -169,6 +175,7 @@ export class Client {
   private db: LocalDatabase;
   private fetcher: typeof fetch;
   private runtime?: Runtime;
+  private vault: CredentialStore;
   private sends = new Set<string>();
   private scope?: string;
   // Account builds re-verify the session and key revision with the service
@@ -202,6 +209,7 @@ export class Client {
       interval: 30_000,
     };
     this.now = options.now ?? Date.now;
+    this.vault = options.vault ?? credentials;
     this.identity = new DirectAuth(
       options.vault,
       this.fetcher,
@@ -294,6 +302,14 @@ export class Client {
     this.runtime?.workspace.cancel();
     this.runtime = undefined;
     this.verifiedAt = 0;
+  }
+  // Removes this device's saved logins and all local data, returning it to
+  // first launch; cloud resources are untouched. The runtime stops first so
+  // nothing writes while records are deleted, and the caller reloads the app.
+  async resetDevice() {
+    this.runtime?.abort.abort();
+    this.runtime = undefined;
+    await resetDevice([this.vault, backgroundCredentials]);
   }
   signedIn() {
     const c = this.identity.value;

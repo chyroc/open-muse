@@ -161,3 +161,10 @@
   border-radius: 20px;
   background: #fff;
 }
+.settings-list-row.settings-destructive {
+  justify-content: center;
+  color: #ff3b30;
+}
+.settings-list-row.settings-destructive > span {
+  flex: 0 1 auto;
+}

@@ -150,6 +150,7 @@ describe("Settings home", () => {
       "About",
     ])
       expect(html).toContain(label);
+    expect(html).toContain("Reset this device");
     // Account details open in their own sheet instead of filling the page.
     expect(html).not.toContain("settings-card auth-card");
     expect(t("Account and workspace", {}, "zh-CN")).toBe("账号与工作区");
