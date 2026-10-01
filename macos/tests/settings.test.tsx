@@ -211,12 +211,14 @@ describe("Mac settings window", () => {
     // Grouped rows, not the shared panel's flat card, until the user asks.
     expect(
       host!.querySelectorAll(".settings-main .settings-group").length,
-    ).toBe(4);
+    ).toBe(5);
     expect(host!.querySelector(".settings-auth")).toBeNull();
     expect(host!.textContent).toContain("Connected");
     expect(host!.textContent).toContain("API Key");
     expect(host!.textContent).toContain("Interface language");
     expect(host!.textContent).toContain("Version");
+    // Outside the Mac app the desktop group explains who controls it.
+    expect(host!.textContent).toContain("Desktop presence");
     await click("Manage connection");
     expect(host!.querySelector(".settings-auth")).toBeTruthy();
     await click("Manage connection");

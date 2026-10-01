@@ -25,6 +25,7 @@ import type { Client } from "../../src/api";
 import { AuthPanel } from "../../src/AuthPanel";
 import { Modal } from "./Chrome";
 import { CheckInSwitch } from "./CheckInSwitch";
+import { PresenceSettings } from "./PresenceSettings";
 import {
   appearances,
   saveAppearance,
@@ -224,6 +225,8 @@ export function SettingsWindow({ client }: { client: Client }) {
                 />
               </div>
             )}
+            <h2>{t("Desktop")}</h2>
+            <PresenceSettings />
             {client.signedIn() && <h2>{t("Check-ins")}</h2>}
             <CheckInSwitch client={client} />
             <h2>{t("Language")}</h2>

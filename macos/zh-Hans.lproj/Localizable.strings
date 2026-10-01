@@ -27,3 +27,5 @@
 "Cannot restore secure credentials" = "无法恢复安全存储的凭据";
 "Cannot save secure credentials" = "无法保存安全凭据";
 "Settings" = "设置";
+"Show Open Muse" = "显示 Open Muse";
+"macOS did not change the login item." = "macOS 未更改登录项。";

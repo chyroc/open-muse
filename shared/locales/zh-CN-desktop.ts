@@ -34,4 +34,20 @@ export const zhDesktop: Record<string, string> = {
   "More options": "更多选项",
   "Select text": "选择文本",
   "Your mood: {mood}": "你的心情：{mood}",
+  Desktop: "桌面",
+  "Desktop presence": "桌面常驻",
+  "Run on startup, the menu bar icon and the floating button are controlled by the Mac app.":
+    "开机启动、菜单栏图标和悬浮按钮由 Mac App 控制。",
+  "Run on startup": "开机时启动",
+  "macOS is waiting for you to allow Open Muse in Login Items.":
+    "macOS 正在等待你在“登录项”中允许 Open Muse。",
+  "macOS did not accept this app as a login item.":
+    "macOS 未接受将此 App 设为登录项。",
+  "Open Login Items": "打开登录项设置",
+  "Show in menu bar": "在菜单栏中显示",
+  "Show floating button": "显示悬浮按钮",
+  "When the window is closed, a small button stays on screen and reopens it.":
+    "关闭窗口后，屏幕上会保留一个小按钮，点按即可重新打开。",
+  "Could not read the app settings.": "无法读取 App 设置。",
+  "Could not change the app settings.": "无法更改 App 设置。",
 };

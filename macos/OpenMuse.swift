@@ -1,6 +1,7 @@
 import AppKit
 import WebKit
 import Security
+import ServiceManagement
 import UniformTypeIdentifiers
 
 // Match the web UI's supported-language selection without changing system state.
@@ -32,6 +33,103 @@ private final class BundleAssets: NSObject, WKURLSchemeHandler {
     func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {}
 }
 
+// Motion for the desktop presence surfaces, kept in one place.
+private enum Motion {
+    static let pressScale: CGFloat = 0.9
+    static let hoverScale: CGFloat = 1.06
+    static let springDamping: CGFloat = 16
+    static let springStiffness: CGFloat = 320
+    static let fade: TimeInterval = 0.18
+    static var reduced: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+}
+
+// A round button that stays on screen while the workspace window is closed.
+// It follows the pointer while dragged, and a press that did not move reopens
+// the window on release. Press and hover answer immediately with a spring.
+private final class FloatingButtonView: NSView {
+    var onOpen: (() -> Void)?
+    private let bubble = CALayer()
+    private let icon = CALayer()
+    private var pressOrigin: NSPoint?
+    private var windowOrigin: NSPoint = .zero
+    private var dragging = false
+    private var hovering = false
+    static let diameter: CGFloat = 46
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true
+        layer?.masksToBounds = false
+        let side = Self.diameter
+        bubble.bounds = CGRect(x: 0, y: 0, width: side, height: side)
+        bubble.position = CGPoint(x: frame.width / 2, y: frame.height / 2)
+        bubble.shadowColor = NSColor.black.cgColor
+        bubble.shadowOpacity = 0.22
+        bubble.shadowRadius = 7
+        bubble.shadowOffset = CGSize(width: 0, height: -2)
+        bubble.shadowPath = CGPath(ellipseIn: bubble.bounds, transform: nil)
+        icon.frame = bubble.bounds
+        icon.cornerRadius = side / 2
+        icon.masksToBounds = true
+        icon.contentsGravity = .resizeAspectFill
+        icon.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        if let image = NSApplication.shared.applicationIconImage {
+            var rect = CGRect(x: 0, y: 0, width: side * 2, height: side * 2)
+            icon.contents = image.cgImage(forProposedRect: &rect, context: nil, hints: nil)
+        }
+        bubble.addSublayer(icon)
+        layer?.addSublayer(bubble)
+        setAccessibilityRole(.button)
+        setAccessibilityLabel(localized("Show Open Muse"))
+        addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self))
+    }
+    required init?(coder: NSCoder) { nil }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    override func accessibilityPerformPress() -> Bool { onOpen?(); return true }
+
+    private func settle(_ scale: CGFloat) {
+        if Motion.reduced {
+            // Reduce Motion keeps the feedback as a short opacity change.
+            let fade = CABasicAnimation(keyPath: "opacity")
+            fade.fromValue = bubble.presentation()?.opacity ?? bubble.opacity
+            bubble.opacity = scale < 1 ? 0.7 : 1
+            fade.duration = Motion.fade
+            bubble.add(fade, forKey: "opacity")
+            return
+        }
+        let spring = CASpringAnimation(keyPath: "transform.scale")
+        spring.fromValue = bubble.presentation()?.value(forKeyPath: "transform.scale") ?? 1
+        spring.toValue = scale
+        spring.damping = Motion.springDamping
+        spring.stiffness = Motion.springStiffness
+        spring.duration = spring.settlingDuration
+        bubble.setValue(scale, forKeyPath: "transform.scale")
+        bubble.add(spring, forKey: "scale")
+    }
+    override func mouseEntered(with event: NSEvent) { hovering = true; if pressOrigin == nil { settle(Motion.hoverScale) } }
+    override func mouseExited(with event: NSEvent) { hovering = false; if pressOrigin == nil { settle(1) } }
+    override func mouseDown(with event: NSEvent) {
+        pressOrigin = NSEvent.mouseLocation
+        windowOrigin = window?.frame.origin ?? .zero
+        dragging = false
+        settle(Motion.pressScale)
+    }
+    override func mouseDragged(with event: NSEvent) {
+        guard let start = pressOrigin, let window else { return }
+        let now = NSEvent.mouseLocation
+        if !dragging && hypot(now.x - start.x, now.y - start.y) > 3 { dragging = true }
+        guard dragging else { return }
+        window.setFrameOrigin(NSPoint(x: windowOrigin.x + now.x - start.x, y: windowOrigin.y + now.y - start.y))
+    }
+    override func mouseUp(with event: NSEvent) {
+        let moved = dragging
+        pressOrigin = nil
+        dragging = false
+        settle(hovering ? Motion.hoverScale : 1)
+        if !moved { onOpen?() }
+    }
+}
+
 @main
 final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, WKScriptMessageHandlerWithReply {
     private var window: NSWindow!
@@ -42,6 +140,10 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     private let assets = BundleAssets()
     private var closingApproved = false
     private var discardPromptOpen = false
+    private var statusItem: NSStatusItem?
+    private var floatingPanel: NSPanel?
+    private let menuBarKey = "presence.menuBar"
+    private let floatingButtonKey = "presence.floatingButton"
 
     static func main() {
         let app = NSApplication.shared
@@ -51,6 +153,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         app.run()
     }
     func applicationDidFinishLaunching(_ notification: Notification) {
+        UserDefaults.standard.register(defaults: [menuBarKey: true, floatingButtonKey: true])
         installMenu()
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1152, height: 768), styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
         window.title = "Open Muse"
@@ -65,6 +168,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         let configuration = WKWebViewConfiguration()
         configuration.setURLSchemeHandler(assets, forURLScheme: "muse")
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museCredentials")
+        configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "musePresence")
         configuration.userContentController.add(self, name: "museExport")
         configuration.userContentController.add(self, name: "museWindow")
         configuration.userContentController.addUserScript(WKUserScript(source: "window.__OPEN_MUSE_DESKTOP__ = true;", injectionTime: .atDocumentStart, forMainFrameOnly: true))
@@ -89,6 +193,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         webView.load(URLRequest(url: URL(string: "muse://app/")!))
         window.makeKeyAndOrderFront(nil)
         NSApplication.shared.activate(ignoringOtherApps: true)
+        updateStatusItem()
     }
     private func makeWebView(_ frame: NSRect) -> WKWebView {
         let view = WKWebView(frame: frame, configuration: configuration)
@@ -126,6 +231,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage, replyHandler: @escaping (Any?, String?) -> Void) {
         guard trusted(message), let body = message.body as? [String: String]
         else { replyHandler(nil, "Untrusted credential request"); return }
+        if message.name == "musePresence" { presence(body, from: message.webView, replyHandler: replyHandler); return }
         // Keychain can wait for an OS authorization dialog. Never block AppKit
         // or discard the eventual reply while the user is deciding.
         DispatchQueue.global(qos: .userInitiated).async { [self] in
@@ -169,6 +275,142 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             }
             replyHandler(status == errSecSuccess ? true : nil, status == errSecSuccess ? nil : localized("Cannot save secure credentials"))
         } else { replyHandler(nil, "Invalid credential operation") }
+    }
+    // Desktop presence is a device-local window preference, not a credential, so
+    // it lives in UserDefaults. The login item's state is read back from macOS
+    // every time, because the user can change it in System Settings.
+    private func startupState() -> String {
+        switch SMAppService.mainApp.status {
+        case .enabled: return "enabled"
+        case .requiresApproval: return "requires-approval"
+        case .notRegistered: return "not-registered"
+        default: return "unavailable"
+        }
+    }
+    private func presenceState() -> [String: Any] {
+        ["startup": startupState(),
+         "menuBar": UserDefaults.standard.bool(forKey: menuBarKey),
+         "floatingButton": UserDefaults.standard.bool(forKey: floatingButtonKey)]
+    }
+    private func presence(_ body: [String: String], from sender: WKWebView?, replyHandler: @escaping (Any?, String?) -> Void) {
+        switch body["operation"] {
+        case "read":
+            replyHandler(presenceState(), nil)
+        case "login-items":
+            SMAppService.openSystemSettingsLoginItems()
+            replyHandler(presenceState(), nil)
+        case "write":
+            guard let value = body["value"], value == "true" || value == "false"
+            else { replyHandler(nil, "Invalid presence value"); return }
+            let on = value == "true"
+            switch body["key"] {
+            case "startup":
+                do {
+                    if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+                } catch {
+                    replyHandler(nil, localized("macOS did not change the login item."))
+                    return
+                }
+            case "menuBar":
+                UserDefaults.standard.set(on, forKey: menuBarKey)
+                updateStatusItem()
+            case "floatingButton":
+                UserDefaults.standard.set(on, forKey: floatingButtonKey)
+                updateFloatingButton()
+            default:
+                replyHandler(nil, "Invalid presence key"); return
+            }
+            replyHandler(presenceState(), nil)
+            let other = sender === webView ? settingsWebView : webView
+            other?.evaluateJavaScript("window.dispatchEvent(new Event('muse-presence-changed'))", completionHandler: nil)
+        default:
+            replyHandler(nil, "Invalid presence operation")
+        }
+    }
+    private func updateStatusItem() {
+        guard UserDefaults.standard.bool(forKey: menuBarKey) else {
+            if let statusItem { NSStatusBar.system.removeStatusItem(statusItem) }
+            statusItem = nil
+            return
+        }
+        guard statusItem == nil else { return }
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        let image = NSImage(systemSymbolName: "sparkles", accessibilityDescription: "Open Muse")
+        image?.isTemplate = true
+        item.button?.image = image
+        let menu = NSMenu()
+        let open = menu.addItem(withTitle: localized("Show Open Muse"), action: #selector(showWorkspace), keyEquivalent: "")
+        open.target = self
+        menu.addItem(.separator())
+        menu.addItem(withTitle: localized("Quit Open Muse"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
+        item.menu = menu
+        statusItem = item
+    }
+    // The button stands in for the workspace window: it appears when that
+    // window is closed or minimized and goes away as soon as it is back.
+    private func updateFloatingButton() {
+        let wanted = UserDefaults.standard.bool(forKey: floatingButtonKey)
+            && window != nil && (!window.isVisible || window.isMiniaturized)
+        if wanted {
+            let panel = floatingPanel ?? makeFloatingPanel()
+            floatingPanel = panel
+            guard !panel.isVisible else { return }
+            panel.alphaValue = 0
+            panel.orderFrontRegardless()
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = Motion.fade
+                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                panel.animator().alphaValue = 1
+            }
+        } else if let panel = floatingPanel, panel.isVisible {
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = Motion.fade
+                context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+                panel.animator().alphaValue = 0
+            }, completionHandler: { [weak self] in
+                guard let self, let panel = self.floatingPanel, panel.alphaValue == 0 else { return }
+                panel.orderOut(nil)
+            })
+        }
+    }
+    private func makeFloatingPanel() -> NSPanel {
+        let side: CGFloat = FloatingButtonView.diameter + 20
+        let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: side, height: side), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        panel.isFloatingPanel = true
+        panel.level = .floating
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        panel.backgroundColor = .clear
+        panel.isOpaque = false
+        panel.hasShadow = false
+        panel.hidesOnDeactivate = false
+        panel.isReleasedWhenClosed = false
+        let view = FloatingButtonView(frame: NSRect(x: 0, y: 0, width: side, height: side))
+        view.onOpen = { [weak self] in self?.showWorkspace() }
+        panel.contentView = view
+        if !panel.setFrameUsingName("OpenMuseFloatingButton"), let screen = NSScreen.main?.visibleFrame {
+            panel.setFrameOrigin(NSPoint(x: screen.maxX - side - 16, y: screen.minY + 16))
+        }
+        panel.setFrameAutosaveName("OpenMuseFloatingButton")
+        return panel
+    }
+    @objc private func showWorkspace() {
+        if window.isMiniaturized { window.deminiaturize(nil) }
+        window.makeKeyAndOrderFront(nil)
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        updateFloatingButton()
+    }
+    func windowWillClose(_ notification: Notification) {
+        guard (notification.object as? NSWindow) === window else { return }
+        DispatchQueue.main.async { self.updateFloatingButton() }
+    }
+    func windowDidMiniaturize(_ notification: Notification) {
+        if (notification.object as? NSWindow) === window { updateFloatingButton() }
+    }
+    func windowDidDeminiaturize(_ notification: Notification) {
+        if (notification.object as? NSWindow) === window { updateFloatingButton() }
+    }
+    func windowDidBecomeKey(_ notification: Notification) {
+        if (notification.object as? NSWindow) === window { updateFloatingButton() }
     }
     // The web UI owns the preference; the shell only matches the window chrome,
     // native dialogs and the other window to it.
@@ -319,7 +561,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         return .terminateLater
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag { window.makeKeyAndOrderFront(nil) }
+        if !flag { showWorkspace() }
         return true
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }

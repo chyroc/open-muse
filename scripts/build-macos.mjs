@@ -60,6 +60,8 @@ execFileSync(
     "WebKit",
     "-framework",
     "Security",
+    "-framework",
+    "ServiceManagement",
     path.join(root, "macos/OpenMuse.swift"),
     "-o",
     path.join(contents, "MacOS/OpenMuse"),
