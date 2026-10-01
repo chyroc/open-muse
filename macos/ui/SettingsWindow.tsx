@@ -33,6 +33,7 @@ import { DataControls } from "./DataControls";
 import { DevicesSettings } from "./DevicesSettings";
 import { SecureStorage } from "./SecureStorage";
 import { FileSystemSettings } from "./FileSystemSettings";
+import { ConnectorsSettings } from "./ConnectorsSettings";
 import { LegalSettings } from "./LegalSettings";
 import { ShortcutSettings } from "./ShortcutSettings";
 import { shortcutAvailable } from "./shortcut";
@@ -329,6 +330,11 @@ export function SettingsWindow({ client }: { client: Client }) {
           </>
         )}
         {active.id === "computer-use" && <ComputerSettings />}
+        {active.id === "connectors" && (
+          <ConnectorsSettings
+            onSection={(id) => setSection(settingsSection(id).id)}
+          />
+        )}
         {active.id === "file-system" && <FileSystemSettings />}
         {active.id === "dictation" && <DictationSettings />}
         {active.id === "help" && <HelpSettings />}

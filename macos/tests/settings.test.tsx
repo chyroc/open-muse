@@ -99,6 +99,7 @@ describe("Mac settings model", () => {
       settingsSections.filter((s) => s.connected).map((s) => s.id),
     ).toEqual([
       "general",
+      "connectors",
       "computer-use",
       "file-system",
       "dictation",

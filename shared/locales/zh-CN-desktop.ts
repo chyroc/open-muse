@@ -171,4 +171,33 @@ export const zhDesktop: Record<string, string> = {
   Save: "保存",
   "Secrets for your assistant live in an MA vault in your Ark project, separate from this Mac's Keychain.":
     "供助手使用的密钥保存在你 Ark 项目的 MA 保管库中，与这台 Mac 的钥匙串分开。",
+  "Web search and pages": "网页搜索与浏览",
+  "Searches the web and reads pages you point to.":
+    "搜索网页，并阅读你指定的页面。",
+  Browser: "浏览器",
+  "A Chrome browser in your assistant's own cloud environment, separate from yours.":
+    "助手自己云端环境中的 Chrome 浏览器，与你的浏览器分开。",
+  "Files and commands": "文件与命令",
+  "Creates, edits and runs files in your assistant's cloud environment.":
+    "在助手的云端环境中创建、编辑和运行文件。",
+  Lark: "飞书",
+  "The Lark command-line tool and its official skills, for messages, docs, calendar and more once you sign in.":
+    "飞书命令行工具及其官方技能，登录后可处理消息、文档、日历等。",
+  "Help me sign in to Lark with lark-cli so you can work in my Lark account.":
+    "帮我用 lark-cli 登录飞书，这样你就能在我的飞书账号中工作。",
+  "Personal memory": "个人记忆",
+  "Your assistant's identity, persona and what it remembers about you.":
+    "助手的身份、人设，以及它记得的关于你的事。",
+  "This Mac": "这台 Mac",
+  "Screen, apps, keyboard and files, with your approval each time.":
+    "屏幕、App、键盘和文件，每次都需要你批准。",
+  "Apple Health": "Apple 健康",
+  "Read from your iPhone when you share a request there.":
+    "在 iPhone 上共享请求后，从你的 iPhone 读取。",
+  "Search connectors": "搜索连接器",
+  "A draft is waiting in the main chat.": "主对话中已有一条草稿。",
+  Connect: "连接",
+  Included: "已包含",
+  "Other services are not connected in this app. Ask your assistant in chat; it can often use a service's website or command-line tool instead.":
+    "此 App 未连接其他服务。可以在对话中问助手，它通常能改用该服务的网站或命令行工具。",
 };

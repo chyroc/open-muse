@@ -420,3 +420,6 @@
   color: var(--text-2);
   font-size: 12px;
 }
+.settings-search {
+  margin: 0 0 12px;
+}

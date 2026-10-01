@@ -27,13 +27,7 @@ export type SettingsSection = {
 
 export const settingsSections: SettingsSection[] = [
   { id: "general", label: "General", connected: true },
-  {
-    id: "connectors",
-    label: "Connectors",
-    connected: false,
-    unavailable:
-      "MCP connectors and their OAuth flows are not wired into this Mac build. Tools stay limited to what your agent already has.",
-  },
+  { id: "connectors", label: "Connectors", connected: true },
   { id: "computer-use", label: "Computer use", connected: true },
   { id: "file-system", label: "File system access", connected: true },
   { id: "dictation", label: "Dictation", connected: true },
