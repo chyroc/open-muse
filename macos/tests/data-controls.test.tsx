@@ -164,11 +164,67 @@ describe("Mac data controls", () => {
     expect(host.querySelector("textarea")!.value).toBe("Remember: I like tea");
     expect(send).not.toHaveBeenCalled();
   });
+  it("resets this Mac only after confirming, then hands over to the shell", async () => {
+    const client = await signedIn();
+    const reset = vi.spyOn(client, "resetDevice").mockResolvedValue();
+    const postMessage = vi.fn(async () => true);
+    Object.defineProperty(window, "webkit", {
+      configurable: true,
+      value: { messageHandlers: { musePresence: { postMessage } } },
+    });
+    host = document.createElement("div");
+    document.body.append(host);
+    root = createRoot(host);
+    await act(async () => root!.render(<DataControls client={client} />));
+    const button = (label: string) =>
+      [...document.querySelectorAll("button")].find(
+        (item) => item.textContent === label,
+      )!;
+    await act(async () => button("Reset").click());
+    expect(document.body.textContent).toContain(
+      "Permissions you gave Open Muse in macOS System Settings stay there.",
+    );
+    await act(async () => button("Cancel").click());
+    expect(reset).not.toHaveBeenCalled();
+    await act(async () => button("Reset").click());
+    const confirm = [...document.querySelectorAll(".pill-button.danger")];
+    await act(async () => (confirm.at(-1) as HTMLButtonElement).click());
+    expect(reset).toHaveBeenCalledOnce();
+    expect(postMessage).toHaveBeenCalledWith({ operation: "reset" });
+  });
+  it("keeps the shell untouched when the page could not reset", async () => {
+    const client = await signedIn();
+    vi.spyOn(client, "resetDevice").mockRejectedValue(
+      new Error("Some data on this device could not be removed."),
+    );
+    const postMessage = vi.fn(async () => true);
+    Object.defineProperty(window, "webkit", {
+      configurable: true,
+      value: { messageHandlers: { musePresence: { postMessage } } },
+    });
+    host = document.createElement("div");
+    document.body.append(host);
+    root = createRoot(host);
+    await act(async () => root!.render(<DataControls client={client} />));
+    await act(async () =>
+      [...document.querySelectorAll("button")]
+        .find((item) => item.textContent === "Reset")!
+        .click(),
+    );
+    await act(async () =>
+      (
+        [...document.querySelectorAll(".pill-button.danger")].at(
+          -1,
+        ) as HTMLButtonElement
+      ).click(),
+    );
+    expect(postMessage).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain(
+      "Some data on this device could not be removed.",
+    );
+  });
   it("translates its copy and keeps the native contract", () => {
-    for (const file of [
-      "macos/ui/DataControls.tsx",
-      "macos/ui/dataExport.ts",
-    ])
+    for (const file of ["macos/ui/DataControls.tsx", "macos/ui/dataExport.ts"])
       for (const [, key] of readFileSync(file, "utf8").matchAll(
         /\bt\(\s*"([^"]+)"/g,
       ))
@@ -177,5 +233,14 @@ describe("Mac data controls", () => {
     expect(swift).toContain(
       'body?["name"] == "draft", message.webView === settingsWebView',
     );
+    // Only Settings resets, and the shell clears what it keeps for this Mac.
+    expect(swift).toContain(
+      'guard sender === settingsWebView else { replyHandler(nil, "Only Settings resets this Mac")',
+    );
+    expect(swift).toContain("removePersistentDomain(forName: domain)");
+    expect(swift).toContain(
+      "removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast)",
+    );
+    expect(swift).toContain("try? SMAppService.mainApp.unregister()");
   });
 });

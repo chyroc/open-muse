@@ -79,3 +79,11 @@ export async function writePresence(
 export function openLoginItems() {
   void bridge()?.postMessage({ operation: "login-items" });
 }
+
+// After the page removed its logins and records, the shell clears what it keeps
+// for this Mac and starts the windows over. Resolves false outside the Mac app.
+export async function resetThisMac() {
+  const native = bridge();
+  if (!native) return false;
+  return (await native.postMessage({ operation: "reset" })) === true;
+}

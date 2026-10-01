@@ -8,6 +8,7 @@ import {
   memoryExportPrompt,
   memoryImportDraft,
 } from "./dataExport";
+import { resetThisMac } from "./presence";
 
 // Bring memory in from another assistant, or take everything out as a file.
 // Neither changes anything in MA by itself.
@@ -20,6 +21,22 @@ export function DataControls({ client }: { client: Client }) {
   const abort = useRef<AbortController>(undefined);
   useEffect(() => () => abort.current?.abort(), []);
   const signedIn = client.signedIn();
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  // Removes this Mac's logins, records and preferences, then the shell starts
+  // the app over. Nothing in the cloud is deleted.
+  async function reset() {
+    setConfirmReset(false);
+    setResetting(true);
+    setError("");
+    try {
+      await client.resetDevice();
+      if (!(await resetThisMac())) location.reload();
+    } catch (failure) {
+      setError((failure as Error).message);
+      setResetting(false);
+    }
+  }
   return (
     <>
       <div className="settings-group">
@@ -75,11 +92,58 @@ export function DataControls({ client }: { client: Client }) {
           </button>
         </div>
       </div>
+      <div className="settings-group">
+        <div className="settings-row">
+          <div>
+            <strong>{t("Reset this device")}</strong>
+            <p>
+              {t(
+                "Removes the saved Ark API key, sign-ins, local data and settings from this Mac. Your agents, conversations and memory in the cloud stay.",
+              )}
+            </p>
+          </div>
+          <button
+            className="settings-inline-button danger"
+            disabled={resetting}
+            onClick={() => setConfirmReset(true)}
+          >
+            {resetting ? t("Resetting…") : t("Reset")}
+          </button>
+        </div>
+      </div>
       {notice && <p className="settings-lead settings-after">{notice}</p>}
       {error && (
         <p className="settings-error" role="alert">
           {error}
         </p>
+      )}
+      {confirmReset && (
+        <Modal
+          title={t("Reset this device")}
+          onClose={() => setConfirmReset(false)}
+        >
+          <p>
+            {t(
+              "Reset this device? This removes the saved Ark API key and sign-ins from this device and deletes all local data, including the conversation list, saved replies, Feed, and settings. Open Muse restarts as if newly installed. Your agents, conversations, and memory in the cloud are not deleted.",
+            )}
+          </p>
+          <p>
+            {t(
+              "Permissions you gave Open Muse in macOS System Settings stay there.",
+            )}
+          </p>
+          <div className="feed-dialog-actions">
+            <button
+              className="pill-button"
+              onClick={() => setConfirmReset(false)}
+            >
+              {t("Cancel")}
+            </button>
+            <button className="pill-button danger" onClick={() => void reset()}>
+              {t("Reset")}
+            </button>
+          </div>
+        </Modal>
       )}
       {importing && (
         <Modal title={t("Import memory")} onClose={() => setImporting(false)}>

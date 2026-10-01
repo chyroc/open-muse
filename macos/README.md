@@ -197,7 +197,11 @@ Other sections:
   and when each was last seen. The Mac registers itself at start and hourly.
 - Data controls can import memory from another assistant as a reviewed draft
   in the main chat, and download memory, goals, Upcoming and all conversations
-  as one Markdown file.
+  as one Markdown file. Reset this device, after a confirmation, removes the
+  saved Ark API key and sign-ins from the Keychain, deletes every local record,
+  preference and web data store, turns off the login item, and starts the
+  windows over at first launch. macOS privacy permissions stay in System
+  Settings, and nothing in the cloud is deleted.
 - Help and support lists the shortcuts and where the Mac features live; Legal
   shows the open source notices bundled with the app.
 

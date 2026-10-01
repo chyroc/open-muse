@@ -399,8 +399,39 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             }
             replyHandler(presenceState(), nil)
             broadcast("muse-presence-changed", except: sender)
+        case "reset":
+            // Only the settings window resets, after the page removed the
+            // saved logins and its own records.
+            guard sender === settingsWebView else { replyHandler(nil, "Only Settings resets this Mac"); return }
+            replyHandler(true, nil)
+            DispatchQueue.main.async { self.resetDevice() }
         default:
             replyHandler(nil, "Invalid presence operation")
+        }
+    }
+    // Returns the app on this Mac to first launch: every preference it keeps,
+    // the login item and all web data go, and the windows start over. macOS
+    // privacy permissions stay in System Settings, as after a reinstall, and
+    // nothing in the cloud changes.
+    private func resetDevice() {
+        dictation.stop(cancel: true)
+        hideQuickChat()
+        if SMAppService.mainApp.status == .enabled { try? SMAppService.mainApp.unregister() }
+        if let domain = Bundle.main.bundleIdentifier { UserDefaults.standard.removePersistentDomain(forName: domain) }
+        NSApp.dockTile.badgeLabel = nil
+        applyAppearance("system", from: nil)
+        updateStatusItem()
+        updateFloatingButton()
+        quickShortcutRegistered = applyQuickChatShortcut()
+        settingsWindow?.close()
+        settingsWindow = nil
+        settingsWebView = nil
+        let store = configuration.websiteDataStore
+        store.removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast) { [weak self] in
+            guard let self else { return }
+            self.quickWebView?.reload()
+            self.webView.load(URLRequest(url: URL(string: "muse://app/")!))
+            self.showWorkspace()
         }
     }
     // Computer use is off until the user turns it on for this Mac. Only the

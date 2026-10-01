@@ -82,6 +82,10 @@ export const zhDesktop: Record<string, string> = {
   "Change the Quick chat shortcut": "更改快速聊天快捷键",
   "Type a shortcut…": "请按下快捷键…",
   Reset: "重置",
+  "Removes the saved Ark API key, sign-ins, local data and settings from this Mac. Your agents, conversations and memory in the cloud stay.":
+    "从这台 Mac 上移除已保存的 Ark API 密钥、登录信息、本地数据和设置。云端的智能体、对话和记忆会保留。",
+  "Permissions you gave Open Muse in macOS System Settings stay there.":
+    "你在 macOS「系统设置」中授予 Open Muse 的权限会保留。",
   Mode: "模式",
   "Theme color": "主题颜色",
   "Match my avatar": "匹配我的虚拟形象",
