@@ -30,6 +30,7 @@ import { DirectChoices } from "./direct/choices";
 import { DirectWelcome } from "./direct/welcome";
 import { DirectCheckIn } from "./direct/checkin";
 import { DirectUpcoming } from "./direct/upcoming";
+import { DirectVault, type SecureCredentialInput } from "./direct/vault";
 import type { UpcomingDelivery } from "../shared/upcoming";
 import { DirectLibrary } from "./direct/library";
 import { DirectAttachments } from "./direct/attachments";
@@ -151,6 +152,7 @@ type Runtime = {
   welcome?: DirectWelcome;
   checkin?: DirectCheckIn;
   upcoming?: DirectUpcoming;
+  vault?: DirectVault;
   redact: (text: string) => string;
   abort: AbortController;
 };
@@ -775,6 +777,7 @@ export class Client {
     const row = await r.ark.create(input.title, input.category, {
       ...selection,
       memory_store_id,
+      vault_ids: await this.vaultIds(r),
     });
     await this.remember(r, [row]);
     return row;
@@ -787,6 +790,7 @@ export class Client {
           memory_store_id: string;
           system?: string;
           agent_version?: number;
+          vault_ids?: string[];
         }
       | undefined;
     return new Conversations(r.key, this.db, {
@@ -831,7 +835,11 @@ export class Client {
         }
         await r.workspace.syncPolicy();
         const memory_store_id = await r.companion.ensure();
-        selection = { ...(await r.workspace.selection()), memory_store_id };
+        selection = {
+          ...(await r.workspace.selection()),
+          memory_store_id,
+          vault_ids: await this.vaultIds(r),
+        };
         if (previous) {
           if (["running", "rescheduling"].includes(previous.status))
             throw new ApiError(
@@ -1072,6 +1080,25 @@ export class Client {
   }
   checkInState() {
     return this.checkInService(this.context()).state();
+  }
+  // Secure storage for the agent. Conversations created while the vault
+  // exists can use it; reading it never creates one.
+  private vaultService(r: Runtime) {
+    return (r.vault ??= new DirectVault(r.ark, this.db, r.key));
+  }
+  private async vaultIds(r: Runtime) {
+    const id = await this.vaultService(r).existing();
+    return id ? [id] : [];
+  }
+  secureCredentials() {
+    return this.vaultService(this.context()).list();
+  }
+  addSecureCredential(input: SecureCredentialInput) {
+    return this.vaultService(this.context()).add(input);
+  }
+  removeSecureCredential(id: string) {
+    validId(id);
+    return this.vaultService(this.context()).remove(id);
   }
   private upcomingService(r: Runtime) {
     return (r.upcoming ??= new DirectUpcoming(r.key, this.db, r.companion, {

@@ -66,6 +66,8 @@ export class ArkClient {
       memory_store_id?: string;
       system?: string;
       agent_version?: number;
+      // Secure storage this conversation may use; attached only at creation.
+      vault_ids?: string[];
     },
   ): Promise<Session> {
     if (
@@ -92,6 +94,9 @@ export class ArkClient {
             : (selection?.agent ?? this.config.agentId),
         environment_id: selection?.environment_id ?? this.config.environmentId,
         title,
+        ...(selection?.vault_ids?.length
+          ? { vault_ids: selection.vault_ids }
+          : {}),
         ...(selection?.memory_store_id
           ? {
               resources: [

@@ -153,4 +153,5 @@ export const zhDesktop: Record<string, string> = {
   Forget: "移除",
   "This account already has the most devices it can list. Forget one in Settings > Devices.":
     "此账户可列出的设备已达上限。请在“设置 > 设备”中移除一台。",
+  "Ark did not return a vault ID.": "Ark 未返回保管库 ID。",
 };
