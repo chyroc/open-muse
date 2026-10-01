@@ -165,6 +165,42 @@
   justify-content: center;
   color: #ff3b30;
 }
-.settings-list-row.settings-destructive > span {
+.settings-list-row.settings-destructive > span,
+.settings-list-row.settings-destructive > span:first-child {
   flex: 0 1 auto;
+  color: #ff3b30;
+}
+.settings-reset-copy {
+  margin: 0 0 18px;
+  padding: 18px;
+  border-radius: 20px;
+  background: #fff;
+  font-size: 15px;
+  line-height: 1.55;
+  color: #3a3a3c;
+}
+.settings-reset-actions {
+  display: grid;
+  gap: 10px;
+}
+.settings-reset-actions button {
+  min-height: 50px;
+  border: 0;
+  border-radius: 25px;
+  background: #fff;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  color: #1c1c1e;
+  transition:
+    transform 120ms ease-out,
+    opacity 120ms ease-out;
+}
+.settings-reset-actions .settings-reset-confirm {
+  background: #ff3b30;
+  color: #fff;
+}
+.settings-reset-actions button:not(:disabled):active {
+  transform: scale(0.97);
+  opacity: 0.75;
 }

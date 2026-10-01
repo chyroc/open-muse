@@ -19,7 +19,7 @@ import { MuseMark } from "./components";
 import { Sheet } from "./MusePages";
 import "./settings-home.css";
 
-type Section = "connectors" | "checkins" | "account" | "about";
+type Section = "connectors" | "checkins" | "account" | "about" | "reset";
 
 // Settings as a status card and one list of sections, each in its own sheet.
 // Until the app is connected, sign-in stays on the page itself.
@@ -36,15 +36,7 @@ export function SettingsHome({
   const [resetting, setResetting] = useState(false);
   const [resetError, setResetError] = useState("");
   async function reset() {
-    if (
-      resetting ||
-      !window.confirm(
-        t(
-          "Reset this device? This removes the saved Ark API key and sign-ins from this device and deletes all local data, including the conversation list, saved replies, Feed, and settings. Open Muse restarts as if newly installed. Your agents, conversations, and memory in the cloud are not deleted.",
-        ),
-      )
-    )
-      return;
+    if (resetting) return;
     setResetting(true);
     setResetError("");
     try {
@@ -116,16 +108,41 @@ export function SettingsHome({
           <button
             className="settings-list-row settings-destructive"
             disabled={resetting}
-            onClick={() => void reset()}
+            onClick={() => setSection("reset")}
           >
             <span>{resetting ? t("Resetting…") : t("Reset this device")}</span>
           </button>
         </li>
       </ul>
-      {resetError && (
-        <p className="settings-footnote" role="alert">
-          {resetError}
-        </p>
+      {section === "reset" && (
+        <Sheet
+          title={t("Reset this device")}
+          onClose={() => !resetting && close()}
+          grouped
+        >
+          <p className="settings-reset-copy">
+            {t(
+              "Reset this device? This removes the saved Ark API key and sign-ins from this device and deletes all local data, including the conversation list, saved replies, Feed, and settings. Open Muse restarts as if newly installed. Your agents, conversations, and memory in the cloud are not deleted.",
+            )}
+          </p>
+          {resetError && (
+            <p className="settings-footnote" role="alert">
+              {resetError}
+            </p>
+          )}
+          <div className="settings-reset-actions">
+            <button
+              className="settings-reset-confirm"
+              disabled={resetting}
+              onClick={() => void reset()}
+            >
+              {resetting ? t("Resetting…") : t("Reset")}
+            </button>
+            <button disabled={resetting} onClick={close}>
+              {t("Cancel")}
+            </button>
+          </div>
+        </Sheet>
       )}
       {section === "connectors" && (
         <ConnectorsSheet
