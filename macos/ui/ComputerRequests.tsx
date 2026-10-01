@@ -10,6 +10,7 @@ import {
   readComputer,
   type ComputerState,
 } from "./computer";
+import type { SettingsSectionId } from "./settings";
 
 export type MacAnswer = "once" | "chat" | "deny";
 
@@ -24,7 +25,7 @@ export function ComputerRequests({
   calls: AgentEvent[];
   busy: boolean;
   onAnswer: (answer: MacAnswer) => void;
-  onSettings: (section: string) => void;
+  onSettings: (section: SettingsSectionId) => void;
 }) {
   const [state, setState] = useState<ComputerState>();
   useEffect(() => {
@@ -51,7 +52,7 @@ export function ComputerRequests({
   const computerOn = state?.enabled ?? false;
   const enabled =
     (!asksCalendar || calendarOn) && (!asksComputer || computerOn);
-  const settingsSection =
+  const settingsSection: SettingsSectionId =
     asksComputer && !computerOn ? "computer-use" : "connectors";
   return (
     <section
