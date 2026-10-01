@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { systemLanguage, t } from "../../shared/i18n";
 import { Switch } from "./SettingsSwitch";
 import {
+  chooseInputDevice,
   dictationAvailable,
   dictationPreferences,
   saveDictationPreferences,
@@ -98,6 +99,34 @@ export function DictationSettings() {
       </div>
       <h2>{t("During dictation")}</h2>
       <div className="settings-group">
+        <div className="settings-row">
+          <div>
+            <strong>{t("Microphone")}</strong>
+            <p>{t("Dictation listens to this microphone.")}</p>
+          </div>
+          <select
+            className="settings-select"
+            aria-label={t("Microphone")}
+            disabled={!state || state.running}
+            value={
+              state?.devices.some((device) => device.id === state.device)
+                ? state.device
+                : ""
+            }
+            onChange={(event) =>
+              void chooseInputDevice(language, event.target.value)
+                .then((value) => value && setState(value))
+                .catch(() => setError(t("Could not change the app settings.")))
+            }
+          >
+            <option value="">{t("System default")}</option>
+            {state?.devices.map((device) => (
+              <option key={device.id} value={device.id}>
+                {device.name}
+              </option>
+            ))}
+          </select>
+        </div>
         <Switch
           label={t("Automatically send")}
           detail={t("Open Muse sends your message when you finish dictating.")}

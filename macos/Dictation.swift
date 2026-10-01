@@ -1,4 +1,6 @@
+import AudioToolbox
 import AVFoundation
+import CoreAudio
 import Speech
 
 // Voice input for the composer. Speech is recognized on this Mac whenever the
@@ -6,7 +8,8 @@ import Speech
 // settings window says so. Text streams to the page while the person talks.
 @MainActor
 final class Dictation {
-    private let engine = AVAudioEngine()
+    // A fresh engine per session picks up the chosen microphone and its format.
+    private var engine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private(set) var onDevice = false
@@ -34,6 +37,46 @@ final class Dictation {
         SFSpeechRecognizer(locale: Locale(identifier: language))?.supportsOnDeviceRecognition ?? false
     }
 
+    // Microphones are Core Audio devices with input streams; the UID is stable
+    // across launches and reconnects, so it is what a saved choice refers to.
+    struct InputDevice { let id: AudioDeviceID; let uid: String; let name: String }
+    static func inputDevices() -> [InputDevice] {
+        let system = AudioObjectID(kAudioObjectSystemObject)
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDevices,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain)
+        var size: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(system, &address, 0, nil, &size) == noErr, size > 0 else { return [] }
+        var ids = [AudioDeviceID](repeating: 0, count: Int(size) / MemoryLayout<AudioDeviceID>.size)
+        guard AudioObjectGetPropertyData(system, &address, 0, nil, &size, &ids) == noErr else { return [] }
+        return ids.compactMap { id in
+            var streams = AudioObjectPropertyAddress(
+                mSelector: kAudioDevicePropertyStreams,
+                mScope: kAudioDevicePropertyScopeInput,
+                mElement: kAudioObjectPropertyElementMain)
+            var streamSize: UInt32 = 0
+            guard AudioObjectGetPropertyDataSize(id, &streams, 0, nil, &streamSize) == noErr, streamSize > 0,
+                  let uid = text(id, kAudioDevicePropertyDeviceUID),
+                  let name = text(id, kAudioObjectPropertyName)
+            else { return nil }
+            return InputDevice(id: id, uid: uid, name: name)
+        }
+    }
+    private static func text(_ id: AudioObjectID, _ selector: AudioObjectPropertySelector) -> String? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: selector,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain)
+        var value: Unmanaged<CFString>?
+        var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+        let status = withUnsafeMutablePointer(to: &value) {
+            AudioObjectGetPropertyData(id, &address, 0, nil, &size, $0)
+        }
+        guard status == noErr, let value else { return nil }
+        return value.takeRetainedValue() as String
+    }
+
     // Audio and recognition callbacks arrive on background queues, so their
     // closures are made outside the main actor and hop back to it.
     nonisolated static func requestAccess(_ done: @escaping @Sendable (Bool) -> Void) {
@@ -54,7 +97,8 @@ final class Dictation {
         }
     }
 
-    func start(language: String) -> String? {
+    // An empty or disconnected device choice falls back to the system input.
+    func start(language: String, device: String = "") -> String? {
         stop(cancel: true)
         guard Self.microphoneState() == "allowed", Self.speechState() == "allowed"
         else { return "Allow the microphone and speech recognition for Open Muse in System Settings." }
@@ -65,7 +109,14 @@ final class Dictation {
         request.shouldReportPartialResults = true
         onDevice = recognizer.supportsOnDeviceRecognition
         if onDevice { request.requiresOnDeviceRecognition = true }
+        engine = AVAudioEngine()
         let input = engine.inputNode
+        if !device.isEmpty, let chosen = Self.inputDevices().first(where: { $0.uid == device }),
+           let unit = input.audioUnit {
+            var id = chosen.id
+            AudioUnitSetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0,
+                                 &id, UInt32(MemoryLayout<AudioDeviceID>.size))
+        }
         input.installTap(onBus: 0, bufferSize: 1024, format: input.outputFormat(forBus: 0), block: Self.tap(request))
         tapped = true
         engine.prepare()

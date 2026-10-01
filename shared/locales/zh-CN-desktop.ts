@@ -99,6 +99,8 @@ export const zhDesktop: Record<string, string> = {
   "Reach Open Muse from the menu bar at the top of the screen.":
     "从屏幕顶部的菜单栏使用 Open Muse。",
   "During dictation": "听写时",
+  "Dictation listens to this microphone.": "听写时使用这个麦克风。",
+  "System default": "系统默认",
   "Automatically send": "自动发送",
   "Open Muse sends your message when you finish dictating.":
     "听写结束后，Open Muse 会发送你的消息。",

@@ -518,11 +518,14 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     }
     // Dictation streams its text to the window that started it, as
     // muse-dictation events, until it is stopped or recognition ends.
+    private let dictationDeviceKey = "dictation.inputDevice"
     private func dictationState(_ language: String?) -> [String: Any] {
         ["microphone": Dictation.microphoneState(),
          "speech": Dictation.speechState(),
          "onDevice": Dictation.onDeviceSupported(language ?? "en-US"),
-         "running": dictation.running]
+         "running": dictation.running,
+         "device": UserDefaults.standard.string(forKey: dictationDeviceKey) ?? "",
+         "devices": Dictation.inputDevices().map { ["id": $0.uid, "name": $0.name] }]
     }
     private func sendDictation(_ detail: [String: Any]) {
         guard let view = dictationView,
@@ -551,11 +554,20 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
                 if let error { detail["error"] = localized(error) }
                 self?.sendDictation(detail)
             }
-            if let error = dictation.start(language: language ?? "en-US") { replyHandler(nil, localized(error)); return }
+            let device = UserDefaults.standard.string(forKey: dictationDeviceKey) ?? ""
+            if let error = dictation.start(language: language ?? "en-US", device: device) { replyHandler(nil, localized(error)); return }
             if cues { NSSound(named: "Tink")?.play() }
             replyHandler(dictationState(language), nil)
         case "stop":
             dictation.stop(cancel: body["cancel"] == "true")
+            replyHandler(dictationState(language), nil)
+        case "device":
+            // Empty means the system input; otherwise only a microphone that exists now.
+            let device = body["device"] ?? ""
+            guard device.isEmpty || Dictation.inputDevices().contains(where: { $0.uid == device })
+            else { replyHandler(nil, "Invalid dictation operation"); return }
+            if device.isEmpty { UserDefaults.standard.removeObject(forKey: dictationDeviceKey) }
+            else { UserDefaults.standard.set(device, forKey: dictationDeviceKey) }
             replyHandler(dictationState(language), nil)
         case "settings":
             if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") { NSWorkspace.shared.open(url) }

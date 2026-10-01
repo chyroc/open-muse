@@ -256,6 +256,26 @@
 .settings-inline-button:active:not(:disabled) {
   transform: scale(0.95);
 }
+/* A popup choice, such as the microphone, sized like the inline buttons. */
+.settings-select {
+  margin-left: auto;
+  flex-shrink: 1;
+  align-self: center;
+  min-width: 0;
+  max-width: 55%;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--fill-strong);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  text-overflow: ellipsis;
+}
+.settings-select:hover:not(:disabled) {
+  background: var(--fill-hover);
+}
 /* The shortcut recorder: shows the keys, and listens while focused. */
 .settings-shortcut-row {
   align-items: center;

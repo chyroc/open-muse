@@ -43,6 +43,7 @@ function shell(state: Record<string, unknown>) {
   const postMessage = vi.fn(async (body: Record<string, string>) => {
     if (body.operation === "start") state.running = true;
     if (body.operation === "stop") state.running = false;
+    if (body.operation === "device") state.device = body.device;
     if (body.operation === "request") {
       state.microphone = "allowed";
       state.speech = "allowed";
@@ -244,6 +245,57 @@ describe("Mac dictation", () => {
     });
     localStorage.removeItem("muse.dictation");
   });
+  it("picks a microphone and follows the system input by default", async () => {
+    const post = shell({
+      microphone: "allowed",
+      speech: "allowed",
+      onDevice: true,
+      running: false,
+      device: "gone-usb",
+      devices: [
+        { id: "BuiltInMicrophoneDevice", name: "MacBook Pro Microphone" },
+        { id: "usb-1", name: "Desk Mic" },
+      ],
+    });
+    await mount(<DictationSettings />);
+    const select = host!.querySelector<HTMLSelectElement>("select")!;
+    // A saved microphone that is not connected shows as the system input.
+    expect(select.value).toBe("");
+    expect([...select.options].map((item) => item.textContent)).toEqual([
+      "System default",
+      "MacBook Pro Microphone",
+      "Desk Mic",
+    ]);
+    await act(async () => {
+      select.value = "usb-1";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(post).toHaveBeenLastCalledWith({
+      operation: "device",
+      language: "en-US",
+      device: "usb-1",
+    });
+    expect(select.value).toBe("usb-1");
+  });
+  it("reads only well-formed microphones from the shell", () => {
+    const base = {
+      microphone: "allowed",
+      speech: "allowed",
+      onDevice: true,
+      running: false,
+    };
+    expect(parseDictationState(base)).toMatchObject({
+      device: "",
+      devices: [],
+    });
+    expect(
+      parseDictationState({
+        ...base,
+        device: 4,
+        devices: [{ id: "a", name: "A" }, { id: "", name: "B" }, "c", null],
+      }),
+    ).toMatchObject({ device: "", devices: [{ id: "a", name: "A" }] });
+  });
   it("translates its copy and keeps the native contract", () => {
     for (const file of [
       "macos/ui/DictationSettings.tsx",
@@ -255,6 +307,12 @@ describe("Mac dictation", () => {
         expect(zhCN[key], key).toBeTruthy();
     const swift = readFileSync("macos/Dictation.swift", "utf8");
     expect(swift).toContain("requiresOnDeviceRecognition = true");
+    expect(swift).toContain("kAudioOutputUnitProperty_CurrentDevice");
+    const shellSource = readFileSync("macos/OpenMuse.swift", "utf8");
+    expect(shellSource).toContain('case "device":');
+    expect(readFileSync("scripts/build-macos.mjs", "utf8")).toContain(
+      '"CoreAudio"',
+    );
     const plist = readFileSync("macos/Info.plist", "utf8");
     expect(plist).toContain("NSMicrophoneUsageDescription");
     expect(plist).toContain("NSSpeechRecognitionUsageDescription");

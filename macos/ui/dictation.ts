@@ -1,11 +1,15 @@
 // Voice input for the composer, recognized by macOS. Text streams in as
 // muse-dictation events from the native shell while the person talks.
 export type Permission = "allowed" | "denied" | "not-asked";
+export type InputDevice = { id: string; name: string };
 export type DictationState = {
   microphone: Permission;
   speech: Permission;
   onDevice: boolean;
   running: boolean;
+  // The chosen microphone's id; empty follows the macOS input setting.
+  device: string;
+  devices: InputDevice[];
 };
 export type DictationEvent =
   { text: string; final: boolean } | { ended: true; error?: string };
@@ -36,8 +40,22 @@ export function parseDictationState(
         speech: record.speech as Permission,
         onDevice: record.onDevice,
         running: record.running,
+        device: typeof record.device === "string" ? record.device : "",
+        devices: inputDevices(record.devices),
       }
     : undefined;
+}
+function inputDevices(value: unknown): InputDevice[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) =>
+    item &&
+    typeof item === "object" &&
+    typeof item.id === "string" &&
+    item.id &&
+    typeof item.name === "string"
+      ? [{ id: item.id, name: item.name || item.id }]
+      : [],
+  );
 }
 
 async function call(body: Record<string, string>) {
@@ -74,6 +92,8 @@ export function saveDictationPreferences(value: DictationPreferences) {
 export const stopDictation = (cancel = false) =>
   call({ operation: "stop", cancel: cancel ? "true" : "false" });
 export const openMicrophoneSettings = () => call({ operation: "settings" });
+export const chooseInputDevice = (language: string, device: string) =>
+  call({ operation: "device", language, device });
 
 // Dictated text continues the draft that was there when listening started.
 export function joinDictation(base: string, spoken: string) {
