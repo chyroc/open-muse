@@ -1,7 +1,10 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { createHash } from "node:crypto";
-import { backgroundOrigin } from "./shared/background-origin";
+import {
+  backgroundConnectSource,
+  backgroundOrigin,
+} from "./shared/background-origin";
 import { supabaseOrigin, supabasePublicKey } from "./shared/supabase-auth";
 
 const background = backgroundOrigin(process.env.VITE_MUSE_BACKGROUND_URL);
@@ -29,7 +32,7 @@ export default defineConfig({
             tag: "meta",
             attrs: {
               "http-equiv": "Content-Security-Policy",
-              content: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://ark.cn-beijing.volces.com${background ? ` ${background}` : ""}${auth ? ` ${auth}` : ""}; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'`,
+              content: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://ark.cn-beijing.volces.com${background ? ` ${backgroundConnectSource(background)}` : ""}${auth ? ` ${auth}` : ""}; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'`,
             },
             injectTo: "head-prepend",
           },

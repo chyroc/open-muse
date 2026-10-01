@@ -1,7 +1,10 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
-import { backgroundOrigin } from "../shared/background-origin";
+import {
+  backgroundConnectSource,
+  backgroundOrigin,
+} from "../shared/background-origin";
 import { supabaseOrigin, supabasePublicKey } from "../shared/supabase-auth";
 
 const background = backgroundOrigin(process.env.VITE_MUSE_BACKGROUND_URL);
@@ -29,7 +32,7 @@ export default defineConfig({
         return background || auth
           ? html.replace(
               "connect-src 'self'",
-              `connect-src 'self' ${[background, auth].filter(Boolean).join(" ")}`,
+              `connect-src 'self' ${[backgroundConnectSource(background), auth].filter(Boolean).join(" ")}`,
             )
           : html;
       },

@@ -1,7 +1,10 @@
 import "fake-indexeddb/auto";
 import { describe, it, expect, vi } from "vitest";
 import { BackgroundClient } from "../src/background-client";
-import { backgroundOrigin } from "../shared/background-origin";
+import {
+  backgroundConnectSource,
+  backgroundOrigin,
+} from "../shared/background-origin";
 import {
   backgroundCredentials,
   credentials,
@@ -211,12 +214,11 @@ describe("Optional native background client", () => {
     expect(f.fetcher).not.toHaveBeenCalled();
     expect(f.vault.read).not.toHaveBeenCalled();
   });
-  it("only accepts explicit HTTPS origins", () => {
+  it("only accepts explicit HTTPS base URLs", () => {
     for (const origin of [
       "http://example.com",
       "https://*.example.com",
       "https://u:p@example.com",
-      "https://example.com/path",
       "https://example.com?key=private",
       "https://example.com/#fragment",
     ])
@@ -224,6 +226,12 @@ describe("Optional native background client", () => {
     expect(backgroundOrigin("https://background.example/")).toBe(
       "https://background.example",
     );
+    expect(
+      backgroundOrigin("https://background.example/functions/v1/open-muse/"),
+    ).toBe("https://background.example/functions/v1/open-muse");
+    expect(
+      backgroundConnectSource("https://background.example/functions/v1/open-muse"),
+    ).toBe("https://background.example");
   });
   it("rejects Cloudflare and Ark keys before network access", async () => {
     const f = fixture();
