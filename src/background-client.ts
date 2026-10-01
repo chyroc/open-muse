@@ -152,7 +152,9 @@ export class BackgroundClient {
     origin = import.meta.env.VITE_MUSE_BACKGROUND_URL ?? "",
     private vault: CredentialStore = backgroundCredentials,
     private database = new LocalDatabase(),
-    private fetcher: typeof fetch = fetch,
+    // Browsers reject fetch called as a method of another object, so the
+    // default must not be the bare global stored on this instance.
+    private fetcher: typeof fetch = (input, init) => fetch(input, init),
     readonly accounts = new SupabaseAuth(),
   ) {
     this.origin = backgroundOrigin(origin);

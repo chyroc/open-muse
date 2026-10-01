@@ -27,7 +27,9 @@ export class SupabaseAuth {
   constructor(
     origin = import.meta.env.VITE_MUSE_SUPABASE_URL ?? "",
     publicKey = import.meta.env.VITE_MUSE_SUPABASE_ANON_KEY ?? "",
-    private fetcher: typeof fetch = fetch,
+    // Browsers reject fetch called as a method of another object, so the
+    // default must not be the bare global stored on this instance.
+    private fetcher: typeof fetch = (input, init) => fetch(input, init),
     private clock = Date.now,
   ) {
     this.origin = supabaseOrigin(origin);
