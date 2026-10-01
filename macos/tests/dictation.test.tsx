@@ -92,6 +92,9 @@ async function workspace() {
   vi.spyOn(client, "startWelcome").mockResolvedValue({ phase: "skipped" });
   vi.spyOn(client, "startCheckIn").mockResolvedValue(undefined);
   vi.spyOn(client, "deliverUpcoming").mockResolvedValue(undefined);
+  vi.spyOn(client, "openConversation").mockResolvedValue({
+    id: "main",
+  } as Awaited<ReturnType<Client["openConversation"]>>);
   const send = vi.spyOn(client, "send");
   await mount(<DesktopApp client={client} />);
   return send;
@@ -127,6 +130,7 @@ describe("Mac dictation", () => {
     expect(post).toHaveBeenCalledWith({
       operation: "start",
       language: "en-US",
+      cues: "true",
     });
     expect(mic().getAttribute("aria-pressed")).toBe("true");
     await speak({ text: "remind me", final: false });
@@ -136,6 +140,51 @@ describe("Mac dictation", () => {
     await speak({ ended: true });
     expect(mic().getAttribute("aria-pressed")).toBe("false");
     expect(send).not.toHaveBeenCalled();
+  });
+  it("sends the dictated message when automatic send is on", async () => {
+    localStorage.setItem(
+      "muse.dictation",
+      JSON.stringify({ autoSend: true, cues: false }),
+    );
+    const post = shell({
+      microphone: "allowed",
+      speech: "allowed",
+      onDevice: true,
+      running: false,
+    });
+    const send = await workspace();
+    send.mockResolvedValue({ data: [] });
+    await act(async () => mic().click());
+    expect(post).toHaveBeenCalledWith({
+      operation: "start",
+      language: "en-US",
+      cues: "false",
+    });
+    await speak({ text: "call mom at six", final: true });
+    await speak({ ended: true });
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+    expect(send).toHaveBeenCalledWith(
+      "main",
+      expect.objectContaining({ text: "call mom at six" }),
+    );
+    localStorage.removeItem("muse.dictation");
+  });
+  it("does not send when dictation ends with an error", async () => {
+    localStorage.setItem("muse.dictation", JSON.stringify({ autoSend: true }));
+    shell({
+      microphone: "allowed",
+      speech: "allowed",
+      onDevice: true,
+      running: false,
+    });
+    const send = await workspace();
+    await act(async () => mic().click());
+    await speak({ text: "half a sentence", final: false });
+    await speak({ ended: true, error: "Dictation stopped." });
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+    expect(send).not.toHaveBeenCalled();
+    expect(field().value).toBe("half a sentence");
+    localStorage.removeItem("muse.dictation");
   });
   it("stops with the microphone button or Escape", async () => {
     const post = shell({
@@ -184,6 +233,16 @@ describe("Mac dictation", () => {
     expect(
       [...host!.querySelectorAll("button")].map((item) => item.textContent),
     ).toEqual(["Allow"]);
+    const switches = [
+      ...host!.querySelectorAll<HTMLInputElement>("input[role=switch]"),
+    ];
+    expect(switches.map((item) => item.checked)).toEqual([false, true]);
+    await act(async () => switches[0].click());
+    expect(JSON.parse(localStorage.getItem("muse.dictation")!)).toEqual({
+      autoSend: true,
+      cues: true,
+    });
+    localStorage.removeItem("muse.dictation");
   });
   it("translates its copy and keeps the native contract", () => {
     for (const file of [

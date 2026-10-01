@@ -49,8 +49,28 @@ export const readDictation = (language: string) =>
   call({ operation: "status", language });
 export const requestDictation = (language: string) =>
   call({ operation: "request", language });
-export const startDictation = (language: string) =>
-  call({ operation: "start", language });
+export const startDictation = (language: string, cues = true) =>
+  call({ operation: "start", language, cues: cues ? "true" : "false" });
+
+// Device-local dictation preferences.
+export type DictationPreferences = { autoSend: boolean; cues: boolean };
+const preferenceKey = "muse.dictation";
+export function dictationPreferences(): DictationPreferences {
+  try {
+    const value = JSON.parse(localStorage.getItem(preferenceKey) ?? "{}");
+    return { autoSend: value.autoSend === true, cues: value.cues !== false };
+  } catch {
+    return { autoSend: false, cues: true };
+  }
+}
+export function saveDictationPreferences(value: DictationPreferences) {
+  try {
+    localStorage.setItem(preferenceKey, JSON.stringify(value));
+  } catch {
+    // The choice still applies to this session.
+  }
+  return value;
+}
 export const stopDictation = (cancel = false) =>
   call({ operation: "stop", cancel: cancel ? "true" : "false" });
 export const openMicrophoneSettings = () => call({ operation: "settings" });

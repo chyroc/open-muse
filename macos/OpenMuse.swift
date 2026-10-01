@@ -485,13 +485,17 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         case "start":
             guard sender === webView || sender === quickWebView else { replyHandler(nil, "Dictation is not available here"); return }
             dictationView = sender
+            // Audio cues use the system's own sounds when listening starts and ends.
+            let cues = body["cues"] == "true"
             dictation.onText = { [weak self] text, final in self?.sendDictation(["text": text, "final": final]) }
             dictation.onEnd = { [weak self] error in
+                if cues { NSSound(named: "Pop")?.play() }
                 var detail: [String: Any] = ["ended": true]
                 if let error { detail["error"] = localized(error) }
                 self?.sendDictation(detail)
             }
             if let error = dictation.start(language: language ?? "en-US") { replyHandler(nil, localized(error)); return }
+            if cues { NSSound(named: "Tink")?.play() }
             replyHandler(dictationState(language), nil)
         case "stop":
             dictation.stop(cancel: body["cancel"] == "true")

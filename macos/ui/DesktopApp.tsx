@@ -89,6 +89,7 @@ import { readReactions, setReaction, type Mood } from "./reactions";
 import {
   dictationAvailable,
   dictationEvent,
+  dictationPreferences,
   joinDictation,
   readDictation,
   requestDictation,
@@ -163,6 +164,7 @@ export function DesktopApp({ client }: { client: Client }) {
   const [paletteGoals, setPaletteGoals] = useState<Goal[]>([]);
   const [reactions, setReactions] = useState<Record<string, Mood>>({});
   const [listening, setListening] = useState(false);
+  const [autoSend, setAutoSend] = useState<string>();
   const dictationBase = useRef<{ key: string; text: string }>(undefined);
   // Find in the open conversation; undefined while the bar is closed.
   const [find, setFind] = useState<string>();
@@ -495,8 +497,11 @@ export function DesktopApp({ client }: { client: Client }) {
       if (!detail || typeof detail !== "object") return;
       if ("ended" in detail) {
         setListening(false);
+        const base = dictationBase.current;
         dictationBase.current = undefined;
         if (detail.error) setError(detail.error);
+        // Automatic send applies to dictation that finished on its own terms.
+        else if (base && dictationPreferences().autoSend) setAutoSend(base.key);
         return;
       }
       const base = dictationBase.current;
@@ -509,6 +514,13 @@ export function DesktopApp({ client }: { client: Client }) {
     window.addEventListener(dictationEvent, listen);
     return () => window.removeEventListener(dictationEvent, listen);
   }, []);
+  // Send once the dictated text has settled into the draft it was meant for.
+  useEffect(() => {
+    if (!autoSend) return;
+    setAutoSend(undefined);
+    if (autoSend === draftKey && draft.trim()) void send();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSend]);
   // Leaving the conversation ends dictation into it.
   useEffect(() => {
     if (listening && dictationBase.current?.key !== draftKey)
@@ -695,7 +707,7 @@ export function DesktopApp({ client }: { client: Client }) {
         return;
       }
       dictationBase.current = { key: draftKey, text: draft };
-      await startDictation(language);
+      await startDictation(language, dictationPreferences().cues);
       setListening(true);
       composer.current?.focus();
     } catch (failure) {

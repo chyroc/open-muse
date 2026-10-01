@@ -98,4 +98,11 @@ export const zhDesktop: Record<string, string> = {
     "登录 Mac 时自动打开 Open Muse。",
   "Reach Open Muse from the menu bar at the top of the screen.":
     "从屏幕顶部的菜单栏使用 Open Muse。",
+  "During dictation": "听写时",
+  "Automatically send": "自动发送",
+  "Open Muse sends your message when you finish dictating.":
+    "听写结束后，Open Muse 会发送你的消息。",
+  "Play audio cues": "播放提示音",
+  "A sound plays when dictation starts and stops.":
+    "听写开始和结束时播放提示音。",
 };

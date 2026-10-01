@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { systemLanguage, t } from "../../shared/i18n";
+import { Switch } from "./SettingsSwitch";
 import {
   dictationAvailable,
+  dictationPreferences,
+  saveDictationPreferences,
   openMicrophoneSettings,
   readDictation,
   requestDictation,
@@ -13,6 +16,7 @@ import {
 export function DictationSettings() {
   const [state, setState] = useState<DictationState>();
   const [error, setError] = useState("");
+  const [preferences, setPreferences] = useState(dictationPreferences);
   const available = dictationAvailable();
   const language = systemLanguage() === "zh-CN" ? "zh-CN" : "en-US";
   const refresh = useCallback(
@@ -91,6 +95,29 @@ export function DictationSettings() {
           t("Turns what you say into text."),
           state?.speech,
         )}
+      </div>
+      <h2>{t("During dictation")}</h2>
+      <div className="settings-group">
+        <Switch
+          label={t("Automatically send")}
+          detail={t("Open Muse sends your message when you finish dictating.")}
+          checked={preferences.autoSend}
+          disabled={false}
+          onChange={(autoSend) =>
+            setPreferences(
+              saveDictationPreferences({ ...preferences, autoSend }),
+            )
+          }
+        />
+        <Switch
+          label={t("Play audio cues")}
+          detail={t("A sound plays when dictation starts and stops.")}
+          checked={preferences.cues}
+          disabled={false}
+          onChange={(cues) =>
+            setPreferences(saveDictationPreferences({ ...preferences, cues }))
+          }
+        />
       </div>
       <h2>{t("Where speech is recognized")}</h2>
       <div className="settings-group">
