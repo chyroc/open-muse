@@ -14,6 +14,12 @@ import { AccountCredentials, rewrapRetiredKeys } from "./account";
 import { AccountWorkspaces } from "./workspace";
 import { accountCredentialSchema } from "../../shared/account-credential";
 import { accountWorkspaceKey } from "../../shared/workspace-key";
+import { externalScheduler, TRIGGER_PATH, verifyTrigger } from "./trigger";
+
+async function runScheduler(env: Env) {
+  await rewrapRetiredKeys(env).catch(() => {});
+  await tick(env);
+}
 
 async function body(
   request: Request,
@@ -69,6 +75,13 @@ export async function handle(
       response = new Response(null, { status: 204 });
     } else if (url.pathname === "/health" && request.method === "GET") {
       response = json({ ok: true, service: "open-muse-server" });
+    } else if (url.pathname === TRIGGER_PATH && request.method === "POST") {
+      // Server-to-server only: no browser origin, no user identity.
+      if (request.headers.has("Origin"))
+        throw new HttpError(403, "This application origin is not allowed.");
+      await verifyTrigger(request, env);
+      await runScheduler(env);
+      response = json({ ok: true });
     } else {
       const owner = await authenticate(request, env, fetcher);
       const account = isSupabaseOwner(owner);
@@ -528,7 +541,6 @@ export async function handle(
 export default {
   fetch: (request, env) => handle(request, env),
   async scheduled(_event, env) {
-    await rewrapRetiredKeys(env).catch(() => {});
-    await tick(env);
+    if (!externalScheduler(env)) await runScheduler(env);
   },
 } satisfies ExportedHandler<Env>;

@@ -9,6 +9,11 @@ export interface Env {
   SUPABASE_ANON_KEY?: string;
   ALLOWED_ORIGINS?: string;
   BACKGROUND_ENABLED?: string;
+  // "external" hands the schedule clock to a signed trigger (for example a
+  // Volcengine veFaaS timer) and disables Workers Cron. Defaults to cron.
+  SCHEDULER_SOURCE?: string;
+  // Worker secret shared only with the external trigger; at least 256 bits.
+  SCHEDULER_TRIGGER_SECRET?: string;
   // Worker secret: {"current":"v1","keys":{"v1":"<32-byte base64>"}}.
   // This keyring must never be stored in D1 or sent to clients.
   CREDENTIAL_ENCRYPTION_KEYS?: string;
