@@ -211,7 +211,7 @@ describe("Mac settings window", () => {
     // Grouped rows, not the shared panel's flat card, until the user asks.
     expect(
       host!.querySelectorAll(".settings-main .settings-group").length,
-    ).toBe(3);
+    ).toBe(4);
     expect(host!.querySelector(".settings-auth")).toBeNull();
     expect(host!.textContent).toContain("Connected");
     expect(host!.textContent).toContain("API Key");

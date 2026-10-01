@@ -11,10 +11,13 @@ export type Route = {
   libraryView?: LibraryView;
 };
 
+// App-initiated prompts (welcome, check-in) stay in MA history but are not
+// the person's words, so the chat never shows them.
 export function chatMessages(events: AgentEvent[]) {
   return events.filter(
     (event) =>
       ["user.message", "agent.message"].includes(event.type) &&
+      !event.app_initiation &&
       eventText(event),
   );
 }

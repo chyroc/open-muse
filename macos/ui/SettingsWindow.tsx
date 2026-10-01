@@ -24,6 +24,7 @@ import { t } from "../../shared/i18n";
 import type { Client } from "../../src/api";
 import { AuthPanel } from "../../src/AuthPanel";
 import { Modal } from "./Chrome";
+import { CheckInSwitch } from "./CheckInSwitch";
 import {
   appearances,
   saveAppearance,
@@ -223,6 +224,8 @@ export function SettingsWindow({ client }: { client: Client }) {
                 />
               </div>
             )}
+            {client.signedIn() && <h2>{t("Check-ins")}</h2>}
+            <CheckInSwitch client={client} />
             <h2>{t("Language")}</h2>
             <div className="settings-group">
               <Row

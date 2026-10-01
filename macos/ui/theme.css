@@ -22,6 +22,7 @@
   --accent: #0064d4;
   --accent-hover: #005cc8;
   --accent-text: #fff;
+  --switch-knob: #fff;
   --accent-soft: #e6f7ff;
   --danger: #c01f37;
   --danger-soft: #fde8e8;
@@ -63,6 +64,7 @@
   --accent: #3b82f6;
   --accent-hover: #2f74e0;
   --accent-text: #fff;
+  --switch-knob: #f2f2f4;
   --accent-soft: #005cff2b;
   --danger: #fa4758;
   --danger-soft: #dc262626;

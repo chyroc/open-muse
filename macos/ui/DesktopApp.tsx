@@ -1,4 +1,4 @@
-import { t } from "../../shared/i18n";
+import { systemLanguage, t } from "../../shared/i18n";
 import {
   lazy,
   Suspense,
@@ -48,6 +48,9 @@ import { openNativeSettings } from "./settings";
 import { navLabel } from "./labels";
 import { connectionError, connectionReady } from "./startup";
 import { WorkspaceBoundary } from "./WorkspaceBoundary";
+import { AssistantContent, messageParts } from "./ChoiceContent";
+import { currentChoiceEvent } from "../../shared/chat-choices";
+import { digest } from "../../shared/crypto";
 import {
   discussionPrompt,
   type InspirationItem,
@@ -147,6 +150,9 @@ export function DesktopApp({ client }: { client: Client }) {
   const draftKey = id ?? (route.newSide ? "new-side" : "main");
   const draft = drafts[draftKey] ?? "";
   const task = useTask(client, id);
+  // Read through a ref so a new refresh function never re-runs the effects.
+  const refreshTask = useRef(task.refresh);
+  refreshTask.current = task.refresh;
   const events = task.session?.id === id ? task.events : [];
   const currentEvents = events.filter(
     (event) => !event.source_session_id || event.source_session_id === id,
@@ -339,6 +345,56 @@ export function DesktopApp({ client }: { client: Client }) {
       window.removeEventListener(connectionReady, ready);
     };
   }, [reload, client]);
+  // The first main conversation opens with the companion's welcome, and after
+  // a quiet day the main chat may open with one check-in. Both start only while
+  // the main chat is in front of the person, and neither interrupts them.
+  const mainInFront =
+    ready &&
+    route.page === "chat" &&
+    !route.newSide &&
+    (!route.conversation || route.conversation === index.mainId);
+  const initiating = useRef(false);
+  const welcomed = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (!mainInFront) return;
+    const run = () => {
+      if (window.document.hidden || initiating.current) return;
+      initiating.current = true;
+      const epoch = connectionVersion.current;
+      void (async () => {
+        let changed = false;
+        if (welcomed.current !== epoch) {
+          welcomed.current = epoch;
+          changed = true;
+          const welcome = await client
+            .startWelcome(systemLanguage())
+            .catch(async (failure: Error) => {
+              if (alive.current) setError(failure.message);
+              return client.welcomeState().catch(() => undefined);
+            });
+          // A check-in never starts while the welcome is still unresolved.
+          if (welcome && !["confirmed", "skipped"].includes(welcome.phase))
+            return changed;
+        }
+        const checkIn = await client
+          .startCheckIn(systemLanguage())
+          .catch(() => undefined);
+        return changed || Boolean(checkIn);
+      })()
+        .then(async (changed) => {
+          if (!changed || !alive.current || connectionVersion.current !== epoch)
+            return;
+          await reload();
+          await refreshTask.current();
+        })
+        .finally(() => {
+          initiating.current = false;
+        });
+    };
+    run();
+    window.document.addEventListener("visibilitychange", run);
+    return () => window.document.removeEventListener("visibilitychange", run);
+  }, [mainInFront, client, connectionEpoch, reload]);
   useEffect(() => {
     if (!away && scroll.current)
       scroll.current.scrollTop = scroll.current.scrollHeight;
@@ -467,6 +523,8 @@ export function DesktopApp({ client }: { client: Client }) {
     setQuery("");
   };
   const messages = chatMessages(events);
+  const parts = messageParts(messages, events);
+  const activeChoice = currentChoiceEvent(currentEvents)?.id;
   const chatTitle = route.newSide
     ? t("New side chat")
     : id && id !== index.mainId
@@ -859,13 +917,43 @@ export function DesktopApp({ client }: { client: Client }) {
                 </p>
               )}
               <div className="message-stack">
-                {messages.map((event) => (
+                {parts.map(({ event, part }) => (
                   <article
-                    key={event.id}
+                    key={`${event.id}:${part}`}
                     className={`message ${event.type === "user.message" ? "from-user" : "from-assistant"}`}
                   >
                     <div className="message-bubble">
-                      <Markdown text={eventText(event)} />
+                      {event.type === "agent.message" ? (
+                        <AssistantContent
+                          text={eventText(event)}
+                          part={part}
+                          reply={event.choice_reply}
+                          active={
+                            !event.source_session_id &&
+                            activeChoice === event.id
+                          }
+                          busy={busy || task.loading}
+                          streaming={running}
+                          onChoose={(option) =>
+                            void action(async () => {
+                              if (!id) return;
+                              try {
+                                await client.answerChoice(
+                                  id,
+                                  event.id,
+                                  option,
+                                  digest(eventText(event)),
+                                );
+                                setAway(false);
+                              } finally {
+                                await task.refresh();
+                              }
+                            })
+                          }
+                        />
+                      ) : (
+                        <Markdown text={eventText(event)} />
+                      )}
                     </div>
                     <div className="message-actions">
                       <button
