@@ -30,4 +30,8 @@ export const zhDesktop: Record<string, string> = {
   "Next match": "下一个匹配项",
   "Close find": "关闭查找",
   "Find in the chat": "在对话中查找",
+  "Leave a mood": "留下心情",
+  "More options": "更多选项",
+  "Select text": "选择文本",
+  "Your mood: {mood}": "你的心情：{mood}",
 };

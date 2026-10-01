@@ -10,7 +10,6 @@ import {
 import {
   ArrowDown,
   ArrowUp,
-  Copy,
   Menu,
   MessageCircle,
   MessagesSquare,
@@ -81,6 +80,8 @@ import { ArchiveToggle, Empty, Modal, Rail } from "./Chrome";
 import { ShortcutsDialog } from "./Shortcuts";
 import { CommandPalette, paletteItems } from "./Palette";
 import { FindBar, findMatches, partKey } from "./FindBar";
+import { MessageActions } from "./MessageActions";
+import { readReactions, setReaction, type Mood } from "./reactions";
 import {
   SentFiles,
   StagedFiles,
@@ -146,6 +147,7 @@ export function DesktopApp({ client }: { client: Client }) {
   const [prefill, setPrefill] = useState(0);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [paletteGoals, setPaletteGoals] = useState<Goal[]>([]);
+  const [reactions, setReactions] = useState<Record<string, Mood>>({});
   // Find in the open conversation; undefined while the bar is closed.
   const [find, setFind] = useState<string>();
   const [findAt, setFindAt] = useState(0);
@@ -417,6 +419,18 @@ export function DesktopApp({ client }: { client: Client }) {
       active = false;
     };
   }, [search, ready, client]);
+  // Moods left on messages are kept on this Mac for the signed-in account.
+  useEffect(() => {
+    if (!ready) return;
+    let active = true;
+    void Promise.resolve()
+      .then(() => readReactions(client))
+      .then((value) => active && setReactions(value))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [client, ready, connectionEpoch]);
   // MA image blocks carry no name, so the names come from this device.
   useEffect(() => {
     if (!ready) return;
@@ -1160,53 +1174,62 @@ export function DesktopApp({ client }: { client: Client }) {
                         </>
                       )}
                     </div>
-                    <div className="message-actions">
-                      <button
-                        aria-label={t("Copy message")}
-                        onClick={() =>
-                          void action(async () => {
-                            await navigator.clipboard.writeText(
-                              eventText(event),
-                            );
-                            setNotice(t("Message copied"));
-                          })
-                        }
+                    {reactions[event.id] && part !== "intro" && (
+                      <span
+                        className="message-mood"
+                        aria-label={t("Your mood: {mood}", {
+                          mood: reactions[event.id],
+                        })}
                       >
-                        <Copy size={14} />
-                      </button>
-                      <button
-                        aria-label={t("Reply to message")}
-                        onClick={() => {
-                          setDrafts((old) => ({
-                            ...old,
-                            [draftKey]: `> ${eventText(event).replaceAll("\n", "\n> ")}\n\n`,
-                          }));
-                          composer.current?.focus();
-                        }}
-                      >
-                        <MessagesSquare size={14} />
-                      </button>
-                      {event.type === "agent.message" && (
-                        <button
-                          aria-label={t("Save reply to library")}
-                          disabled={busy}
-                          onClick={() =>
-                            void action(async () => {
-                              await client.saveReply(
-                                event.source_session_id ?? id!,
-                                event.source_event_id ?? event.id,
-                              );
-                              setNotice(t("Saved to Library"));
-                              window.dispatchEvent(
-                                new Event("muse-library-changed"),
-                              );
-                            })
-                          }
-                        >
-                          <Plus size={15} />
-                        </button>
-                      )}
-                    </div>
+                        {reactions[event.id]}
+                      </span>
+                    )}
+                    <MessageActions
+                      fromAssistant={event.type === "agent.message"}
+                      mood={reactions[event.id]}
+                      busy={busy}
+                      onMood={(mood) =>
+                        void setReaction(client, event.id, mood).then(
+                          (next) => alive.current && setReactions(next),
+                        )
+                      }
+                      onCopy={() =>
+                        void action(async () => {
+                          await navigator.clipboard.writeText(eventText(event));
+                          setNotice(t("Message copied"));
+                        })
+                      }
+                      onReply={() => {
+                        setDrafts((old) => ({
+                          ...old,
+                          [draftKey]: `> ${eventText(event).replaceAll("\n", "\n> ")}\n\n`,
+                        }));
+                        composer.current?.focus();
+                      }}
+                      onSave={
+                        event.type === "agent.message"
+                          ? () =>
+                              void action(async () => {
+                                await client.saveReply(
+                                  event.source_session_id ?? id!,
+                                  event.source_event_id ?? event.id,
+                                );
+                                setNotice(t("Saved to Library"));
+                                window.dispatchEvent(
+                                  new Event("muse-library-changed"),
+                                );
+                              })
+                          : undefined
+                      }
+                      onSelect={() => {
+                        const bubble = scroll.current?.querySelector(
+                          `[data-part="${CSS.escape(partKey({ event, part }))}"] .message-bubble`,
+                        );
+                        const selection = window.getSelection();
+                        if (!bubble || !selection) return;
+                        selection.selectAllChildren(bubble);
+                      }}
+                    />
                   </article>
                 ))}
               </div>

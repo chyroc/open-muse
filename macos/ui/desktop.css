@@ -1298,3 +1298,97 @@ h3 {
     opacity: 0;
   }
 }
+/* Message actions: popups stay visible while open, and a left mood shows on
+   the bubble. */
+.message-actions.has-popup {
+  opacity: 1;
+  z-index: 5;
+}
+.message-actions button:hover {
+  background: var(--fill-hover);
+  color: var(--text);
+}
+.message-popup {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  display: grid;
+  min-width: 190px;
+  padding: 5px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--dialog);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 6px 24px var(--shadow);
+  transform-origin: left bottom;
+  animation: rail-menu-in 0.24s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+.from-user .message-popup {
+  left: auto;
+  right: 0;
+  transform-origin: right bottom;
+}
+.message-popup button {
+  width: auto;
+  height: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  font-size: 13px;
+  color: var(--text);
+  text-align: left;
+}
+.message-popup.mood-tray {
+  display: flex;
+  min-width: 0;
+  gap: 2px;
+  border-radius: 22px;
+}
+.mood-tray button {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 17px;
+  font-size: 19px;
+  transition: transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.mood-tray button:hover {
+  transform: scale(1.18);
+  background: transparent;
+}
+.mood-tray button[aria-checked="true"] {
+  background: var(--fill-strong);
+}
+.message-mood {
+  align-self: flex-start;
+  margin: -10px 0 0 10px;
+  padding: 1px 6px;
+  border-radius: 11px;
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line);
+  font-size: 13px;
+  line-height: 20px;
+  animation: mood-in 0.36s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.from-user .message-mood {
+  align-self: flex-end;
+  margin: -10px 10px 0 0;
+}
+@keyframes mood-in {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .message-popup,
+  .message-mood {
+    animation: rail-menu-fade 0.15s ease-out both;
+  }
+  .mood-tray button:hover {
+    transform: none;
+  }
+}
