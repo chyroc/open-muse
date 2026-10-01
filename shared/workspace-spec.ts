@@ -1,5 +1,7 @@
 import { environmentWithTools, systemWithTools } from "./tooling";
 import { systemWithIdentity } from "./identity";
+import { macTools } from "./mac-tools";
+import { healthToolSpec } from "./health";
 
 // The personal workspace every Open Muse client provisions. The Worker creates
 // the same resources for Muse accounts, so both use these definitions.
@@ -19,6 +21,12 @@ export const environmentSpec = () => ({
     networking: { type: "unrestricted" },
   }),
 });
+// Custom tools answered by the person's own devices: the Mac app runs mac_*,
+// the iPhone app answers health_read. MA waits for that device's result.
+export const deviceTools = [
+  ...macTools,
+  { type: "custom", ...healthToolSpec },
+] as const;
 export const agentSpec = (model: string) => ({
   description: "Personal agent managed automatically by Open Muse",
   model: { id: model },
@@ -28,6 +36,7 @@ export const agentSpec = (model: string) => ({
       type: "agent_toolset_20260701",
       default_config: { permission_policy: { type: "always_allow" } },
     },
+    ...deviceTools,
   ],
 });
 export const memoryStoreName = "Open Muse personal memory";

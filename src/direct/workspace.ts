@@ -8,10 +8,12 @@ import {
 import type { WorkspaceStatus } from "../../shared/types";
 import { LocalDatabase } from "./storage";
 import { systemWithIdentity } from "../../shared/identity";
+import { canonicalJson } from "../../shared/session-refresh";
 import {
   DEFAULT_MODEL,
   MUSE_SYSTEM as system,
   agentSpec,
+  deviceTools,
   environmentSpec,
 } from "../../shared/workspace-spec";
 
@@ -379,12 +381,13 @@ export class DirectWorkspace {
         system?: string;
         tools?: {
           type: string;
+          name?: string;
           default_config?: { permission_policy?: { type: string } };
         }[];
       }
     >(path);
     if (agent.metadata?.open_muse_workspace !== this.key) return;
-    const tools = agent.tools?.map((tool) =>
+    const permitted = agent.tools?.map((tool) =>
       tool.type === "agent_toolset_20260701" &&
       tool.default_config?.permission_policy?.type === "always_ask"
         ? {
@@ -399,13 +402,22 @@ export class DirectWorkspace {
           }
         : tool,
     );
+    // Device tools follow the current definitions by name; any other custom
+    // tool on the agent is kept as it is.
+    const devices = new Set<string>(deviceTools.map((tool) => tool.name));
+    const tools = permitted && [
+      ...permitted.filter(
+        (tool) => !(tool.type === "custom" && devices.has(tool.name ?? "")),
+      ),
+      ...deviceTools,
+    ];
     const baseSystem =
       agent.system === legacySystem ? system : (agent.system ?? system);
     const updatedSystem = systemWithIdentity(
       owned ? systemWithTools(baseSystem) : baseSystem,
     );
     if (
-      JSON.stringify(tools) === JSON.stringify(agent.tools) &&
+      canonicalJson(tools) === canonicalJson(agent.tools) &&
       updatedSystem === agent.system
     )
       return;

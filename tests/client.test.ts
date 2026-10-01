@@ -13,6 +13,7 @@ import { buildRequest } from "../shared/ma-request";
 import type { AgentEvent } from "../shared/types";
 import { identityInstructions } from "../shared/identity";
 import { canonicalJson } from "../shared/session-refresh";
+import { deviceTools } from "../shared/workspace-spec";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -845,6 +846,7 @@ describe("Direct MA client", () => {
     expect(f.resources.agents[0]).toMatchObject({
       tools: [
         { default_config: { permission_policy: { type: "always_allow" } } },
+        ...deviceTools,
       ],
     });
     expect(JSON.stringify(f.resources.environments[0])).toContain("Chrome");
@@ -855,6 +857,46 @@ describe("Direct MA client", () => {
     await f.client.prepareWorkspace();
     expect(f.resources.agents).toHaveLength(1);
     expect(f.resources.environments).toHaveLength(1);
+  });
+  it("adds the device tools to an owned agent once and keeps its other tools", async () => {
+    const f = fixture();
+    await f.login();
+    await f.client.prepareWorkspace();
+    const agent = f.resources.agents[0];
+    const foreign = {
+      type: "custom",
+      name: "query_order",
+      description: "Someone else's tool",
+      input_schema: { type: "object", properties: {} },
+    };
+    const toolset = (agent.tools as Record<string, unknown>[])[0];
+    // An agent from before device tools, with an older mac_open definition.
+    agent.tools = [toolset, foreign, { ...deviceTools[2], description: "old" }];
+    const updates = () =>
+      f.fetcher.mock.calls.filter(
+        ([url, init]) =>
+          init?.method === "POST" &&
+          /\/agents\/[^/]+$/.test(new URL(String(url)).pathname),
+      ).length;
+    // Policy is synchronized before each new conversation is created.
+    const sync = () =>
+      (
+        f.client as unknown as {
+          context(): { workspace: { syncPolicy(): Promise<void> } };
+        }
+      )
+        .context()
+        .workspace.syncPolicy();
+    const before = updates();
+    await sync();
+    expect(updates()).toBe(before + 1);
+    expect(f.resources.agents[0].tools).toEqual([
+      toolset,
+      foreign,
+      ...deviceTools,
+    ]);
+    await sync();
+    expect(updates()).toBe(before + 1);
   });
   it("recovers owned resources on another device without creating duplicates", async () => {
     const f = fixture();
