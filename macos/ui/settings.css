@@ -339,3 +339,19 @@
 .settings-blocked-row .icon-button {
   margin-left: auto;
 }
+.settings-notices {
+  margin-top: 8px;
+  padding: 12px 16px;
+}
+.settings-notices pre {
+  margin: 0;
+  max-height: 340px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.settings-after {
+  margin-top: 16px;
+}

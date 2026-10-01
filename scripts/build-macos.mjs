@@ -4,6 +4,7 @@ import {
   copyFile,
   cp,
   mkdtemp,
+  readFile,
   rename,
   writeFile,
 } from "node:fs/promises";
@@ -90,6 +91,11 @@ for (const language of ["en", "zh-Hans"]) {
 await cp(path.join(root, ".build/macos-ui"), path.join(resources, "web"), {
   recursive: true,
 });
+// The Legal section shows the notices the app ships, from inside the bundle.
+await writeFile(
+  path.join(resources, "web", "notices.txt"),
+  `${await readFile(path.join(root, "THIRD_PARTY_NOTICES.md"), "utf8")}\n${await editorLicenseNotices(root)}`,
+);
 const iconset = path.join(root, ".build/macos/AppIcon.iconset");
 await mkdir(iconset, { recursive: true });
 for (const size of [16, 32, 128, 256, 512]) {

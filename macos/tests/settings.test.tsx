@@ -104,6 +104,8 @@ describe("Mac settings model", () => {
       "secure-storage",
       "permissions",
       "data-controls",
+      "help",
+      "legal",
     ]);
   });
   it("reports the resolved language and only a plausible native version", () => {
@@ -204,7 +206,7 @@ describe("Mac settings window", () => {
   });
   it("explains unconnected sections without simulating them", async () => {
     await mount(<SettingsWindow client={await fixture()} />);
-    for (const id of ["Computer use", "Wallet", "Devices", "Legal"]) {
+    for (const id of ["Computer use", "Wallet", "Devices"]) {
       await click(id);
       expect(host!.textContent).toContain("Not connected");
       expect(host!.querySelectorAll("input")).toHaveLength(0);

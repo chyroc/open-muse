@@ -67,20 +67,8 @@ export const settingsSections: SettingsSection[] = [
       "Each client keeps its own local data and credentials, so this Mac cannot list or manage your other devices.",
   },
   { id: "data-controls", label: "Data controls", connected: true },
-  {
-    id: "help",
-    label: "Help and support",
-    connected: false,
-    unavailable:
-      "This personal client ships no support channel. Its documentation is the project README.",
-  },
-  {
-    id: "legal",
-    label: "Legal",
-    connected: false,
-    unavailable:
-      "Open Muse runs no service of its own and ships no legal documents. Cloud use follows the agreement of the Ark account you connect.",
-  },
+  { id: "help", label: "Help and support", connected: true },
+  { id: "legal", label: "Legal", connected: true },
 ];
 
 export function settingsSection(id: string | undefined) {

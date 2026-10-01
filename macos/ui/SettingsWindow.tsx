@@ -28,6 +28,8 @@ import { PresenceSettings } from "./PresenceSettings";
 import { CheckInSwitch } from "./CheckInSwitch";
 import { ComputerSettings } from "./ComputerSettings";
 import { DictationSettings } from "./DictationSettings";
+import { HelpSettings } from "./HelpSettings";
+import { LegalSettings } from "./LegalSettings";
 import { ShortcutSettings } from "./ShortcutSettings";
 import { shortcutAvailable } from "./shortcut";
 import {
@@ -324,6 +326,8 @@ export function SettingsWindow({ client }: { client: Client }) {
         )}
         {active.id === "computer-use" && <ComputerSettings />}
         {active.id === "dictation" && <DictationSettings />}
+        {active.id === "help" && <HelpSettings />}
+        {active.id === "legal" && <LegalSettings />}
         {active.id === "secure-storage" && (
           <>
             <p className="settings-lead">

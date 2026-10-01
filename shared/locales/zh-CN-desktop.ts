@@ -105,4 +105,18 @@ export const zhDesktop: Record<string, string> = {
   "Play audio cues": "播放提示音",
   "A sound plays when dictation starts and stops.":
     "听写开始和结束时播放提示音。",
+  "The notices are only included in the Mac app bundle.":
+    "这些声明只包含在 Mac App 安装包中。",
+  "Open Muse runs no service of its own for chats; cloud use follows the agreement of the Ark account you connect. The software it ships includes open-source components under their own licenses.":
+    "Open Muse 不为对话运行自己的服务；云端使用遵循你所连接的 Ark 账号的协议。随附的软件包含按各自许可证发布的开源组件。",
+  "Open source notices": "开源声明",
+  "Getting around": "使用指南",
+  "Press {keys} over any app to open a small chat card.":
+    "在任意 App 上按 {keys} 即可打开小聊天卡片。",
+  "Press the microphone in the message field and speak.":
+    "点按消息输入框中的麦克风并开始说话。",
+  "Turn it on in Settings, then ask your assistant to do something on this Mac. Each action asks you first.":
+    "在设置中开启后，让助手在这台 Mac 上帮你做事。每个操作都会先询问你。",
+  "Open Muse is a personal client without a support channel. The project's README describes how each part works.":
+    "Open Muse 是个人客户端，没有客服渠道。项目的 README 介绍了各部分的工作方式。",
 };
