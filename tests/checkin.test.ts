@@ -196,6 +196,8 @@ describe("Check-in policy", () => {
     expect(prompt).toContain("not written by the person");
     expect(prompt).toContain("Do not mention this initiation");
     expect(prompt).toContain("claim reminders");
+    expect(prompt).toContain("```muse-choice");
+    expect(prompt).toContain("never XML or HTML tags");
     expect(checkInPrompt("en; drop", new Date(morning))).toContain(
       "locale en,",
     );
