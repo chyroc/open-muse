@@ -79,6 +79,15 @@ import { canAutoApprove } from "../../shared/approval-policy";
 import { ArchiveToggle, Empty, Modal, Rail } from "./Chrome";
 import { ShortcutsDialog } from "./Shortcuts";
 import {
+  SentFiles,
+  StagedFiles,
+  stageFile,
+  thumbnail,
+  type Staged,
+} from "./Attachments";
+import { attachmentAccept, messageAttachments } from "../../shared/attachments";
+import { uuid } from "../../shared/crypto";
+import {
   chatMessages,
   parseRoute,
   shouldSendOnKey,
@@ -133,6 +142,10 @@ export function DesktopApp({ client }: { client: Client }) {
   const [menu, setMenu] = useState(false);
   const [prefill, setPrefill] = useState(0);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  // Files staged for each draft; they are sent only with that draft.
+  const [stagedBy, setStagedBy] = useState<Record<string, Staged[]>>({});
+  const [fileNames, setFileNames] = useState<Record<string, string>>({});
+  const filePicker = useRef<HTMLInputElement>(null);
   const name = identity.name;
   const [away, setAway] = useState(false);
   const scroll = useRef<HTMLDivElement>(null);
@@ -155,6 +168,9 @@ export function DesktopApp({ client }: { client: Client }) {
         : undefined;
   const draftKey = id ?? (route.newSide ? "new-side" : "main");
   const draft = drafts[draftKey] ?? "";
+  const staged = stagedBy[draftKey] ?? [];
+  const stagedRef = useRef(staged);
+  stagedRef.current = staged;
   const task = useTask(client, id);
   // Read through a ref so a new refresh function never re-runs the effects.
   const refreshTask = useRef(task.refresh);
@@ -370,6 +386,13 @@ export function DesktopApp({ client }: { client: Client }) {
       window.removeEventListener(connectionReady, ready);
     };
   }, [reload, client]);
+  // MA image blocks carry no name, so the names come from this device.
+  useEffect(() => {
+    if (!ready) return;
+    void Promise.resolve()
+      .then(() => client.attachmentNames())
+      .then(setFileNames, () => {});
+  }, [client, ready, connectionEpoch]);
   // Due reminders and recurring tasks go into the main chat while the app runs,
   // even with the window closed. Each occurrence is claimed before it is sent
   // and never sent twice; a busy main chat simply waits for the next check.
@@ -507,9 +530,47 @@ export function DesktopApp({ client }: { client: Client }) {
   }
   const stopRef = useRef(stop);
   stopRef.current = stop;
+  // Each file is checked against the shared limits, then uploaded to MA.
+  function attach(files: File[]) {
+    const key = draftKey;
+    let count = stagedRef.current.length;
+    const update = (id: string, patch: Partial<Staged>) =>
+      setStagedBy((old) => ({
+        ...old,
+        [key]: (old[key] ?? []).map((item) =>
+          item.key === id ? { ...item, ...patch } : item,
+        ),
+      }));
+    for (const file of files) {
+      const item = stageFile(file, count, uuid());
+      if (item.state === "uploading") count++;
+      setStagedBy((old) => ({ ...old, [key]: [...(old[key] ?? []), item] }));
+      if (item.state !== "uploading") continue;
+      if (item.kind === "image")
+        void thumbnail(file).then(
+          (preview) => preview && update(item.key, { preview }),
+        );
+      client.uploadAttachment(file, file.name, count - 1).then(
+        (value) => {
+          update(item.key, { state: "ready", value, name: value.name });
+          if ("file_id" in value)
+            setFileNames((old) => ({ ...old, [value.file_id]: value.name }));
+        },
+        (failure: Error) =>
+          update(item.key, { state: "failed", error: failure.message }),
+      );
+    }
+  }
   async function send() {
     const text = draft.trim();
-    if (!text || running || busyRef.current) return;
+    const files = staged.flatMap((item) =>
+      item.state === "ready" && item.value ? [item.value] : [],
+    );
+    if ((!text && !files.length) || running || busyRef.current) return;
+    if (staged.some((item) => item.state !== "ready")) {
+      setError(t("Wait for uploads to finish or remove failed attachments."));
+      return;
+    }
     if (!ready) {
       openSettings();
       return;
@@ -551,7 +612,9 @@ export function DesktopApp({ client }: { client: Client }) {
       await client.send(target, {
         type: "user.message",
         text: message,
+        ...(files.length ? { attachments: files } : {}),
       });
+      setStagedBy((old) => ({ ...old, [draftKey]: [], [target!]: [] }));
       if (quote) setQuotedPost(undefined);
       setDrafts((old) => ({ ...old, [target!]: "" }));
       setGoalDrafts((old) => ({ ...old, [draftKey]: false, [target!]: false }));
@@ -1014,7 +1077,14 @@ export function DesktopApp({ client }: { client: Client }) {
                           }
                         />
                       ) : (
-                        <Markdown text={eventText(event)} />
+                        <>
+                          <SentFiles
+                            items={messageAttachments(event, fileNames)}
+                          />
+                          {eventText(event) && (
+                            <Markdown text={eventText(event)} />
+                          )}
+                        </>
                       )}
                     </div>
                     <div className="message-actions">
@@ -1117,23 +1187,49 @@ export function DesktopApp({ client }: { client: Client }) {
               </aside>
             )}
             <form
-              className="desktop-composer"
+              className={`desktop-composer ${staged.length ? "has-files" : ""}`}
               onSubmit={(event) => {
                 event.preventDefault();
                 void send();
               }}
+              onDragOver={(event) => {
+                if (ready && event.dataTransfer.types.includes("Files"))
+                  event.preventDefault();
+              }}
+              onDrop={(event) => {
+                if (!ready || !event.dataTransfer.files.length) return;
+                event.preventDefault();
+                attach([...event.dataTransfer.files]);
+              }}
             >
+              <StagedFiles
+                items={staged}
+                onRemove={(key) =>
+                  setStagedBy((old) => ({
+                    ...old,
+                    [draftKey]: (old[draftKey] ?? []).filter(
+                      (item) => item.key !== key,
+                    ),
+                  }))
+                }
+              />
+              <input
+                ref={filePicker}
+                type="file"
+                multiple
+                hidden
+                accept={attachmentAccept}
+                onChange={(event) => {
+                  attach([...(event.currentTarget.files ?? [])]);
+                  event.currentTarget.value = "";
+                }}
+              />
               <button
                 type="button"
                 className="icon-button"
                 aria-label={t("Attach files")}
-                onClick={() =>
-                  setNotice(
-                    t(
-                      "File attachments are not connected in this desktop build yet.",
-                    ),
-                  )
-                }
+                disabled={!ready}
+                onClick={() => filePicker.current?.click()}
               >
                 <Plus size={23} />
               </button>
@@ -1150,6 +1246,12 @@ export function DesktopApp({ client }: { client: Client }) {
                     [draftKey]: event.target.value,
                   }))
                 }
+                onPaste={(event) => {
+                  const files = [...event.clipboardData.files];
+                  if (!ready || !files.length) return;
+                  event.preventDefault();
+                  attach(files);
+                }}
                 onKeyDown={(event) => {
                   if (
                     shouldSendOnKey({
@@ -1190,7 +1292,11 @@ export function DesktopApp({ client }: { client: Client }) {
                 <button
                   className="send-button"
                   aria-label={t("Send")}
-                  disabled={busy || !draft.trim()}
+                  disabled={
+                    busy ||
+                    (!draft.trim() && !staged.length) ||
+                    staged.some((item) => item.state !== "ready")
+                  }
                 >
                   <ArrowUp size={21} />
                 </button>

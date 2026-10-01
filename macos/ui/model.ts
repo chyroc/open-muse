@@ -1,4 +1,5 @@
 import { eventText, type AgentEvent, type Session } from "../../shared/types";
+import { messageAttachments } from "../../shared/attachments";
 import type { ConversationIndex } from "../../src/direct/conversations";
 import type { LibraryView } from "./library";
 
@@ -18,7 +19,7 @@ export function chatMessages(events: AgentEvent[]) {
     (event) =>
       ["user.message", "agent.message"].includes(event.type) &&
       !event.app_initiation &&
-      eventText(event),
+      (eventText(event) || messageAttachments(event).length),
   );
 }
 

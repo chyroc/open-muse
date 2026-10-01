@@ -1122,3 +1122,106 @@ h3 {
     opacity: 0;
   }
 }
+/* Files staged in the composer, and the files a sent message carried. */
+.desktop-composer.has-files {
+  flex-wrap: wrap;
+}
+.mac-staged {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+}
+.mac-staged li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 240px;
+  padding: 5px 4px 5px 5px;
+  border-radius: 12px;
+  background: var(--fill);
+  animation: staged-in 0.3s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+.mac-staged li.is-failed {
+  box-shadow: inset 0 0 0 1px var(--danger);
+}
+.mac-staged-thumb {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--fill-strong);
+  color: var(--text-2);
+}
+.mac-staged-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.mac-staged-text {
+  display: grid;
+  min-width: 0;
+  font-size: 12px;
+}
+.mac-staged-text strong {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mac-staged-text small {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-2);
+}
+.mac-staged li.is-failed small {
+  color: var(--danger);
+}
+.mac-staged .spin {
+  animation: staged-spin 0.9s linear infinite;
+}
+.mac-sent-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+.mac-sent-files li {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 9px;
+  background: var(--fill);
+}
+@keyframes staged-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+@keyframes staged-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mac-staged li {
+    animation: staged-fade 0.15s ease-out both;
+  }
+}
+@keyframes staged-fade {
+  from {
+    opacity: 0;
+  }
+}
