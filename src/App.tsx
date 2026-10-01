@@ -7,6 +7,7 @@ import {
   Check,
   Copy,
   ExternalLink,
+  HeartPulse,
   Laptop,
   LoaderCircle,
   RefreshCw,
@@ -45,6 +46,8 @@ import {
 } from "../shared/types";
 import { canAutoApprove } from "../shared/approval-policy";
 import { AuthPanel } from "./AuthPanel";
+import { HealthRequestCard } from "./HealthRequestCard";
+import { isHealthRequest } from "../shared/health";
 import { CheckInSettings } from "./CheckInSettings";
 import { Studio } from "./Studio";
 import { exportText } from "./platform";
@@ -280,9 +283,12 @@ function Workspace({
   );
   const automaticCount = pendingTools.length - permissions.length;
   // The Mac app runs mac_* custom tools and answers them; this device waits.
-  const macTools = pendingCustomTools(currentEvents).filter((event) =>
+  const customTools = pendingCustomTools(currentEvents);
+  const macTools = customTools.filter((event) =>
     event.name?.startsWith("mac_"),
   );
+  // Apple Health reads wait for the person to share them on the iPhone.
+  const healthRequests = customTools.filter(isHealthRequest);
   const state =
     automaticCount > 0 && !permissions.length
       ? "running"
@@ -645,7 +651,7 @@ function Workspace({
       ? t("Not connected")
       : state === "running"
         ? t("Replying")
-        : permissions.length
+        : permissions.length || healthRequests.length
           ? t("Waiting for approval")
           : macTools.length
             ? t("Waiting for your Mac")
@@ -877,6 +883,17 @@ function Workspace({
                   onConfirm={confirm}
                 />
               ))}
+              {activeId &&
+                healthRequests.map((event) => (
+                  <HealthRequestCard
+                    key={event.id}
+                    client={client}
+                    session={activeId}
+                    event={event}
+                    name={companion.name}
+                    onAnswered={() => void task.refresh()}
+                  />
+                ))}
               {state === "running" && (
                 <div
                   className="chat-typing"
@@ -942,6 +959,19 @@ function Workspace({
                           : "{count} actions need approval",
                         { count: permissions.length },
                       )}
+                </button>
+              )}
+              {healthRequests.length > 0 && !pendingTools.length && (
+                <button
+                  className="approval-notice"
+                  onClick={() =>
+                    conversationBody.current
+                      ?.querySelector(".health-card")
+                      ?.scrollIntoView({ block: "center", behavior: "smooth" })
+                  }
+                >
+                  <HeartPulse size={15} />
+                  {t("Apple Health data requested")}
                 </button>
               )}
               {macTools.length > 0 && (
