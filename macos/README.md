@@ -157,12 +157,16 @@ and Computer use and Dictation have their own sections. Appearance also offers a
 theme color (match my avatar, default, blue, purple, pink, orange, green, beige
 or monochrome), kept on this device. Usage and update checks remain pending
 Mac features, not dropped ones, and
-connectors, wallet and message channels keep their place in the list and
-explain why they are not connected. None of them render a control that does
+wallet and message channels keep their place in the list and explain why
+they are not connected. None of them render a control that does
 nothing.
 
 Other sections:
 
+- Connectors lists, with search, what the assistant can reach: web search and
+  pages, a browser and files in its cloud environment, the Lark CLI and its
+  skills (Connect drafts a sign-in request in the main chat), personal memory,
+  this Mac and Apple Health on the iPhone.
 - File system access shows Full Disk Access and keeps a Blocked folders list;
   the assistant's open action refuses anything inside a blocked folder.
 - Secure storage lists the secrets kept in the account's MA vault and adds or
