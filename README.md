@@ -258,6 +258,24 @@ Markdown, quoted examples, and HTML do not become interactive commands.
 Incomplete or malformed questions leave the message composer available.
 Background check-ins require a separately verified scheduling mechanism.
 
+### Check-ins
+
+When the main chat comes to the front after a quiet period, the companion can
+start the conversation with one short question about an active goal, a recent
+topic, or a stated preference, read from personal memory. It may use an inline
+question. A check-in happens only while the app is open, between 08:00 and
+22:00 local time, at least 18 hours after the last message, at most once per
+local day, and never while a reply is pending or an earlier check-in is
+unanswered. A new identity gets the welcome instead.
+
+Like the welcome, the initiation is an app-generated ordinary MA message hidden
+from the chat and export by a device-local receipt tied to its exact event ID
+and text; it remains in execution history. Claims are transactional per
+identity, and an uncertain result is confirmed from history, never sent again.
+Each check-in is a real, possibly billed Ark request. Settings has a
+device-local toggle under **Check-ins**, on by default. Check-ins do not send
+notifications or run in the background.
+
 ## Personal identity and memory
 
 Tap the companion avatar to open Activity, Approvals, Desktop, Recent, or
