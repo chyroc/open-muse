@@ -149,7 +149,12 @@ talk listens while its keys are held, and Hands-free mode starts and stops on
 each press. They are unset until recorded in the Dictation section, and a
 combination already used by another Open Muse shortcut is refused. Like the
 Quick Chat shortcut they are Carbon hot keys, which need no Accessibility
-permission and never see other keystrokes. The UI identifies unfinished surfaces. No mock replies are
+permission and never see other keystrokes.
+
+Read aloud, in an assistant reply's More menu, speaks the reply with the Mac's
+own voices: code, addresses and markup are left out, and Chinese text gets a
+Chinese voice. Pressing it again or reading another reply stops it, and
+dictation stops it before the microphone listens. The UI identifies unfinished surfaces. No mock replies are
 included in the app. Real cloud verification requires an authorized connection.
 
 ## Settings window

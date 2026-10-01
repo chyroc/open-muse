@@ -83,6 +83,7 @@ execFileSync(
     path.join(root, "macos/Computer.swift"),
     path.join(root, "macos/Dictation.swift"),
     path.join(root, "macos/LocalCalendar.swift"),
+    path.join(root, "macos/Speaker.swift"),
     "-o",
     path.join(contents, "MacOS/OpenMuse"),
   ],

@@ -196,6 +196,9 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     private let calendarKey = "connectors.calendar.enabled"
     private let calendar = LocalCalendar()
     private let dictation = Dictation()
+    // Read aloud reports back to the window that asked.
+    private let speaker = Speaker()
+    private weak var speechView: WKWebView?
     private weak var dictationView: WKWebView?
     private let floatingButtonKey = "presence.floatingButton"
 
@@ -234,6 +237,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museComputer")
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museDictation")
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museShortcut")
+        configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museSpeech")
         configuration.userContentController.add(self, name: "museExport")
         configuration.userContentController.add(self, name: "museWindow")
         configuration.userContentController.addUserScript(WKUserScript(source: "window.__OPEN_MUSE_DESKTOP__ = true;", injectionTime: .atDocumentStart, forMainFrameOnly: true))
@@ -312,6 +316,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         if message.name == "museComputer" { computerUse(body, from: message.webView, replyHandler: replyHandler); return }
         if message.name == "museDictation" { dictate(body, from: message.webView, replyHandler: replyHandler); return }
         if message.name == "museShortcut" { shortcut(body, replyHandler: replyHandler); return }
+        if message.name == "museSpeech" { speech(body, from: message.webView, replyHandler: replyHandler); return }
         // Keychain can wait for an OS authorization dialog. Never block AppKit
         // or discard the eventual reply while the user is deciding.
         DispatchQueue.global(qos: .userInitiated).async { [self] in
@@ -418,6 +423,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     // nothing in the cloud changes.
     private func resetDevice() {
         dictation.stop(cancel: true)
+        speaker.stop()
         hideQuickChat()
         if SMAppService.mainApp.status == .enabled { try? SMAppService.mainApp.unregister() }
         if let domain = Bundle.main.bundleIdentifier { UserDefaults.standard.removePersistentDomain(forName: domain) }
@@ -630,6 +636,8 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         case "start":
             guard sender === webView || sender === quickWebView else { replyHandler(nil, "Dictation is not available here"); return }
             dictationView = sender
+            // The microphone must not hear the Mac reading aloud.
+            speaker.stop()
             // Audio cues use the system's own sounds when listening starts and ends.
             let cues = body["cues"] == "true"
             dictation.onText = { [weak self] text, final in self?.sendDictation(["text": text, "final": final]) }
@@ -659,6 +667,30 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             replyHandler(dictationState(language), nil)
         default:
             replyHandler(nil, "Invalid dictation operation")
+        }
+    }
+    private func speech(_ body: [String: String], from sender: WKWebView?, replyHandler: @escaping (Any?, String?) -> Void) {
+        switch body["operation"] {
+        case "speak":
+            guard let text = body["text"], !text.isEmpty, text.utf16.count <= 20_000,
+                  let id = body["id"], id.range(of: "^[A-Za-z0-9_-]{1,200}$", options: .regularExpression) != nil
+            else { replyHandler(nil, "Invalid speech request"); return }
+            let language = body["language"].flatMap {
+                $0.range(of: "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}$", options: .regularExpression) != nil ? $0 : nil
+            } ?? "en-US"
+            speaker.onEnd = { [weak self] id, finished in
+                guard let data = try? JSONSerialization.data(withJSONObject: ["id": id, "finished": finished]),
+                      let json = String(data: data, encoding: .utf8) else { return }
+                self?.speechView?.evaluateJavaScript("window.dispatchEvent(new CustomEvent('muse-speech', {detail:\(json)}))", completionHandler: nil)
+            }
+            speaker.speak(text, language: language, id: id)
+            speechView = sender
+            replyHandler(true, nil)
+        case "stop":
+            speaker.stop()
+            replyHandler(true, nil)
+        default:
+            replyHandler(nil, "Invalid speech operation")
         }
     }
     private func updateStatusItem() {

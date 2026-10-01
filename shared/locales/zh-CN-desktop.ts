@@ -73,6 +73,8 @@ export const zhDesktop: Record<string, string> = {
     "点按消息输入框中的麦克风即可听写；文字会随你说话出现，在你发送前不会发出任何内容。",
   "Speech recognition": "语音识别",
   "Stop dictation": "停止听写",
+  "Read aloud": "朗读",
+  "Stop reading": "停止朗读",
   "Turns what you say into text.": "把你说的话转换为文字。",
   "Used only while you are dictating.": "仅在你听写时使用。",
   "Use macOS Dictation from the Edit menu. Built-in voice input needs the Mac app.":

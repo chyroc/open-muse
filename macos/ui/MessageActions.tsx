@@ -5,7 +5,9 @@ import {
   Ellipsis,
   MessagesSquare,
   SmilePlus,
+  Square,
   TextSelect,
+  Volume2,
 } from "lucide-react";
 import { t } from "../../shared/i18n";
 import { moods, type Mood } from "./reactions";
@@ -23,6 +25,8 @@ export function MessageActions({
   onCopy,
   onSave,
   onSelect,
+  speaking = false,
+  onSpeak,
 }: {
   fromAssistant: boolean;
   mood?: Mood;
@@ -32,6 +36,8 @@ export function MessageActions({
   onCopy: () => void;
   onSave?: () => void;
   onSelect: () => void;
+  speaking?: boolean;
+  onSpeak?: () => void;
 }) {
   const [open, setOpen] = useState<Popup>();
   const root = useRef<HTMLDivElement>(null);
@@ -123,6 +129,12 @@ export function MessageActions({
             <button role="menuitem" disabled={busy} onClick={() => run(onSave)}>
               <BookmarkPlus size={15} />
               {t("Save reply to library")}
+            </button>
+          )}
+          {onSpeak && (
+            <button role="menuitem" onClick={() => run(onSpeak)}>
+              {speaking ? <Square size={15} /> : <Volume2 size={15} />}
+              {speaking ? t("Stop reading") : t("Read aloud")}
             </button>
           )}
           <button role="menuitem" onClick={() => run(onSelect)}>
