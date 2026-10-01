@@ -105,7 +105,10 @@ const customToolResults = z
           .array(
             z.discriminatedUnion("type", [
               z
-                .object({ type: z.literal("text"), text: z.string().max(64000) })
+                .object({
+                  type: z.literal("text"),
+                  text: z.string().max(64000),
+                })
                 .strict(),
               z
                 .object({

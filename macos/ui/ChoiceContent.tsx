@@ -73,7 +73,11 @@ export function AssistantContent({
                   aria-label={t("Choose {label}", { label: option.label })}
                   aria-pressed={selected}
                   className={
-                    selected ? "selected" : answered || !active ? "inactive" : ""
+                    selected
+                      ? "selected"
+                      : answered || !active
+                        ? "inactive"
+                        : ""
                   }
                   disabled={disabled}
                   onClick={() => onChoose(option.id)}

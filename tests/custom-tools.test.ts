@@ -37,7 +37,8 @@ async function fixture(history: AgentEvent[]) {
       posts.push(body);
       return Response.json({ data: body.events });
     }
-    if (path === "/sessions/sesn-1/events") return Response.json({ data: history });
+    if (path === "/sessions/sesn-1/events")
+      return Response.json({ data: history });
     return Response.json({}, { status: 404 });
   });
   const client = new Client({
@@ -45,7 +46,11 @@ async function fixture(history: AgentEvent[]) {
     fetcher,
     vault: {
       read: async () =>
-        JSON.stringify({ kind: "api_key", apiKey: `test-${uuid()}`, project: "" }),
+        JSON.stringify({
+          kind: "api_key",
+          apiKey: `test-${uuid()}`,
+          project: "",
+        }),
       write: async () => {},
     },
   });
@@ -98,10 +103,14 @@ describe("custom tool calls", () => {
       type: "user.custom_tool_result",
       custom_tool_use_id: "call",
     };
-    const { client, posts } = await fixture([call, blocked(["call"]), answered]);
-    await expect(client.answerCustomTools("sesn-1", [result()])).rejects.toThrow(
-      "no longer pending",
-    );
+    const { client, posts } = await fixture([
+      call,
+      blocked(["call"]),
+      answered,
+    ]);
+    await expect(
+      client.answerCustomTools("sesn-1", [result()]),
+    ).rejects.toThrow("no longer pending");
     await expect(
       client.answerCustomTools("sesn-1", [result("other")]),
     ).rejects.toThrow("no longer pending");

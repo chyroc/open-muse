@@ -109,18 +109,18 @@ describe("Mac persona and check-ins", () => {
   it("hides app-initiated prompts and splits the welcome greeting from its question", () => {
     const shown = chatMessages(welcomeHistory);
     expect(shown.map((event) => event.id)).toEqual(["hello"]);
-    expect(
-      messageParts(shown, welcomeHistory).map(({ part }) => part),
-    ).toEqual(["intro", "choice"]);
+    expect(messageParts(shown, welcomeHistory).map(({ part }) => part)).toEqual(
+      ["intro", "choice"],
+    );
     // An ordinary reply with a choice stays in one bubble.
     const ordinary: AgentEvent = {
       id: "later",
       type: "agent.message",
       content: text(naming),
     };
-    expect(messageParts([ordinary], [ordinary]).map(({ part }) => part)).toEqual(
-      ["all"],
-    );
+    expect(
+      messageParts([ordinary], [ordinary]).map(({ part }) => part),
+    ).toEqual(["all"]);
   });
   it("starts the welcome once, then considers a check-in", async () => {
     const client = await fixture();
@@ -190,7 +190,9 @@ describe("Mac persona and check-ins", () => {
       enabled: true,
       records: [],
     });
-    const set = vi.spyOn(client, "setCheckIn").mockResolvedValue(undefined as never);
+    const set = vi
+      .spyOn(client, "setCheckIn")
+      .mockResolvedValue(undefined as never);
     await mount(<SettingsWindow client={client} />);
     const row = [...host!.querySelectorAll("label")].find((item) =>
       item.textContent?.startsWith("Ask me something when I come back"),
@@ -202,7 +204,10 @@ describe("Mac persona and check-ins", () => {
     expect(input.checked).toBe(false);
   });
   it("translates the Mac choice and check-in copy", () => {
-    for (const file of ["macos/ui/ChoiceContent.tsx", "macos/ui/CheckInSwitch.tsx"])
+    for (const file of [
+      "macos/ui/ChoiceContent.tsx",
+      "macos/ui/CheckInSwitch.tsx",
+    ])
       for (const [, key] of readFileSync(file, "utf8").matchAll(
         /\bt\(\s*"([^"]+)"/g,
       ))
