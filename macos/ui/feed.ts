@@ -1,9 +1,8 @@
 import { formatLocale, t } from "../../shared/i18n";
 import type { Client } from "../../src/api";
-import { digest } from "../../shared/crypto";
 import type { InspirationItem } from "../../shared/inspiration";
 import { LocalDatabase } from "../../src/direct/storage";
-import { ARK_BASE_URL } from "../../src/direct/transport";
+import { macOwner } from "./owner";
 
 export type FeedPresentation = {
   hidden: string[];
@@ -99,17 +98,7 @@ export function feedPresentationStore(
   client: Client,
   db = presentationDatabase,
 ) {
-  const credentials = client.identity.value;
-  const owner = credentials
-    ? digest(
-        JSON.stringify([
-          ARK_BASE_URL,
-          credentials.apiKey,
-          credentials.project ?? "",
-        ]),
-      )
-    : "disconnected";
-  const key = `${owner}:macos-feed-presentation:v1`;
+  const key = `${macOwner(client)}:macos-feed-presentation:v1`;
   return {
     read: async () =>
       (await db.get<FeedPresentation>(key)) ?? emptyFeedPresentation(),

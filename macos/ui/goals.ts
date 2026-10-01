@@ -12,20 +12,11 @@ import {
   type GoalCategory,
 } from "../../shared/goals";
 import { eventText, type AgentEvent, type Goal } from "../../shared/types";
+import { macOwner } from "./owner";
 
 const database = new LocalDatabase();
-export function goalOwner(client: Client) {
-  const credentials = client.identity.value;
-  return credentials
-    ? digest(
-        JSON.stringify([
-          ARK_BASE_URL,
-          credentials.apiKey,
-          credentials.project ?? "",
-        ]),
-      )
-    : "disconnected";
-}
+// Goals, Library and their local presentation share the client's scope.
+export const goalOwner = macOwner;
 export type GoalChatRun = {
   token: string;
   category: GoalCategory;

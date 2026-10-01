@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { Client } from "../../src/api";
 import { DirectInspiration } from "../../src/direct/inspiration";
 import { LocalDatabase } from "../../src/direct/storage";
-import { ARK_BASE_URL } from "../../src/direct/transport";
+import { macOwner } from "./owner";
 import { ApiError } from "../../shared/ark";
 import { digest, uuid } from "../../shared/crypto";
 import {
@@ -73,18 +73,7 @@ const definiteRejection = (error: unknown) =>
   error instanceof ApiError &&
   [400, 401, 403, 404, 413, 429].includes(error.status);
 
-function owner(client: Client) {
-  const credentials = client.identity.value;
-  return credentials
-    ? digest(
-        JSON.stringify([
-          ARK_BASE_URL,
-          credentials.apiKey,
-          credentials.project ?? "",
-        ]),
-      )
-    : "disconnected";
-}
+const owner = macOwner;
 
 // Validate both the shared content contract and the Mac preview extension. The
 // source cloud event stays unchanged; only the generation reader normalizes it.
