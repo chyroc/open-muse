@@ -104,8 +104,16 @@ Conversations keep their agent version, so the tools reach conversations
 created after the agent was updated.
 
 This is an incremental desktop implementation, not a verified one-to-one clone.
-Cloud artifact/media indexing and dictation still need their Mac-specific
-implementation and acceptance checks. The UI identifies unfinished surfaces. No mock replies are
+Cloud artifact/media indexing and dictation into other apps still need their
+Mac-specific implementation and acceptance checks.
+
+## Dictation
+
+The composer microphone dictates through macOS speech recognition, on this Mac
+whenever the language supports it. Text streams into the draft and is never
+sent on its own; a second press or Escape stops listening. The Dictation
+section shows the microphone and speech recognition permissions and where
+speech is recognized. The UI identifies unfinished surfaces. No mock replies are
 included in the app. Real cloud verification requires an authorized connection.
 
 ## Settings window
@@ -137,9 +145,9 @@ scope, it is applied to both windows at once, and the shell matches the window
 chrome and native dialogs to it. Choosing "system" keeps following macOS as it
 changes; choosing light or dark stops following it. General also holds the
 Run on startup, menu bar and floating button switches and the check-in switch,
-and Computer use has its own section. Accent themes, the shortcut recorder,
+and Computer use and Dictation have their own sections. Accent themes, the shortcut recorder,
 usage and update checks remain pending Mac features, not dropped ones, and
-connectors, file system access, dictation, wallet, message channels, devices,
+connectors, file system access, wallet, message channels, devices,
 help and legal keep their place in the list and explain why they are not
 connected. None of them render a control that does nothing.
 
