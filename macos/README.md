@@ -27,7 +27,8 @@ Mac-specific build. No iOS or Android build is needed.
 - Command-N opens a side-chat draft; Command-K opens a palette of commands,
   chats and open goals, and can write the typed text into the main composer;
   Command-comma opens settings; Command-1 and Command-J return to the main chat;
-  Command-slash lists every shortcut; Shift-Escape focuses the message field;
+  Command-slash lists every shortcut; Command-F or Shift-Command-K finds text
+  in the open conversation; Shift-Escape focuses the message field;
   Escape stops a running reply when no dialog or menu is open.
 - The rail's bottom button opens a menu with Settings and Keyboard shortcuts.
 - The plus button, a drop on the composer, or a paste attaches files. Each is
