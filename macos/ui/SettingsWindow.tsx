@@ -159,14 +159,33 @@ export function SettingsWindow({ client }: { client: Client }) {
     };
     window.addEventListener(connectionReady, ready);
     window.addEventListener("muse-credentials-changed", ready);
+    // A sign-in can finish after this window last asked, for example once a
+    // Keychain prompt is allowed, and the window is kept alive between uses.
+    // Read the connection again whenever it comes back into view.
+    const reread = () => {
+      if (!window.document.hidden) void readStatus();
+    };
+    window.addEventListener("focus", reread);
+    window.document.addEventListener("visibilitychange", reread);
     void readStatus();
     return () => {
       alive.current = false;
       window.removeEventListener("hashchange", route);
       window.removeEventListener(connectionReady, ready);
       window.removeEventListener("muse-credentials-changed", ready);
+      window.removeEventListener("focus", reread);
+      window.document.removeEventListener("visibilitychange", reread);
     };
   }, [readStatus]);
+  // While it is open and not yet connected, check again every few seconds so
+  // a sign-in completed elsewhere shows up without reopening the window.
+  useEffect(() => {
+    if (connection?.loggedIn && connection.ready) return;
+    const timer = setInterval(() => {
+      if (!window.document.hidden) void readStatus();
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [connection, readStatus]);
   useEffect(() => {
     if (location.hash !== settingsPath(section))
       history.replaceState(null, "", settingsPath(section));

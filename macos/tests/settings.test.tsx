@@ -236,6 +236,39 @@ describe("Mac settings window", () => {
     await click("Manage connection");
     expect(host!.querySelector(".settings-auth")).toBeNull();
   });
+  it("reads the connection again when the window returns to view", async () => {
+    const client = await fixture();
+    const auth = vi.spyOn(client, "auth");
+    await mount(<SettingsWindow client={client} />);
+    const reads = () =>
+      auth.mock.calls.filter(([path]) => path === "status").length;
+    const before = reads();
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    expect(reads()).toBe(before + 1);
+    await act(async () => {
+      window.document.dispatchEvent(new Event("visibilitychange"));
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    expect(reads()).toBe(before + 2);
+  });
+  it("keeps checking while signed out, so a finished sign-in appears", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const client = await fixture(false);
+    const auth = vi.spyOn(client, "auth");
+    await mount(<SettingsWindow client={client} />);
+    const reads = () =>
+      auth.mock.calls.filter(([path]) => path === "status").length;
+    const before = reads();
+    await act(async () => {
+      vi.advanceTimersByTime(5100);
+      await Promise.resolve();
+    });
+    expect(reads()).toBeGreaterThan(before);
+    vi.useRealTimers();
+  });
   it("confirms a sign-out started by the shared connection panel", async () => {
     const client = await fixture();
     const auth = vi.spyOn(client, "auth");
