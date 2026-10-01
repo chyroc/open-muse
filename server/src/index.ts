@@ -16,6 +16,7 @@ import { AccountWorkspaces } from "./workspace";
 import { accountCredentialSchema } from "../../shared/account-credential";
 import { accountWorkspaceKey } from "../../shared/workspace-key";
 import { externalScheduler, TRIGGER_PATH, verifyTrigger } from "./trigger";
+import { UpcomingDelivery, upcomingInput } from "./upcoming";
 
 async function runScheduler(env: Env) {
   await rewrapRetiredKeys(env).catch(() => {});
@@ -121,6 +122,7 @@ export async function handle(
                   provider: "supabase",
                   credential: await new AccountCredentials(env, owner).status(),
                 },
+                upcoming: await new UpcomingDelivery(env, owner).status(),
               }
             : {}),
           connection: await connections.status(),
@@ -264,6 +266,17 @@ export async function handle(
             ),
           );
         } else throw new HttpError(405, "Method not allowed.");
+      } else if (url.pathname === "/v1/account/upcoming") {
+        if (!account)
+          throw new HttpError(
+            403,
+            "Sign in with a Muse account to deliver reminders.",
+          );
+        const upcoming = new UpcomingDelivery(env, owner, fetcher);
+        if (request.method === "GET") response = json(await upcoming.read());
+        else if (request.method === "PUT")
+          response = json(await upcoming.save(upcomingInput(await body(request))));
+        else throw new HttpError(405, "Method not allowed.");
       } else if (url.pathname === "/v1/account/credential") {
         if (!account)
           throw new HttpError(

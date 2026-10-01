@@ -37,6 +37,22 @@ label-only device maps are rejected rather than silently sharing one account.
 Never use an Ark API key or Cloudflare API token as a device token.
 Device tokens must start with `muse_device_` and contain a random suffix.
 
+### Upcoming reminders
+
+Reminders and recurring tasks live in `UPCOMING.md` in the account's memory
+store. Once an account registers its main conversation, each tick reads that
+document with the account's key and computes due occurrences with
+`shared/upcoming.ts` (no catch-up burst; at most five items per message). It
+sends nothing while the conversation is running or waiting for an approval or
+a client's tool result, and skips occurrences already named in its recent
+history. Each occurrence is claimed in D1 together with one persisted event ID
+before a single `user.message` is posted, and is never claimed again. A
+definite rejection consumes the occurrence; an ambiguous result is looked up in
+history and never resent, and no new reminder is sent while one is
+unconfirmed. At most one message per account per tick and 48 per day. The agent
+handles the reminder with its normal tools in the main chat; any step that needs
+approval waits for the user in the app.
+
 ## Muse accounts
 
 The API accepts end-user access tokens from one explicitly configured
@@ -263,6 +279,18 @@ deployed or that a real unattended generation can complete.
   sealed for this account. A stale revision from another device returns 409.
 - `DELETE /v1/account/credential`: `{revision, confirm: true}` leaves a
   tombstone for this account only.
+- `PUT /v1/account/upcoming`: `{session_id, language: "en" | "zh-CN", enabled,
+  revision, confirm: true}` registers the account's main conversation for
+  reminder delivery. Enabling reads the session with the account's key and
+  accepts it only when it runs the account's own service-created agent (403
+  otherwise). A stale revision returns 409. Delivery covers occurrences after it
+  was first enabled; changing the conversation keeps that start.
+- `GET /v1/account/upcoming`: `{enabled, session_id, language, since,
+  revision, state}`, where `state` is `"session_unavailable"` once the
+  conversation is gone or no longer runs the account's agent; register again to
+  resume. `GET /v1/status` reports `upcoming: {delivery: "server" | "off",
+  session_id}` for accounts; clients stop delivering locally while it names
+  their main conversation.
 - `GET /v1/account/workspace`: `{revision, workspace?, unconfirmed}` for the
   account's current key, where `workspace` is `{environmentId?, memoryStoreId?,
   agentId?, model}` from the sealed record. Creates nothing.

@@ -127,6 +127,19 @@ deploying a Worker or writing a cron expression.
    scheduler. Use server-side polling unless an actual MA callback contract has
    been verified; do not assume webhooks exist.
 
+## Decision: scheduled tasks run with the full agent
+
+Reminders and recurring tasks from `UPCOMING.md` are delivered by the service
+into the account's main conversation and handled by the account's agent with its
+normal toolset, as if the person had asked at that time. This is a deliberate
+exception to the read-only rule above for background Feed runs, chosen by the
+product owner. It is bounded by: items the person set up in chat; a main
+conversation registered by the signed-in account and verified to run its own
+agent; claim-before-send with a persisted event ID and no resend; no delivery
+while the conversation is busy or awaiting an approval or a client tool result;
+per-account message limits; and the same issuer and recent-activity gate as
+other account work. Steps that require approval still wait for the user.
+
 ## Runtime and security boundaries
 
 - Reuse pure schemas and helpers from `shared/` where compatible, such as

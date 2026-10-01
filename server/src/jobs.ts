@@ -8,6 +8,7 @@ import { ConnectionStore } from "./connection";
 import { authorizedOwners } from "./auth";
 import { isSupabaseOwner, supabaseOrigin } from "../../shared/supabase-auth";
 import { ACCOUNT_ACTIVITY_WINDOW } from "./account";
+import { deliverDueUpcoming } from "./upcoming";
 
 export async function processRun(
   repo: Repository,
@@ -251,4 +252,11 @@ export async function tick(
       /* Fail closed for this owner. Do not log private upstream state. */
     }
   }
+  // Reminders due in each account's UPCOMING.md, under the same account gate.
+  await deliverDueUpcoming(
+    env,
+    issuer,
+    clock() - ACCOUNT_ACTIVITY_WINDOW,
+    clock(),
+  );
 }
