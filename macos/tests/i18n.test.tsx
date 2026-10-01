@@ -25,6 +25,7 @@ describe("Apple UI localization", () => {
           onNavigate={noop}
           onSearch={noop}
           onSettings={noop}
+          onShortcuts={noop}
           onStatus={noop}
         />,
       );

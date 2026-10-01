@@ -1,13 +1,15 @@
 import { t } from "../../shared/i18n";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Archive,
   BookOpen,
+  Keyboard,
   CheckSquare,
   Lightbulb,
   Menu,
   MessageCircle,
   Search,
+  Settings,
   Shapes,
   X,
 } from "lucide-react";
@@ -37,14 +39,44 @@ export function Rail({
   onNavigate,
   onSearch,
   onSettings,
+  onShortcuts,
   onStatus,
 }: {
   page: Page;
   onNavigate: (page: Page) => void;
   onSearch: () => void;
   onSettings: () => void;
+  onShortcuts: () => void;
   onStatus: () => void;
 }) {
+  const [menu, setMenu] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const entries = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menu) return;
+    entries.current?.querySelector("button")?.focus();
+    const close = (event: Event) => {
+      if (event instanceof KeyboardEvent) {
+        if (event.key !== "Escape") return;
+        trigger.current?.focus();
+      } else if (
+        event.target instanceof Element &&
+        event.target.closest(".rail-menu-anchor")
+      )
+        return;
+      setMenu(false);
+    };
+    window.addEventListener("keydown", close);
+    window.addEventListener("click", close);
+    return () => {
+      window.removeEventListener("keydown", close);
+      window.removeEventListener("click", close);
+    };
+  }, [menu]);
+  const choose = (action: () => void) => {
+    setMenu(false);
+    action();
+  };
   const items = [
     { id: "chat", label: navLabel("chat"), Icon: MessageCircle },
     { id: "feed", label: t("Feed"), Icon: BookOpen },
@@ -85,14 +117,33 @@ export function Rail({
           </div>
         ))}
       </div>
-      <button
-        className="rail-settings"
-        title={t("Settings (⌘,)")}
-        aria-label={t("Settings")}
-        onClick={onSettings}
-      >
-        <Menu size={25} strokeWidth={1.5} />
-      </button>
+      <div className="rail-menu-anchor">
+        <button
+          ref={trigger}
+          className="rail-settings"
+          title={t("Settings (⌘,)")}
+          aria-label={t("Settings")}
+          aria-haspopup="menu"
+          aria-expanded={menu}
+          onClick={() => setMenu((open) => !open)}
+        >
+          <Menu size={25} strokeWidth={1.5} />
+        </button>
+        {menu && (
+          <div className="rail-menu" role="menu" ref={entries}>
+            <button role="menuitem" onClick={() => choose(onSettings)}>
+              <Settings size={16} />
+              <span>{t("Settings…")}</span>
+              <kbd>⌘,</kbd>
+            </button>
+            <button role="menuitem" onClick={() => choose(onShortcuts)}>
+              <Keyboard size={16} />
+              <span>{t("Keyboard shortcuts")}</span>
+              <kbd>⌘/</kbd>
+            </button>
+          </div>
+        )}
+      </div>
     </nav>
   );
 }

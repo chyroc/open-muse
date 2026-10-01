@@ -77,6 +77,7 @@ import {
 } from "../../shared/types";
 import { canAutoApprove } from "../../shared/approval-policy";
 import { ArchiveToggle, Empty, Modal, Rail } from "./Chrome";
+import { ShortcutsDialog } from "./Shortcuts";
 import {
   chatMessages,
   parseRoute,
@@ -131,6 +132,7 @@ export function DesktopApp({ client }: { client: Client }) {
   const [loading, setLoading] = useState(false);
   const [menu, setMenu] = useState(false);
   const [prefill, setPrefill] = useState(0);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const name = identity.name;
   const [away, setAway] = useState(false);
   const scroll = useRef<HTMLDivElement>(null);
@@ -275,9 +277,28 @@ export function DesktopApp({ client }: { client: Client }) {
         setDrawer(false);
       }
       if (action === "main-chat") navigate("/");
+      if (action === "shortcuts") setShortcutsOpen(true);
     };
     const key = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !event.metaKey && !event.isComposing) {
+        // Escape belongs to an open dialog or menu first.
+        if (window.document.querySelector("dialog[open], [role=menu]")) return;
+        if (event.shiftKey) {
+          event.preventDefault();
+          composer.current?.focus();
+        } else stopRef.current();
+        return;
+      }
       if (!event.metaKey || event.altKey) return;
+      if (event.key === "/" || event.key.toLowerCase() === "j") {
+        event.preventDefault();
+        command(
+          new CustomEvent("muse-command", {
+            detail: event.key === "/" ? "shortcuts" : "main-chat",
+          }),
+        );
+        return;
+      }
       if (["k", ",", "n"].includes(event.key.toLowerCase())) {
         event.preventDefault();
         command(
@@ -476,6 +497,16 @@ export function DesktopApp({ client }: { client: Client }) {
       if (alive.current) setBusy(false);
     }
   }
+  // Stopping is the person's own request; it is sent once, never retried.
+  function stop() {
+    if (!running || !id) return;
+    void action(async () => {
+      await client.send(id, { type: "user.interrupt" });
+      await task.refresh();
+    });
+  }
+  const stopRef = useRef(stop);
+  stopRef.current = stop;
   async function send() {
     const text = draft.trim();
     if (!text || running || busyRef.current) return;
@@ -575,6 +606,7 @@ export function DesktopApp({ client }: { client: Client }) {
           setQuery("");
           setSearch(true);
         }}
+        onShortcuts={() => setShortcutsOpen(true)}
         onSettings={() =>
           document || feedEditorOpen.current
             ? setNotice(
@@ -1150,14 +1182,7 @@ export function DesktopApp({ client }: { client: Client }) {
                   className="send-button"
                   aria-label={t("Stop response")}
                   disabled={busy}
-                  onClick={() =>
-                    void action(async () => {
-                      if (id) {
-                        await client.send(id, { type: "user.interrupt" });
-                        await task.refresh();
-                      }
-                    })
-                  }
+                  onClick={stop}
                 >
                   <Square size={15} />
                 </button>
@@ -1236,6 +1261,9 @@ export function DesktopApp({ client }: { client: Client }) {
             />
           }
         />
+      )}
+      {shortcutsOpen && (
+        <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />
       )}
       {settings && (
         <Modal title={t("Settings")} wide onClose={() => setSettings(false)}>

@@ -1037,3 +1037,88 @@ h3 {
     opacity: 0;
   }
 }
+/* The rail's bottom button opens a small menu beside it. */
+.rail-menu-anchor {
+  position: relative;
+  margin-top: auto;
+  margin-bottom: 9px;
+}
+.rail-menu-anchor .rail-settings {
+  margin: 0;
+}
+.rail-menu {
+  position: absolute;
+  left: calc(100% + 8px);
+  bottom: 0;
+  z-index: 20;
+  min-width: 220px;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--dialog);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 6px 28px var(--shadow);
+  transform-origin: left bottom;
+  animation: rail-menu-in 0.26s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+.rail-menu button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 9px;
+  border-radius: 7px;
+  font-size: 13px;
+  text-align: left;
+}
+.rail-menu button:hover,
+.rail-menu button:focus-visible {
+  background: var(--fill-hover);
+}
+.rail-menu kbd,
+.shortcuts-dialog kbd {
+  margin-left: auto;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.shortcuts-dialog dl {
+  margin: 0;
+  display: grid;
+  gap: 2px;
+  min-width: 340px;
+}
+.shortcuts-dialog dl > div {
+  display: flex;
+  align-items: center;
+  padding: 8px 2px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.shortcuts-dialog dl > div:last-child {
+  border-bottom: 0;
+}
+.shortcuts-dialog dd {
+  margin: 0 0 0 auto;
+}
+.shortcuts-dialog kbd {
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--fill);
+}
+@keyframes rail-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rail-menu {
+    animation: rail-menu-fade 0.15s ease-out both;
+  }
+}
+@keyframes rail-menu-fade {
+  from {
+    opacity: 0;
+  }
+}

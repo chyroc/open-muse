@@ -11,4 +11,10 @@ export const zhDesktop: Record<string, string> = {
   Next: "下次",
   "What happens": "将会做什么",
   "Remove “{title}”?": "要移除「{title}」吗？",
+  "Settings…": "设置…",
+  "Keyboard shortcuts": "键盘快捷键",
+  "Jump to the main chat": "跳到主对话",
+  "Focus the message field": "聚焦消息输入框",
+  "Stop the response": "停止回复",
+  "New line": "换行",
 };
