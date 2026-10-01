@@ -157,9 +157,25 @@ and Computer use and Dictation have their own sections. Appearance also offers a
 theme color (match my avatar, default, blue, purple, pink, orange, green, beige
 or monochrome), kept on this device. Usage and update checks remain pending
 Mac features, not dropped ones, and
-connectors, file system access, wallet, message channels, devices,
-help and legal keep their place in the list and explain why they are not
-connected. None of them render a control that does nothing.
+connectors, wallet and message channels keep their place in the list and
+explain why they are not connected. None of them render a control that does
+nothing.
+
+Other sections:
+
+- File system access shows Full Disk Access and keeps a Blocked folders list;
+  the assistant's open action refuses anything inside a blocked folder.
+- Secure storage lists the secrets kept in the account's MA vault and adds or
+  removes them. A value is sent once as an environment_variable credential,
+  optionally limited to listed websites, and never shown again; conversations
+  created while the vault exists receive it.
+- Devices shows this Mac and, with a Muse account, the account's other devices
+  and when each was last seen. The Mac registers itself at start and hourly.
+- Data controls can import memory from another assistant as a reviewed draft
+  in the main chat, and download memory, goals, Upcoming and all conversations
+  as one Markdown file.
+- Help and support lists the shortcuts and where the Mac features live; Legal
+  shows the open source notices bundled with the app.
 
 The section list matches the reference, including the three names the reference
 leaves in English inside a Chinese interface. They are ordinary catalog entries
