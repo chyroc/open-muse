@@ -146,8 +146,10 @@ scope, it is applied to both windows at once, and the shell matches the window
 chrome and native dialogs to it. Choosing "system" keeps following macOS as it
 changes; choosing light or dark stops following it. General also holds the
 Run on startup, menu bar and floating button switches and the check-in switch,
-and Computer use and Dictation have their own sections. Accent themes, usage
-and update checks remain pending Mac features, not dropped ones, and
+and Computer use and Dictation have their own sections. Appearance also offers a
+theme color (match my avatar, default, blue, purple, pink, orange, green, beige
+or monochrome), kept on this device. Usage and update checks remain pending
+Mac features, not dropped ones, and
 connectors, file system access, wallet, message channels, devices,
 help and legal keep their place in the list and explain why they are not
 connected. None of them render a control that does nothing.
