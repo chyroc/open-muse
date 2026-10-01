@@ -154,4 +154,21 @@ export const zhDesktop: Record<string, string> = {
   "This account already has the most devices it can list. Forget one in Settings > Devices.":
     "此账户可列出的设备已达上限。请在“设置 > 设备”中移除一台。",
   "Ark did not return a vault ID.": "Ark 未返回保管库 ID。",
+  "Secrets for your assistant": "供助手使用的密钥",
+  "Only for {hosts}": "仅用于 {hosts}",
+  "For any website": "可用于任意网站",
+  "Your assistant can use these in conversations started after you add them. A value is sent to your Ark project once and is never shown again.":
+    "添加后开始的对话中，助手可以使用这些密钥。密钥值只会发送到你的 Ark 项目一次，之后不会再显示。",
+  Add: "添加",
+  "Add a secret": "添加密钥",
+  Name: "名称",
+  "Letters, digits and underscores. Your assistant sees it as an environment variable with this name.":
+    "使用字母、数字和下划线。助手会以同名环境变量的形式看到它。",
+  Value: "值",
+  "Websites (optional)": "网站（可选）",
+  "Limit where it can be sent, separated by commas. Leave empty to allow any website.":
+    "限制可发送到的网站，用逗号分隔。留空则允许任意网站。",
+  Save: "保存",
+  "Secrets for your assistant live in an MA vault in your Ark project, separate from this Mac's Keychain.":
+    "供助手使用的密钥保存在你 Ark 项目的 MA 保管库中，与这台 Mac 的钥匙串分开。",
 };

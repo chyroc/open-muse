@@ -398,3 +398,25 @@
 .settings-inline-button.danger {
   color: var(--danger);
 }
+.secret-form {
+  display: grid;
+  gap: 12px;
+  min-width: 380px;
+  font-size: 13px;
+}
+.secret-form label {
+  display: grid;
+  gap: 4px;
+}
+.secret-form input {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+}
+.secret-form small {
+  color: var(--text-2);
+  font-size: 12px;
+}

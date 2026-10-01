@@ -31,6 +31,7 @@ import { DictationSettings } from "./DictationSettings";
 import { HelpSettings } from "./HelpSettings";
 import { DataControls } from "./DataControls";
 import { DevicesSettings } from "./DevicesSettings";
+import { SecureStorage } from "./SecureStorage";
 import { LegalSettings } from "./LegalSettings";
 import { ShortcutSettings } from "./ShortcutSettings";
 import { shortcutAvailable } from "./shortcut";
@@ -354,10 +355,11 @@ export function SettingsWindow({ client }: { client: Client }) {
               <Row
                 title={t("Agent credential vaults")}
                 detail={t(
-                  "MA vault storage for your agent's own credentials is not connected in this Mac build.",
+                  "Secrets for your assistant live in an MA vault in your Ark project, separate from this Mac's Keychain.",
                 )}
               />
             </div>
+            <SecureStorage client={client} />
           </>
         )}
         {active.id === "permissions" && (
