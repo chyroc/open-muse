@@ -1,4 +1,4 @@
-import { t } from "../shared/i18n";
+import { t, systemLanguage } from "../shared/i18n";
 import { z } from "zod";
 import { ArkClient, ApiError } from "../shared/ark";
 import { digest, uuid } from "../shared/crypto";
@@ -30,6 +30,7 @@ import { DirectChoices } from "./direct/choices";
 import { DirectWelcome } from "./direct/welcome";
 import { DirectCheckIn } from "./direct/checkin";
 import { DirectUpcoming } from "./direct/upcoming";
+import type { UpcomingDelivery } from "../shared/upcoming";
 import { DirectLibrary } from "./direct/library";
 import { DirectAttachments } from "./direct/attachments";
 import {
@@ -1078,6 +1079,9 @@ export class Client {
         const { mainId } = await this.conversations(r).index();
         return mainId ? r.ark.get(validId(mainId)) : undefined;
       },
+      mainId: async () => (await this.conversations(r).index()).mainId,
+      server: () => this.serverUpcoming(r),
+      register: (session) => this.saveServerUpcoming(r, true, session),
       history: (id) =>
         this.collect<AgentEvent>(
           r.ark,
@@ -1092,6 +1096,77 @@ export class Client {
   }
   upcoming() {
     return this.upcomingService(this.context()).list();
+  }
+  private upcomingServer?: {
+    key: string;
+    at: number;
+    value: UpcomingDelivery;
+  };
+  // Service delivery is cached briefly; the minute tick must not query the
+  // service every time.
+  private async serverUpcoming(r: Runtime, fresh = false) {
+    const account = this.identity.account;
+    if (!this.identity.accountMode() || !account?.upcomingDelivery)
+      return undefined;
+    const cached = this.upcomingServer;
+    if (!fresh && cached?.key === r.key && this.now() - cached.at < 300_000)
+      return cached.value;
+    let value: UpcomingDelivery;
+    try {
+      value = await account.upcomingDelivery();
+    } catch (error) {
+      // An unreachable service keeps its last known answer, so this device
+      // does not start delivering what the service may still be sending.
+      if (!fresh && cached?.key === r.key) return cached.value;
+      throw error;
+    }
+    r.abort.signal.throwIfAborted();
+    this.upcomingServer = { key: r.key, at: this.now(), value };
+    return value;
+  }
+  private async saveServerUpcoming(
+    r: Runtime,
+    enabled: boolean,
+    session?: string,
+  ) {
+    const account = this.identity.account;
+    if (!this.identity.accountMode() || !account?.saveUpcomingDelivery)
+      throw new ApiError(
+        400,
+        t("Reminder delivery while closed needs a Muse account."),
+      );
+    const current = await this.serverUpcoming(r, true);
+    const target =
+      session ??
+      (await this.conversations(r).index()).mainId ??
+      current?.session_id ??
+      undefined;
+    if (!target)
+      throw new ApiError(409, t("Start the main chat before turning this on."));
+    validId(target);
+    const value = await account.saveUpcomingDelivery({
+      session_id: target,
+      language: systemLanguage(),
+      enabled,
+      revision: current?.revision ?? 0,
+    });
+    r.abort.signal.throwIfAborted();
+    this.upcomingServer = { key: r.key, at: this.now(), value };
+    return value;
+  }
+  // Whether this build and account can have the service deliver reminders.
+  upcomingDeliverySupported() {
+    return (
+      this.signedIn() &&
+      this.identity.accountMode() &&
+      Boolean(this.identity.account?.saveUpcomingDelivery)
+    );
+  }
+  upcomingDelivery() {
+    return this.serverUpcoming(this.context(), true);
+  }
+  setUpcomingDelivery(enabled: boolean) {
+    return this.saveServerUpcoming(this.context(), z.boolean().parse(enabled));
   }
   changeUpcoming(
     id: string,

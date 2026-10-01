@@ -9,6 +9,7 @@ import type {
   AccountWorkspaceComparison,
   AccountWorkspaceResponse,
 } from "../../shared/account-workspace";
+import type { UpcomingDelivery } from "../../shared/upcoming";
 import { credentials as defaultVault, type CredentialStore } from "./storage";
 import { ARK_BASE_URL, directFetch } from "./transport";
 
@@ -50,6 +51,14 @@ export type APIKeyLogin = z.infer<typeof apiKeyLogin> & {
 // workspace the service created for it.
 export interface AccountProvider {
   accountConfigured(): boolean;
+  // Service delivery of Upcoming reminders; absent where it is unsupported.
+  upcomingDelivery?(): Promise<UpcomingDelivery>;
+  saveUpcomingDelivery?(input: {
+    session_id: string;
+    language: "en" | "zh-CN";
+    enabled: boolean;
+    revision: number;
+  }): Promise<UpcomingDelivery>;
   accountOwner(): string | undefined;
   restore(): Promise<void>;
   accountCredential(): Promise<AccountCredentialResponse>;

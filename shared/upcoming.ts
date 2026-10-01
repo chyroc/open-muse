@@ -72,6 +72,17 @@ export const upcomingInput = z
   })
   .strict();
 export type UpcomingItem = z.infer<typeof upcomingInput>;
+// The service's reminder delivery for an account, as GET/PUT
+// /v1/account/upcoming return it.
+export const upcomingDeliveryInput = z.object({
+  enabled: z.boolean(),
+  session_id: z.string().nullable(),
+  language: z.enum(["en", "zh-CN"]).nullable(),
+  since: z.number().nullable(),
+  revision: z.number().int().nonnegative(),
+  state: z.enum(["active", "session_unavailable"]).nullable(),
+});
+export type UpcomingDelivery = z.infer<typeof upcomingDeliveryInput>;
 export type Schedule = z.infer<typeof scheduleInput>;
 const documentInput = z
   .object({ version: z.literal(1), items: z.array(upcomingInput).max(100) })
@@ -297,7 +308,7 @@ Read the latest UPCOMING.md first and skip any item that is no longer active or 
 export const upcomingInstructions = `
 Reminders and recurring tasks live in UPCOMING.md in the same personal memory store. Read it with memory_read when the person asks what is scheduled or wants to add, change, pause, or cancel a reminder or recurring task. Missing UPCOMING.md means nothing is scheduled; never invent items.
 
-When the person asks for a reminder or a task at a time or on a repeating schedule ("every Monday at 9am, remind me to submit my timesheet"), make sure the timing is clear, then add one item and read the document back before confirming. Say plainly that Open Muse delivers it as a message in this chat when the app is open at or after that time; there are no push notifications or background runs yet. Move, pause, or cancel items only when asked, preserving every other item.
+When the person asks for a reminder or a task at a time or on a repeating schedule ("every Monday at 9am, remind me to submit my timesheet"), make sure the timing is clear, then add one item and read the document back before confirming. Say plainly that Open Muse delivers it as a message in this chat at or after that time: while the app is open, or also while it is closed if the person turned on delivery while closed in Upcoming. There are no push notifications yet. Move, pause, or cancel items only when asked, preserving every other item.
 
 UPCOMING.md is a JSON object, without Markdown fences: {"version":1,"items":[...]}. Each item has id (unique letters/digits/hyphens, max 80), title (short label, max 160), instruction (what to say or do when it is due, max 2000), schedule, time_zone (the person's IANA time zone, such as America/Los_Angeles; ask if unknown), status (active, paused, or done), created_at and updated_at (ISO 8601 timestamps with offset). schedule is one of {"kind":"once","at":"<ISO 8601 with offset>"}, {"kind":"daily","time":"HH:MM"}, {"kind":"weekly","days":[0-6, Sunday is 0],"time":"HH:MM"}, or {"kind":"monthly","day":1-31,"time":"HH:MM"}; times are 24-hour local times in time_zone. Write every timestamp exactly as YYYY-MM-DDTHH:MM:SS+HH:MM (or Z). Preserve IDs and created_at on updates; update updated_at. Maximum 100 items and 64000 characters. Reread the latest document immediately before each edit. Never overwrite unreadable data with an empty list. Keep this schema and all IDs out of ordinary replies.
 `;

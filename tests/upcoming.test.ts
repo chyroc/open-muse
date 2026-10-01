@@ -18,6 +18,7 @@ import {
   reminderPrompt,
   serializeUpcoming,
   upcomingInstructions,
+  type UpcomingDelivery,
   type UpcomingItem,
 } from "../shared/upcoming";
 import type { AgentEvent, Session } from "../shared/types";
@@ -238,6 +239,9 @@ function fixture(items: UpcomingItem[], now: number) {
   const clock = { now };
   const remote = {
     main: vi.fn(async (): Promise<Session | undefined> => session),
+    mainId: vi.fn(async (): Promise<string | undefined> => session.id),
+    server: vi.fn(async (): Promise<UpcomingDelivery | undefined> => undefined),
+    register: vi.fn(async (_session: string) => undefined),
     history: vi.fn(async () => events),
     send: vi.fn(async (_s: string, text: string, id: string) => {
       const event: AgentEvent = {
@@ -421,6 +425,40 @@ describe("Upcoming delivery", () => {
     await f.service.start("en");
     expect(f.remote.send).toHaveBeenCalledTimes(2);
     expect(deliveredOccurrences([f.events.at(-1)!]).size).toBe(2);
+  });
+
+  it("leaves delivery to the service and keeps it on the main chat", async () => {
+    const f = fixture([daily], before);
+    await f.service.start("en");
+    f.clock.now += 2 * hour;
+    const server: UpcomingDelivery = {
+      enabled: true,
+      session_id: "main",
+      language: "en",
+      since: before,
+      revision: 1,
+      state: "active",
+    };
+    f.remote.server.mockResolvedValue(server);
+    expect(await f.service.start("en")).toBeUndefined();
+    expect(f.remote.send).not.toHaveBeenCalled();
+    expect(f.remote.register).not.toHaveBeenCalled();
+    // The main chat continued into a new chapter: register it, still no send.
+    f.remote.mainId.mockResolvedValue("main-2");
+    expect(await f.service.start("en")).toBeUndefined();
+    expect(f.remote.register).toHaveBeenCalledWith("main-2");
+    // An unavailable session is registered again too.
+    f.remote.mainId.mockResolvedValue("main");
+    f.remote.server.mockResolvedValue({
+      ...server,
+      state: "session_unavailable",
+    });
+    await f.service.start("en");
+    expect(f.remote.register).toHaveBeenLastCalledWith("main");
+    // Turned off on the service, or unreachable: this device delivers again.
+    f.remote.server.mockRejectedValue(new Error("offline"));
+    expect((await f.service.start("en"))?.phase).toBe("confirmed");
+    expect(f.remote.send).toHaveBeenCalledTimes(1);
   });
 
   it("shares one delivery between concurrent runs and views", async () => {

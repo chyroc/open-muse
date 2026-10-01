@@ -11,6 +11,7 @@ import { formatLocale, t } from "../shared/i18n";
 import {
   describeSchedule,
   nextOccurrence,
+  type UpcomingDelivery,
   type UpcomingItem,
 } from "../shared/upcoming";
 import type { Client } from "./api";
@@ -30,6 +31,9 @@ export function UpcomingPanel({
   const [snapshot, setSnapshot] = useState<Snapshot>();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<string>();
+  const supported = client.upcomingDeliverySupported();
+  const [delivery, setDelivery] = useState<UpcomingDelivery>();
+  const [deliveryBusy, setDeliveryBusy] = useState(false);
   const load = useCallback(() => {
     setError("");
     return client
@@ -40,6 +44,33 @@ export function UpcomingPanel({
   useEffect(() => {
     if (signedIn) void load();
   }, [signedIn, load]);
+  useEffect(() => {
+    if (!supported) return;
+    let active = true;
+    void client
+      .upcomingDelivery()
+      .then((value) => {
+        if (active) setDelivery(value);
+      })
+      .catch((reason: Error) => {
+        if (active) setError(reason.message);
+      });
+    return () => {
+      active = false;
+    };
+  }, [client, supported]);
+  async function toggleDelivery(enabled: boolean) {
+    if (deliveryBusy) return;
+    setDeliveryBusy(true);
+    setError("");
+    try {
+      setDelivery(await client.setUpcomingDelivery(enabled));
+    } catch (reason) {
+      setError((reason as Error).message);
+    } finally {
+      setDeliveryBusy(false);
+    }
+  }
   async function change(
     item: UpcomingItem,
     action: "pause" | "resume" | "delete",
@@ -176,11 +207,34 @@ export function UpcomingPanel({
           </div>
         )
       )}
+      {supported && (
+        <label className="background-toggle upcoming-delivery">
+          <input
+            type="checkbox"
+            checked={delivery?.enabled ?? false}
+            disabled={!delivery || deliveryBusy}
+            onChange={(event) => void toggleDelivery(event.target.checked)}
+          />
+          {t("Deliver even when Open Muse is closed")}
+        </label>
+      )}
       {signedIn && (
         <p className="upcoming-note">
-          {t(
-            "Reminders arrive in the main chat when Open Muse is open at or after their time. There are no push notifications yet.",
-          )}
+          {delivery?.enabled
+            ? delivery.state === "session_unavailable"
+              ? t(
+                  "The Muse service can no longer reach your main chat. Open the main chat to register it again.",
+                )
+              : t(
+                  "The Muse service sends due reminders to your main chat even when the app is closed, and your agent handles them with its tools. Steps that need approval wait for you. There are no push notifications yet.",
+                )
+            : supported
+              ? t(
+                  "Reminders arrive in the main chat when Open Muse is open at or after their time. Turn on delivery while closed to let the Muse service use your saved Ark key to run them while you are away; each one is a real Ark request and may be billed. There are no push notifications yet.",
+                )
+              : t(
+                  "Reminders arrive in the main chat when Open Muse is open at or after their time. There are no push notifications yet.",
+                )}
         </p>
       )}
     </section>

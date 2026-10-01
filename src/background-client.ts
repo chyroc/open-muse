@@ -1,4 +1,5 @@
 import { t } from "../shared/i18n";
+import { upcomingDeliveryInput } from "../shared/upcoming";
 import { AccountRequestError, SupabaseAuth } from "./supabase-auth";
 import {
   authToken,
@@ -99,6 +100,11 @@ const scheduleSchema = z.object({
   next_run_at: z.number().nullable(),
   revision: z.number().int().nonnegative(),
 });
+// Whether the service delivers Upcoming reminders, and to which conversation.
+const upcomingStatus = z.object({
+  delivery: z.enum(["server", "off"]),
+  session_id: z.string().nullable(),
+});
 const statusSchema = z.object({
   connected: z.literal(true),
   owner: z.string().min(1),
@@ -122,6 +128,7 @@ const statusSchema = z.object({
     })
     .optional(),
   schedule: scheduleSchema,
+  upcoming: upcomingStatus.optional(),
 });
 const runSchema = z.object({
   id: z.string(),
@@ -479,7 +486,8 @@ export class BackgroundClient {
       | "/v1/account/workspace"
       | "/v1/account/workspace/settings"
       | "/v1/account/workspace/reconcile"
-      | "/v1/account/workspace/compare",
+      | "/v1/account/workspace/compare"
+      | "/v1/account/upcoming",
     schema: z.ZodType<T>,
     init?: RequestInit,
     messages?: Partial<Record<number, string>>,
@@ -514,6 +522,31 @@ export class BackgroundClient {
       method: "DELETE",
       body: JSON.stringify({ revision, confirm: true }),
     });
+  }
+  // Reminder delivery by the service while the apps are closed. Enabling it
+  // registers the account's main conversation; nothing is sent by reading it.
+  upcomingDelivery() {
+    return this.accountRequest("/v1/account/upcoming", upcomingDeliveryInput);
+  }
+  saveUpcomingDelivery(input: {
+    session_id: string;
+    language: "en" | "zh-CN";
+    enabled: boolean;
+    revision: number;
+  }) {
+    return this.accountRequest(
+      "/v1/account/upcoming",
+      upcomingDeliveryInput,
+      { method: "PUT", body: JSON.stringify({ ...input, confirm: true }) },
+      {
+        409: t(
+          "Reminder delivery changed on another device. Refresh before saving.",
+        ),
+        403: t(
+          "The Muse service can only deliver reminders to this account's own main chat.",
+        ),
+      },
+    );
   }
   // The account's workspace configuration for its current key, as sealed by
   // the service. Nothing is created by reading it.

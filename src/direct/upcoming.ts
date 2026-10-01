@@ -5,6 +5,7 @@ import { checkInPolicy } from "../../shared/checkin";
 import {
   deliveredOccurrences,
   dueOccurrence,
+  type UpcomingDelivery,
   isReminderPrompt,
   reminderBatch,
   parseUpcoming,
@@ -32,6 +33,11 @@ export type UpcomingState = {
 type Revisioned = { content: string; revision: string };
 type Remote = {
   main(): Promise<Session | undefined>;
+  mainId(): Promise<string | undefined>;
+  // The service's delivery for this account, where one is configured. While
+  // it is enabled the service delivers and this device does not.
+  server?(): Promise<UpcomingDelivery | undefined>;
+  register?(session: string): Promise<unknown>;
   history(session: string): Promise<AgentEvent[]>;
   send: Send;
 };
@@ -120,6 +126,18 @@ export class DirectUpcoming extends InitiationLog<UpcomingState> {
       const current = old ?? this.empty;
       return current.since === undefined ? { ...current, since: now } : current;
     });
+    const server = await this.remote.server?.().catch(() => undefined);
+    if (server?.enabled) {
+      // Keep the service on the current main chat, e.g. after it continued
+      // into a new chapter; delivery stays with the service either way.
+      const mainId = await this.remote.mainId();
+      if (
+        mainId &&
+        (server.session_id !== mainId || server.state === "session_unavailable")
+      )
+        await this.remote.register?.(mainId).catch(() => undefined);
+      return undefined;
+    }
     const dueNow = (items: UpcomingItem[]) =>
       items.flatMap((item) => {
         const at = dueOccurrence(

@@ -400,3 +400,58 @@ describe("Native Supabase Auth trial", () => {
     },
   );
 });
+describe("Upcoming delivery by the service", () => {
+  it("reads and saves delivery for the signed-in account with confirmation", async () => {
+    const f = fixture();
+    await f.client.signInAccount("person@example.com", password);
+    const delivery = {
+      enabled: true,
+      session_id: "sesn_main",
+      language: "zh-CN",
+      since: 5,
+      revision: 2,
+      state: "active",
+    };
+    f.serviceFetch.mockImplementation(async (input) => {
+      if (String(input).includes("/v1/status"))
+        return Response.json({
+          ...status(),
+          upcoming: { delivery: "server", session_id: "sesn_main" },
+        });
+      return Response.json(delivery);
+    });
+    expect(await f.client.upcomingDelivery()).toEqual(delivery);
+    expect(
+      await f.client.saveUpcomingDelivery({
+        session_id: "sesn_main",
+        language: "zh-CN",
+        enabled: true,
+        revision: 1,
+      }),
+    ).toEqual(delivery);
+    const put = f.serviceFetch.mock.calls.find(
+      ([, init]) => init?.method === "PUT",
+    )!;
+    expect(String(put[0])).toBe(`${background}/v1/account/upcoming`);
+    expect(JSON.parse(String(put[1]?.body))).toEqual({
+      session_id: "sesn_main",
+      language: "zh-CN",
+      enabled: true,
+      revision: 1,
+      confirm: true,
+    });
+    f.serviceFetch.mockImplementation(async (input) =>
+      String(input).includes("/v1/status")
+        ? Response.json(status())
+        : Response.json({ error: "stale" }, { status: 409 }),
+    );
+    await expect(
+      f.client.saveUpcomingDelivery({
+        session_id: "sesn_main",
+        language: "en",
+        enabled: false,
+        revision: 1,
+      }),
+    ).rejects.toThrow("Reminder delivery changed on another device");
+  });
+});

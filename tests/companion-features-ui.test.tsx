@@ -8,8 +8,11 @@ import { CheckInSettings } from "../src/CheckInSettings";
 
 afterEach(() => vi.unstubAllGlobals());
 
-const client = (signedIn: boolean) =>
-  ({ signedIn: () => signedIn }) as unknown as Client;
+const client = (signedIn: boolean, delivery = false) =>
+  ({
+    signedIn: () => signedIn,
+    upcomingDeliverySupported: () => delivery,
+  }) as unknown as Client;
 const request = (input: unknown): AgentEvent => ({
   id: "call",
   type: "agent.custom_tool_use",
@@ -56,6 +59,22 @@ describe("Apple Health request card", () => {
     expect(html).toContain("Invalid request");
     expect(html).toContain("Dismiss");
     expect(html).not.toContain(">Share<");
+  });
+});
+
+describe("Upcoming delivery while closed", () => {
+  it("is offered only to accounts the service can deliver for, off until loaded", () => {
+    const account = renderToStaticMarkup(
+      <UpcomingPanel client={client(true, true)} name="Kit" />,
+    );
+    expect(account).toContain("Deliver even when Open Muse is closed");
+    expect(account).toMatch(/<input type="checkbox" disabled=""/);
+    expect(account).toContain("may be billed");
+    const local = renderToStaticMarkup(
+      <UpcomingPanel client={client(true)} name="Kit" />,
+    );
+    expect(local).not.toContain("Deliver even when Open Muse is closed");
+    expect(local).toContain("There are no push notifications yet.");
   });
 });
 
