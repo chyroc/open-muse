@@ -304,8 +304,17 @@ after it first ran this feature, so a new device does not repeat earlier
 reminders. Before sending, it also skips occurrences another device already
 delivered to the main chat; two devices sending in the same moment can still
 both deliver one. Resuming or changing an item does not replay occurrences
-that passed in the meantime. There are no push notifications or background
-runs yet.
+that passed in the meantime.
+
+With a Muse account, **Deliver even when Open Muse is closed** in the Upcoming
+tab registers the main chat with the Open Muse service, which then delivers due
+items with the account's saved Ark key while the apps are closed (see
+[the service README](server/README.md#upcoming-reminders)). It is off by
+default. While the service delivers to the current main chat, the apps do not
+deliver locally; when the main chat continues into a new chapter, the app
+registers the new conversation. If the service cannot be reached, the app keeps
+its last known answer instead of starting to deliver itself.
+There are no push notifications yet.
 
 ## Personal identity and memory
 
