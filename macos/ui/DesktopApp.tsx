@@ -526,6 +526,22 @@ export function DesktopApp({ client }: { client: Client }) {
     if (listening && dictationBase.current?.key !== draftKey)
       void stopDictation().catch(() => {});
   }, [draftKey, listening]);
+  // Settings can hand over a draft, such as an imported memory, for the main
+  // chat; the person reviews and sends it.
+  const draftRef = useRef<(text: string) => void>(undefined);
+  draftRef.current = (text: string) => {
+    navigate("/");
+    prefillComposer(text);
+  };
+  useEffect(() => {
+    const draft = (event: Event) => {
+      const text = (event as CustomEvent).detail;
+      if (typeof text === "string" && text.trim())
+        draftRef.current?.(text.slice(0, 16000));
+    };
+    window.addEventListener("muse-draft", draft);
+    return () => window.removeEventListener("muse-draft", draft);
+  }, []);
   // Moods left on messages are kept on this Mac for the signed-in account.
   useEffect(() => {
     if (!ready) return;

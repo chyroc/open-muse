@@ -807,6 +807,15 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
                 default: break
                 }
             }
+            // Settings can hand a draft to the main chat; it is never sent from here.
+            if body?["name"] == "draft", message.webView === settingsWebView,
+               let text = body?["value"], !text.isEmpty, text.utf16.count <= 16000,
+               let data = try? JSONSerialization.data(withJSONObject: text, options: .fragmentsAllowed),
+               let json = String(data: data, encoding: .utf8) {
+                showWorkspace()
+                webView?.evaluateJavaScript("window.dispatchEvent(new CustomEvent('muse-draft', {detail:\(json)}))", completionHandler: nil)
+                return
+            }
             if body?["name"] == "settings" {
                 openSettings()
                 // Open a named section; the settings route ignores anything else.

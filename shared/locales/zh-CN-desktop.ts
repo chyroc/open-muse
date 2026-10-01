@@ -119,4 +119,28 @@ export const zhDesktop: Record<string, string> = {
     "在设置中开启后，让助手在这台 Mac 上帮你做事。每个操作都会先询问你。",
   "Open Muse is a personal client without a support channel. The project's README describes how each part works.":
     "Open Muse 是个人客户端，没有客服渠道。项目的 README 介绍了各部分的工作方式。",
+  "Open Muse data": "Open Muse 数据",
+  "Exported {date}": "导出于 {date}",
+  "Please add what's useful from this to my memory. It comes from another assistant, so check with me where it conflicts with what you already know:":
+    "请把下面有用的内容加入我的记忆。这些内容来自另一个助手，如果与你已知的信息冲突，请先和我确认：",
+  "List everything you remember about me: my name, where I live and work, the people in my life, my preferences, routines, ongoing projects and goals. Write each as a short plain sentence. Do not include passwords, account numbers or one-time codes.":
+    "列出你记得的关于我的所有信息：我的名字、居住和工作的地方、我生活中的人、我的偏好、日常习惯、正在进行的项目和目标。每条用一句简短的话写出。不要包含密码、账号或一次性验证码。",
+  "Import memory": "导入记忆",
+  "Bring what another assistant knows about you. You review the message before your companion saves anything.":
+    "导入另一个助手对你的了解。在伙伴保存任何内容之前，你会先审阅这条消息。",
+  Import: "导入",
+  "Download your data": "下载你的数据",
+  "Saves memory, goals, Upcoming and every conversation as one Markdown file. It only reads from your Ark project.":
+    "把记忆、目标、即将到来的事项和所有对话保存为一个 Markdown 文件。只会读取你的 Ark 项目。",
+  "Preparing…": "正在准备…",
+  Download: "下载",
+  "Ask your other assistant with this prompt:":
+    "用这段提示词询问你的另一个助手：",
+  "Prompt copied": "已复制提示词",
+  "Copy prompt": "复制提示词",
+  "Paste its answer here:": "把它的回答粘贴到这里：",
+  "What the other assistant remembers": "另一个助手记得的内容",
+  "Open the Mac app to continue.": "请在 Mac App 中继续。",
+  "Draft in main chat": "在主对话中起草",
+  "Your data": "你的数据",
 };

@@ -29,6 +29,7 @@ import { CheckInSwitch } from "./CheckInSwitch";
 import { ComputerSettings } from "./ComputerSettings";
 import { DictationSettings } from "./DictationSettings";
 import { HelpSettings } from "./HelpSettings";
+import { DataControls } from "./DataControls";
 import { LegalSettings } from "./LegalSettings";
 import { ShortcutSettings } from "./ShortcutSettings";
 import { shortcutAvailable } from "./shortcut";
@@ -425,6 +426,8 @@ export function SettingsWindow({ client }: { client: Client }) {
                 )}
               />
             </div>
+            <h2>{t("Your data")}</h2>
+            <DataControls client={client} />
           </>
         )}
         {!active.connected && (

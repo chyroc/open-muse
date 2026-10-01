@@ -355,3 +355,30 @@
 .settings-after {
   margin-top: 16px;
 }
+.memory-import {
+  margin: 0 0 14px;
+  padding-left: 20px;
+  display: grid;
+  gap: 12px;
+  font-size: 13px;
+}
+.memory-import p {
+  margin: 0 0 6px;
+}
+.memory-import blockquote {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--fill);
+  color: var(--text-2);
+  line-height: 1.5;
+}
+.memory-import textarea {
+  width: 100%;
+  resize: vertical;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  padding: 8px 10px;
+}
