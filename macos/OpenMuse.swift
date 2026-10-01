@@ -1,9 +1,20 @@
 import AppKit
 import Carbon.HIToolbox
+import CryptoKit
 import WebKit
 import Security
 import ServiceManagement
 import UniformTypeIdentifiers
+
+// A named profile (--open-muse-profile <name>) keeps its own Keychain items and
+// web data, so an acceptance run never reads or changes the person's own login.
+private let profile: String? = {
+    let arguments = CommandLine.arguments
+    guard let index = arguments.firstIndex(of: "--open-muse-profile"), index + 1 < arguments.count,
+          arguments[index + 1].range(of: "^[a-z0-9-]{1,32}$", options: .regularExpression) != nil
+    else { return nil }
+    return arguments[index + 1]
+}()
 
 // Match the web UI's supported-language selection without changing system state.
 private func localized(_ english: String) -> String {
@@ -201,6 +212,14 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         window.center()
         window.setFrameAutosaveName("OpenMuseDesktopWorkspace")
         let configuration = WKWebViewConfiguration()
+        if let profile {
+            // A stable identifier per profile name keeps its data between launches.
+            let bytes = Array(SHA256.hash(data: Data("open-muse-profile:\(profile)".utf8)))
+            let id = UUID(uuid: (bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+                                 bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]))
+            configuration.websiteDataStore = WKWebsiteDataStore(forIdentifier: id)
+            window.title = "Open Muse (\(profile))"
+        }
         configuration.setURLSchemeHandler(assets, forURLScheme: "muse")
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museCredentials")
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "musePresence")
@@ -291,8 +310,9 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     private func credentials(_ body: [String: String], replyHandler: @escaping (Any?, String?) -> Void) {
         guard body["namespace"] == nil || body["namespace"] == "background"
         else { replyHandler(nil, "Invalid credential namespace"); return }
-        let service = body["namespace"] == "background"
+        let base = body["namespace"] == "background"
             ? "app.openmuse.desktop.background.v1" : "app.openmuse.desktop.direct-ma.v1"
+        let service = profile.map { "\(base).profile.\($0)" } ?? base
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: "active"]
         if body["operation"] == "read" {
             var lookup = query

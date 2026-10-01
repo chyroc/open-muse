@@ -37,6 +37,13 @@ After the first launch of a stably signed build, choose "Always Allow" once;
 later builds keep that trust, as well as the Accessibility and Screen
 Recording permissions.
 
+### Acceptance profile
+
+`open -n "Open Muse.app" --args --open-muse-profile <name>` runs the app with its
+own Keychain items and web data for that lowercase name. It starts signed out,
+never reads the person's own login, and keeps its data between launches of the
+same profile, which suits acceptance runs and screenshots.
+
 ## Desktop workspace
 
 - A 74-point navigation rail, continuous main chat, searchable side-chat drawer,
