@@ -18,19 +18,19 @@ afterEach(() => {
 
 describe("Mac theme color", () => {
   it("stores the choice on this device and applies it to the page", () => {
-    expect(storedTheme()).toBe("default");
+    // Matching the avatar is the default, and it uses the standard accent.
+    expect(storedTheme()).toBe("avatar");
     saveTheme("purple");
     expect(localStorage.getItem("muse.theme")).toBe("purple");
     expect(document.documentElement.dataset.theme).toBe("purple");
-    // Matching the avatar uses the companion's own beige palette.
     saveTheme("avatar");
-    expect(document.documentElement.dataset.theme).toBe("beige");
-    expect(storedTheme()).toBe("avatar");
-    saveTheme("default");
     expect(localStorage.getItem("muse.theme")).toBeNull();
     expect(document.documentElement.dataset.theme).toBeUndefined();
-    localStorage.setItem("muse.theme", "neon");
+    saveTheme("default");
     expect(storedTheme()).toBe("default");
+    expect(document.documentElement.dataset.theme).toBeUndefined();
+    localStorage.setItem("muse.theme", "neon");
+    expect(storedTheme()).toBe("avatar");
   });
   it("follows a change made in the other window", () => {
     initializeAppearance();

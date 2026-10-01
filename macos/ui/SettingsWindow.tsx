@@ -243,16 +243,6 @@ export function SettingsWindow({ client }: { client: Client }) {
                 )}
                 value={language.language === "zh-CN" ? "简体中文" : "English"}
               />
-              <Row
-                title={t("Date and number format")}
-                value={language.locale}
-              />
-              {Boolean(language.preferred.length) && (
-                <Row
-                  title={t("System preference list")}
-                  value={language.preferred.slice(0, 4).join(", ")}
-                />
-              )}
             </div>
             <h2>{t("Appearance")}</h2>
             <div className="settings-group">

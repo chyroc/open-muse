@@ -302,31 +302,31 @@
     0 0 0 4px var(--text-2);
 }
 .settings-swatches [data-swatch="avatar"] {
-  background: conic-gradient(#e9dcc0, #c9b48a, #e9dcc0);
+  background: conic-gradient(#efe6d2, #d9cbb0, #efe6d2);
 }
 .settings-swatches [data-swatch="default"] {
-  background: #0064d4;
+  background: #d6e6ff;
 }
 .settings-swatches [data-swatch="blue"] {
-  background: #1f6feb;
+  background: #cfe0ff;
 }
 .settings-swatches [data-swatch="purple"] {
-  background: #7c3aed;
+  background: #e1d6ff;
 }
 .settings-swatches [data-swatch="pink"] {
-  background: #d63384;
+  background: #fad3e6;
 }
 .settings-swatches [data-swatch="orange"] {
-  background: #e8590c;
+  background: #ffdcc6;
 }
 .settings-swatches [data-swatch="green"] {
-  background: #2f9e44;
+  background: #d4efd8;
 }
 .settings-swatches [data-swatch="beige"] {
-  background: #9c7a4c;
+  background: #e9dfcd;
 }
 .settings-swatches [data-swatch="monochrome"] {
-  background: linear-gradient(135deg, #2a2a2d 50%, #f2f2f4 50%);
+  background: #111;
 }
 @media (prefers-reduced-motion: reduce) {
   .settings-swatches button {

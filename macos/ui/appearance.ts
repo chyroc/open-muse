@@ -88,8 +88,8 @@ export function initializeAppearance() {
 }
 
 // The accent used for buttons, selection and your own message bubbles. Also a
-// device-local presentation choice. "avatar" follows the companion's own
-// colors; "default" keeps the standard accent.
+// device-local presentation choice. Matching the avatar is the default and,
+// for the standard companion, uses the standard accent.
 export type ThemeColor =
   | "avatar"
   | "default"
@@ -117,21 +117,20 @@ export function storedTheme(): ThemeColor {
     const value = localStorage.getItem(themeKey);
     return themeColors.some((item) => item.id === value)
       ? (value as ThemeColor)
-      : "default";
+      : "avatar";
   } catch {
-    return "default";
+    return "avatar";
   }
 }
-// The companion's avatar is beige, so matching it uses that palette.
 export function applyTheme(theme: ThemeColor) {
-  const resolved = theme === "avatar" ? "beige" : theme;
+  const resolved = theme === "avatar" ? "default" : theme;
   if (resolved === "default") delete document.documentElement.dataset.theme;
   else document.documentElement.dataset.theme = resolved;
   return resolved;
 }
 export function saveTheme(theme: ThemeColor) {
   try {
-    if (theme === "default") localStorage.removeItem(themeKey);
+    if (theme === "avatar") localStorage.removeItem(themeKey);
     else localStorage.setItem(themeKey, theme);
   } catch {
     // Presentation must still change for this session without storage.
