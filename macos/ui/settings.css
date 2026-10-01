@@ -382,3 +382,19 @@
   color: var(--text);
   padding: 8px 10px;
 }
+.settings-device-row {
+  align-items: center;
+}
+.settings-device-row > svg {
+  flex-shrink: 0;
+  color: var(--text-2);
+}
+.settings-device-row > button {
+  margin-left: auto;
+}
+.device-online {
+  color: #2f9e44 !important;
+}
+.settings-inline-button.danger {
+  color: var(--danger);
+}

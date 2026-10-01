@@ -85,6 +85,7 @@ import { ShortcutsDialog } from "./Shortcuts";
 import { CommandPalette, paletteItems } from "./Palette";
 import { FindBar, findMatches, partKey } from "./FindBar";
 import { MessageActions } from "./MessageActions";
+import { registerThisMac } from "./devices";
 import { readReactions, setReaction, type Mood } from "./reactions";
 import {
   dictationAvailable,
@@ -554,6 +555,18 @@ export function DesktopApp({ client }: { client: Client }) {
       active = false;
     };
   }, [client, ready, connectionEpoch]);
+  // In account builds this Mac shows up in the account's device list. It
+  // reports itself at start and hourly; a failure never interrupts the app.
+  useEffect(() => {
+    if (!ready) return;
+    const report = () =>
+      void Promise.resolve()
+        .then(registerThisMac)
+        .catch(() => {});
+    report();
+    const timer = setInterval(report, 60 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [ready, connectionEpoch]);
   // MA image blocks carry no name, so the names come from this device.
   useEffect(() => {
     if (!ready) return;

@@ -59,13 +59,7 @@ export const settingsSections: SettingsSection[] = [
     unavailable:
       "There is no Open Muse service to deliver messages from, so no email, SMS or chat channel can be connected.",
   },
-  {
-    id: "devices",
-    label: "Devices",
-    connected: false,
-    unavailable:
-      "Each client keeps its own local data and credentials, so this Mac cannot list or manage your other devices.",
-  },
+  { id: "devices", label: "Devices", connected: true },
   { id: "data-controls", label: "Data controls", connected: true },
   { id: "help", label: "Help and support", connected: true },
   { id: "legal", label: "Legal", connected: true },

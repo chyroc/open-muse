@@ -143,4 +143,14 @@ export const zhDesktop: Record<string, string> = {
   "Open the Mac app to continue.": "请在 Mac App 中继续。",
   "Draft in main chat": "在主对话中起草",
   "Your data": "你的数据",
+  Online: "在线",
+  "This device": "本设备",
+  "Other devices": "其他设备",
+  "Devices signed in to the same Muse account appear here. Without an account, each device keeps its own data.":
+    "登录同一 Muse 账户的设备会显示在这里。不使用账户时，每台设备各自保存数据。",
+  "No other devices yet.": "暂无其他设备。",
+  Confirm: "确认",
+  Forget: "移除",
+  "This account already has the most devices it can list. Forget one in Settings > Devices.":
+    "此账户可列出的设备已达上限。请在“设置 > 设备”中移除一台。",
 };

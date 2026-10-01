@@ -237,6 +237,14 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
                 injectionTime: .atDocumentStart, forMainFrameOnly: true
             ))
         }
+        // The Mac's own name, so the account's device list can show it.
+        if let data = try? JSONSerialization.data(withJSONObject: ["name": Host.current().localizedName ?? "Mac"]),
+           let device = String(data: data, encoding: .utf8) {
+            configuration.userContentController.addUserScript(WKUserScript(
+                source: "window.__OPEN_MUSE_DEVICE__ = \(device);",
+                injectionTime: .atDocumentStart, forMainFrameOnly: true
+            ))
+        }
         if let data = try? JSONSerialization.data(withJSONObject: Locale.preferredLanguages),
            let languages = String(data: data, encoding: .utf8) {
             configuration.userContentController.addUserScript(WKUserScript(

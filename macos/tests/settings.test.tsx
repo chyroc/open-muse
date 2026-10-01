@@ -103,6 +103,7 @@ describe("Mac settings model", () => {
       "dictation",
       "secure-storage",
       "permissions",
+      "devices",
       "data-controls",
       "help",
       "legal",
@@ -206,7 +207,7 @@ describe("Mac settings window", () => {
   });
   it("explains unconnected sections without simulating them", async () => {
     await mount(<SettingsWindow client={await fixture()} />);
-    for (const id of ["Computer use", "Wallet", "Devices"]) {
+    for (const id of ["Computer use", "Wallet"]) {
       await click(id);
       expect(host!.textContent).toContain("Not connected");
       expect(host!.querySelectorAll("input")).toHaveLength(0);
