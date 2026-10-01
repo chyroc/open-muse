@@ -17,6 +17,7 @@ import { accountCredentialSchema } from "../../shared/account-credential";
 import { accountWorkspaceKey } from "../../shared/workspace-key";
 import { externalScheduler, TRIGGER_PATH, verifyTrigger } from "./trigger";
 import { UpcomingDelivery, upcomingInput } from "./upcoming";
+import { AccountDevices, deviceInput, validDeviceId } from "./devices";
 
 async function runScheduler(env: Env) {
   await rewrapRetiredKeys(env).catch(() => {});
@@ -266,6 +267,23 @@ export async function handle(
             ),
           );
         } else throw new HttpError(405, "Method not allowed.");
+      } else if (url.pathname.startsWith("/v1/account/devices")) {
+        if (!account)
+          throw new HttpError(403, "Sign in with a Muse account to list devices.");
+        const devices = new AccountDevices(env, owner);
+        const id = /^\/v1\/account\/devices\/([^/]+)$/.exec(url.pathname)?.[1];
+        if (url.pathname === "/v1/account/devices" && request.method === "GET")
+          response = json(await devices.list());
+        else if (id && request.method === "PUT")
+          response = json(
+            await devices.register(
+              validDeviceId(id),
+              deviceInput(await body(request, 1024)),
+            ),
+          );
+        else if (id && request.method === "DELETE")
+          response = json(await devices.forget(validDeviceId(id)));
+        else throw new HttpError(404, "Endpoint not found.");
       } else if (url.pathname === "/v1/account/upcoming") {
         if (!account)
           throw new HttpError(

@@ -197,6 +197,7 @@ export async function rewrapRetiredKeys(env: Env, limit = 20) {
     ["account_credentials", purpose],
     ["ark_connections", "open-muse-ark-connection"],
     ["account_workspaces", "open-muse-account-workspace"],
+    ["account_devices", "open-muse-account-device"],
   ] as const) {
     const rows = await env.DB.prepare(
       `SELECT owner_id,revision,encrypted FROM ${table}

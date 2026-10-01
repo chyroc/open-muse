@@ -279,6 +279,14 @@ deployed or that a real unattended generation can complete.
   sealed for this account. A stale revision from another device returns 409.
 - `DELETE /v1/account/credential`: `{revision, confirm: true}` leaves a
   tombstone for this account only.
+- `PUT /v1/account/devices/:id`: `{name, platform: "mac" | "ios",
+  app_version}` registers or refreshes one app install of the account, where
+  `:id` is a random per-install UUID. Presence only: nothing is sent to devices.
+  The name is sealed with the account. At most 20 devices per account; a new
+  install beyond that returns 409 until one is forgotten.
+- `GET /v1/account/devices`: `{devices: [{id, name, platform, app_version,
+  last_seen_at}]}`, most recently seen first, for the signed-in account only.
+- `DELETE /v1/account/devices/:id`: forgets one device; repeating it succeeds.
 - `PUT /v1/account/upcoming`: `{session_id, language: "en" | "zh-CN", enabled,
   revision, confirm: true}` registers the account's main conversation for
   reminder delivery. Enabling reads the session with the account's key and

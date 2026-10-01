@@ -62,7 +62,8 @@ export function credentialStorageReady(env: Env) {
 export type SealPurpose =
   | "open-muse-ark-connection"
   | "open-muse-account-ark"
-  | "open-muse-account-workspace";
+  | "open-muse-account-workspace"
+  | "open-muse-account-device";
 const aad = (purpose: SealPurpose, owner: string, revision: number) =>
   new TextEncoder().encode(JSON.stringify([purpose, 1, owner, revision]));
 async function cryptoKey(value: string) {
