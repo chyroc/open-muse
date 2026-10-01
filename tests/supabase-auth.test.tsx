@@ -454,4 +454,50 @@ describe("Upcoming delivery by the service", () => {
       }),
     ).rejects.toThrow("Reminder delivery changed on another device");
   });
+  it("registers, lists and forgets this account's devices", async () => {
+    const f = fixture();
+    await f.client.signInAccount("person@example.com", password);
+    const id = "3f2c8f0e-1a2b-4c3d-8e9f-0a1b2c3d4e5f";
+    const device = {
+      id,
+      name: "Studio Mac",
+      platform: "mac" as const,
+      app_version: "0.2.0",
+      last_seen_at: 1,
+    };
+    f.serviceFetch.mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.includes("/v1/status")) return Response.json(status());
+      if (init?.method === "DELETE") return Response.json({ ok: true });
+      if (init?.method === "PUT") return Response.json(device);
+      return Response.json({ devices: [device] });
+    });
+    expect(
+      await f.client.registerDevice(id, {
+        name: "Studio Mac",
+        platform: "mac",
+        app_version: "0.2.0",
+      }),
+    ).toEqual(device);
+    const put = f.serviceFetch.mock.calls.find(
+      ([, init]) => init?.method === "PUT",
+    )!;
+    expect(String(put[0])).toBe(`${background}/v1/account/devices/${id}`);
+    expect(JSON.parse(String(put[1]?.body))).toEqual({
+      name: "Studio Mac",
+      platform: "mac",
+      app_version: "0.2.0",
+    });
+    expect(await f.client.devices()).toEqual([device]);
+    expect(await f.client.forgetDevice(id)).toEqual({ ok: true });
+    // Ids and names are checked before any request.
+    expect(() => f.client.registerDevice("Not-A-Uuid", device)).toThrow();
+    expect(() =>
+      f.client.registerDevice(id, {
+        name: "two\nlines",
+        platform: "mac",
+        app_version: "1",
+      }),
+    ).toThrow();
+  });
 });

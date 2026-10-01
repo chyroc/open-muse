@@ -1,5 +1,12 @@
 import { t } from "../shared/i18n";
 import { upcomingDeliveryInput } from "../shared/upcoming";
+import {
+  deviceIdInput,
+  deviceList,
+  deviceRecord,
+  deviceRegistration,
+  type DeviceRegistration,
+} from "../shared/devices";
 import { AccountRequestError, SupabaseAuth } from "./supabase-auth";
 import {
   authToken,
@@ -487,7 +494,9 @@ export class BackgroundClient {
       | "/v1/account/workspace/settings"
       | "/v1/account/workspace/reconcile"
       | "/v1/account/workspace/compare"
-      | "/v1/account/upcoming",
+      | "/v1/account/upcoming"
+      | "/v1/account/devices"
+      | `/v1/account/devices/${string}`,
     schema: z.ZodType<T>,
     init?: RequestInit,
     messages?: Partial<Record<number, string>>,
@@ -546,6 +555,32 @@ export class BackgroundClient {
           "The Muse service can only deliver reminders to this account's own main chat.",
         ),
       },
+    );
+  }
+  // Presence of this account's devices. Registering again refreshes when the
+  // device was last seen; forgetting is idempotent.
+  devices() {
+    return this.accountRequest("/v1/account/devices", deviceList).then(
+      (value) => value.devices,
+    );
+  }
+  registerDevice(id: string, input: DeviceRegistration) {
+    return this.accountRequest(
+      `/v1/account/devices/${deviceIdInput.parse(id)}`,
+      deviceRecord,
+      { method: "PUT", body: JSON.stringify(deviceRegistration.parse(input)) },
+      {
+        409: t(
+          "This account already has the most devices it can list. Forget one in Settings > Devices.",
+        ),
+      },
+    );
+  }
+  forgetDevice(id: string) {
+    return this.accountRequest(
+      `/v1/account/devices/${deviceIdInput.parse(id)}`,
+      z.object({ ok: z.literal(true) }),
+      { method: "DELETE" },
     );
   }
   // The account's workspace configuration for its current key, as sealed by
