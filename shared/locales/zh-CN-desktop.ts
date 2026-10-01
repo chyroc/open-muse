@@ -50,4 +50,6 @@ export const zhDesktop: Record<string, string> = {
     "关闭窗口后，屏幕上会保留一个小按钮，点按即可重新打开。",
   "Could not read the app settings.": "无法读取 App 设置。",
   "Could not change the app settings.": "无法更改 App 设置。",
+  "Open in the main window": "在主窗口中打开",
+  "Quick chat": "快速聊天",
 };

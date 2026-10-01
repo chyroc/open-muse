@@ -1,0 +1,159 @@
+/* Quick chat: a compact card in its own floating panel. The shell sizes the
+   panel to the card, so the card never scrolls the page itself. */
+.quick-card {
+  display: flex;
+  flex-direction: column;
+  max-height: 560px;
+  background: var(--surface);
+  color: var(--text);
+}
+.quick-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  flex-shrink: 0;
+  padding: 0 10px 0 12px;
+  /* The panel is dragged by its header. */
+  -webkit-user-select: none;
+  user-select: none;
+}
+.quick-header .desktop-avatar {
+  transform: scale(0.55);
+  transform-origin: left center;
+  width: 24px;
+  height: 27px;
+  margin-right: -2px;
+}
+.quick-header strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+.quick-icon {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: var(--text-2);
+  transition:
+    background 0.15s ease-out,
+    transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.quick-icon:hover {
+  background: var(--fill-hover);
+  color: var(--text);
+}
+.quick-icon:active {
+  transform: scale(0.9);
+}
+.quick-messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 14px 10px;
+}
+.quick-message {
+  max-width: 86%;
+  border-radius: 18px;
+  padding: 8px 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  background: var(--fill-strong);
+  animation: quick-in 0.34s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+.quick-message.from-user {
+  align-self: flex-end;
+  background: var(--blue);
+}
+.quick-message p {
+  margin: 0 0 6px;
+}
+.quick-message p:last-child {
+  margin-bottom: 0;
+}
+.quick-message pre {
+  background: var(--code);
+  border-radius: 8px;
+  padding: 10px;
+  overflow: auto;
+}
+.quick-thinking {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.quick-connect {
+  margin: 4px 14px 8px;
+  height: 34px;
+  border-radius: 17px;
+  background: var(--primary-bg);
+  color: var(--primary-text);
+  font-weight: 500;
+}
+.quick-error {
+  margin: 0 14px 6px;
+  font-size: 12px;
+  color: var(--danger);
+}
+.quick-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+  margin: 0 10px 10px;
+  padding: 7px 7px 7px 14px;
+  border-radius: 22px;
+  background: var(--fill);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.quick-composer textarea {
+  flex: 1;
+  min-width: 0;
+  resize: none;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  line-height: 1.45;
+  padding: 5px 0;
+  max-height: 120px;
+}
+.quick-send {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 15px;
+  display: grid;
+  place-items: center;
+  background: var(--primary-bg);
+  color: var(--primary-text);
+  transition: transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.quick-send:active:not(:disabled) {
+  transform: scale(0.88);
+}
+@keyframes quick-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .quick-message {
+    animation: quick-fade 0.15s ease-out both;
+  }
+  .quick-icon,
+  .quick-send {
+    transition: background 0.15s ease-out;
+  }
+}
+@keyframes quick-fade {
+  from {
+    opacity: 0;
+  }
+}

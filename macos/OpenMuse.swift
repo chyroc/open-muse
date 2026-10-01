@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import WebKit
 import Security
 import ServiceManagement
@@ -41,7 +42,33 @@ private enum Motion {
     static let springStiffness: CGFloat = 320
     static let fade: TimeInterval = 0.18
     static var reduced: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+    // A short ease-out with a slight overshoot reads like a spring for window frames.
+    static let settle = CAMediaTimingFunction(controlPoints: 0.22, 1.2, 0.36, 1)
+    static let appear: TimeInterval = 0.26
+    static let dismiss: TimeInterval = 0.12
 }
+
+// Quick chat geometry. The card reports its own height inside these bounds.
+private enum QuickChat {
+    static let width: CGFloat = 440
+    static let initialHeight: CGFloat = 132
+    static let minHeight: CGFloat = 132
+    static let maxHeight: CGFloat = 560
+    static let cornerRadius: CGFloat = 18
+    // Distance from the top of the screen, as a share of its visible height.
+    static let topInset: CGFloat = 0.2
+    static let rise: CGFloat = 10
+}
+
+// A borderless panel that can take typing without activating the app, so the
+// app in front keeps its place.
+private final class QuickPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
+}
+
+// Carbon delivers the global shortcut to a C callback, which forwards it here.
+nonisolated(unsafe) private var quickChatToggle: (() -> Void)?
 
 // A round button that stays on screen while the workspace window is closed.
 // It follows the pointer while dragged, and a press that did not move reopens
@@ -142,6 +169,9 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     private var discardPromptOpen = false
     private var statusItem: NSStatusItem?
     private var floatingPanel: NSPanel?
+    private var quickPanel: QuickPanel?
+    private var quickWebView: WKWebView?
+    private var quickHotKey: EventHotKeyRef?
     private let menuBarKey = "presence.menuBar"
     private let floatingButtonKey = "presence.floatingButton"
 
@@ -194,6 +224,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         window.makeKeyAndOrderFront(nil)
         NSApplication.shared.activate(ignoringOtherApps: true)
         updateStatusItem()
+        registerQuickChatShortcut()
     }
     private func makeWebView(_ frame: NSRect) -> WKWebView {
         let view = WKWebView(frame: frame, configuration: configuration)
@@ -241,8 +272,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
                     // Both windows share one connection, so a credential change in
                     // either of them refreshes the other instead of going stale.
                     guard error == nil, body["operation"] == "write" else { return }
-                    let other = message.webView === self.webView ? self.settingsWebView : self.webView
-                    other?.evaluateJavaScript("window.dispatchEvent(new Event('muse-credentials-changed'))", completionHandler: nil)
+                    self.broadcast("muse-credentials-changed", except: message.webView)
                 }
             }
         }
@@ -321,8 +351,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
                 replyHandler(nil, "Invalid presence key"); return
             }
             replyHandler(presenceState(), nil)
-            let other = sender === webView ? settingsWebView : webView
-            other?.evaluateJavaScript("window.dispatchEvent(new Event('muse-presence-changed'))", completionHandler: nil)
+            broadcast("muse-presence-changed", except: sender)
         default:
             replyHandler(nil, "Invalid presence operation")
         }
@@ -341,6 +370,9 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         let menu = NSMenu()
         let open = menu.addItem(withTitle: localized("Show Open Muse"), action: #selector(showWorkspace), keyEquivalent: "")
         open.target = self
+        let quick = menu.addItem(withTitle: localized("Quick chat"), action: #selector(toggleQuickChat), keyEquivalent: " ")
+        quick.keyEquivalentModifierMask = [.option]
+        quick.target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: localized("Quit Open Muse"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "")
         item.menu = menu
@@ -393,6 +425,106 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         panel.setFrameAutosaveName("OpenMuseFloatingButton")
         return panel
     }
+    // Every window shares one connection; tell the others what changed.
+    private func broadcast(_ event: String, except sender: WKWebView?) {
+        for view in [webView, settingsWebView, quickWebView] where view != nil && view !== sender {
+            view?.evaluateJavaScript("window.dispatchEvent(new Event('\(event)'))", completionHandler: nil)
+        }
+    }
+    // Option-Space opens a small chat card over whatever app is in front, and
+    // pressing it again closes the card. Carbon hot keys need no Accessibility
+    // permission and never see other keystrokes.
+    private func registerQuickChatShortcut() {
+        quickChatToggle = { [weak self] in self?.toggleQuickChat() }
+        var spec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
+        InstallEventHandler(GetApplicationEventTarget(), { _, _, _ in
+            DispatchQueue.main.async { quickChatToggle?() }
+            return OSStatus(noErr)
+        }, 1, &spec, nil, nil)
+        let id = EventHotKeyID(signature: OSType(0x4F4D_5143), id: 1)
+        RegisterEventHotKey(UInt32(kVK_Space), UInt32(optionKey), id, GetApplicationEventTarget(), 0, &quickHotKey)
+    }
+    @objc private func toggleQuickChat() {
+        if let panel = quickPanel, panel.isVisible, panel.alphaValue > 0 { hideQuickChat() } else { showQuickChat() }
+    }
+    private func makeQuickPanel() -> QuickPanel {
+        let frame = NSRect(x: 0, y: 0, width: QuickChat.width, height: QuickChat.initialHeight)
+        let panel = QuickPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        panel.isFloatingPanel = true
+        panel.level = .floating
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
+        panel.backgroundColor = .clear
+        panel.isOpaque = false
+        panel.hasShadow = true
+        panel.hidesOnDeactivate = false
+        panel.isReleasedWhenClosed = false
+        panel.appearance = NSApplication.shared.appearance
+        panel.delegate = self
+        let container = NSView(frame: frame)
+        container.wantsLayer = true
+        container.layer?.cornerRadius = QuickChat.cornerRadius
+        container.layer?.cornerCurve = .continuous
+        container.layer?.masksToBounds = true
+        container.layer?.borderWidth = 0.5
+        container.layer?.borderColor = NSColor.separatorColor.cgColor
+        let view = makeWebView(frame)
+        container.addSubview(view)
+        panel.contentView = container
+        view.load(URLRequest(url: URL(string: "muse://app/#/quick")!))
+        quickWebView = view
+        return panel
+    }
+    private func showQuickChat() {
+        let panel = quickPanel ?? makeQuickPanel()
+        quickPanel = panel
+        let mouse = NSEvent.mouseLocation
+        let screen = NSScreen.screens.first { $0.frame.contains(mouse) } ?? NSScreen.main
+        guard let area = screen?.visibleFrame else { return }
+        let height = panel.frame.height
+        let top = area.maxY - area.height * QuickChat.topInset
+        let target = NSRect(x: area.midX - QuickChat.width / 2, y: top - height, width: QuickChat.width, height: height)
+        let reduced = Motion.reduced
+        panel.setFrame(reduced ? target : target.offsetBy(dx: 0, dy: QuickChat.rise), display: false)
+        panel.alphaValue = 0
+        panel.makeKeyAndOrderFront(nil)
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = reduced ? Motion.fade : Motion.appear
+            context.timingFunction = reduced ? CAMediaTimingFunction(name: .easeOut) : Motion.settle
+            panel.animator().alphaValue = 1
+            if !reduced { panel.animator().setFrame(target, display: true) }
+        }
+        quickWebView?.evaluateJavaScript("window.dispatchEvent(new Event('muse-quick-shown'))", completionHandler: nil)
+    }
+    private func hideQuickChat() {
+        guard let panel = quickPanel, panel.isVisible else { return }
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = Motion.dismiss
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            panel.animator().alphaValue = 0
+        }, completionHandler: {
+            if panel.alphaValue == 0 { panel.orderOut(nil) }
+        })
+    }
+    // The card asks for the height of its content; the top edge stays put so
+    // the card grows downward as the conversation fills in.
+    private func resizeQuickChat(_ value: String?) {
+        guard let panel = quickPanel, let raw = value.flatMap(Double.init) else { return }
+        let height = min(QuickChat.maxHeight, max(QuickChat.minHeight, CGFloat(raw)))
+        var frame = panel.frame
+        guard abs(frame.height - height) >= 1 else { return }
+        frame.origin.y += frame.height - height
+        frame.size.height = height
+        guard panel.isVisible, !Motion.reduced else { panel.setFrame(frame, display: true); return }
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = Motion.appear
+            context.timingFunction = Motion.settle
+            panel.animator().setFrame(frame, display: true)
+        }
+    }
+    func windowDidResignKey(_ notification: Notification) {
+        // Clicking anywhere else puts the card away, like the shortcut does.
+        if let panel = quickPanel, (notification.object as? NSWindow) === panel { hideQuickChat() }
+    }
     @objc private func showWorkspace() {
         if window.isMiniaturized { window.deminiaturize(nil) }
         window.makeKeyAndOrderFront(nil)
@@ -422,13 +554,23 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         NSApplication.shared.appearance = appearance
         window?.appearance = appearance
         settingsWindow?.appearance = appearance
-        let other = sender === webView ? settingsWebView : webView
-        other?.evaluateJavaScript("window.dispatchEvent(new Event('muse-appearance-changed'))", completionHandler: nil)
+        quickPanel?.appearance = appearance
+        broadcast("muse-appearance-changed", except: sender)
     }
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard trusted(message) else { return }
         if message.name == "museWindow" {
             let body = message.body as? [String: String]
+            if message.webView === quickWebView {
+                switch body?["name"] {
+                case "quick-size": resizeQuickChat(body?["value"]); return
+                case "quick-close": hideQuickChat(); return
+                case "quick-sent": webView?.evaluateJavaScript("window.dispatchEvent(new Event('muse-conversations-changed'))", completionHandler: nil); return
+                case "workspace": hideQuickChat(); showWorkspace(); return
+                case "settings": hideQuickChat()
+                default: break
+                }
+            }
             if body?["name"] == "settings" { openSettings() }
             if body?["name"] == "appearance" { applyAppearance(body?["value"], from: message.webView) }
             return

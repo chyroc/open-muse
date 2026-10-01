@@ -362,6 +362,12 @@ export function DesktopApp({ client }: { client: Client }) {
       });
     };
     window.addEventListener("muse-credentials-changed", credentials);
+    // Quick chat sends into the main chat from its own panel.
+    const conversations = () => {
+      void reload();
+      void refreshTask.current();
+    };
+    window.addEventListener("muse-conversations-changed", conversations);
     // An Ark key replaced in the settings window or on another device is kept
     // by the account service, not in Keychain, so re-check it on focus.
     const focus = () => {
@@ -403,6 +409,7 @@ export function DesktopApp({ client }: { client: Client }) {
       window.removeEventListener("muse-command", command);
       window.removeEventListener("keydown", key);
       window.removeEventListener("muse-credentials-changed", credentials);
+      window.removeEventListener("muse-conversations-changed", conversations);
       window.removeEventListener("focus", focus);
       window.removeEventListener(connectionReady, ready);
     };
