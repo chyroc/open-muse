@@ -166,6 +166,35 @@ describe("Mac Upcoming", () => {
     await act(async () => button("Resume", menu).click());
     expect(change).toHaveBeenCalledWith("walk", "resume", "r1");
   });
+  it("lets an account turn on delivery while the app is closed", async () => {
+    const value = await client();
+    vi.spyOn(value, "upcomingDeliverySupported").mockReturnValue(true);
+    vi.spyOn(value, "upcomingDelivery").mockResolvedValue({
+      enabled: false,
+    } as Awaited<ReturnType<Client["upcomingDelivery"]>>);
+    const save = vi.spyOn(value, "setUpcomingDelivery").mockResolvedValue({
+      enabled: true,
+    } as Awaited<ReturnType<Client["setUpcomingDelivery"]>>);
+    await mount(<UpcomingTab client={value} connected onEdit={vi.fn()} />);
+    const toggle = host!.querySelector<HTMLInputElement>(
+      ".upcoming-delivery input[role=switch]",
+    )!;
+    expect(toggle.checked).toBe(false);
+    expect(host!.textContent).toContain("may be billed");
+    await act(async () => toggle.click());
+    expect(save).toHaveBeenCalledWith(true);
+    expect(toggle.checked).toBe(true);
+    expect(host!.textContent).toContain("even when the app is closed");
+  });
+  it("explains local delivery without the service", async () => {
+    const value = await client();
+    vi.spyOn(value, "upcomingDeliverySupported").mockReturnValue(false);
+    await mount(<UpcomingTab client={value} connected onEdit={vi.fn()} />);
+    expect(host!.querySelector(".upcoming-delivery input")).toBeNull();
+    expect(host!.textContent).toContain(
+      "Reminders arrive in the main chat when Open Muse is open",
+    );
+  });
   it("delivers due reminders while the app is connected", async () => {
     const value = await client();
     vi.spyOn(value, "config").mockResolvedValue({

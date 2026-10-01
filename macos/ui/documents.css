@@ -416,3 +416,17 @@
 .pill-button.danger {
   color: var(--danger);
 }
+.upcoming-delivery {
+  margin-top: 16px;
+}
+.upcoming-delivery .settings-group {
+  background: var(--fill);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.upcoming-delivery p {
+  margin: 8px 2px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-2);
+}

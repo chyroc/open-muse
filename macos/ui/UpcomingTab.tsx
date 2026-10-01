@@ -4,10 +4,12 @@ import { formatLocale, t } from "../../shared/i18n";
 import {
   describeSchedule,
   nextOccurrence,
+  type UpcomingDelivery,
   type UpcomingItem,
 } from "../../shared/upcoming";
 import type { Client } from "../../src/api";
 import { Empty, Modal } from "./Chrome";
+import { Switch } from "./SettingsSwitch";
 
 type Snapshot = { items: UpcomingItem[]; revision: string };
 type Action = "pause" | "resume" | "delete";
@@ -65,6 +67,34 @@ export function UpcomingTab({
     y: number;
   }>();
   const alive = useRef(true);
+  // Account builds can let the service deliver while the app is closed.
+  const supported = connected && client.upcomingDeliverySupported();
+  const [delivery, setDelivery] = useState<UpcomingDelivery>();
+  const [deliveryBusy, setDeliveryBusy] = useState(false);
+  useEffect(() => {
+    if (!supported) return;
+    let active = true;
+    void client
+      .upcomingDelivery()
+      .then((value) => active && setDelivery(value))
+      .catch((failure: Error) => active && setError(failure.message));
+    return () => {
+      active = false;
+    };
+  }, [client, supported]);
+  async function toggleDelivery(enabled: boolean) {
+    if (deliveryBusy) return;
+    setDeliveryBusy(true);
+    setError("");
+    try {
+      const value = await client.setUpcomingDelivery(enabled);
+      if (alive.current) setDelivery(value);
+    } catch (failure) {
+      if (alive.current) setError((failure as Error).message);
+    } finally {
+      if (alive.current) setDeliveryBusy(false);
+    }
+  }
   const load = useCallback(() => {
     if (!connected) return;
     void client
@@ -173,6 +203,35 @@ export function UpcomingTab({
           </li>
         ))}
       </ul>
+      <footer className="upcoming-delivery">
+        {supported && (
+          <div className="settings-group">
+            <Switch
+              label={t("Deliver even when Open Muse is closed")}
+              checked={delivery?.enabled ?? false}
+              disabled={!delivery || deliveryBusy}
+              onChange={(value) => void toggleDelivery(value)}
+            />
+          </div>
+        )}
+        <p>
+          {delivery?.enabled
+            ? delivery.state === "session_unavailable"
+              ? t(
+                  "The Muse service can no longer reach your main chat. Open the main chat to register it again.",
+                )
+              : t(
+                  "The Muse service sends due reminders to your main chat even when the app is closed, and your agent handles them with its tools. Steps that need approval wait for you. There are no push notifications yet.",
+                )
+            : supported
+              ? t(
+                  "Reminders arrive in the main chat when Open Muse is open at or after their time. Turn on delivery while closed to let the Muse service use your saved Ark key to run them while you are away; each one is a real Ark request and may be billed. There are no push notifications yet.",
+                )
+              : t(
+                  "Reminders arrive in the main chat when Open Muse is open at or after their time. There are no push notifications yet.",
+                )}
+        </p>
+      </footer>
       {menu && (
         <div
           className="status-menu upcoming-menu"
