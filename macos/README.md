@@ -61,6 +61,10 @@ the language for one run. Builds without the variable do not contain the tour.
 
 - A 74-point navigation rail, continuous main chat, searchable side-chat drawer,
   assistant activity/approval panel, and a bottom-aligned message composer.
+- The status panel's left edge closes it on a click, or when dragged almost
+  all the way to the window edge. While it is closed, the window's right edge
+  opens it on a click, or by pulling it in: the panel follows the pointer and
+  opens once pulled 64 points, otherwise it slides back out.
 - Return sends; Shift-Return inserts a newline; IME composition does not submit.
 - Command-N opens a side-chat draft; Command-K opens a palette of commands,
   chats and open goals, and can write the typed text into the main composer;

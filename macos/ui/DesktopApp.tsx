@@ -4,6 +4,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -92,6 +93,12 @@ import {
 import { canAutoApprove } from "../../shared/approval-policy";
 import { ArchiveToggle, Avatar, Empty, Modal, Rail } from "./Chrome";
 import { ShortcutsDialog } from "./Shortcuts";
+import {
+  PanelEdgeHandle,
+  panelEdge,
+  panelOpacity,
+  type PanelDrag,
+} from "./PanelEdge";
 import { CommandPalette, paletteItems } from "./Palette";
 import { FindBar, findMatches, partKey } from "./FindBar";
 import { MessageActions } from "./MessageActions";
@@ -143,6 +150,44 @@ export function DesktopApp({ client }: { client: Client }) {
   const [drawer, setDrawer] = useState(false);
   const [statusOpen, setStatusOpen] = useState(true);
   const [statusTab, setStatusTab] = useState<StatusTab>("activity");
+  // Dragging the status panel's edge, and settling it after a release.
+  const [panelDrag, setPanelDrag] = useState<PanelDrag>({ kind: "idle" });
+  const [panelSettle, setPanelSettle] = useState<{
+    from: number;
+    open: boolean;
+  }>();
+  const panelSurface = useRef<HTMLDivElement>(null);
+  const panelWidth = () =>
+    window.matchMedia("(max-width: 1050px)").matches ? 300 : 345;
+  const commitPanel = (open: boolean) => {
+    // A click on an edge toggles at once; a released drag glides the rest of
+    // the way from wherever the pointer left the panel.
+    const full = panelWidth();
+    const from = panelSurface.current?.getBoundingClientRect().width ?? 0;
+    if (from > 0 && from < full - 1) setPanelSettle({ from, open });
+    setStatusOpen(open);
+  };
+  useLayoutEffect(() => {
+    const surface = panelSurface.current;
+    if (!panelSettle || !surface) return;
+    const reduce = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    surface.style.transition = "none";
+    surface.style.width = `${panelSettle.from}px`;
+    surface.style.opacity = "";
+    void surface.offsetWidth;
+    surface.style.transition = reduce
+      ? "width 0.12s ease-out"
+      : `width ${panelEdge.settleMs}ms ${panelEdge.settleEase}`;
+    surface.style.width = panelSettle.open ? `${panelWidth()}px` : "0px";
+    const done = window.setTimeout(() => {
+      surface.style.transition = "";
+      surface.style.width = "";
+      setPanelSettle(undefined);
+    }, panelEdge.settleMs + 40);
+    return () => window.clearTimeout(done);
+  }, [panelSettle]);
   const [identity, setIdentity] = useState(defaultIdentity);
   const [document, setDocument] = useState<IdentityDocument>();
   const feedEditorOpen = useRef(false);
@@ -1736,47 +1781,85 @@ export function DesktopApp({ client }: { client: Client }) {
           </div>
         )}
       </main>
-      {statusOpen && route.page === "chat" && !document && (
-        <StatusPanel
-          identity={identity}
-          status={
-            !ready
-              ? t("Not connected")
-              : running
-                ? t("Working")
-                : task.connected
-                  ? t("Connected")
-                  : id
-                    ? t("Reconnecting…")
-                    : t("Ready")
-          }
-          tone={
-            !ready
-              ? "offline"
-              : running
-                ? "busy"
-                : task.connected || !id
-                  ? "online"
-                  : "offline"
-          }
-          tab={statusTab}
-          onTab={setStatusTab}
-          onClose={() => setStatusOpen(false)}
-          events={currentEvents}
-          approvals={approvals}
-          busy={busy}
-          onConfirm={confirm}
-          onDocument={openDocument}
-          onPrefill={prefillComposer}
-          upcoming={
-            <UpcomingTab
-              client={client}
-              connected={ready}
-              onEdit={prefillComposer}
-            />
-          }
+      {route.page === "chat" && !document && !statusOpen && !panelSettle && (
+        <PanelEdgeHandle
+          mode="open"
+          width={panelWidth()}
+          label={t("Click or drag to open the status panel")}
+          onDrag={setPanelDrag}
+          onCommit={commitPanel}
         />
       )}
+      {route.page === "chat" &&
+        !document &&
+        (statusOpen || panelSettle || panelDrag.kind === "opening") && (
+          <div
+            ref={panelSurface}
+            className={`status-surface${panelDrag.kind !== "idle" || panelSettle ? " is-moving" : ""}`}
+            data-preview={
+              panelDrag.kind === "closing" && panelDrag.preview
+                ? "closing"
+                : undefined
+            }
+            style={
+              panelDrag.kind === "opening"
+                ? {
+                    width: panelDrag.reveal,
+                    opacity: panelOpacity(panelDrag.reveal, panelWidth()),
+                  }
+                : undefined
+            }
+          >
+            {statusOpen && (
+              <PanelEdgeHandle
+                mode="close"
+                width={panelWidth()}
+                label={t("Click or drag to close the status panel")}
+                onDrag={setPanelDrag}
+                onCommit={commitPanel}
+              />
+            )}
+            <StatusPanel
+              identity={identity}
+              status={
+                !ready
+                  ? t("Not connected")
+                  : running
+                    ? t("Working")
+                    : task.connected
+                      ? t("Connected")
+                      : id
+                        ? t("Reconnecting…")
+                        : t("Ready")
+              }
+              tone={
+                !ready
+                  ? "offline"
+                  : running
+                    ? "busy"
+                    : task.connected || !id
+                      ? "online"
+                      : "offline"
+              }
+              tab={statusTab}
+              onTab={setStatusTab}
+              onClose={() => setStatusOpen(false)}
+              events={currentEvents}
+              approvals={approvals}
+              busy={busy}
+              onConfirm={confirm}
+              onDocument={openDocument}
+              onPrefill={prefillComposer}
+              upcoming={
+                <UpcomingTab
+                  client={client}
+                  connected={ready}
+                  onEdit={prefillComposer}
+                />
+              }
+            />
+          </div>
+        )}
       {shortcutsOpen && (
         <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />
       )}

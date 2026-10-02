@@ -1658,3 +1658,71 @@ h3 {
     animation: rail-menu-fade 0.15s ease-out both;
   }
 }
+/* The status panel's surface: its width follows an edge drag and glides to
+   rest after a release. */
+.status-surface {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+}
+.status-surface.is-moving {
+  overflow: hidden;
+}
+.status-surface > .status-panel {
+  flex-shrink: 0;
+}
+.status-surface[data-preview="closing"] {
+  width: 0;
+  transition: width 0.22s cubic-bezier(0.15, 1, 0.4, 1);
+}
+.desktop-shell {
+  position: relative;
+}
+.panel-edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 15;
+  width: 10px;
+  touch-action: none;
+  user-select: none;
+}
+.panel-edge-close {
+  left: 0;
+  cursor: e-resize;
+}
+.panel-edge-open {
+  right: 0;
+  cursor: w-resize;
+}
+/* Hovering an edge lights its divider with a soft vertical gradient. */
+.panel-edge::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    var(--line) 15%,
+    var(--line-strong) 50%,
+    var(--line) 85%
+  );
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+}
+.panel-edge-close::after {
+  left: 0;
+}
+.panel-edge-open::after {
+  right: 0;
+}
+.panel-edge:hover::after,
+.panel-edge:active::after {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .status-surface[data-preview="closing"] {
+    transition: width 0.12s ease-out;
+  }
+}

@@ -240,4 +240,6 @@ export const zhDesktop: Record<string, string> = {
   Included: "已包含",
   "Other services are not connected in this app. Ask your assistant in chat; it can often use a service's website or command-line tool instead.":
     "此 App 未连接其他服务。可以在对话中问助手，它通常能改用该服务的网站或命令行工具。",
+  "Click or drag to open the status panel": "点按或拖动以打开状态面板",
+  "Click or drag to close the status panel": "点按或拖动以关闭状态面板",
 };
