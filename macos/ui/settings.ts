@@ -149,12 +149,17 @@ export type ConnectionStatus = {
   ready: boolean;
   project?: string;
   method?: "api_key";
+  // Account builds only: whether an Open Muse account is signed in, which
+  // can be true before its Ark API key is added.
+  account?: { signedIn: boolean };
 };
 
 export function connectionSummary(status: ConnectionStatus | undefined) {
   return {
     state: !status?.loggedIn
-      ? "Not signed in"
+      ? status?.account?.signedIn
+        ? "Not connected"
+        : "Not signed in"
       : status.ready
         ? "Connected"
         : "Choose a project",

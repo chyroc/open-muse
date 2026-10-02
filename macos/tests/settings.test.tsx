@@ -9,6 +9,7 @@ import { zhCN } from "../../shared/locales/zh-CN";
 import {
   activeLanguage,
   appVersion,
+  connectionSummary,
   isSettingsRoute,
   openNativeSettings,
   settingsPath,
@@ -148,6 +149,21 @@ describe("Mac settings model", () => {
       },
     });
     expect(openNativeSettings()).toBe(false);
+  });
+  it("separates a signed-in account without an Ark key from a signed-out one", () => {
+    expect(connectionSummary(undefined).state).toBe("Not signed in");
+    expect(
+      connectionSummary({ loggedIn: false, ready: false, account: { signedIn: false } })
+        .state,
+    ).toBe("Not signed in");
+    expect(
+      connectionSummary({ loggedIn: false, ready: false, account: { signedIn: true } })
+        .state,
+    ).toBe("Not connected");
+    expect(
+      connectionSummary({ loggedIn: true, ready: true, account: { signedIn: true } })
+        .state,
+    ).toBe("Connected");
   });
   it("provides every section translation", () => {
     for (const section of settingsSections) {
