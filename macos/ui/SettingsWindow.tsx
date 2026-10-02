@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ChevronDown,
   CircleHelp,
@@ -212,6 +219,11 @@ export function SettingsWindow({ client }: { client: Client }) {
     }, 5000);
     return () => clearInterval(timer);
   }, [connection, readStatus]);
+  // Each section opens at its top, wherever the previous one was scrolled.
+  const main = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    main.current?.scrollTo({ top: 0 });
+  }, [section]);
   useEffect(() => {
     if (location.hash !== settingsPath(section))
       history.replaceState(null, "", settingsPath(section));
@@ -244,7 +256,7 @@ export function SettingsWindow({ client }: { client: Client }) {
           {t("Sign out")}
         </button>
       </nav>
-      <main className="settings-main">
+      <main className="settings-main" ref={main}>
         <h1>{t(active.label)}</h1>
         {error && (
           <p className="settings-error" role="alert">
