@@ -339,6 +339,10 @@
   font-size: 13px;
   line-height: 1.8;
 }
+/* The full account ID is one long hexadecimal word. */
+.account-id {
+  overflow-wrap: anywhere;
+}
 .logout-row {
   border-top: 1px solid #e5e6db;
   margin-top: 24px;

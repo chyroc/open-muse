@@ -96,13 +96,11 @@ export function AccountPanel({
       ) : owner || unconfirmed ? (
         <div className="logout-row">
           <p
-            className="background-note"
+            className="background-note account-id"
             role={unconfirmed ? "alert" : undefined}
           >
             {owner
-              ? t("Account ID: {id}", {
-                  id: `${owner.slice(10, 18)}…`,
-                })
+              ? t("Account ID: {id}", { id: owner.slice("muse_user_".length) })
               : t(
                   "The last session renewal could not be confirmed, so this session is no longer used. Sign out of Open Muse and sign in again.",
                 )}

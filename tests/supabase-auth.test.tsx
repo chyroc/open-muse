@@ -412,11 +412,11 @@ describe("Native Supabase Auth trial", () => {
           onChanged={() => {}}
         />,
       );
-      const id = supabaseOwner(origin, subject).slice(10, 18);
+      const id = supabaseOwner(origin, subject).slice("muse_user_".length);
+      expect(id).toHaveLength(64);
       const chinese = languages[0].startsWith("zh");
-      expect(html).toContain(
-        chinese ? `账号 ID：${id}…` : `Account ID: ${id}…`,
-      );
+      expect(html).toContain(chinese ? `账号 ID：${id}` : `Account ID: ${id}`);
+      expect(html).not.toContain("…");
       expect(html).not.toContain(chinese ? "已登录。" : "Signed in.");
     },
   );
