@@ -136,7 +136,7 @@ export async function handle(
         if (!account)
           throw new HttpError(
             403,
-            "Sign in with a Muse account to change the workspace.",
+            "Sign in with an Open Muse account to change the workspace.",
           );
         const input = await body(request);
         if (
@@ -177,7 +177,7 @@ export async function handle(
         if (!account)
           throw new HttpError(
             403,
-            "Sign in with a Muse account to change the workspace.",
+            "Sign in with an Open Muse account to change the workspace.",
           );
         const input = await body(request);
         if (
@@ -203,7 +203,7 @@ export async function handle(
         if (!account)
           throw new HttpError(
             403,
-            "Sign in with a Muse account to change the workspace.",
+            "Sign in with an Open Muse account to change the workspace.",
           );
         const input = await body(request, 131072);
         if (
@@ -235,7 +235,7 @@ export async function handle(
         if (!account)
           throw new HttpError(
             403,
-            "Sign in with a Muse account to prepare a workspace.",
+            "Sign in with an Open Muse account to prepare a workspace.",
           );
         const workspaces = new AccountWorkspaces(env, owner, fetcher);
         if (request.method === "GET") response = json(await workspaces.read());
@@ -269,7 +269,7 @@ export async function handle(
         } else throw new HttpError(405, "Method not allowed.");
       } else if (url.pathname.startsWith("/v1/account/devices")) {
         if (!account)
-          throw new HttpError(403, "Sign in with a Muse account to list devices.");
+          throw new HttpError(403, "Sign in with an Open Muse account to list devices.");
         const devices = new AccountDevices(env, owner);
         const id = /^\/v1\/account\/devices\/([^/]+)$/.exec(url.pathname)?.[1];
         if (url.pathname === "/v1/account/devices" && request.method === "GET")
@@ -288,7 +288,7 @@ export async function handle(
         if (!account)
           throw new HttpError(
             403,
-            "Sign in with a Muse account to deliver reminders.",
+            "Sign in with an Open Muse account to deliver reminders.",
           );
         const upcoming = new UpcomingDelivery(env, owner, fetcher);
         if (request.method === "GET") response = json(await upcoming.read());
@@ -299,7 +299,7 @@ export async function handle(
         if (!account)
           throw new HttpError(
             403,
-            "Sign in with a Muse account to store an Ark API key.",
+            "Sign in with an Open Muse account to store an Ark API key.",
           );
         const credentials = new AccountCredentials(env, owner);
         if (request.method === "GET") response = json(await credentials.read());

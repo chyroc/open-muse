@@ -24,7 +24,7 @@ export async function authenticateSupabase(
     throw new HttpError(503, "Supabase Auth is not configured.");
   }
   if (!authToken.safeParse(token).success)
-    throw new HttpError(401, "Sign in to your Muse account again.");
+    throw new HttpError(401, "Sign in to your Open Muse account again.");
   let response: Response;
   try {
     response = await fetcher(`${origin}/auth/v1/user`, {
@@ -41,7 +41,7 @@ export async function authenticateSupabase(
     );
   }
   if (response.status === 401 || response.status === 403)
-    throw new HttpError(401, "Sign in to your Muse account again.");
+    throw new HttpError(401, "Sign in to your Open Muse account again.");
   if (!response.ok)
     throw new HttpError(
       503,
@@ -54,7 +54,7 @@ export async function authenticateSupabase(
   } catch {
     throw new HttpError(
       401,
-      "A verified, non-anonymous Muse account is required.",
+      "A verified, non-anonymous Open Muse account is required.",
     );
   }
 }

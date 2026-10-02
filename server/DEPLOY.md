@@ -6,7 +6,7 @@ Cloudflare Worker with D1 (see the last section).
 
 | Capability                             | Volcengine                                         |
 | -------------------------------------- | -------------------------------------------------- |
-| Login (Muse accounts)                  | Supabase Auth (email/password)                     |
+| Login (Open Muse accounts)                  | Supabase Auth (email/password)                     |
 | API, per-account isolation             | Supabase Edge Function `open-muse` (Deno)          |
 | Encrypted server-side storage          | Workspace Postgres, schema `open_muse`             |
 | Scheduled tasks (the schedule clock)   | veFaaS function with a timer trigger, `cn-beijing` |

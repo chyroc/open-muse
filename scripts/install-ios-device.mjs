@@ -198,7 +198,7 @@ function signingTeam() {
   return [...teams][0];
 }
 
-step("Resolving the Muse account service");
+step("Resolving the Open Muse account service");
 const config = accountConfig();
 console.log(`service: ${config.background}`);
 await checkService(config.background);
@@ -214,7 +214,7 @@ if (!existsSync(path.join(root, "node_modules"))) {
   run("npm", ["ci"]);
 }
 
-step("Building the web bundle with Muse accounts");
+step("Building the web bundle with Open Muse accounts");
 run("npm", ["run", "build"], {
   env: {
     ...process.env,
@@ -289,6 +289,6 @@ try {
 }
 
 console.log(`
-Done. In the app open Settings → Muse account to register or sign in with your
+Done. In the app open Settings → Open Muse account to register or sign in with your
 email, then connect your Ark API key. Apps signed by a free Personal Team expire
 after 7 days; run this again to reinstall.`);

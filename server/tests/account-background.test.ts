@@ -120,7 +120,7 @@ async function provisioned(i: number) {
 }
 let env: Env;
 
-describe("Background work for Muse account workspaces", () => {
+describe("Background work for Open Muse account workspaces", () => {
   let fixture: Awaited<ReturnType<typeof database>>;
   beforeAll(async () => {
     fixture = await database();

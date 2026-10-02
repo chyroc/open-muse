@@ -66,7 +66,7 @@ describe("Mac devices", () => {
     vi.spyOn(backgroundClient, "accountConfigured").mockReturnValue(false);
     await mount();
     expect(host!.textContent).toContain("Online");
-    expect(host!.textContent).toContain("same Muse account");
+    expect(host!.textContent).toContain("same Open Muse account");
   });
   it("lists the account's other devices and forgets one after confirming", async () => {
     account();

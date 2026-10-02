@@ -108,8 +108,8 @@ export const zhCN: Record<string, string> = {
   "This build has no background service configured. Direct Ark conversations still work. Set the public API origin when building the app to enable this connection.":
     "此版本未配置后台服务。仍可直接连接 Ark 进行对话。在构建应用时设置公共 API 来源地址，即可启用此连接。",
   "Device token": "设备令牌",
-  "Use a private Muse device token, never an Ark key or Cloudflare token. The token stays in this app's separate Keychain entry.":
-    "请使用私有 Muse 设备令牌，不要使用 Ark 密钥或 Cloudflare 令牌。令牌保存在此应用独立的钥匙串条目中。",
+  "Use a private Open Muse device token, never an Ark key or Cloudflare token. The token stays in this app's separate Keychain entry.":
+    "请使用私有 Open Muse 设备令牌，不要使用 Ark 密钥或 Cloudflare 令牌。令牌保存在此应用独立的钥匙串条目中。",
   "Connect background service": "连接后台服务",
   "Private service account:": "私有服务账号：",
   "Checking…": "正在检查…",

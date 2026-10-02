@@ -112,7 +112,7 @@ the language for one run. Builds without the variable do not contain the tour.
 - While connected, the app checks once a minute for occurrences that have come
   due and delivers them into the main chat through the shared delivery service,
   which claims each occurrence before sending and never sends it twice.
-- Account builds can switch on delivery by the Muse service while the app is
+- Account builds can switch on delivery by the Open Muse service while the app is
   closed. It is off by default; each delivery is a billed Ark request run by the
   agent with its tools, approvals still wait, and there are no push
   notifications.
@@ -237,7 +237,7 @@ Other sections:
   removes them. A value is sent once as an environment_variable credential,
   optionally limited to listed websites, and never shown again; conversations
   created while the vault exists receive it.
-- Devices shows this Mac and, with a Muse account, the account's other devices
+- Devices shows this Mac and, with an Open Muse account, the account's other devices
   and when each was last seen. The Mac registers itself at start and hourly.
 - Data controls can import memory from another assistant as a reviewed draft
   in the main chat, and download memory, goals, Upcoming and all conversations

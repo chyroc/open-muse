@@ -1,6 +1,6 @@
 # Open Muse service
 
-API service for the iOS and macOS apps. It verifies Muse account sessions,
+API service for the iOS and macOS apps. It verifies Open Muse account sessions,
 keeps each account's Ark API key encrypted, records account workspace
 ownership, and runs background Feed work and Upcoming reminders. It is deployed
 on Volcengine as a Supabase Edge Function with the workspace's Postgres, Auth,
@@ -54,7 +54,7 @@ unconfirmed. At most one message per account per tick and 48 per day. The agent
 handles the reminder with its normal tools in the main chat; any step that needs
 approval waits for the user in the app.
 
-## Muse accounts
+## Open Muse accounts
 
 The API accepts end-user access tokens from one explicitly configured
 Supabase Auth provider, including the Volcano-hosted Supabase service. Configure
@@ -135,7 +135,7 @@ clients' connection policies. Do not put credentials in URLs or tracked files.
 Builds without Auth configuration run in single-user local mode, retain
 private-device-token enrollment, and make no Supabase requests.
 
-The **Muse account** settings card supports email/password signup and login.
+The **Open Muse account** settings card supports email/password signup and login.
 Signup requires explicit confirmation and does not count as a confirmed login;
 follow the provider's email-verification policy, then sign in. Passwords are
 sent directly to Auth and never saved. Only after the service confirms the same
@@ -273,7 +273,7 @@ deployed or that a real unattended generation can complete.
   for incremental reads. Each item keeps its original MA session/event reference.
 - `POST /v1/runs/:id/recheck`: `{confirm: true}`; resumes a reviewed run from
   its persisted phase. An uncertain creation/message is only queried, not resent.
-- `GET /v1/account/credential`: Muse account sessions only. Returns
+- `GET /v1/account/credential`: Open Muse account sessions only. Returns
   `{configured, revision, updatedAt, credential?}` where `credential` is the
   account's own `{apiKey, project}`. Device tokens receive 403.
 - `PUT /v1/account/credential`: `{credential, revision, confirm: true}`. The key
@@ -391,7 +391,7 @@ Muse are not recorded.
 ### Account Ark credentials
 
 The Ark API key is a model-service credential, not an identity. Each verified
-Muse account owns at most one sealed `{apiKey, project}` record in
+Open Muse account owns at most one sealed `{apiKey, project}` record in
 `account_credentials`. AES-256-GCM authenticates the purpose, account owner,
 and revision with every ciphertext, so a row copied to another account or
 revision cannot be decrypted. Two accounts that upload the same key keep
@@ -459,12 +459,12 @@ revocation operation. There is no global key-ownership registry and no
 deduplication of users or connections by key. Revoking one user's upload does
 not revoke another user's upload; revoking the key at Ark affects everyone
 using it. Device enrollment is a trusted administrative operation; end users
-sign in with Muse accounts as described above.
+sign in with Open Muse accounts as described above.
 
 ### End-user identity
 
 Device tokens identify users only through the trusted server-side enrollment
-binding. Muse accounts identify users only through sessions the configured Auth
+binding. Open Muse accounts identify users only through sessions the configured Auth
 provider verifies. A random client UUID, a person's name or email, an Ark key,
 an API-key digest, an Apple device ID, or a claimed user ID is not
 authentication.

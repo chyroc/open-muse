@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// The devices a Muse account uses, as the service records them: presence
+// The devices an Open Muse account uses, as the service records them: presence
 // only, with no way to reach or control a device through this list.
 export const deviceIdInput = z
   .string()

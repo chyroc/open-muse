@@ -809,7 +809,7 @@ function Workspace({
               <span>
                 {client.identity.accountMode() &&
                 !client.identity.accountOwner()
-                  ? t("Sign in to your Muse account to start chatting")
+                  ? t("Sign in to your Open Muse account to start chatting")
                   : t("Add an Ark API key to start chatting")}
               </span>
             </a>

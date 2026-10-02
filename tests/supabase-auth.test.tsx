@@ -157,7 +157,7 @@ describe("Native Supabase Auth trial", () => {
     expect(source.backgroundConfiguration).not.toHaveBeenCalled();
     await expect(
       f.client.signInAccount("other@example.com", password),
-    ).rejects.toThrow("before signing in to another Muse account");
+    ).rejects.toThrow("before signing in to another Open Muse account");
     expect(f.authFetch).toHaveBeenCalledTimes(1);
   });
   it("renews once on explicit request and preserves the same user and pending action", async () => {
@@ -220,7 +220,7 @@ describe("Native Supabase Auth trial", () => {
     await expect(f.client.renewAccountLogin()).rejects.toThrow("not retried");
     expect(JSON.parse(f.read()).account.refreshPending).toBe(true);
     await expect(f.client.renewAccountLogin()).rejects.toThrow(
-      "Sign out of Muse",
+      "Sign out of Open Muse",
     );
     const restored = new BackgroundClient(
       background,
@@ -231,9 +231,9 @@ describe("Native Supabase Auth trial", () => {
     );
     await restored.restore();
     await expect(restored.renewAccountLogin()).rejects.toThrow(
-      "Sign out of Muse",
+      "Sign out of Open Muse",
     );
-    await expect(restored.status()).rejects.toThrow("Sign out of Muse");
+    await expect(restored.status()).rejects.toThrow("Sign out of Open Muse");
     expect(f.authFetch).toHaveBeenCalledTimes(2);
     await restored.disconnect();
     expect(f.read()).toBe("");
@@ -276,7 +276,7 @@ describe("Native Supabase Auth trial", () => {
       "identity changed",
     );
     expect(JSON.parse(f.read()).owner).toBe(supabaseOwner(origin, subject));
-    await expect(f.client.status()).rejects.toThrow("Sign out of Muse");
+    await expect(f.client.status()).rejects.toThrow("Sign out of Open Muse");
   });
   it("does not renew the same session in two windows or on devices without cross-window locks", async () => {
     const f = fixture();
@@ -391,8 +391,8 @@ describe("Native Supabase Auth trial", () => {
       expect(html).toContain(chinese ? "未登录" : "Not signed in");
       expect(html).toContain(
         chinese
-          ? "请先在上方登录 Muse 账号，再使用后台功能。"
-          : "Sign in to your Muse account above to use background features.",
+          ? "请先在上方登录 Open Muse 账号，再使用后台功能。"
+          : "Sign in to your Open Muse account above to use background features.",
       );
       expect(html).not.toContain("muse_device_…");
       expect(html).not.toMatch(/trial|试用/);

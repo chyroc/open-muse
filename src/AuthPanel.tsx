@@ -14,7 +14,7 @@ interface Status {
   method?: "api_key";
   legacy?: "api_key";
   legacyKey?: boolean;
-  // Present in builds with a Muse account service.
+  // Present in builds with an Open Muse account service.
   account?: { signedIn: boolean };
 }
 function ArkAuthPanel({
@@ -82,14 +82,14 @@ function ArkAuthPanel({
       )}
       {signedOut && (
         <p className="auth-consent-note" role="status">
-          {t("Sign in to your Muse account above to add your Ark API key.")}
+          {t("Sign in to your Open Muse account above to add your Ark API key.")}
         </p>
       )}
       {account && status?.legacyKey && (
         <div className="auth-steps">
           <p className="auth-consent-note" role="status">
             {t(
-              "This device has an Ark API key saved by an earlier version of Open Muse. It is not used until you save it to your Muse account. Conversations and data from that earlier setup stay on this device and are not moved into your account.",
+              "This device has an Ark API key saved by an earlier version of Open Muse. It is not used until you save it to your Open Muse account. Conversations and data from that earlier setup stay on this device and are not moved into your account.",
             )}
           </p>
           <div className="background-actions">
@@ -172,7 +172,7 @@ function ArkAuthPanel({
           <p className="auth-consent-note">
             {account
               ? t(
-                  "Ark checks the key once, then it is stored encrypted in your Muse account so your signed-in devices can use it. The key is a model-service credential, not your identity. Replacing it starts a separate workspace and stops background work tied to the old key. Cloud calls may be billed.",
+                  "Ark checks the key once, then it is stored encrypted in your Open Muse account so your signed-in devices can use it. The key is a model-service credential, not your identity. Replacing it starts a separate workspace and stops background work tied to the old key. Cloud calls may be billed.",
                 )
               : t(
                   "This device connects directly to Volcano Ark. Native apps store credentials in system-protected storage; the web app keeps them only for this browser session. The assistant and runtime are created automatically on first use; cloud calls may be billed.",
@@ -204,7 +204,7 @@ function ArkAuthPanel({
         <div className="auth-connected">
           <p>
             {account
-              ? t("Saved in your Muse account")
+              ? t("Saved in your Open Muse account")
               : t("Connected with API Key")}{" "}
             ·{" "}
             {status.project ? (
@@ -237,7 +237,7 @@ function ArkAuthPanel({
               onChange={(event) => setRemoveConsent(event.target.checked)}
             />
             {t(
-              "Remove the key from my Muse account on all devices and stop background work that uses it. The key stays valid at Ark until you revoke it there.",
+              "Remove the key from my Open Muse account on all devices and stop background work that uses it. The key stays valid at Ark until you revoke it there.",
             )}
           </label>
           <button

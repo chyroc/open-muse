@@ -44,12 +44,12 @@ function retiredSSO(value: unknown) {
   );
 }
 export type APIKeyLogin = z.infer<typeof apiKeyLogin> & {
-  // Set for keys stored in a Muse account: the verified owner and the stored
+  // Set for keys stored in an Open Muse account: the verified owner and the stored
   // credential revision they were read at.
   owner?: string;
   revision?: number;
 };
-// The signed-in Muse account, its server-side Ark credential, and the
+// The signed-in Open Muse account, its server-side Ark credential, and the
 // workspace the service created for it.
 export interface AccountProvider {
   accountConfigured(): boolean;
@@ -107,7 +107,7 @@ export class DirectAuth {
     private fetcher: typeof fetch = directFetch,
     readonly account?: AccountProvider,
   ) {}
-  // Builds configured with a Muse account service use the account as the
+  // Builds configured with an Open Muse account service use the account as the
   // user's identity; the Ark key is only the model-service credential.
   accountMode() {
     return Boolean(this.account?.accountConfigured());
@@ -158,7 +158,7 @@ export class DirectAuth {
     if (this.accountOwner() !== owner)
       throw new ApiError(
         409,
-        t("The Muse account changed. Reload before continuing."),
+        t("The Open Muse account changed. Reload before continuing."),
       );
     this.revision = stored.revision;
     if (stored.credential)
@@ -216,7 +216,7 @@ export class DirectAuth {
   private signedInOwner() {
     const owner = this.accountOwner();
     if (!owner || owner !== this.owner)
-      throw new ApiError(401, t("Sign in to your Muse account first."));
+      throw new ApiError(401, t("Sign in to your Open Muse account first."));
     return owner;
   }
   // Stores the key in the signed-in account, replacing any earlier key. The

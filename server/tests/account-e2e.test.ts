@@ -179,7 +179,7 @@ function memoryVault(): CredentialStore & { value: string } {
   };
 }
 
-describe("Muse accounts end to end", () => {
+describe("Open Muse accounts end to end", () => {
   let fixture: Awaited<ReturnType<typeof database>>;
   let env: Env;
   const provider = gotrue();
@@ -306,7 +306,7 @@ describe("Muse accounts end to end", () => {
       await d.client.restore();
       expect(d.client.signedIn()).toBe(false);
       await expect(d.client.prepareWorkspace()).rejects.toThrow(
-        "Sign in to your Muse account",
+        "Sign in to your Open Muse account",
       );
       await d.signIn(email);
       await d.client.auth("api-key", {
@@ -817,7 +817,7 @@ describe("Muse accounts end to end", () => {
       name: "Muse",
     });
     await expect(shared.client.prepareWorkspace()).rejects.toThrow(
-      "Sign in to your Muse account",
+      "Sign in to your Open Muse account",
     );
     await shared.signIn("bob@example.com");
     expect((await shared.prepare()).agentId).toBe(
@@ -893,7 +893,7 @@ describe("Muse accounts end to end", () => {
     });
     const calls = upstream.fetcher.mock.calls.length;
     await expect(upgraded.client.prepareWorkspace()).rejects.toThrow(
-      "Sign in to your Muse account",
+      "Sign in to your Open Muse account",
     );
     await upgraded.signIn("carol@example.com");
     expect(upgraded.client.signedIn()).toBe(false);
@@ -1015,7 +1015,7 @@ describe("Muse accounts end to end", () => {
         name: "Muse",
       });
       await expect(d.client.prepareWorkspace()).rejects.toThrow(
-        "Sign in to your Muse account",
+        "Sign in to your Open Muse account",
       );
       expect(upstream.fetcher.mock.calls.length).toBe(calls);
     });

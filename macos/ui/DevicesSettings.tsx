@@ -51,7 +51,7 @@ export function DevicesSettings() {
             <div>
               <p>
                 {t(
-                  "Devices signed in to the same Muse account appear here. Without an account, each device keeps its own data.",
+                  "Devices signed in to the same Open Muse account appear here. Without an account, each device keeps its own data.",
                 )}
               </p>
             </div>

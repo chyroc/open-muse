@@ -70,7 +70,7 @@ export async function authenticate(
   ) {
     const bearer = /^Bearer ([A-Za-z0-9_.-]{20,16384})$/.exec(authorization);
     if (!bearer)
-      throw new HttpError(401, "Sign in to your Muse account again.");
+      throw new HttpError(401, "Sign in to your Open Muse account again.");
     return authenticateSupabase(bearer[1], env, fetcher);
   }
   const hashes = deviceIdentities(env);

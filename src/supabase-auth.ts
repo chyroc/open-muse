@@ -48,7 +48,9 @@ export class SupabaseAuth {
   }
   private async request(path: string, init: RequestInit = {}) {
     if (!this.configured())
-      throw new Error(t("Muse account login is not configured in this build."));
+      throw new Error(
+        t("Open Muse account login is not configured in this build."),
+      );
     const bound = boundedSignal([init.signal], 15000);
     try {
       const response = await this.fetcher(`${this.origin}/auth/v1${path}`, {
@@ -163,7 +165,9 @@ export class SupabaseAuth {
     );
     if (next.userId !== checked.userId)
       throw new Error(
-        t("The account identity changed. Sign out of Muse and sign in again."),
+        t(
+          "The account identity changed. Sign out of Open Muse and sign in again.",
+        ),
       );
     return next;
   }

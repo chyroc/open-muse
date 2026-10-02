@@ -45,8 +45,8 @@ export const zhErrors: Record<string, string> = {
   "Background service is not configured.": "尚未配置后台服务。",
   "Could not confirm the background request. Refresh to check its result; no request was retried automatically.":
     "无法确认后台请求结果。请刷新查看；未自动重试任何请求。",
-  "Enter a Muse device token, not an Ark or Cloudflare key.":
-    "请输入 Muse 设备令牌，不要使用 Ark 或 Cloudflare 密钥。",
+  "Enter an Open Muse device token, not an Ark or Cloudflare key.":
+    "请输入 Open Muse 设备令牌，不要使用 Ark 或 Cloudflare 密钥。",
   "Connect to the background service first.": "请先连接后台服务。",
   "The background connection changed; refresh before continuing.":
     "后台连接已更改，请刷新后继续。",

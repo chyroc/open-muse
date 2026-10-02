@@ -5,7 +5,7 @@ import type { Client } from "./api";
 import { backgroundClient, type BackgroundClient } from "./background-client";
 import { SupabaseLoginForm } from "./SupabaseLoginForm";
 
-// The Muse account is the user's identity on every device. Signing in or out
+// The Open Muse account is the user's identity on every device. Signing in or out
 // switches which account's Ark key, workspace, and history this app uses.
 export function AccountPanel({
   service = backgroundClient,
@@ -57,7 +57,7 @@ export function AccountPanel({
           <UserRound size={21} />
         </div>
         <div>
-          <h2>{t("Muse account")}</h2>
+          <h2>{t("Open Muse account")}</h2>
           <p>
             {t(
               "Your identity on every device. Your Ark API key, workspace, and history belong to it.",
@@ -81,7 +81,7 @@ export function AccountPanel({
       {device ? (
         <p className="background-note">
           {t(
-            "This device is connected to the service with a private device token. Remove that connection under Background Feed to sign in to a Muse account.",
+            "This device is connected to the service with a private device token. Remove that connection under Background Feed to sign in to an Open Muse account.",
           )}
         </p>
       ) : owner || unconfirmed ? (
@@ -95,7 +95,7 @@ export function AccountPanel({
                   id: `${owner.slice(10, 18)}…`,
                 })
               : t(
-                  "The last session renewal could not be confirmed, so this session is no longer used. Sign out of Muse and sign in again.",
+                  "The last session renewal could not be confirmed, so this session is no longer used. Sign out of Open Muse and sign in again.",
                 )}
           </p>
           <button
@@ -119,7 +119,7 @@ export function AccountPanel({
             }
           >
             <LogOut size={15} />
-            {t("Sign out of Muse")}
+            {t("Sign out of Open Muse")}
           </button>
           <small>
             {t(

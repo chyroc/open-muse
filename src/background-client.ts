@@ -269,7 +269,7 @@ export class BackgroundClient {
                   )
                 : response.status === 403 && !token.startsWith("muse_device_")
                   ? t(
-                      "This workspace belongs to another Muse account. Nothing was changed.",
+                      "This workspace belongs to another Open Muse account. Nothing was changed.",
                     )
                   : response.status === 429
                     ? t("Too many attempts. Try again later.")
@@ -302,7 +302,7 @@ export class BackgroundClient {
     return this.exclusive(async () => {
       if (!/^muse_device_[A-Za-z0-9_-]{32,128}$/.test(token))
         throw new Error(
-          t("Enter a Muse device token, not an Ark or Cloudflare key."),
+          t("Enter an Open Muse device token, not an Ark or Cloudflare key."),
         );
       const status = statusSchema.parse(await this.call("/v1/status", token));
       const value = { origin: this.origin, token, owner: status.owner };
@@ -316,12 +316,12 @@ export class BackgroundClient {
       if (this.current)
         throw new Error(
           t(
-            "Disconnect the current background connection before signing in to another Muse account.",
+            "Disconnect the current background connection before signing in to another Open Muse account.",
           ),
         );
       if (!this.accountConfigured())
         throw new Error(
-          t("Muse account login is not configured in this build."),
+          t("Open Muse account login is not configured in this build."),
         );
       const session = await this.accounts.signIn(email, password);
       const status = statusSchema.parse(
@@ -333,7 +333,7 @@ export class BackgroundClient {
       )
         throw new Error(
           t(
-            "The account identity changed. Sign out of Muse and sign in again.",
+            "The account identity changed. Sign out of Open Muse and sign in again.",
           ),
         );
       const value: Credentials = {
@@ -352,12 +352,12 @@ export class BackgroundClient {
       if (this.current)
         throw new Error(
           t(
-            "Disconnect the current background connection before signing in to another Muse account.",
+            "Disconnect the current background connection before signing in to another Open Muse account.",
           ),
         );
       if (!this.accountConfigured())
         throw new Error(
-          t("Muse account login is not configured in this build."),
+          t("Open Muse account login is not configured in this build."),
         );
       await this.accounts.signUp(email, password);
     });
@@ -376,14 +376,15 @@ export class BackgroundClient {
     if (typeof navigator === "undefined" || !navigator.locks)
       throw new Error(
         t(
-          "This device cannot coordinate login renewal safely. Sign out of Muse and sign in again.",
+          "This device cannot coordinate login renewal safely. Sign out of Open Muse and sign in again.",
         ),
       );
     return navigator.locks.request(
       `muse-account-renew:${this.origin}`,
       async () => {
         const c = this.credentials();
-        if (!c.account) throw new Error(t("Sign in to a Muse account first."));
+        if (!c.account)
+          throw new Error(t("Sign in to an Open Muse account first."));
         // Another operation in this window may have renewed while this one
         // waited for the lock.
         if (
@@ -402,13 +403,13 @@ export class BackgroundClient {
         )
           throw new Error(
             t(
-              "The account connection changed in another window. Sign out of Muse and sign in again.",
+              "The account connection changed in another window. Sign out of Open Muse and sign in again.",
             ),
           );
         if (c.account.refreshPending || disk.data.account.refreshPending)
           throw new Error(
             t(
-              "The previous login renewal could not be confirmed. Sign out of Muse and sign in again; it was not retried.",
+              "The previous login renewal could not be confirmed. Sign out of Open Muse and sign in again; it was not retried.",
             ),
           );
         const pending: Credentials = {
@@ -441,7 +442,7 @@ export class BackgroundClient {
         if (status.owner !== c.owner || status.account?.provider !== "supabase")
           throw new Error(
             t(
-              "The account identity changed. Sign out of Muse and sign in again.",
+              "The account identity changed. Sign out of Open Muse and sign in again.",
             ),
           );
       },
@@ -474,7 +475,8 @@ export class BackgroundClient {
     this.abort.abort();
     return this.exclusive(async () => {
       const c = this.credentials();
-      if (!c.account) throw new Error(t("Sign in to a Muse account first."));
+      if (!c.account)
+        throw new Error(t("Sign in to an Open Muse account first."));
       let revoked = true;
       try {
         await this.accounts.signOut(c.token);
@@ -504,7 +506,8 @@ export class BackgroundClient {
     return this.exclusive(async () => {
       await this.status();
       const c = this.credentials();
-      if (!c.account) throw new Error(t("Sign in to a Muse account first."));
+      if (!c.account)
+        throw new Error(t("Sign in to an Open Muse account first."));
       const result = schema.parse(
         await this.call(path, c.token, init, messages),
       );
@@ -552,7 +555,7 @@ export class BackgroundClient {
           "Reminder delivery changed on another device. Refresh before saving.",
         ),
         403: t(
-          "The Muse service can only deliver reminders to this account's own main chat.",
+          "The Open Muse service can only deliver reminders to this account's own main chat.",
         ),
       },
     );
@@ -714,7 +717,7 @@ export class BackgroundClient {
     if (c.account?.refreshPending)
       throw new Error(
         t(
-          "The previous login renewal could not be confirmed. Sign out of Muse and sign in again; it was not retried.",
+          "The previous login renewal could not be confirmed. Sign out of Open Muse and sign in again; it was not retried.",
         ),
       );
     const result = statusSchema.parse(await this.call("/v1/status", c.token));

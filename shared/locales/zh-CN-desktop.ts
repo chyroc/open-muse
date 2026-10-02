@@ -145,8 +145,8 @@ export const zhDesktop: Record<string, string> = {
   "Copied. Paste it into your report.": "已复制，可粘贴到你的问题报告中。",
   "Could not copy the diagnostics.": "无法复制诊断信息。",
   Copy: "复制",
-  "Your Muse account sign-in, your Ark key encrypted for that account, the devices you use, and the Upcoming items you let run while you are away.":
-    "你的 Muse 账号登录信息、为该账号加密保存的 Ark 密钥、你使用的设备，以及你允许在离开时执行的待办。",
+  "Your Open Muse account sign-in, your Ark key encrypted for that account, the devices you use, and the Upcoming items you let run while you are away.":
+    "你的 Open Muse 账号登录信息、为该账号加密保存的 Ark 密钥、你使用的设备，以及你允许在离开时执行的待办。",
   "Open Muse runs no service of its own for chats; cloud use follows the agreement of the Ark account you connect. The software it ships includes open-source components under their own licenses.":
     "Open Muse 不为对话运行自己的服务；云端使用遵循你所连接的 Ark 账号的协议。随附的软件包含按各自许可证发布的开源组件。",
   "Open source notices": "开源声明",
@@ -186,8 +186,8 @@ export const zhDesktop: Record<string, string> = {
   Online: "在线",
   "This device": "本设备",
   "Other devices": "其他设备",
-  "Devices signed in to the same Muse account appear here. Without an account, each device keeps its own data.":
-    "登录同一 Muse 账户的设备会显示在这里。不使用账户时，每台设备各自保存数据。",
+  "Devices signed in to the same Open Muse account appear here. Without an account, each device keeps its own data.":
+    "登录同一 Open Muse 账号的设备会显示在这里。不使用账户时，每台设备各自保存数据。",
   "No other devices yet.": "暂无其他设备。",
   Confirm: "确认",
   Forget: "移除",

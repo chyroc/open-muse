@@ -641,7 +641,7 @@ export function SettingsWindow({ client }: { client: Client }) {
                 <Row
                   title={t("With the Open Muse service")}
                   detail={t(
-                    "Your Muse account sign-in, your Ark key encrypted for that account, the devices you use, and the Upcoming items you let run while you are away.",
+                    "Your Open Muse account sign-in, your Ark key encrypted for that account, the devices you use, and the Upcoming items you let run while you are away.",
                   )}
                 />
               )}

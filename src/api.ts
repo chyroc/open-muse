@@ -196,7 +196,7 @@ export class Client {
       fetcher?: typeof fetch;
       // Isolated simulator acceptance profile; does not change credentials.
       scope?: string;
-      // The Muse account service. When the build configures it, the signed-in
+      // The Open Muse account service. When the build configures it, the signed-in
       // account is the user identity and owns the Ark key and workspace.
       account?: AccountProvider;
       // Longest time, in ms, a verification covers Ark reads and writes, and
@@ -231,7 +231,7 @@ export class Client {
     await this.identity.restore();
     if (this.identity.accountMode()) this.verifiedAt = this.now();
   }
-  // Call after signing in to or out of a Muse account. The previous account's
+  // Call after signing in to or out of an Open Muse account. The previous account's
   // runtime, key, and pending work are dropped before anything else runs.
   async accountChanged() {
     this.reset();
@@ -272,7 +272,7 @@ export class Client {
             "Your Ark API key changed on another device. Nothing was sent; review and try again.",
           )
         : t(
-            "Your Muse account session ended. Sign in again; nothing was sent.",
+            "Your Open Muse account session ended. Sign in again; nothing was sent.",
           ),
     );
   }
@@ -350,7 +350,7 @@ export class Client {
         401,
         owner
           ? t("Add an Ark API key in Settings first.")
-          : t("Sign in to your Muse account first."),
+          : t("Sign in to your Open Muse account first."),
       );
     }
     if (!c?.apiKey)
@@ -1180,7 +1180,7 @@ export class Client {
     if (!this.identity.accountMode() || !account?.saveUpcomingDelivery)
       throw new ApiError(
         400,
-        t("Reminder delivery while closed needs a Muse account."),
+        t("Reminder delivery while closed needs an Open Muse account."),
       );
     const current = await this.serverUpcoming(r, true);
     const target =
@@ -2007,7 +2007,7 @@ export class Client {
       new ApiError(
         403,
         t(
-          "With a Muse account, Studio reaches only this account's own agent, environment, memory, and sessions.",
+          "With an Open Muse account, Studio reaches only this account's own agent, environment, memory, and sessions.",
         ),
       );
     if (collection in own) {

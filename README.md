@@ -35,13 +35,13 @@ Ark credentials or proxies API requests. Native apps bundle these same assets.
 Do not place credentials in build-time environment variables or source files;
 the three account build values described below are public.
 
-## Muse accounts
+## Open Muse accounts
 
 Release builds set three public values at build time: `VITE_MUSE_BACKGROUND_URL`
 (the Open Muse service origin), `VITE_MUSE_SUPABASE_URL` (the Auth origin), and
 `VITE_MUSE_SUPABASE_ANON_KEY` (the anon or publishable key; secret and
 service-role keys are rejected). Both origins are pinned in the app's CSP. In
-such a build, **Settings → Muse account** signs in or registers with an email
+such a build, **Settings → Open Muse account** signs in or registers with an email
 and password. The account is the user's identity on every device. The session is
 stored in Keychain (sessionStorage on the web), renewed shortly before it
 expires with protection against replaying a rotated refresh token, and revoked
@@ -62,7 +62,7 @@ selects a device when several are paired.
 Open **Settings → Connect to Ark MA** and enter an existing Ark API key,
 optionally specifying its project. A read-only MA request verifies access. In
 an account build the key is then stored encrypted in the account by the Open
-Muse service and every device signed in to that account reads it from there;
+Open Muse service and every device signed in to that account reads it from there;
 it is kept in memory only, never in device storage. Replacing the key starts a
 separate workspace and stops background work tied to the old key; removing it
 applies to all of the account's devices. Volcano SSO sign-in is not supported,
@@ -99,7 +99,7 @@ checked before another write; they are never blindly retried or adopted.
 | Agent model, instructions, tools, permission policy, MCP servers, skills; environment settings | The account's Ark agent and environment, plus a sealed copy in `account_workspaces` of what Ark reported after the last change made through Open Muse | Ark; AES-GCM for the sealed copy | Read back from the sealed record; the resources are the same |
 | Name, SOUL, MEMORY, goals, and Feed instructions | The account's Ark memory store | Ark | Same memory store |
 | Conversation list, saved replies, Library, Feed likes, local approvals | Device IndexedDB, scoped by workspace key | Not app-encrypted | Not synced; conversations themselves remain in Ark |
-| Muse session | Keychain (sessionStorage on web) | OS-protected | Each device signs in |
+| Open Muse session | Keychain (sessionStorage on web) | OS-protected | Each device signs in |
 | Appearance (Mac) | Device preference | None | Not synced |
 
 In an account build, changes to the agent or environment — Studio's
@@ -145,9 +145,9 @@ CORS responses, so neither sign-in nor workspace preparation depends on it.
 
 ## Storage and security
 
-- iOS and macOS keep API keys (local builds) and Muse account sessions in
+- iOS and macOS keep API keys (local builds) and Open Muse account sessions in
   Keychain. Android encrypts credentials with an Android Keystore-backed
-  AES-GCM key and disables backup; Muse accounts are not supported on Android.
+  AES-GCM key and disables backup; Open Muse accounts are not supported on Android.
 - The web app keeps credentials in `sessionStorage`, not persistent local
   storage. A page reload preserves the browser session; signing out clears it.
   Browser extensions or injected scripts can still access browser-held secrets:
@@ -161,13 +161,13 @@ CORS responses, so neither sign-in nor workspace preparation depends on it.
   the same workspace key as the agent (account owner, API key, and project in
   account builds). Local pending-write records can contain document drafts
   until cloud readback confirms them. These records are not encrypted.
-- Signing out of a Muse account ends that session and drops the in-memory key
+- Signing out of an Open Muse account ends that session and drops the in-memory key
   and runtime; nothing is deleted. In local builds, signing out removes the
   device's key. Neither revokes the key at Ark; do that in the Ark console.
 - **Reset this device** (iOS Settings, macOS Settings > Data controls) asks for
   confirmation, then removes the saved API key and every sign-in from
   Keychain, deletes all local databases and preferences, and restarts the app
-  as if newly installed. Agents, conversations, memory, and the Muse account in
+  as if newly installed. Agents, conversations, memory, and the Open Muse account in
   the cloud are not deleted, and the key is not revoked at Ark.
 - Only fixed public Volcano API origins, plus the configured Open Muse service
   and Auth origins, are allowed. Redirects carrying credentials are rejected.
@@ -335,7 +335,7 @@ delivered to the main chat; two devices sending in the same moment can still
 both deliver one. Resuming or changing an item does not replay occurrences
 that passed in the meantime.
 
-With a Muse account, **Deliver even when Open Muse is closed** in the Upcoming
+With an Open Muse account, **Deliver even when Open Muse is closed** in the Upcoming
 tab registers the main chat with the Open Muse service, which then delivers due
 items with the account's saved Ark key while the apps are closed (see
 [the service README](server/README.md#upcoming-reminders)). It is off by

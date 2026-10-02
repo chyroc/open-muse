@@ -17,7 +17,7 @@ export function SupabaseLoginForm({
   return (
     <form
       className="background-form"
-      aria-label={t("Muse account login")}
+      aria-label={t("Open Muse account login")}
       onSubmit={(event) => {
         event.preventDefault();
         if (busy || (register && !consent)) return;
@@ -30,7 +30,7 @@ export function SupabaseLoginForm({
     >
       <p className="background-note">
         {t(
-          "Sign in with your Muse account. Your Ark API key is saved to the account separately and is not used to identify you.",
+          "Sign in with your Open Muse account. Your Ark API key is saved to the account separately and is not used to identify you.",
         )}
       </p>
       <label className="field">
@@ -69,7 +69,7 @@ export function SupabaseLoginForm({
             disabled={busy}
           />
           {t(
-            "Create a Muse account with this email. The Auth provider will receive the email and password.",
+            "Create an Open Muse account with this email. The Auth provider will receive the email and password.",
           )}
         </label>
       )}
@@ -83,7 +83,7 @@ export function SupabaseLoginForm({
             (register && !consent)
           }
         >
-          {register ? t("Create Muse account") : t("Sign in to Muse")}
+          {register ? t("Create Open Muse account") : t("Sign in to Open Muse")}
         </button>
         <button
           type="button"

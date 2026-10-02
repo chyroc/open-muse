@@ -218,14 +218,14 @@ export function UpcomingTab({
           {delivery?.enabled
             ? delivery.state === "session_unavailable"
               ? t(
-                  "The Muse service can no longer reach your main chat. Open the main chat to register it again.",
+                  "The Open Muse service can no longer reach your main chat. Open the main chat to register it again.",
                 )
               : t(
-                  "The Muse service sends due reminders to your main chat even when the app is closed, and your agent handles them with its tools. Steps that need approval wait for you. There are no push notifications yet.",
+                  "The Open Muse service sends due reminders to your main chat even when the app is closed, and your agent handles them with its tools. Steps that need approval wait for you. There are no push notifications yet.",
                 )
             : supported
               ? t(
-                  "Reminders arrive in the main chat when Open Muse is open at or after their time. Turn on delivery while closed to let the Muse service use your saved Ark key to run them while you are away; each one is a real Ark request and may be billed. There are no push notifications yet.",
+                  "Reminders arrive in the main chat when Open Muse is open at or after their time. Turn on delivery while closed to let the Open Muse service use your saved Ark key to run them while you are away; each one is a real Ark request and may be billed. There are no push notifications yet.",
                 )
               : t(
                   "Reminders arrive in the main chat when Open Muse is open at or after their time. There are no push notifications yet.",

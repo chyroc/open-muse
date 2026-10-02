@@ -90,7 +90,7 @@ export function BackgroundSettings({
     setDirty(true);
     setSchedule((current) => (current ? { ...current, ...patch } : current));
   }
-  // Signed in with a Muse account rather than a private device token.
+  // Signed in with an Open Muse account rather than a private device token.
   const account = connected && Boolean(service.accountConnected?.());
   return (
     <section
@@ -125,7 +125,7 @@ export function BackgroundSettings({
           {!connected && service.accountConfigured?.() ? (
             <p className="background-note">
               {t(
-                "Sign in to your Muse account above to use background features.",
+                "Sign in to your Open Muse account above to use background features.",
               )}
             </p>
           ) : !connected ? (
@@ -165,7 +165,7 @@ export function BackgroundSettings({
               <p className="background-note">
                 <ShieldCheck size={16} />{" "}
                 {t(
-                  "Use a private Muse device token, never an Ark key or Cloudflare token. The token stays in this app's separate Keychain entry.",
+                  "Use a private Open Muse device token, never an Ark key or Cloudflare token. The token stays in this app's separate Keychain entry.",
                 )}
               </p>
               <button
@@ -203,7 +203,7 @@ export function BackgroundSettings({
                   <p className="background-note">
                     {account
                       ? t(
-                          "Your Ark API key is already saved in your Muse account. Allowing background work lets the service use it with this workspace's agent, environment, and memory while you are away. The service keeps this binding encrypted and its administrators remain trusted; this is not end-to-end encryption.",
+                          "Your Ark API key is already saved in your Open Muse account. Allowing background work lets the service use it with this workspace's agent, environment, and memory while you are away. The service keeps this binding encrypted and its administrators remain trusted; this is not end-to-end encryption.",
                         )
                       : t(
                           "No second key or agent to configure. Sync the API key, project, agent version, environment, and memory-store IDs from this app. The service stores the configuration encrypted and decrypts it to call Ark while you are away. Its administrators remain trusted; this is not end-to-end encryption.",
@@ -234,7 +234,7 @@ export function BackgroundSettings({
                     />
                     {account
                       ? t(
-                          "I allow the Muse service to use my saved Ark API key with this workspace for background Feed generation. Personal context will be read from Ark. Cloud calls may be billed.",
+                          "I allow the Open Muse service to use my saved Ark API key with this workspace for background Feed generation. Personal context will be read from Ark. Cloud calls may be billed.",
                         )
                       : t(
                           "I authorize uploading this app's current Ark configuration to this private service for background Feed generation. Personal context will be read from Ark. Cloud calls may be billed.",

@@ -27,7 +27,7 @@ Goals for the macOS app:
 
 - `src/` — React UI and direct MA client; `src/direct/` owns local auth, storage, and provisioning
 - `shared/` — event types, approval policy, and the MA API catalog/contract
-- `server/` — Open Muse service (Cloudflare Worker + D1): Muse account verification, per-account encrypted Ark keys, background work
+- `server/` — Open Muse service (Cloudflare Worker + D1): Open Muse account verification, per-account encrypted Ark keys, background work
 - `ios/` — Capacitor + SwiftPM iOS project
 - `macos/` — AppKit/WKWebView shell loading bundled static assets, with no server or Node runtime
 - `android/` — retained Capacitor project (no build/device verification yet)
@@ -35,7 +35,7 @@ Goals for the macOS app:
 - `scripts/` — build and asset generation
 - `docs/` — integration notes and verification records
 
-Builds configured with `VITE_MUSE_BACKGROUND_URL`, `VITE_MUSE_SUPABASE_URL`, and `VITE_MUSE_SUPABASE_ANON_KEY` use a Muse account (Supabase Auth email/password) as the user's identity. The Ark API key is only the model-service credential: it is stored encrypted per account by the Open Muse service, read back only by that account's verified sessions, and scoped with the account owner so accounts sharing one key keep separate workspaces, memory, history, and local records. Clients still call public Volcano Ark APIs directly with that key. Builds without that configuration run in single-user local mode with a device-held API key. Volcano SSO is not supported. Without credentials the app stays disconnected and never generates simulated replies. Real calls may incur cloud costs. Mock responses and the old server migration harness belong only in tests and must never be bundled.
+Builds configured with `VITE_MUSE_BACKGROUND_URL`, `VITE_MUSE_SUPABASE_URL`, and `VITE_MUSE_SUPABASE_ANON_KEY` use an Open Muse account (Supabase Auth email/password) as the user's identity. The Ark API key is only the model-service credential: it is stored encrypted per account by the Open Muse service, read back only by that account's verified sessions, and scoped with the account owner so accounts sharing one key keep separate workspaces, memory, history, and local records. Clients still call public Volcano Ark APIs directly with that key. Builds without that configuration run in single-user local mode with a device-held API key. Volcano SSO is not supported. Without credentials the app stays disconnected and never generates simulated replies. Real calls may incur cloud costs. Mock responses and the old server migration harness belong only in tests and must never be bundled.
 
 ## Commands
 

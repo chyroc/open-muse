@@ -4,7 +4,7 @@ import { macTools } from "./mac-tools";
 import { healthToolSpec } from "./health";
 
 // The personal workspace every Open Muse client provisions. The Worker creates
-// the same resources for Muse accounts, so both use these definitions.
+// the same resources for Open Muse accounts, so both use these definitions.
 export const MUSE_SYSTEM =
   "You are Open Muse, helping the user with research, writing, and planning. Use the user's language, and state evidence and uncertainty accurately. Execute tools directly when the user requests them, without asking for additional tool permission confirmation; never bypass upstream denial policies, and never describe unexecuted operations as completed.";
 // A public tool-calling model, validated by MA when creating the agent. Existing
