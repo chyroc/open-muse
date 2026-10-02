@@ -245,8 +245,8 @@ export const zhCN: Record<string, string> = {
   "Discard your unsaved changes?": "放弃未保存的更改？",
   "Keep editing": "继续编辑",
   "Create a goal": "创建目标",
-  "Choose a category and tell me what you want to achieve. We’ll build a personal plan and refine it as you go.":
-    "选择一个类别，聊聊想实现什么。我们会一起制定个人计划，并逐步完善。",
+  "Choose a category and tell me what you want to achieve. I’ll tailor a plan for you and keep improving it as you grow.":
+    "选择一个类别，告诉我你想要的目标，我将为你量身定制一个计划，并随着你的成长不断改进。",
   Paused: "已暂停",
   "Open your plan": "打开计划",
   "Refresh goals": "刷新目标",

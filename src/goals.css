@@ -1,22 +1,23 @@
 .goals-page {
   color: #171719;
 }
+/* Goals use 17pt body text throughout (it grows with the system text size),
+   24pt category symbols, and list rows of the system height. */
 .goal-tracking {
-  padding: 0 0 24px;
+  padding: 20px 0 20px;
 }
 .goal-tracking h2,
 .goal-create-section h2 {
-  font-size: 21px;
-  line-height: 1.35;
-  font-weight: 650;
+  font-size: 17px;
+  line-height: 1.33;
+  font-weight: 600;
   margin: 0;
-  letter-spacing: -0.35px;
 }
 .goal-tracking > p,
 .goal-loading {
   color: #747477;
-  font-size: 20px;
-  line-height: 1.4;
+  font-size: 17px;
+  line-height: 1.33;
   margin: 2px 0 0;
 }
 .goal-loading {
@@ -26,7 +27,7 @@
 }
 .goal-create-section {
   position: relative;
-  padding: 22px 0 0;
+  padding: 20px 0 0;
 }
 .goal-create-section::before {
   content: "";
@@ -39,13 +40,13 @@
 .goal-create-section h2 {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 .goal-create-section > p {
-  font-size: 20px;
-  line-height: 1.35;
+  font-size: 17px;
+  line-height: 1.33;
   color: #757577;
-  margin: 2px 0 8px;
+  margin: 2px 0 10px;
 }
 .goal-categories {
   display: grid;
@@ -53,11 +54,11 @@
 .goal-categories button {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   width: 100%;
-  min-height: 57px;
+  min-height: var(--list-row-height, 52px);
   text-align: left;
-  font-size: 20px;
+  font-size: 17px;
 }
 .goal-categories button > svg {
   color: #a3a4a8;

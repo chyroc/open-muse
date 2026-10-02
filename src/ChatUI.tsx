@@ -166,9 +166,9 @@ export function ChatHeader({
           onClick={onMore}
         >
           {feed ? (
-            <SlidersHorizontal size={23} />
+            <SlidersHorizontal size={20} />
           ) : (
-            <MoreHorizontal size={24} />
+            <MoreHorizontal size={22} strokeWidth={2.2} />
           )}
         </button>
       )}

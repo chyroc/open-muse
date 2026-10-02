@@ -53,12 +53,12 @@ export function GoalCategories({
   return (
     <section className="goal-create-section" aria-label={t("Create a goal")}>
       <h2>
-        <Plus size={25} strokeWidth={1.6} />
+        <Plus size={24} strokeWidth={1.6} />
         {t("Create a goal")}
       </h2>
       <p>
         {t(
-          "Choose a category and tell me what you want to achieve. We’ll build a personal plan and refine it as you go.",
+          "Choose a category and tell me what you want to achieve. I’ll tailor a plan for you and keep improving it as you grow.",
         )}
       </p>
       <div className="goal-categories">
@@ -76,9 +76,9 @@ export function GoalCategories({
                   : t(`Create a ${category.topic || "new"} goal`)
               }
             >
-              <Icon size={25} strokeWidth={1.7} />
+              <Icon size={24} strokeWidth={1.7} />
               <span>{categoryLabel(category.id)}</span>
-              <Plus size={23} strokeWidth={1.6} />
+              <Plus size={20} strokeWidth={1.6} />
             </button>
           );
         })}

@@ -56,8 +56,13 @@ body {
 .header-left {
   left: 16px;
 }
+/* The trailing header control is a 36pt glass circle centered on the 44pt
+   sidebar button's row. */
 .header-right {
-  right: 16px;
+  top: calc(4px + env(safe-area-inset-top));
+  right: 20px;
+  width: 36px;
+  height: 36px;
 }
 .companion-status {
   position: absolute;
@@ -552,14 +557,20 @@ body {
   padding-bottom: calc(108px + env(safe-area-inset-bottom));
   overscroll-behavior: contain;
 }
+/* Page titles sit in a 38pt row right under the companion header, and the
+   page's first section starts below it without extra space. */
 .companion-shell .muse-page {
-  padding: 6px 16px 28px;
+  padding: 0 16px 28px;
 }
 .companion-shell .muse-page-heading {
-  margin-bottom: 20px;
+  min-height: 38px;
+  margin-bottom: 0;
+  align-items: flex-end;
 }
 .companion-shell .muse-page-heading h1 {
+  margin: 0;
   font-size: 25px;
+  line-height: 34px;
   letter-spacing: -0.5px;
 }
 .utility-header {
