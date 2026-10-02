@@ -15,7 +15,6 @@ import {
   ShieldCheck,
   SquarePen,
   X,
-  Zap,
 } from "lucide-react";
 import type {
   CompanionIdentity,
@@ -25,7 +24,9 @@ import type {
 import type { AgentEvent, Session } from "../shared/types";
 import type { Client } from "./api";
 import { CompanionAvatar } from "./ChatUI";
-import { Activity, Markdown, PermissionCard } from "./components";
+import { Markdown, PermissionCard } from "./components";
+import { ActivityList } from "./ActivityList";
+import { activityTurns } from "../shared/activity";
 import { UpcomingPanel } from "./UpcomingPanel";
 import "./identity.css";
 
@@ -209,10 +210,22 @@ export function CompanionSheet({
         </div>
         <h1>{identity.name}</h1>
         <span className="identity-connection">
-          <Zap
-            size={19}
-            fill={status === t("Connected") ? "currentColor" : "none"}
-          />
+          <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+            {status === t("Connected") ? (
+              <>
+                <circle cx="10" cy="10" r="10" fill="currentColor" />
+                <path d="M11.2 3.8 6 11h3.6l-.8 5.2L14 9h-3.6z" fill="#fff" />
+              </>
+            ) : (
+              <path
+                d="M11.2 3.8 6 11h3.6l-.8 5.2L14 9h-3.6z"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+              />
+            )}
+          </svg>
           {status}
         </span>
         <button
@@ -299,9 +312,11 @@ export function CompanionSheet({
         )}
         {tab === "Activity" && (
           <section className="companion-activity">
-            <h2>{t("Activity")}</h2>
-            {events.some((e) => e.type === "agent.tool_use") ? (
-              <Activity events={events} running={status === t("Replying")} />
+            {activityTurns(events).length ? (
+              <ActivityList
+                events={events}
+                running={status === t("Replying")}
+              />
             ) : (
               <div className="companion-empty">
                 <List size={29} />
