@@ -31,6 +31,7 @@ export function useTask(client: Client, id?: string) {
     const { signal } = controller;
     let syncing = false;
     let reconnect: ReturnType<typeof setTimeout>;
+    let resync: ReturnType<typeof setTimeout>;
     let retry = 0;
     let historyLoaded = false;
     let knownEvents: AgentEvent[] = [];
@@ -64,7 +65,13 @@ export function useTask(client: Client, id?: string) {
         setSession(remote);
         setError("");
       } catch (err) {
-        if (!signal.aborted) setError((err as Error).message);
+        if (signal.aborted) return;
+        // A request the system cut off, as when the app was in the
+        // background, is read again shortly instead of shown as an error.
+        if (["AbortError", "TimeoutError"].includes((err as Error).name)) {
+          clearTimeout(resync);
+          resync = setTimeout(() => void sync(), 2000);
+        } else setError((err as Error).message);
       } finally {
         syncing = false;
         if (!signal.aborted) setLoading(false);
@@ -107,6 +114,7 @@ export function useTask(client: Client, id?: string) {
     return () => {
       controller.abort();
       clearTimeout(reconnect);
+      clearTimeout(resync);
       clearInterval(interval);
       document.removeEventListener("visibilitychange", foreground);
       window.removeEventListener("online", foreground);
