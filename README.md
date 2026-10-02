@@ -189,6 +189,15 @@ can pin English or 简体中文 on this device; Follow system removes the choice
 The choice restarts the app, is not synced, and is cleared by a device reset.
 Native system sheets, such as permission prompts, follow the system language.
 
+**Appearance (iOS):** the app follows the system light or dark appearance and
+the system text size (Dynamic Type). Settings opens as a sheet over the current
+page. Feed, Ideas, Goals, and Library refresh when pulled down from the top.
+Long-pressing a message offers Reply (quotes it into the composer), Copy,
+Select, Share, and for the assistant's replies, Save to Library. Library shows
+a list or a grid, ordered by last modified or by title, from its header menu.
+The plus button in the composer adds a photo from the camera or library, or a
+document (PDF, text, Markdown, or CSV) from Files.
+
 **Android:** the Capacitor app uses the same direct client and includes a native
 credential-storage plugin. Open with `npm run android`; build the Gradle project
 with JDK 21 and SDK 36. See verification notes for platform coverage.
@@ -297,8 +306,9 @@ daily, weekly (chosen weekdays), or monthly (a day of the month, clamped to
 short months), at a local time in the person's IANA time zone. A time skipped
 by a daylight-saving change does not fire that day; a repeated hour fires once.
 
-The companion panel's **Upcoming** tab lists active items soonest first, then
-paused ones, with pause, resume, and delete. Each change rewrites
+The companion panel's **Upcoming** tab groups items by how often they repeat
+(daily, weekly, monthly, one time), soonest first within a group and paused
+ones last, with pause, resume, and delete. Each change rewrites
 `UPCOMING.md` only if it has not changed since it was read. The companion can
 also list, move, pause, or cancel items in chat.
 
