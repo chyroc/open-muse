@@ -655,9 +655,8 @@ function Workspace({
       setActionError((error as Error).message);
     }
   }
-  const sideTitle = isSideDraft
-    ? t("New side chat")
-    : taskRoute && activeId !== index.mainId
+  const sideTitle =
+    taskRoute && activeId !== index.mainId
       ? (index.entries[taskRoute]?.title ?? task.session?.title)
       : undefined;
   const status =
@@ -785,7 +784,7 @@ function Workspace({
             }
             feed={tab === "feed"}
             showSidebar={isChat}
-            showMore={tab !== "discover"}
+            showMore={tab !== "discover" && !isSideDraft}
             status={status}
             activity={status === t("Connected") ? undefined : status}
             sideTitle={sideTitle}
@@ -865,6 +864,8 @@ function Workspace({
                   <span>{t("Loading conversation…")}</span>
                 </div>
               ) : (
+                // A new side chat stays empty until its first message.
+                !isSideDraft &&
                 !messageEvents.length &&
                 !task.error &&
                 !welcomeBusy &&
@@ -872,16 +873,8 @@ function Workspace({
                 (!welcome ||
                   ["confirmed", "skipped"].includes(welcome.phase)) && (
                   <div className="main-chat-empty">
-                    <h1>
-                      {isSideDraft
-                        ? t("Start a side chat")
-                        : t("Your main chat")}
-                    </h1>
-                    <p>
-                      {isSideDraft
-                        ? t("A little space for a new topic.")
-                        : t("One conversation you can always come back to.")}
-                    </p>
+                    <h1>{t("Your main chat")}</h1>
+                    <p>{t("One conversation you can always come back to.")}</p>
                   </div>
                 )
               )}
@@ -1088,6 +1081,7 @@ function Workspace({
               )}
               <ChatComposer
                 name={companion.name}
+                newSideChat={isSideDraft}
                 value={draft}
                 setValue={setDraft}
                 onSend={sendMessage}

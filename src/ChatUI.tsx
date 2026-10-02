@@ -195,6 +195,7 @@ export function ChatComposer({
   attachmentsReady = false,
   attachmentsPending = false,
   name = "Muse",
+  newSideChat = false,
 }: {
   value: string;
   setValue: (value: string) => void;
@@ -208,9 +209,14 @@ export function ChatComposer({
   attachmentsReady?: boolean;
   attachmentsPending?: boolean;
   name?: string;
+  // A new side chat: its own placeholder, and the composer takes focus.
+  newSideChat?: boolean;
 }) {
   const input = useRef<HTMLTextAreaElement>(null);
   const [attaching, setAttaching] = useState(false);
+  useEffect(() => {
+    if (newSideChat) input.current?.focus({ preventScroll: true });
+  }, [newSideChat]);
   const [dictationHint, setDictationHint] = useState(false);
   const sendable =
     (Boolean(value.trim()) || attachmentsReady) && !attachmentsPending;
@@ -261,7 +267,9 @@ export function ChatComposer({
           ref={input}
           rows={1}
           aria-label={t("Message {name}", { name })}
-          placeholder={t("Send a message")}
+          placeholder={
+            newSideChat ? t("Message in a new side chat") : t("Send a message")
+          }
           maxLength={16000}
           value={value}
           onChange={(event) => setValue(event.target.value)}
@@ -363,7 +371,12 @@ export function ConversationSidebar({
     element.focus({ preventScroll: true });
     return () => {
       element.close();
-      if (focused instanceof HTMLElement) focused.focus();
+      // Leave focus where typing has already started.
+      if (
+        focused instanceof HTMLElement &&
+        !document.activeElement?.matches("textarea, input")
+      )
+        focused.focus();
     };
   }, []);
   const rows = sessions

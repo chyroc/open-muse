@@ -46,7 +46,6 @@ export const zhCN: Record<string, string> = {
   "Loading conversation…": "正在加载对话…",
   "Start a side chat": "开始旁聊",
   "Your main chat": "主要聊天",
-  "A little space for a new topic.": "为新话题留一处独立空间。",
   "One conversation you can always come back to.": "随时回来，继续这段对话。",
   "Automatic approval did not finish. Refresh history before handling it manually.":
     "自动批准未完成。请先刷新历史记录，再手动处理。",
@@ -58,6 +57,7 @@ export const zhCN: Record<string, string> = {
   "Archive side chat": "归档旁聊",
   Message: "消息",
   "Send a message": "发消息",
+  "Message in a new side chat": "在新旁聊中发消息",
   "Library options": "资源库选项",
   "Show as list": "显示为列表",
   "Show as grid": "以网格显示",
