@@ -345,7 +345,7 @@ export class Client {
         );
       throw error;
     }
-    if (["logout", "api-key", "import-legacy"].includes(path)) this.reset();
+    if (["logout", "api-key"].includes(path)) this.reset();
     return result as T;
   }
   private context() {

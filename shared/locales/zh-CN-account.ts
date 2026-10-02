@@ -54,10 +54,6 @@ export const zhAccount: Record<string, string> = {
     "登录 Open Muse 账号后开始对话",
   "Sign in to your Open Muse account above to add your Ark API key.":
     "请先在上方登录 Open Muse 账号，再添加 Ark API Key。",
-  "This device has an Ark API key saved by an earlier version of Open Muse. It is not used until you save it to your Open Muse account. Conversations and data from that earlier setup stay on this device and are not moved into your account.":
-    "此设备上有旧版 Open Muse 保存的 Ark API Key。在你将它保存到 Open Muse 账号之前，不会使用它。旧设置下的对话和数据保留在此设备上，不会移入你的账号。",
-  "Save this key to my account": "将此密钥保存到我的账号",
-  "Remove it from this device": "从此设备移除",
   "Ark checks the key once, then it is stored encrypted in your Open Muse account so your signed-in devices can use it. The key is a model-service credential, not your identity. Replacing it starts a separate workspace and stops background work tied to the old key. Cloud calls may be billed.":
     "Ark 会先校验一次密钥，然后将其加密保存到你的 Open Muse 账号，供已登录的设备使用。此密钥只是模型服务凭据，不代表你的身份。更换密钥会使用另一个独立工作区，并停止与旧密钥关联的后台任务。云端调用可能产生费用。",
   "Save API key to my account": "将 API Key 保存到我的账号",
@@ -89,8 +85,6 @@ export const zhAccount: Record<string, string> = {
     "你的 Ark API Key 已在其他设备上更改。请重新加载设置后，再允许后台任务。",
   "The Open Muse account changed. Reload before continuing.":
     "Open Muse 账号已变化。请重新加载后再继续。",
-  "This device has no saved API key from an earlier version.":
-    "此设备上没有旧版保存的 API Key。",
   "The last session renewal could not be confirmed, so this session is no longer used. Sign out of Open Muse and sign in again.":
     "上次会话续期结果无法确认，因此不再使用此会话。请退出 Open Muse 后重新登录。",
   "Your Ark API key changed on another device. Nothing was sent; review and try again.":

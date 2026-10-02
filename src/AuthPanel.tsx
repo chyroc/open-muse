@@ -12,8 +12,6 @@ interface Status {
   ready: boolean;
   project?: string;
   method?: "api_key";
-  legacy?: "api_key";
-  legacyKey?: boolean;
   // Present in builds with an Open Muse account service.
   account?: { signedIn: boolean };
 }
@@ -84,42 +82,6 @@ function ArkAuthPanel({
         <p className="auth-consent-note" role="status">
           {t("Sign in to your Open Muse account above to add your Ark API key.")}
         </p>
-      )}
-      {account && status?.legacyKey && (
-        <div className="auth-steps">
-          <p className="auth-consent-note" role="status">
-            {t(
-              "This device has an Ark API key saved by an earlier version of Open Muse. It is not used until you save it to your Open Muse account. Conversations and data from that earlier setup stay on this device and are not moved into your account.",
-            )}
-          </p>
-          <div className="background-actions">
-            <button
-              className="button primary"
-              disabled={busy || signedOut}
-              onClick={() =>
-                void run(async () => {
-                  await client.auth("import-legacy", { confirm: true });
-                  await refresh();
-                  onChanged();
-                })
-              }
-            >
-              {t("Save this key to my account")}
-            </button>
-            <button
-              className="button secondary"
-              disabled={busy}
-              onClick={() =>
-                void run(async () => {
-                  await client.auth("remove-legacy", { confirm: true });
-                  await refresh();
-                })
-              }
-            >
-              {t("Remove it from this device")}
-            </button>
-          </div>
-        </div>
       )}
       {showForm && (
         <form

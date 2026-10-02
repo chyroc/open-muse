@@ -68,11 +68,11 @@ separate workspace and stops background work tied to the old key; removing it
 applies to all of the account's devices. Volcano SSO sign-in is not supported,
 and console-only (TOP) actions are not offered.
 
-After an upgrade, a key or Volcano SSO sign-in saved on the device by an earlier
-release is kept untouched and never used. In an account build Settings offers to
-save that earlier key to the signed-in account or to remove it from the device;
-neither happens automatically, and conversations and data from the earlier
-setup stay on the device without being attributed to the account.
+After an upgrade, a Volcano SSO sign-in saved on the device by an earlier
+release is kept untouched and never used. An account build likewise leaves an
+API key saved on the device by a local build untouched and never uses or
+uploads it; conversations and data from that setup stay on the device without
+being attributed to the account.
 
 On first use, Muse prepares an agent and environment automatically. In an
 account build the Open Muse service creates the account's agent, environment,

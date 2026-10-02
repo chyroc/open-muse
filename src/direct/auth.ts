@@ -95,10 +95,6 @@ export interface AccountProvider {
 
 export class DirectAuth {
   value?: APIKeyLogin;
-  // A login saved on this device by an earlier release. In account builds even
-  // a saved API key is only offered for an explicit upload; it is never used
-  // directly or attributed to an account automatically.
-  legacy?: { kind: "api_key"; key: AccountCredential };
   private revision = 0;
   private owner?: string;
   private busy = false;
@@ -124,20 +120,15 @@ export class DirectAuth {
   }
   async restore() {
     const raw = await this.vault.read();
-    this.value = this.legacy = undefined;
+    this.value = undefined;
     if (raw) {
       const saved = JSON.parse(raw);
       const login = apiKeyLogin.safeParse(saved);
-      if (login.success && !this.accountMode()) this.value = login.data;
-      else if (login.success)
-        this.legacy = {
-          kind: "api_key",
-          key: {
-            apiKey: login.data.apiKey,
-            project: login.data.project ?? "",
-          },
-        };
-      else if (!retiredSSO(saved))
+      // In account builds the key comes from the account. A key saved on this
+      // device by a local build is left untouched and never used.
+      if (login.success) {
+        if (!this.accountMode()) this.value = login.data;
+      } else if (!retiredSSO(saved))
         throw new Error(
           t(
             "Saved login is invalid. Clear this app's credentials and sign in again.",
@@ -176,8 +167,6 @@ export class DirectAuth {
       ready: Boolean(c),
       method: c ? ("api_key" as const) : undefined,
       project: c?.project,
-      legacy: this.legacy?.kind,
-      legacyKey: Boolean(this.legacy?.key),
       ...(this.accountMode()
         ? { account: { signedIn: Boolean(this.accountOwner()) } }
         : {}),
@@ -186,7 +175,6 @@ export class DirectAuth {
   private async save(value: APIKeyLogin | undefined) {
     await this.vault.write(value ? JSON.stringify(value) : "");
     this.value = value;
-    this.legacy = undefined;
   }
   private async serial<T>(fn: () => Promise<T>) {
     if (this.busy)
@@ -250,21 +238,6 @@ export class DirectAuth {
           );
           this.revision = result.revision;
           this.value = undefined;
-          return { ok: true };
-        }
-        if (path === "import-legacy") {
-          confirmed.parse(body);
-          if (!this.legacy)
-            throw new ApiError(
-              404,
-              t("This device has no saved API key from an earlier version."),
-            );
-          return this.store(this.legacy.key);
-        }
-        if (path === "remove-legacy") {
-          confirmed.parse(body);
-          await this.vault.write("");
-          this.legacy = undefined;
           return { ok: true };
         }
       } else if (path === "logout") {

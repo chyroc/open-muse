@@ -464,11 +464,11 @@ caches and pending actions with `accountWorkspaceKey(apiKey, project, owner)`.
 Two accounts using the same key/project therefore get separate MA resources,
 and the service refuses to bind a resource not recorded for the requesting
 account. Legacy records are preserved and never assigned to a newly signed-in
-account; an earlier device-held key is used only after the user explicitly saves
-it to the account. A shared Ark key can grant direct upstream access to both
-users' resources: application partitioning is not an Ark authorization
-boundary. Use separately scoped Ark credentials if the users must not be able
-to access one another's data outside Open Muse.
+account, and an account build never uses or uploads a device-held key. A
+shared Ark key can grant direct upstream access to both users' resources:
+application partitioning is not an Ark authorization boundary. Use separately
+scoped Ark credentials if the users must not be able to access one another's
+data outside Open Muse.
 
 Different credentials/workspaces cannot replace an unresolved run's connection.
 Unchanged bindings are deduplicated. Stale revisions fail instead of overwriting

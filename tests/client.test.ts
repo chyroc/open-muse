@@ -1,6 +1,7 @@
 import "fake-indexeddb/auto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Client } from "../src/api";
+import { DirectAuth, type AccountProvider } from "../src/direct/auth";
 import {
   credentials,
   LocalDatabase,
@@ -1364,7 +1365,6 @@ describe("Direct credentials and origin boundaries", () => {
     expect(await f.client.auth("status")).toMatchObject({
       loggedIn: false,
       ready: false,
-      legacy: undefined,
     });
     await expect(
       f.client.send("session", { type: "user.message", text: "hello" }),
@@ -1379,6 +1379,45 @@ describe("Direct credentials and origin boundaries", () => {
     expect(await f.vault.read()).not.toBe(legacy);
     await f.client.auth("logout", {});
     expect(await f.vault.read()).toBe("");
+  });
+  it("leaves a device-held API key untouched and unused in an account build", async () => {
+    const saved = JSON.stringify({
+      kind: "api_key",
+      apiKey: "test-local-build-key-123456",
+      project: "local-project",
+    });
+    let value = saved;
+    const vault = {
+      read: vi.fn(async () => value),
+      write: vi.fn(async (next: string) => {
+        value = next;
+      }),
+    };
+    const fetcher = vi.fn<typeof fetch>();
+    const account = {
+      accountConfigured: () => true,
+      accountOwner: () => undefined,
+      accountCredential: vi.fn(),
+      saveAccountCredential: vi.fn(),
+      removeAccountCredential: vi.fn(),
+    } as unknown as AccountProvider;
+    const auth = new DirectAuth(vault, fetcher, account);
+    await auth.restore();
+    expect(auth.status()).toEqual({
+      loggedIn: false,
+      ready: false,
+      method: undefined,
+      project: undefined,
+      account: { signedIn: false },
+    });
+    for (const path of ["import-legacy", "remove-legacy"])
+      await expect(auth.execute(path, { confirm: true })).rejects.toThrow(
+        "Unknown",
+      );
+    expect(value).toBe(saved);
+    expect(vault.write).not.toHaveBeenCalled();
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(account.saveAccountCredential).not.toHaveBeenCalled();
   });
   it("keeps browser secrets only in session storage", async () => {
     const memory = new Map<string, string>();
