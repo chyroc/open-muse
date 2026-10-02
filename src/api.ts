@@ -172,6 +172,13 @@ const validId = (id: string) => {
   return encodeURIComponent(id);
 };
 
+// The session fields that tell which identity's workspace a session runs on.
+type OwnedSessionRow = {
+  id: string;
+  agent?: string | { id?: string; metadata?: Record<string, string> } | null;
+  agent_id?: string;
+};
+
 // This client is the application runtime on every platform. Its only network
 // dependencies are public Volcano APIs; saved replies and mappings are local.
 export class Client {
@@ -767,20 +774,62 @@ export class Client {
     );
     return rows.map((row) => saved[row.id]);
   }
+  // Sessions under a shared Ark key may belong to other identities. One is
+  // this identity's when it runs on an agent of this identity's workspace or
+  // when this identity's conversation index tracks it.
+  private async ownedSessions(r: Runtime) {
+    const [agents, index] = await Promise.all([
+      this.collect<{ id: string; metadata?: Record<string, string> }>(
+        r.ark,
+        "/agents?limit=100",
+      ),
+      this.conversations(r).index(),
+    ]);
+    const ownAgents = new Set(
+      agents
+        .filter((agent) => agent.metadata?.open_muse_workspace === r.key)
+        .map((agent) => agent.id),
+    );
+    const tracked = new Set<string>();
+    if (index.mainId) tracked.add(index.mainId);
+    for (const [id, entry] of Object.entries(index.entries)) {
+      tracked.add(id);
+      for (const previous of entry.previousIds ?? []) tracked.add(previous);
+    }
+    return (row: OwnedSessionRow) => {
+      if (tracked.has(row.id)) return true;
+      const agent = row.agent;
+      if (typeof agent === "object" && agent)
+        return (
+          agent.metadata?.open_muse_workspace === r.key ||
+          ownAgents.has(agent.id ?? "")
+        );
+      return ownAgents.has(agent ?? row.agent_id ?? "");
+    };
+  }
   async sessions(): Promise<Page<Session>> {
     if (!this.signedIn()) return { data: [] };
     const r = this.context();
-    const rows = await this.collect<Session>(
-      r.ark,
-      "/sessions?limit=100&order=desc",
-    );
-    return { data: await this.remember(r, rows) };
+    const [rows, owned] = await Promise.all([
+      this.collect<Session & OwnedSessionRow>(
+        r.ark,
+        "/sessions?limit=100&order=desc",
+      ),
+      this.ownedSessions(r),
+    ]);
+    r.abort.signal.throwIfAborted();
+    return { data: await this.remember(r, rows.filter(owned)) };
   }
   async session(id: string, signal?: AbortSignal) {
     const r = this.context();
-    const row = await r.ark.request<Session>(`/sessions/${validId(id)}`, {
-      signal,
-    });
+    const [row, owned] = await Promise.all([
+      r.ark.request<Session & OwnedSessionRow>(`/sessions/${validId(id)}`, {
+        signal,
+      }),
+      this.ownedSessions(r),
+    ]);
+    if (!owned(row))
+      throw new ApiError(404, t("This conversation was not found."));
     return (await this.remember(r, [row]))[0];
   }
   async create(title: string, category: Category) {

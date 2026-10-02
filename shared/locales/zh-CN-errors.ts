@@ -124,6 +124,7 @@ export const zhErrors: Record<string, string> = {
   "Your goals changed. Refresh and review the latest progress before saving.":
     "目标已更改。保存前请刷新并检查最新进展。",
   "Goal not found.": "未找到目标。",
+  "This conversation was not found.": "未找到这段对话。",
   "Invalid memory resource ID.": "记忆资源 ID 无效。",
   "Invalid memory list. No changes were made.":
     "记忆列表无效。未进行任何更改。",

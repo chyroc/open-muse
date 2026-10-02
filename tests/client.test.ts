@@ -1127,6 +1127,38 @@ describe("Direct MA client", () => {
     });
     expect(await f.client.attachmentNames()).toEqual({});
   });
+  it("lists and opens only this identity's sessions under a shared key", async () => {
+    const f = fixture();
+    await f.login();
+    await f.client.prepareWorkspace();
+    const own = await f.client.create("Mine", "general");
+    f.resources.agents.push({
+      id: "agent-other",
+      metadata: { open_muse_workspace: "another-identity" },
+    });
+    f.resources.sessions.push(
+      {
+        id: "sesn-other",
+        title: "Another account's chat",
+        status: "idle",
+        agent: "agent-other",
+      },
+      {
+        id: "sesn-plain",
+        title: "Created outside Open Muse",
+        status: "idle",
+        agent: { id: "agent-plain", metadata: {} },
+      },
+    );
+    const listed = (await f.client.sessions()).data.map((row) => row.id);
+    expect(listed).toContain(own.id);
+    expect(listed).not.toContain("sesn-other");
+    expect(listed).not.toContain("sesn-plain");
+    await expect(f.client.session("sesn-other")).rejects.toThrow(
+      "This conversation was not found.",
+    );
+    expect((await f.client.session(own.id)).id).toBe(own.id);
+  });
   it("keeps reactions on this device for the signed-in identity only", async () => {
     const f = fixture();
     await f.login();
