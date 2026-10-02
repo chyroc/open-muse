@@ -2,19 +2,53 @@ import { t } from "../../shared/i18n";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Archive,
-  BookOpen,
   Keyboard,
-  CheckSquare,
   Lightbulb,
   Menu,
   MessageCircle,
   Search,
   Settings,
-  Shapes,
   X,
+  createLucideIcon,
 } from "lucide-react";
 import type { Page } from "./model";
 import { navLabel } from "./labels";
+
+// The feed: a card resting on the page behind it.
+const FeedIcon = createLucideIcon("feed-cards", [
+  ["rect", { x: "8", y: "3", width: "13", height: "18", rx: "2.5", key: "card" }],
+  [
+    "path",
+    { d: "M8 7H5.5A1.5 1.5 0 0 0 4 8.5v10A2.5 2.5 0 0 0 6.5 21H10", key: "page" },
+  ],
+  ["path", { d: "M12 8h5", key: "title" }],
+  ["path", { d: "M12 12h5", key: "line" }],
+]);
+
+// A wide speech bubble with its tail at the lower left.
+const ChatIcon = createLucideIcon("chat-bubble", [
+  [
+    "path",
+    {
+      d: "M12 4.5c4.97 0 9 3.13 9 7s-4.03 7-9 7c-1.13 0-2.2-.16-3.2-.46L4 19.5l1.25-3.66C3.85 14.6 3 13.12 3 11.5c0-3.87 4.03-7 9-7z",
+      key: "bubble",
+    },
+  ],
+]);
+
+// Goals: a box with a full-size tick.
+const GoalsIcon = createLucideIcon("goal-box", [
+  ["rect", { x: "3.5", y: "3.5", width: "17", height: "17", rx: "3", key: "box" }],
+  ["path", { d: "m8 12.5 2.8 2.8L16.5 9", key: "tick" }],
+]);
+
+// The library: four shapes in a grid.
+const LibraryIcon = createLucideIcon("shape-grid", [
+  ["path", { d: "M7 2.8 10.2 6 7 9.2 3.8 6z", key: "diamond" }],
+  ["path", { d: "M17 3 20.5 9h-7z", key: "triangle" }],
+  ["circle", { cx: "7", cy: "17", r: "3.3", key: "circle" }],
+  ["rect", { x: "13.7", y: "13.7", width: "6.6", height: "6.6", rx: "1.5", key: "square" }],
+]);
 
 export function Avatar({ large = false }: { large?: boolean }) {
   return (
@@ -76,11 +110,11 @@ export function Rail({
     action();
   };
   const items = [
-    { id: "chat", label: navLabel("chat"), Icon: MessageCircle },
-    { id: "feed", label: t("Feed"), Icon: BookOpen },
+    { id: "chat", label: navLabel("chat"), Icon: ChatIcon },
+    { id: "feed", label: t("Feed"), Icon: FeedIcon },
     { id: "ideas", label: navLabel("ideas"), Icon: Lightbulb },
-    { id: "goals", label: t("Goals"), Icon: CheckSquare },
-    { id: "library", label: navLabel("library"), Icon: Shapes },
+    { id: "goals", label: t("Goals"), Icon: GoalsIcon },
+    { id: "library", label: navLabel("library"), Icon: LibraryIcon },
   ] as const;
   return (
     <nav className="rail" aria-label={t("Main navigation")}>
@@ -94,7 +128,7 @@ export function Rail({
               aria-current={page === id ? "page" : undefined}
               onClick={() => onNavigate(id)}
             >
-              <Icon size={25} strokeWidth={1.7} />
+              <Icon size={24} strokeWidth={2} />
             </button>
             {i === 0 && (
               <button
@@ -102,7 +136,7 @@ export function Rail({
                 aria-label={t("Search")}
                 onClick={onSearch}
               >
-                <Search size={25} strokeWidth={1.7} />
+                <Search size={24} strokeWidth={2} />
               </button>
             )}
           </div>

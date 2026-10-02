@@ -109,7 +109,8 @@ h3 {
 }
 .rail-items {
   position: absolute;
-  top: 50%;
+  /* Centered a little above the middle, clear of the menu button below. */
+  top: calc(50% - 12px);
   transform: translateY(-50%);
   display: flex;
   flex-direction: column;
@@ -129,8 +130,54 @@ h3 {
   height: 43px;
   border-radius: 50%;
 }
+.rail-items button,
+.rail-settings {
+  transition:
+    background 0.15s ease-out,
+    transform 0.3s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.rail-items button:hover,
+.rail-settings:hover {
+  background: var(--fill-hover);
+}
 .rail-items button[aria-current="page"] {
   background: var(--fill);
+}
+.rail-items button:active,
+.rail-settings:active {
+  transform: scale(0.92);
+}
+/* Hovering an entry gives its glyph a short springy nudge. */
+.rail-items button:hover svg {
+  animation: rail-glyph 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes rail-glyph {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  35% {
+    transform: scale(1.12) rotate(-6deg);
+  }
+  70% {
+    transform: scale(0.98) rotate(2deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rail-items button:hover svg {
+    animation: rail-glyph-fade 0.2s ease-out;
+  }
+  .rail-items button:active,
+  .rail-settings:active {
+    transform: none;
+  }
+}
+@keyframes rail-glyph-fade {
+  from {
+    opacity: 0.6;
+  }
 }
 .rail-settings {
   margin-top: auto;
