@@ -53,6 +53,7 @@ import { SettingsHome } from "./SettingsHome";
 import { PageSheet } from "./PageSheet";
 import { PullToRefresh } from "./PullToRefresh";
 import { MessageMenu, type MessageMenuAction } from "./MessageMenu";
+import { haptic } from "./haptics";
 import { Studio } from "./Studio";
 import { exportText, shareText } from "./platform";
 import { backgroundClient } from "./background-client";
@@ -1214,6 +1215,9 @@ function Workspace({
             aria-label={item.label}
             aria-current={tab === item.id ? "page" : undefined}
             className={tab === item.id ? "selected" : ""}
+            onClick={() => {
+              if (tab !== item.id) haptic("selection");
+            }}
           >
             <item.icon size={26} strokeWidth={2} />
             <span>{item.label}</span>

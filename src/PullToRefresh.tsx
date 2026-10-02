@@ -9,6 +9,7 @@ import {
   type TouchEvent,
 } from "react";
 import { t } from "../shared/i18n";
+import { haptic } from "./haptics";
 import "./pull-to-refresh.css";
 
 type Refresh = () => Promise<unknown>;
@@ -96,9 +97,11 @@ export function PullToRefresh({
     const distance = event.touches[0].clientY - start.current;
     // The system rubber band: travel shrinks as the finger goes further.
     const range = scroller.current?.clientHeight || 600;
-    setPull(
-      distance > 0 ? (1 - 1 / ((distance * 0.55) / range + 1)) * range : 0,
-    );
+    const next =
+      distance > 0 ? (1 - 1 / ((distance * 0.55) / range + 1)) * range : 0;
+    // A light tick as the pull crosses the refresh point, either way.
+    if (next >= threshold !== pull >= threshold) haptic("light");
+    setPull(next);
   };
   const onTouchEnd = () => {
     const armed = pull >= threshold && handler.current;

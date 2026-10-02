@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { t } from "../shared/i18n";
+import { haptic } from "./haptics";
 import "./message-menu.css";
 
 export type MessageMenuAction = {
@@ -41,6 +42,7 @@ export function MessageMenu({
   useEffect(() => {
     const element = dialog.current!;
     const focused = document.activeElement;
+    haptic("medium");
     element.showModal();
     element.focus({ preventScroll: true });
     return () => {

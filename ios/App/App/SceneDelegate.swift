@@ -49,11 +49,37 @@ private final class MuseCredentialsHandler: NSObject, WKScriptMessageHandlerWith
     }
 }
 
+// Plays system haptics the web interface asks for: a selection tick, a light
+// or medium impact, or a success notification. Only the bundled main frame
+// may ask, and unknown kinds are ignored.
+final class MuseHapticsHandler: NSObject, WKScriptMessageHandler {
+    private let selection = UISelectionFeedbackGenerator()
+    private let light = UIImpactFeedbackGenerator(style: .light)
+    private let medium = UIImpactFeedbackGenerator(style: .medium)
+    private let notification = UINotificationFeedbackGenerator()
+
+    func userContentController(_ userContentController: WKUserContentController,
+                               didReceive message: WKScriptMessage) {
+        let origin = message.frameInfo.securityOrigin
+        guard message.frameInfo.isMainFrame, origin.protocol == "capacitor", origin.host == "localhost",
+              let kind = message.body as? String
+        else { return }
+        switch kind {
+        case "selection": selection.selectionChanged()
+        case "light": light.impactOccurred()
+        case "medium": medium.impactOccurred()
+        case "success": notification.notificationOccurred(.success)
+        default: break
+        }
+    }
+}
+
 class MuseBridgeViewController: CAPBridgeViewController {
     private var keyboardObservers: [NSObjectProtocol] = []
     private let credentialsHandler = MuseCredentialsHandler()
     private lazy var filesHandler = MuseFilesHandler(presenter: self)
     private let healthHandler = MuseHealthHandler()
+    private let hapticsHandler = MuseHapticsHandler()
 
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
@@ -69,6 +95,7 @@ class MuseBridgeViewController: CAPBridgeViewController {
         webView?.configuration.userContentController.addScriptMessageHandler(credentialsHandler, contentWorld: .page, name: "museCredentials")
         webView?.configuration.userContentController.addScriptMessageHandler(filesHandler, contentWorld: .page, name: "museFiles")
         webView?.configuration.userContentController.addScriptMessageHandler(healthHandler, contentWorld: .page, name: "museHealth")
+        webView?.configuration.userContentController.add(hapticsHandler, contentWorld: .page, name: "museHaptics")
         #if DEBUG && targetEnvironment(simulator)
         // Real-MA acceptance uses separate mappings/resources without changing
         // the user's normal main chat or personal memory. No credential is injected.
