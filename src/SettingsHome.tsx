@@ -1,6 +1,5 @@
 import { useState, type ReactNode } from "react";
 import {
-  ChevronRight,
   ExternalLink,
   Info,
   Check,
@@ -259,6 +258,22 @@ export function SettingsHome({
   );
 }
 
+// A list disclosure chevron at the system size; it grows with the text.
+export function RowChevron() {
+  return (
+    <svg className="row-chevron" viewBox="0 0 9 16" aria-hidden="true">
+      <path
+        d="M1.5 1.5 8 8l-6.5 6.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 function Row({
   icon,
   label,
@@ -276,7 +291,7 @@ function Row({
         <span aria-hidden="true">{icon}</span>
         <span>{label}</span>
         {value && <span className="settings-row-value">{value}</span>}
-        <ChevronRight size={20} strokeWidth={2} aria-hidden="true" />
+        <RowChevron />
       </button>
     </li>
   );

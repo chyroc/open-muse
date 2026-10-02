@@ -7,6 +7,7 @@ import "./styles.css";
 import "./muse.css";
 import "./chat.css";
 import { initializeLanguage } from "../shared/i18n";
+import { followDynamicType } from "./dynamic-type";
 
 initializeLanguage();
 
@@ -15,6 +16,7 @@ const desktop = Boolean(
     .__OPEN_MUSE_DESKTOP__,
 );
 if (desktop) document.documentElement.classList.add("native-desktop");
+if (Capacitor.getPlatform() === "ios") followDynamicType();
 
 // iOS does not include the software keyboard in dynamic viewport units. Size
 // the app to the visible viewport so focusing the composer cannot pan the

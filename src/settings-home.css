@@ -1,5 +1,9 @@
-/* Settings rows and cards follow the system grouped list: 17pt rows of 57pt,
-   20pt card padding, 24pt between cards, separators inset 16pt. */
+/* Settings rows and cards follow the system grouped list: 17pt text in 52pt
+   rows that grow with the text size, 20pt card padding, 24pt between cards,
+   separators inset 16pt. */
+:root {
+  --list-row-height: calc(52px + (var(--type-scale, 1) - 1) * 42px);
+}
 .settings-home {
   display: flex;
   flex-direction: column;
@@ -34,7 +38,7 @@
 .settings-status button {
   display: block;
   width: 100%;
-  min-height: 57px;
+  min-height: var(--list-row-height);
   padding: 0;
   border: 0;
   border-top: 1px solid #e8e8e8;
@@ -73,7 +77,7 @@
   align-items: center;
   gap: 12px;
   width: 100%;
-  min-height: 57px;
+  min-height: var(--list-row-height);
   padding: 0 20px;
   border: 0;
   background: none;
@@ -100,6 +104,10 @@
 .settings-list-row > svg:last-child {
   flex: 0 0 auto;
   color: #86868a;
+}
+.row-chevron {
+  width: calc(9px * var(--type-scale, 1));
+  height: calc(16px * var(--type-scale, 1));
 }
 /* Settings and its sheets sit on gray, with white grouped lists. */
 .companion-main:has(.settings-home),
