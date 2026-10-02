@@ -248,4 +248,5 @@ export const zhDesktop: Record<string, string> = {
     "以你偏好的语言查看 Open Muse 中的按钮、标题和其他文字。",
   "Menus and dialogs switch the next time Open Muse opens.":
     "菜单和对话框会在下次打开 Open Muse 时切换。",
+  "Open the full chat with {name}": "打开与{name}的完整聊天",
 };

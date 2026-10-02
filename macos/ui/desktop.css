@@ -1700,22 +1700,23 @@ h3 {
   line-height: 16px;
   color: var(--text);
 }
-.page-companion {
-  position: absolute;
-  top: 6px;
-  /* The centre of the chat column, beside the status panel's place. */
-  left: calc(74px + (100% - 74px - 345px) / 2);
-  transform: translateX(-50%);
+/* The companion at the top of the rail, away from the chat. */
+.rail-companion {
+  margin-top: 7px;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px #0000001f;
   animation: toolbar-avatar-in 0.34s cubic-bezier(0.22, 1.2, 0.36, 1) both;
   transition: transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
 }
-.page-companion:active {
-  transform: translateX(-50%) scale(0.94);
+.rail-companion .companion-face {
+  width: 44px;
+  height: 44px;
 }
-@media (max-width: 1050px) {
-  .page-companion {
-    left: calc(74px + (100% - 74px - 300px) / 2);
-  }
+.rail-companion .companion-face .desktop-avatar {
+  transform: scale(0.8) translateY(3px);
+}
+.rail-companion:active {
+  transform: scale(0.92);
 }
 @keyframes toolbar-avatar-in {
   from {
@@ -1725,7 +1726,7 @@ h3 {
 }
 @media (prefers-reduced-motion: reduce) {
   .toolbar-avatar,
-  .page-companion {
+  .rail-companion {
     animation: rail-menu-fade 0.15s ease-out both;
   }
 }

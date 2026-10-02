@@ -1038,6 +1038,17 @@ export function DesktopApp({ client }: { client: Client }) {
       <Rail
         page={route.page}
         onNavigate={goPage}
+        companion={
+          route.page === "chat" || document
+            ? undefined
+            : {
+                name,
+                onOpen: () => {
+                  setStatusOpen(true);
+                  goPage("chat");
+                },
+              }
+        }
         onSearch={() => {
           setQuery("");
           setSearch(true);
@@ -1801,23 +1812,6 @@ export function DesktopApp({ client }: { client: Client }) {
           </div>
         )}
       </main>
-      {route.page !== "chat" && !document && (
-        // Away from the chat the companion keeps its place above the chat
-        // column, and opens the chat with its status.
-        <button
-          className="page-companion companion-float"
-          aria-label={t("Assistant status")}
-          onClick={() => {
-            setStatusOpen(true);
-            goPage("chat");
-          }}
-        >
-          <span className="companion-face">
-            <Avatar />
-          </span>
-          <span className="companion-name">{name}</span>
-        </button>
-      )}
       {route.page === "chat" && !document && !statusOpen && !panelSettle && (
         <PanelEdgeHandle
           mode="open"

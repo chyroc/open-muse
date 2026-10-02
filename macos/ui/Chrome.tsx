@@ -74,12 +74,16 @@ export function Rail({
   onSearch,
   onSettings,
   onShortcuts,
+  companion,
 }: {
   page: Page;
   onNavigate: (page: Page) => void;
   onSearch: () => void;
   onSettings: () => void;
   onShortcuts: () => void;
+  // Away from the chat, the companion waits at the top of the rail and opens
+  // the full chat.
+  companion?: { name: string; onOpen: () => void };
 }) {
   const [menu, setMenu] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -119,6 +123,20 @@ export function Rail({
   return (
     <nav className="rail" aria-label={t("Main navigation")}>
       <div className="window-drag-space" />
+      {companion && (
+        <button
+          className="rail-companion"
+          title={t("Open the full chat with {name}", { name: companion.name })}
+          aria-label={t("Open the full chat with {name}", {
+            name: companion.name,
+          })}
+          onClick={companion.onOpen}
+        >
+          <span className="companion-face">
+            <Avatar />
+          </span>
+        </button>
+      )}
       <div className="rail-items">
         {items.map(({ id, label, Icon }, i) => (
           <div key={id}>
