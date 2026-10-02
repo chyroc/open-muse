@@ -81,9 +81,9 @@
   /* Sheets floating 8pt from the screen edges round their corners concentric
      with the display's (set by the iOS app; 55pt where unknown). */
   --floating-sheet-radius: max(calc(var(--device-corner, 55px) - 8px), 28px);
-  /* Their hairline edge and soft shadow. */
-  --floating-sheet-shadow:
-    0 0 0 0.5px rgb(0 0 0 / 28%), 0 10px 40px rgb(0 0 0 / 14%);
+  /* Their soft shadow; the hairline edge follows the continuous corners
+     drawn by ContinuousSurface. */
+  --floating-sheet-shadow: 0 10px 40px rgb(0 0 0 / 14%);
   /* Dimming behind a sheet, as measured against the system page sheet. */
   --sheet-dim: rgb(0 0 0 / 20%);
 }

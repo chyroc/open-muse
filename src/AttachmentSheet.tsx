@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { t } from "../shared/i18n";
 import { documentAccept, imageAccept } from "../shared/attachments";
+import { ContinuousSurface } from "./ContinuousSurface";
 import "./attachment-sheet.css";
 
 type Source = "camera" | "photos" | "files" | "video";
@@ -79,6 +80,7 @@ export function AttachmentSheet({
         if (event.target === dialog.current) onClose();
       }}
     >
+      <ContinuousSurface />
       {picker("camera", imageAccept, true)}
       {picker("photos", imageAccept)}
       {picker("files", documentAccept)}

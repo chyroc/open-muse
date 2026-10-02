@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
 import { t } from "../shared/i18n";
 import { emojiCategories } from "../shared/emoji";
+import { ContinuousSurface } from "./ContinuousSurface";
 import { animateAway, useDragToDismiss } from "./gesture";
 import "./emoji-picker.css";
 
@@ -114,6 +115,7 @@ export function EmojiPicker({
         if (event.target === dialog.current) dismiss();
       }}
     >
+      <ContinuousSurface />
       <div className="emoji-picker-top" {...drag}>
         <div className="emoji-picker-grip" aria-hidden="true" />
         <h2>{t("Mood")}</h2>

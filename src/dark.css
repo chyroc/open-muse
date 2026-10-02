@@ -538,7 +538,7 @@
   /* attachment-sheet.css */
   .attach-sheet {
     color: #ffffff;
-    background: rgb(44 44 46 / 96%);
+    --surface-fill: rgb(44 44 46 / 96%);
     box-shadow: 0 10px 40px rgb(0 0 0 / 42%);
   }
   .attach-sheet h2 {

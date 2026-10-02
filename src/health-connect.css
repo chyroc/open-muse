@@ -14,10 +14,12 @@
   border: 0;
   border-radius: var(--floating-sheet-radius);
   color: #000;
-  background: #fcfcfc;
+  --surface-fill: #fcfcfc;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
   box-shadow: var(--floating-sheet-shadow);
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow: visible;
   animation: health-connect-in var(--motion-sheet-duration)
     var(--motion-sheet-spring) backwards;
 }
@@ -31,6 +33,12 @@
 .health-connect.closing::backdrop {
   opacity: 0;
   transition: opacity var(--motion-sheet-dismiss-duration) ease-in;
+}
+/* Content scrolls inside the surface only if it cannot fit. */
+.health-connect-content {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .health-connect-top {
   display: flex;
@@ -169,7 +177,7 @@
 @media (prefers-color-scheme: dark) {
   .health-connect {
     color: #fff;
-    background: #1c1c1e;
+    --surface-fill: #1c1c1e;
   }
   .health-connect-grip {
     background: rgb(255 255 255 / 22%);

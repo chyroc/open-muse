@@ -1,0 +1,19 @@
+/* A floating sheet's surface, drawn behind its content with continuous
+   corners: the sheet sets --surface-fill, the surface adds a hairline edge. */
+.continuous-surface {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: visible;
+  pointer-events: none;
+}
+.continuous-surface path {
+  fill: var(--surface-fill, #fff);
+  stroke: rgb(0 0 0 / 28%);
+  stroke-width: 0.5px;
+}
+@media (prefers-color-scheme: dark) {
+  .continuous-surface path {
+    stroke: rgb(255 255 255 / 14%);
+  }
+}

@@ -16,7 +16,8 @@
   border: 0;
   border-radius: var(--floating-sheet-radius);
   color: #000;
-  background: rgb(255 255 255 / 96%);
+  --surface-fill: rgb(255 255 255 / 96%);
+  background: transparent;
   box-shadow: var(--floating-sheet-shadow);
   -webkit-backdrop-filter: blur(30px);
   backdrop-filter: blur(30px);
@@ -168,7 +169,7 @@
 @media (prefers-color-scheme: dark) {
   .emoji-picker {
     color: #fff;
-    background: rgb(28 28 30 / 96%);
+    --surface-fill: rgb(28 28 30 / 96%);
   }
   .emoji-picker-grip {
     background: rgb(255 255 255 / 22%);
