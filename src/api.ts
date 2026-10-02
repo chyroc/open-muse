@@ -50,6 +50,7 @@ import {
   maxAttachments,
   type Attachment,
 } from "../shared/attachments";
+import { MediaStore, type KeptMedia } from "./direct/media";
 import { turnContext, type Surface } from "../shared/turn-context";
 import { identityDefaults } from "../shared/identity";
 import {
@@ -195,6 +196,7 @@ export class Client {
   // this device instead of continuing with the key held in memory.
   private accountCheck: { read: number; write: number; interval: number };
   private now: () => number;
+  private media = new MediaStore();
   private surface: Surface;
   private timeZone: () => string;
   private verifiedAt = 0;
@@ -1952,6 +1954,26 @@ export class Client {
       }
     }
     return result;
+  }
+  // Copies of photos and videos sent from this device, so they can be opened
+  // again; Ark offers no download of uploads. Failures only cost the preview.
+  keepSentImage(fileId: string, blob: Blob, video?: string) {
+    if (!this.signedIn()) return Promise.resolve();
+    return this.media
+      .keepImage(this.context().key, fileId, blob, video)
+      .catch(() => {});
+  }
+  keepSentVideo(video: string, blob: Blob) {
+    if (!this.signedIn()) return Promise.resolve();
+    return this.media
+      .keepVideo(this.context().key, video, blob)
+      .catch(() => {});
+  }
+  async sentMedia(fileId: string): Promise<KeptMedia | undefined> {
+    if (!this.signedIn()) return undefined;
+    return this.media
+      .media(this.context().key, fileId)
+      .catch(() => undefined);
   }
   async attachmentNames(): Promise<Record<string, string>> {
     if (!this.signedIn()) return {};

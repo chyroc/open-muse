@@ -392,6 +392,15 @@ html.sidebar-dragging .companion-shell {
   border-radius: 22px;
   max-width: 87%;
 }
+/* Photos and videos sent without text stand on their own, without a bubble. */
+.chat-bubble:has(.message-media):not(:has(.markdown)),
+.from-user .chat-bubble:has(.message-media):not(:has(.markdown)) {
+  padding: 0;
+  background: transparent;
+}
+.chat-bubble:has(.message-media):not(:has(.markdown)) .message-attachments {
+  margin: 0;
+}
 .chat-bubble + .chat-bubble {
   margin-top: 4px;
 }

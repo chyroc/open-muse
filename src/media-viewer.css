@@ -1,0 +1,95 @@
+/* The full-screen viewer: black, fading in as the media scales up from 92%,
+   and fading out as a finger pulls it down. */
+.media-viewer {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: #fff;
+  background: rgb(0 0 0 / calc(1 - var(--media-pull, 0) * 0.8));
+  overflow: hidden;
+  animation: media-viewer-fade var(--motion-fade-duration) ease-out both;
+}
+.media-viewer:focus {
+  outline: none;
+}
+.media-viewer::backdrop {
+  background: transparent;
+}
+.media-viewer.closing {
+  background: transparent;
+  transition: background-color var(--motion-sheet-dismiss-duration) ease-in;
+}
+.media-viewer-close {
+  position: absolute;
+  top: max(env(safe-area-inset-top), 12px);
+  left: 16px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: #fff;
+  background: rgb(255 255 255 / 16%);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  opacity: calc(1 - var(--media-pull, 0) * 2);
+  transition: transform var(--motion-press-duration) ease-out;
+}
+.media-viewer-close:active {
+  transform: scale(var(--motion-press-scale));
+}
+.media-viewer-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  animation: media-viewer-in var(--motion-sheet-duration)
+    var(--motion-sheet-spring) backwards;
+}
+.media-viewer-stage img,
+.media-viewer-stage video {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  min-width: 0;
+  object-fit: contain;
+}
+.media-viewer-missing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 260px;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+  text-align: center;
+  color: rgb(255 255 255 / 70%);
+}
+@keyframes media-viewer-fade {
+  from {
+    background: transparent;
+  }
+}
+@keyframes media-viewer-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes media-viewer-in {
+    from {
+      opacity: 0;
+    }
+  }
+}

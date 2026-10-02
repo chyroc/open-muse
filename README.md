@@ -207,7 +207,11 @@ signed-in identity and are not sent to Ark. Library shows a list or a grid,
 ordered by last modified or by title, from its header menu. The plus button in
 the composer adds a photo from the camera or library, a document (PDF, text,
 Markdown, or CSV) from Files, or a video, which is attached as up to four
-evenly spaced still frames; the video itself never leaves the device.
+evenly spaced still frames; the video itself never leaves the device. A
+video shows as one attachment. Sent photos and videos appear as thumbnails that
+open full screen, from copies kept on the sending device (up to 300 MB, oldest
+dropped first; videos over 100 MB keep only their frames), because Ark offers
+no way to download uploads back. Other devices show a placeholder.
 
 **Android:** the Capacitor app uses the same direct client and includes a native
 credential-storage plugin. Open with `npm run android`; build the Gradle project

@@ -240,6 +240,10 @@ function Workspace({
   useEffect(() => {
     void client.attachmentNames().then(setAttachmentNames, () => {});
   }, [client]);
+  const sentMedia = useCallback(
+    (fileId: string) => client.sentMedia(fileId),
+    [client],
+  );
   // This device's reactions, by the message's source event.
   const [reactions, setReactions] = useState<Record<string, string>>({});
   useEffect(() => {
@@ -251,7 +255,7 @@ function Workspace({
   const readyAttachments = staged.filter((item) => item.state === "ready");
   const stagedCount = useRef(0);
   stagedCount.current = staged.length;
-  const attachFiles = (files: File[], replacing?: string) => {
+  const attachFiles = (files: File[], replacing?: string, video?: string) => {
     // A video's placeholder gives its slot to the frames that replace it.
     let count = stagedCount.current - (replacing ? 1 : 0);
     if (replacing)
@@ -297,11 +301,15 @@ function Workspace({
       client.uploadAttachment(file, file.name, position).then(
         (item) => {
           update({ state: "ready", value: item, name: item.name });
-          if ("file_id" in item)
+          if ("file_id" in item) {
             setAttachmentNames((names) => ({
               ...names,
               [item.file_id]: item.name,
             }));
+            // Kept on this device so the sent photo or video opens again.
+            if (kind === "image")
+              void client.keepSentImage(item.file_id, file, video);
+          }
         },
         (error: Error) => update({ state: "failed", error: error.message }),
       );
@@ -337,8 +345,9 @@ function Workspace({
         note: t("Preparing video…"),
       },
     ]);
+    void client.keepSentVideo(key, file);
     videoFrames(file, Math.min(room, videoFrameCount)).then(
-      (frames) => attachFiles(frames, key),
+      (frames) => attachFiles(frames, key, key),
       () =>
         setStaged((current) =>
           current.map((item) =>
@@ -1053,6 +1062,7 @@ function Workspace({
                       >
                         <MessageAttachments
                           items={messageAttachments(event, attachmentNames)}
+                          load={sentMedia}
                         />
                         {eventText(event) && (
                           <Markdown text={eventText(event)} />

@@ -1,7 +1,9 @@
+import { useEffect, useState } from "react";
 import {
   FileText,
   Image,
   LoaderCircle,
+  Play,
   TriangleAlert,
   Video,
   X,
@@ -13,6 +15,8 @@ import type {
   SentAttachment,
 } from "../shared/attachments";
 import { groupFrames } from "./videoFrames";
+import type { KeptMedia } from "./direct/media";
+import { MediaViewer, useObjectURL } from "./MediaViewer";
 import "./attachments.css";
 
 export interface StagedAttachment {
@@ -67,7 +71,7 @@ export function StagedAttachments({
     return {
       item: {
         ...group[0],
-        name: t("Video · {count} frames", { count: group.length }),
+        name: t("Video"),
         state,
         preview: group.find((frame) => frame.preview)?.preview,
         error: group.find((frame) => frame.error)?.error,
@@ -123,31 +127,91 @@ export function StagedAttachments({
   );
 }
 
+// A sent photo or video as a thumbnail that opens full screen. Only this
+// device's own copies can be shown; anything else opens to a short note.
+function MediaTile({
+  fileId,
+  video,
+  load,
+  onOpen,
+}: {
+  fileId: string;
+  video: boolean;
+  load?: (fileId: string) => Promise<KeptMedia | undefined>;
+  onOpen: (media?: KeptMedia) => void;
+}) {
+  const [media, setMedia] = useState<KeptMedia>();
+  useEffect(() => {
+    let active = true;
+    void load?.(fileId).then((value) => active && setMedia(value));
+    return () => {
+      active = false;
+    };
+  }, [fileId, load]);
+  const url = useObjectURL(
+    media?.kind === "video" ? media.poster : media?.blob,
+  );
+  return (
+    <li className="message-media-item">
+      <button
+        type="button"
+        className="message-media"
+        aria-label={video ? t("Open video") : t("Open image")}
+        onClick={() => onOpen(media)}
+      >
+        {url ? (
+          <img src={url} alt="" />
+        ) : video ? (
+          <Video size={22} aria-hidden="true" />
+        ) : (
+          <Image size={22} aria-hidden="true" />
+        )}
+        {video && (
+          <span className="message-media-play" aria-hidden="true">
+            <Play size={16} fill="currentColor" />
+          </span>
+        )}
+      </button>
+    </li>
+  );
+}
+
 export function MessageAttachments({
   items,
+  load,
 }: {
   items: readonly SentAttachment[];
+  // Reads this device's copy of a sent photo or video by file ID.
+  load?: (fileId: string) => Promise<KeptMedia | undefined>;
 }) {
+  const [viewing, setViewing] = useState<{ media?: KeptMedia }>();
   if (!items.length) return null;
   return (
-    <ul className="message-attachments" aria-label={t("Attachments")}>
-      {groupFrames(items).map(({ video, items: group }) =>
-        video ? (
-          <li key={group[0].key}>
-            <Video size={16} aria-hidden="true" />
-            <span>{t("Video · {count} frames", { count: group.length })}</span>
-          </li>
-        ) : (
-          <li key={group[0].key}>
-            {group[0].kind === "image" ? (
-              <Image size={16} aria-hidden="true" />
-            ) : (
+    <>
+      <ul className="message-attachments" aria-label={t("Attachments")}>
+        {groupFrames(items).map(({ video, items: group }) =>
+          video || group[0].kind === "image" ? (
+            <MediaTile
+              key={group[0].key}
+              fileId={group[0].key}
+              video={Boolean(video)}
+              load={load}
+              onOpen={(media) => setViewing({ media })}
+            />
+          ) : (
+            <li key={group[0].key}>
               <FileText size={16} aria-hidden="true" />
-            )}
-            <span>{group[0].name}</span>
-          </li>
-        ),
+              <span>{group[0].name}</span>
+            </li>
+          ),
+        )}
+      </ul>
+      {viewing && (
+        <MediaViewer
+          media={viewing.media}
+          onClose={() => setViewing(undefined)}
+        />
       )}
-    </ul>
+    </>
   );
 }

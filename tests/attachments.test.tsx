@@ -97,15 +97,16 @@ describe("Attachment rules", () => {
       />,
     );
     expect(staged.match(/<li /g)).toHaveLength(2);
-    expect(staged).toContain("Video · 4 frames");
+    expect(staged).toContain("<strong>Video</strong>");
     expect(staged).not.toContain("8126438339");
     const sent = renderToStaticMarkup(
       <MessageAttachments
         items={frames.map(({ key, name, kind }) => ({ key, name, kind }))}
       />,
     );
-    expect(sent.match(/<li>/g)).toHaveLength(1);
-    expect(sent).toContain("Video · 4 frames");
+    expect(sent.match(/<li /g)).toHaveLength(1);
+    expect(sent).toContain('aria-label="Open video"');
+    expect(sent).toContain("message-media-play");
   });
   it("limits count, size and empty files", () => {
     expect(() => checkAttachment("a.png", "image/png", 1, 4)).toThrow(
