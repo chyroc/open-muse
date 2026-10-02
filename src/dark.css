@@ -29,8 +29,14 @@
   .companion-subtitle {
     color: #8e8e93;
   }
+  .companion-subtitle.attention {
+    color: #4a90ff;
+  }
+  .companion-avatar {
+    background: radial-gradient(circle at 50% 35%, #3a3a3c, #232325);
+  }
   .companion-name {
-    background: rgb(0 0 0 / 75%);
+    background: rgb(0 0 0 / 85%);
     border: 1px solid #38383a;
     box-shadow:
       inset 0 0 0 2px rgb(255 255 255 / 4%),

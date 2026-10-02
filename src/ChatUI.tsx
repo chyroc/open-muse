@@ -1,4 +1,5 @@
 import { t } from "../shared/i18n";
+import type { CompanionActivity } from "../shared/companion-activity";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -27,15 +28,22 @@ import { animateAway, animateIn, useDragToDismiss } from "./gesture";
 import type { ConversationIndex } from "./direct/conversations";
 import { Sheet } from "./MusePages";
 
-export function CompanionAvatar() {
+// The companion, drawn in CSS. While it works it puts on headphones and
+// types on a laptop.
+export function CompanionAvatar({ working = false }: { working?: boolean }) {
   return (
-    <span className="companion-avatar" aria-hidden="true">
+    <span
+      className={`companion-avatar${working ? " working" : ""}`}
+      aria-hidden="true"
+    >
       <span className="companion-body" />
       <span className="companion-face">
         <i />
         <i />
         <b />
       </span>
+      <span className="companion-headphones" />
+      <span className="companion-laptop" />
     </span>
   );
 }
@@ -145,7 +153,7 @@ export function ChatHeader({
   showMore?: boolean;
   moreLabel?: string;
   // What the companion is doing, shown under its name while not idle.
-  activity?: string;
+  activity?: CompanionActivity;
 }) {
   return (
     <header className="companion-header">
@@ -170,9 +178,18 @@ export function ChatHeader({
         aria-label={t("{name} status: {status}", { name, status: t(status) })}
         onClick={onStatus}
       >
-        <CompanionAvatar />
-        <span className="companion-name">{name}</span>
-        {activity && <span className="companion-subtitle">{activity}</span>}
+        <CompanionAvatar working={Boolean(activity?.working)} />
+        <span className="companion-name">
+          <span className="companion-name-text">{name}</span>
+          {activity && (
+            <span
+              key={activity.label}
+              className={`companion-subtitle${activity.attention ? " attention" : ""}`}
+            >
+              {t(activity.label)}
+            </span>
+          )}
+        </span>
       </button>
       {showMore && (
         <button

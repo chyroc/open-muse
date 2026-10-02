@@ -75,6 +75,7 @@ import {
   messageAttachments,
 } from "../shared/attachments";
 import { videoFrameCount, videoFrames } from "./videoFrames";
+import { companionActivity } from "../shared/companion-activity";
 import {
   ChatActions,
   ChatComposer,
@@ -381,6 +382,19 @@ function Workspace({
   );
   // Apple Health reads wait for the person to share them on the iPhone.
   const healthRequests = customTools.filter(isHealthRequest);
+  // Whether Health is connected, so its reads run without asking.
+  const [healthLinked, setHealthLinked] = useState(false);
+  useEffect(() => {
+    if (!healthRequests.length) return;
+    let active = true;
+    void client.healthConnected().then(
+      (value) => active && setHealthLinked(value),
+      () => {},
+    );
+    return () => {
+      active = false;
+    };
+  }, [client, healthRequests.length]);
   const state =
     automaticCount > 0 && !permissions.length
       ? "running"
@@ -778,6 +792,20 @@ function Workspace({
             : task.error || loadError
               ? t("Connection interrupted")
               : t("Connected");
+  const activity =
+    config?.mode === "ark"
+      ? companionActivity(currentEvents, {
+          running: state === "running",
+          approval: permissions.length > 0,
+          mac: macTools.length > 0,
+          health: healthRequests.length
+            ? healthLinked
+              ? "auto"
+              : "ask"
+            : undefined,
+          interrupted: Boolean(task.error || loadError),
+        })
+      : undefined;
   const messageEvents = events.filter(
     (event) =>
       ["user.message", "agent.message"].includes(event.type) &&
@@ -893,7 +921,7 @@ function Workspace({
             showSidebar={isChat}
             showMore={tab !== "discover" && !isSideDraft}
             status={status}
-            activity={status === t("Connected") ? undefined : status}
+            activity={activity}
             sideTitle={sideTitle}
           />
         ) : (
