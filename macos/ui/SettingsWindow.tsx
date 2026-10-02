@@ -426,7 +426,7 @@ export function SettingsWindow({ client }: { client: Client }) {
               <Row
                 title={t("Automatically approved")}
                 detail={t(
-                  "Only pending web_search and web_fetch requests, matched by exact protocol name. There is no setting that widens this.",
+                  "Pending web_search and web_fetch requests, matched by exact protocol name, and computer control on this Mac only if you choose Always allow in Computer use. Calendar and Location always ask.",
                 )}
               />
               <Row

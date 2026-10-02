@@ -50,7 +50,16 @@ import { connectionError, connectionReady } from "./startup";
 import { WorkspaceBoundary } from "./WorkspaceBoundary";
 import { AssistantContent, messageParts } from "./ChoiceContent";
 import { ComputerRequests, type MacAnswer } from "./ComputerRequests";
-import { declinedResult, isMacTool, runMacTool } from "./computer";
+import {
+  computerAvailable,
+  computerChanged,
+  declinedResult,
+  isMacTool,
+  policyAnswer,
+  readComputer,
+  runMacTool,
+  type ComputerState,
+} from "./computer";
 import { healthToolName } from "../../shared/health";
 import { UpcomingTab, upcomingChanged } from "./UpcomingTab";
 
@@ -488,6 +497,32 @@ export function DesktopApp({ client }: { client: Client }) {
     if (id && macCalls.length && trustedChats.current.has(id))
       answerMac("once");
   }, [id, macCallKey, answerMac, macCalls.length]);
+  // The person's standing choice in Computer use settings answers computer
+  // control for them: always allow, or always deny. It never covers Calendar,
+  // Location or a batch that mixes them in, and applies only while on.
+  const [macState, setMacState] = useState<ComputerState>();
+  useEffect(() => {
+    if (!computerAvailable()) return;
+    let active = true;
+    const refresh = () =>
+      void readComputer()
+        .then((value) => active && value && setMacState(value))
+        .catch(() => {});
+    refresh();
+    window.addEventListener("focus", refresh);
+    window.addEventListener(computerChanged, refresh);
+    return () => {
+      active = false;
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener(computerChanged, refresh);
+    };
+  }, []);
+  useEffect(() => {
+    if (!id || !macCalls.length || trustedChats.current.has(id)) return;
+    const answer = policyAnswer(macState, macCalls);
+    if (answer) answerMac(answer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, macCallKey, macState, answerMac]);
   // The palette reaches goals too; they are read when it opens.
   useEffect(() => {
     if (!search || !ready) return;

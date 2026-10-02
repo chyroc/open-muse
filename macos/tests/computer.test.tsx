@@ -13,6 +13,8 @@ import {
   declinedResult,
   describeCall,
   runMacTool,
+  parseComputerState,
+  policyAnswer,
 } from "../ui/computer";
 import { ComputerSettings } from "../ui/ComputerSettings";
 import { DesktopApp } from "../ui/DesktopApp";
@@ -117,6 +119,121 @@ const button = (label: string) =>
   [...host!.querySelectorAll("button")].find(
     (item) => item.textContent === label,
   )!;
+
+function policyShell(policy: string, enabled = true) {
+  const postMessage = vi.fn(async (body: Record<string, string>) => {
+    if (body.operation === "run")
+      return { ok: true, text: '{"ok":true}', image: "" };
+    return { enabled, accessibility: true, screen: true, policy };
+  });
+  Object.defineProperty(window, "webkit", {
+    configurable: true,
+    value: { messageHandlers: { museComputer: { postMessage } } },
+  });
+  return postMessage;
+}
+
+describe("Mac computer control policy", () => {
+  const state = (policy: string, enabled = true) =>
+    parseComputerState({ enabled, accessibility: true, screen: true, policy });
+  it("answers only whole batches of computer control", () => {
+    const shot = { name: "mac_screenshot" };
+    expect(state("nonsense")?.policy).toBe("ask");
+    expect(policyAnswer(state("ask"), [shot])).toBeUndefined();
+    expect(policyAnswer(state("allow"), [shot])).toBe("once");
+    expect(policyAnswer(state("allow", false), [shot])).toBeUndefined();
+    expect(policyAnswer(state("deny", false), [shot])).toBe("deny");
+    expect(
+      policyAnswer(state("allow"), [shot, { name: "mac_calendar" }]),
+    ).toBeUndefined();
+    expect(policyAnswer(state("deny"), [{ name: "mac_location" }])).toBe(
+      undefined,
+    );
+  });
+  it("runs computer control without a click under Always allow", async () => {
+    const post = policyShell("allow");
+    fixtureTask.events = [
+      call("shot", "mac_screenshot", {}),
+      waiting(["shot"]),
+    ];
+    const value = await client();
+    const answer = vi
+      .spyOn(value, "answerCustomTools")
+      .mockResolvedValue({ data: [] });
+    await mount(<DesktopApp client={value} />);
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 30)));
+    expect(post).toHaveBeenCalledWith(
+      expect.objectContaining({ operation: "run", tool: "mac_screenshot" }),
+    );
+    expect(answer).toHaveBeenCalledTimes(1);
+    expect(answer.mock.calls[0][1][0]).toMatchObject({
+      custom_tool_use_id: "shot",
+      is_error: false,
+    });
+  });
+  it("declines without touching the Mac under Always deny", async () => {
+    const post = policyShell("deny", false);
+    fixtureTask.events = [
+      call("open", "mac_open", { target: "Terminal" }),
+      waiting(["open"]),
+    ];
+    const value = await client();
+    const answer = vi
+      .spyOn(value, "answerCustomTools")
+      .mockResolvedValue({ data: [] });
+    await mount(<DesktopApp client={value} />);
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 30)));
+    expect(post).not.toHaveBeenCalledWith(
+      expect.objectContaining({ operation: "run" }),
+    );
+    expect(answer.mock.calls[0][1][0]).toMatchObject({
+      custom_tool_use_id: "open",
+      is_error: true,
+    });
+  });
+  it("still asks for Calendar under Always allow", async () => {
+    policyShell("allow");
+    fixtureTask.events = [
+      call("cal", "mac_calendar", { kind: "events" }),
+      waiting(["cal"]),
+    ];
+    const value = await client();
+    const answer = vi
+      .spyOn(value, "answerCustomTools")
+      .mockResolvedValue({ data: [] });
+    await mount(<DesktopApp client={value} />);
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 30)));
+    expect(answer).not.toHaveBeenCalled();
+    expect(host!.textContent).toContain("Your assistant wants to use this Mac");
+  });
+  it("is chosen in Computer use settings", async () => {
+    let policy = "ask";
+    const postMessage = vi.fn(async (body: Record<string, string>) => {
+      if (body.operation === "policy") policy = body.value;
+      return { enabled: true, accessibility: true, screen: true, policy };
+    });
+    Object.defineProperty(window, "webkit", {
+      configurable: true,
+      value: { messageHandlers: { museComputer: { postMessage } } },
+    });
+    await mount(<ComputerSettings />);
+    expect(host!.textContent).toContain("Every action asks first");
+    const select = host!.querySelector<HTMLSelectElement>(
+      'select[aria-label="Computer control"]',
+    )!;
+    await act(async () => {
+      select.value = "allow";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(postMessage).toHaveBeenCalledWith({
+      operation: "policy",
+      value: "allow",
+    });
+    expect(host!.textContent).toContain("Computer control runs without asking");
+    const swift = readFileSync("macos/OpenMuse.swift", "utf8");
+    expect(swift).toContain('private let policyKey = "computerUse.policy"');
+  });
+});
 
 describe("Mac computer use", () => {
   it("describes each call in plain words", () => {

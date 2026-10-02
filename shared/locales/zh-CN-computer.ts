@@ -22,6 +22,21 @@ export const zhComputer: Record<string, string> = {
   "Requests run in the workspace window of this Mac. Scheduled and background work never controls your Mac.":
     "请求只在这台 Mac 的工作区窗口中执行。定时任务和后台工作永远不会操控你的 Mac。",
   "Your assistant wants to use this Mac": "助手想使用这台 Mac",
+  "Manage permissions": "管理权限",
+  "Computer control": "电脑控制",
+  "Screenshots, clicks, typing and opening apps. Calendar and Location always ask.":
+    "截屏、点按、输入和打开 App。日历和位置始终询问。",
+  "Screenshots, clicks, typing and opening apps run as soon as your assistant asks, while computer use is on. Calendar and Location still ask.":
+    "电脑操控开启时，助手请求截屏、点按、输入和打开 App 会立即执行。日历和位置仍会询问。",
+  "Ask every time": "每次询问",
+  "Always allow": "始终允许",
+  "Always deny": "始终拒绝",
+  "Computer control runs without asking": "电脑控制无需询问即可执行",
+  "Computer control is always declined": "电脑控制始终被拒绝",
+  "You chose Always allow, so each computer control request runs and is shown in the conversation. Change it above at any time.":
+    "你选择了「始终允许」，每个电脑控制请求都会直接执行并显示在对话中。你可以随时在上方更改。",
+  "You chose Always deny, so every computer control request is declined without asking, and your assistant is told not to try another way.":
+    "你选择了「始终拒绝」，每个电脑控制请求都会被直接拒绝，助手也会被告知不要换其他方式尝试。",
   "Computer use is off on this Mac. Turn it on in Settings, or decline.":
     "这台 Mac 的电脑操控已关闭。请在设置中开启，或拒绝此请求。",
   Decline: "拒绝",

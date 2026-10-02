@@ -456,6 +456,13 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     // Computer use is off until the user turns it on for this Mac. Only the
     // workspace window, where each call is approved, may run a tool.
     private let keepAwakeKey = "computerUse.keepAwake"
+    // How computer control calls are answered: ask each time (the default),
+    // always allow or always deny. It never covers Calendar or Location.
+    private let policyKey = "computerUse.policy"
+    private var computerPolicy: String {
+        let value = UserDefaults.standard.string(forKey: policyKey) ?? "ask"
+        return ["ask", "allow", "deny"].contains(value) ? value : "ask"
+    }
     private let blockedAppsKey = "computerUse.blockedApps"
     private let blockedFoldersKey = "computerUse.blockedFolders"
     private var blockedFolders: [String] {
@@ -474,6 +481,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
          "blocked": blockedApps,
          "fullDiskAccess": computer.fullDiskAccess,
          "blockedFolders": blockedFolders,
+         "policy": computerPolicy,
          "calendar": ["enabled": UserDefaults.standard.bool(forKey: calendarKey),
                       "events": LocalCalendar.state(.event),
                       "reminders": LocalCalendar.state(.reminder)],
@@ -554,6 +562,12 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             }
             if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices") { NSWorkspace.shared.open(url) }
             replyHandler(computerState(), nil)
+        case "policy":
+            guard let value = body["value"], ["ask", "allow", "deny"].contains(value)
+            else { replyHandler(nil, "Invalid computer use policy"); return }
+            UserDefaults.standard.set(value, forKey: policyKey)
+            replyHandler(computerState(), nil)
+            broadcast("muse-computer-changed", except: sender)
         case "keep-awake":
             guard let value = body["value"], value == "true" || value == "false"
             else { replyHandler(nil, "Invalid computer use value"); return }

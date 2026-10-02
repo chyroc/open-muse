@@ -42,7 +42,11 @@ export type ComputerState = {
   blockedFolders: string[];
   calendar: CalendarState;
   location: LocationState;
+  // How computer control calls are answered; Calendar and Location always ask.
+  policy: ComputerPolicy;
 };
+export type ComputerPolicy = "ask" | "allow" | "deny";
+const policies: ComputerPolicy[] = ["ask", "allow", "deny"];
 export const computerChanged = "muse-computer-changed";
 
 type Bridge = { postMessage: (value: object) => Promise<unknown> };
@@ -114,6 +118,9 @@ export function parseComputerState(value: unknown): ComputerState | undefined {
           : [],
         calendar: parseCalendar(record.calendar),
         location: parseLocation(record.location),
+        policy: policies.includes(record.policy as ComputerPolicy)
+          ? (record.policy as ComputerPolicy)
+          : "ask",
       }
     : undefined;
 }
@@ -152,6 +159,20 @@ export const unblockFolder = (path: string) =>
 export const openFullDiskAccess = () => send({ operation: "full-disk-access" });
 export const enableCalendar = (value: boolean) =>
   send({ operation: "calendar-enable", value: value ? "true" : "false" });
+export const setComputerPolicy = (value: ComputerPolicy) =>
+  send({ operation: "policy", value });
+// A policy answers a batch only when every call in it is computer control
+// and computer use is on; anything else is left for the person.
+export function policyAnswer(
+  state: ComputerState | undefined,
+  calls: { name?: string }[],
+): "once" | "deny" | undefined {
+  if (!state || !calls.length || state.policy === "ask") return undefined;
+  if (!calls.every((call) => macSwitch(call.name) === "computer"))
+    return undefined;
+  if (state.policy === "deny") return "deny";
+  return state.enabled ? "once" : undefined;
+}
 export const enableLocation = (value: boolean) =>
   send({ operation: "location-enable", value: value ? "true" : "false" });
 export const requestLocation = () => send({ operation: "location-request" });

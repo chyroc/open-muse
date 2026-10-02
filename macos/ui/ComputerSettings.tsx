@@ -8,8 +8,10 @@ import {
   enableComputer,
   readComputer,
   requestPermission,
+  setComputerPolicy,
   setKeepAwake,
   unblockApp,
+  type ComputerPolicy,
   type ComputerState,
 } from "./computer";
 import { Switch } from "./SettingsSwitch";
@@ -115,6 +117,36 @@ export function ComputerSettings() {
           onChange={(value) => change(setKeepAwake(value))}
         />
       </div>
+      <h2>{t("Manage permissions")}</h2>
+      <div className="settings-group">
+        <div className="settings-row">
+          <div>
+            <strong>{t("Computer control")}</strong>
+            <p>
+              {state?.policy === "allow"
+                ? t(
+                    "Screenshots, clicks, typing and opening apps run as soon as your assistant asks, while computer use is on. Calendar and Location still ask.",
+                  )
+                : t(
+                    "Screenshots, clicks, typing and opening apps. Calendar and Location always ask.",
+                  )}
+            </p>
+          </div>
+          <select
+            className="settings-select"
+            aria-label={t("Computer control")}
+            disabled={!state}
+            value={state?.policy ?? "ask"}
+            onChange={(event) =>
+              change(setComputerPolicy(event.target.value as ComputerPolicy))
+            }
+          >
+            <option value="ask">{t("Ask every time")}</option>
+            <option value="allow">{t("Always allow")}</option>
+            <option value="deny">{t("Always deny")}</option>
+          </select>
+        </div>
+      </div>
       <h2>{t("macOS permissions")}</h2>
       <div className="settings-group">
         {permission(
@@ -167,11 +199,25 @@ export function ComputerSettings() {
       <div className="settings-group">
         <div className="settings-row">
           <div>
-            <strong>{t("Every action asks first")}</strong>
+            <strong>
+              {state?.policy === "allow"
+                ? t("Computer control runs without asking")
+                : state?.policy === "deny"
+                  ? t("Computer control is always declined")
+                  : t("Every action asks first")}
+            </strong>
             <p>
-              {t(
-                "Each request shows what it will do. Allow it once, allow the rest of that conversation, or decline. A declined action is not tried another way.",
-              )}
+              {state?.policy === "allow"
+                ? t(
+                    "You chose Always allow, so each computer control request runs and is shown in the conversation. Change it above at any time.",
+                  )
+                : state?.policy === "deny"
+                  ? t(
+                      "You chose Always deny, so every computer control request is declined without asking, and your assistant is told not to try another way.",
+                    )
+                  : t(
+                      "Each request shows what it will do. Allow it once, allow the rest of that conversation, or decline. A declined action is not tried another way.",
+                    )}
             </p>
           </div>
         </div>

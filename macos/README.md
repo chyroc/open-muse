@@ -118,7 +118,11 @@ drag, open an app, address or file, list apps and windows). MA waits for this
 app to answer them. Nothing runs until Settings > Computer use is on, where the
 Screen Recording and Accessibility permissions are shown and requested. Each
 pending call is described above the composer and needs an answer: allow once,
-allow the rest of that chat, or decline. Calls are answered once and never
+allow the rest of that chat, or decline. Under Manage permissions, Computer
+control can instead be set to Always allow, which runs screenshot, input, open
+and app-list calls as they arrive while computer use is on, or Always deny,
+which declines them. The default asks; the setting never covers Calendar,
+Location or a batch that mixes them in, and a failed answer is not resent. Calls are answered once and never
 resent automatically, only the workspace window runs them, and requests for
 another device, such as Apple Health on the iPhone, are shown as waiting.
 Conversations keep their agent version, so the tools reach conversations

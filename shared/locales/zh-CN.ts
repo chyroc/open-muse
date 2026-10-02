@@ -1079,8 +1079,8 @@ export const zhCN: Record<string, string> = {
   "MA still sends a permission request for anything its own policy evaluates as ask, and the conversation shows it.":
     "凡是 MA 自身策略判定为需要询问的操作，仍会发出权限请求，并显示在对话中。",
   "Automatically approved": "自动批准",
-  "Only pending web_search and web_fetch requests, matched by exact protocol name. There is no setting that widens this.":
-    "仅限按协议名精确匹配的待处理 web_search 与 web_fetch 请求，没有任何设置可以放宽。",
+  "Pending web_search and web_fetch requests, matched by exact protocol name, and computer control on this Mac only if you choose Always allow in Computer use. Calendar and Location always ask.":
+    "按协议名精确匹配的待处理 web_search 与 web_fetch 请求；只有你在「电脑操控」中选择「始终允许」时，才包括这台 Mac 的电脑控制。日历和位置始终询问。",
   "Everything else waits": "其余请求等待你处理",
   "Every other pending permission request stays in the conversation until you answer it.":
     "其他所有待处理的权限请求都会留在对话中，直到你作出答复。",
