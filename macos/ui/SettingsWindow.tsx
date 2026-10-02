@@ -280,7 +280,11 @@ export function SettingsWindow({ client }: { client: Client }) {
             <h1>{t("Language preference")}</h1>
           </header>
         ) : (
-          <h1>{t(active.label)}</h1>
+          <h1>
+            {active.id === "secure-storage"
+              ? t("Secure credential vault")
+              : t(active.label)}
+          </h1>
         )}
         {error && (
           <p className="settings-error" role="alert">
