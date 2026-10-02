@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { Folder, X } from "lucide-react";
+import { Folder, HardDrive, X } from "lucide-react";
+import { PermissionRow } from "./ComputerSettings";
 import { t } from "../../shared/i18n";
 import {
   blockFolder,
@@ -38,100 +39,73 @@ export function FileSystemSettings() {
     void request
       .then((value) => value && setState(value))
       .catch(() => setError(t("Could not change the app settings.")));
-  const lead = (
-    <p className="settings-lead">
-      {t(
-        "When computer use is on, your assistant can open files on this Mac that you ask about. Folders you block here are never opened.",
-      )}
-    </p>
-  );
   if (!available)
     return (
-      <>
-        {lead}
-        <div className="settings-group">
-          <div className="settings-row">
-            <div>
-              <strong>{t("Not connected")}</strong>
-              <p>{t("Computer use needs the Open Muse Mac app.")}</p>
-            </div>
+      <div className="settings-group">
+        <div className="settings-row">
+          <div>
+            <strong>{t("Not connected")}</strong>
+            <p>{t("Computer use needs the Open Muse Mac app.")}</p>
           </div>
         </div>
-      </>
+      </div>
     );
   return (
     <>
-      {lead}
-      <h2>{t("macOS permissions")}</h2>
-      <div className="settings-group">
-        <div className="settings-row">
-          <div>
-            <strong>{t("Full Disk Access")}</strong>
-            <p>
-              {t(
-                "Lets your assistant open files in protected places such as Mail and Messages data. Most files do not need it.",
-              )}
-            </p>
-          </div>
-          {state?.fullDiskAccess ? (
-            <span>{t("Allowed")}</span>
-          ) : (
-            <button
-              className="settings-inline-button"
-              disabled={!state}
-              onClick={() => change(openFullDiskAccess())}
-            >
-              {t("Open System Settings")}
-            </button>
-          )}
-        </div>
-      </div>
-      <h2>{t("Blocked folders")}</h2>
-      <div className="settings-group">
-        {state?.blockedFolders.map((path) => (
-          <div className="settings-row settings-blocked-row" key={path}>
-            <Folder size={16} />
-            <div>
-              <strong>{path.split("/").filter(Boolean).at(-1) ?? path}</strong>
-              <p>{path}</p>
-            </div>
-            <button
-              className="icon-button"
-              aria-label={t("Unblock {name}", { name: path })}
-              onClick={() => change(unblockFolder(path))}
-            >
-              <X size={15} />
-            </button>
-          </div>
-        ))}
-        <div className="settings-row">
-          <div>
-            <p>
-              {t(
-                "Your assistant can't open files inside the folders you add here, or the folders themselves.",
-              )}
-            </p>
-          </div>
-          <button
-            className="settings-inline-button"
+      <section>
+        <h2>{t("Permissions required")}</h2>
+        <div className="settings-group computer-permissions">
+          <PermissionRow
+            icon={HardDrive}
+            title={t("Full Disk Access")}
+            granted={state?.fullDiskAccess}
             disabled={!state}
-            onClick={() => change(blockFolder())}
-          >
-            {t("Add folder")}
-          </button>
+            onOpen={() => change(openFullDiskAccess())}
+          />
         </div>
-      </div>
-      <h2>{t("App data")}</h2>
-      <div className="settings-group">
-        <div className="settings-row">
-          <div>
-            <p>
-              {t(
-                "This app has no tools that read Mail, Messages, Notes or WhatsApp data, so there is nothing to allow per app.",
-              )}
-            </p>
+        <p className="settings-footnote">
+          {t(
+            "Full Disk Access enables Open Muse to read and interact with your files and apps.",
+          )}
+        </p>
+      </section>
+      <div className="permission-settings-controls">
+        <section>
+          <h2>{t("Blocked folders")}</h2>
+          <div className="settings-group computer-blocked">
+            {state?.blockedFolders.map((path) => (
+              <div className="computer-blocked-row" key={path} title={path}>
+                <Folder size={16} aria-hidden="true" />
+                <span>{path.split("/").filter(Boolean).at(-1) ?? path}</span>
+                <button
+                  className="icon-button"
+                  aria-label={t("Unblock {name}", { name: path })}
+                  onClick={() => change(unblockFolder(path))}
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            ))}
+            <button
+              className="computer-add-app"
+              disabled={!state}
+              onClick={() => change(blockFolder())}
+            >
+              {t("Add folder")}
+            </button>
           </div>
-        </div>
+          <p className="settings-footnote">
+            {t("Open Muse can't see or use the folders you add here.")}
+          </p>
+        </section>
+        <section>
+          <h2>{t("App data")}</h2>
+          <p className="settings-footnote">
+            {t(
+              "This app has no tools that read Mail, Messages, Notes or WhatsApp data, so there is nothing to allow per app.",
+            )}
+          </p>
+        </section>
       </div>
       {error && (
         <p className="settings-error" role="alert">

@@ -19,15 +19,69 @@ import { Switch } from "./SettingsSwitch";
 // A display with a pointer stands for Accessibility; overlapping screens for
 // Screen Recording.
 const MonitorCursor = createLucideIcon("monitor-cursor", [
-  ["rect", { x: "2", y: "3", width: "20", height: "14", rx: "2", key: "screen" }],
+  [
+    "rect",
+    { x: "2", y: "3", width: "20", height: "14", rx: "2", key: "screen" },
+  ],
   ["path", { d: "M8 21h8", key: "base" }],
   ["path", { d: "M12 17v4", key: "stand" }],
   ["path", { d: "m9 7 6 2.5-2.5 1-1 2.5z", key: "pointer" }],
 ]);
 const ScreenShare = createLucideIcon("screen-share-stack", [
-  ["rect", { x: "8", y: "8", width: "14", height: "14", rx: "2", key: "front" }],
-  ["path", { d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2", key: "back" }],
+  [
+    "rect",
+    { x: "8", y: "8", width: "14", height: "14", rx: "2", key: "front" },
+  ],
+  [
+    "path",
+    {
+      d: "M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2",
+      key: "back",
+    },
+  ],
 ]);
+
+// One macOS permission: its icon and name, and a link that opens it in System
+// Settings, worded for whether it is already granted.
+export function PermissionRow({
+  icon: Icon,
+  title,
+  granted,
+  disabled,
+  onOpen,
+}: {
+  icon: typeof X;
+  title: string;
+  granted?: boolean;
+  disabled: boolean;
+  onOpen: () => void;
+}) {
+  return (
+    <div className="computer-permission-row">
+      <span className="computer-permission-icon" aria-hidden="true">
+        <Icon size={20} strokeWidth={1.6} />
+      </span>
+      <span className="computer-permission-title">{title}</span>
+      <button
+        className="settings-link"
+        disabled={disabled}
+        aria-label={
+          granted
+            ? t("Turn off in System Settings: {permission}", {
+                permission: title,
+              })
+            : t("Open System Settings: {permission}", { permission: title })
+        }
+        onClick={onOpen}
+      >
+        {granted ? t("Turn off in System Settings") : t("Open System Settings")}
+      </button>
+      <span role="status" className="sr-only">
+        {granted && t("{permission} granted", { permission: title })}
+      </span>
+    </div>
+  );
+}
 
 // Computer use is a device permission: off by default, held by the native
 // shell, and paired with the two macOS permissions it depends on.
@@ -74,46 +128,29 @@ export function ComputerSettings() {
     kind: "accessibility" | "screen",
     title: string,
     granted?: boolean,
-  ) => {
-    const Icon = kind === "screen" ? ScreenShare : MonitorCursor;
-    return (
-      <div className="computer-permission-row">
-        <span className="computer-permission-icon" aria-hidden="true">
-          <Icon size={20} strokeWidth={1.6} />
-        </span>
-        <span className="computer-permission-title">{title}</span>
-        <button
-          className="settings-link"
-          disabled={!state}
-          aria-label={
-            granted
-              ? t("Turn off in System Settings: {permission}", {
-                  permission: title,
-                })
-              : t("Open System Settings: {permission}", { permission: title })
-          }
-          onClick={() =>
-            void requestPermission(kind)
-              .then((value) => value && setState(value))
-              .catch(() => setError(t("Could not change the app settings.")))
-          }
-        >
-          {granted
-            ? t("Turn off in System Settings")
-            : t("Open System Settings")}
-        </button>
-        <span role="status" className="sr-only">
-          {granted && t("{permission} granted", { permission: title })}
-        </span>
-      </div>
-    );
-  };
+  ) => (
+    <PermissionRow
+      icon={kind === "screen" ? ScreenShare : MonitorCursor}
+      title={title}
+      granted={granted}
+      disabled={!state}
+      onOpen={() =>
+        void requestPermission(kind)
+          .then((value) => value && setState(value))
+          .catch(() => setError(t("Could not change the app settings.")))
+      }
+    />
+  );
   return (
     <>
       <section>
         <h2>{t("Permissions required")}</h2>
         <div className="settings-group computer-permissions">
-          {permission("accessibility", t("Accessibility"), state?.accessibility)}
+          {permission(
+            "accessibility",
+            t("Accessibility"),
+            state?.accessibility,
+          )}
           {permission("screen", t("Screen Recording"), state?.screen)}
         </div>
         <p className="settings-footnote">
@@ -126,7 +163,9 @@ export function ComputerSettings() {
         <div className="settings-group">
           <Switch
             label={t("Let your assistant use this Mac")}
-            detail={t("Every action still waits for your approval in the chat.")}
+            detail={t(
+              "Every action still waits for your approval in the chat.",
+            )}
             checked={state?.enabled ?? false}
             disabled={!state || !ready}
             onChange={(value) =>
@@ -147,7 +186,9 @@ export function ComputerSettings() {
           <h2>{t("Manage permissions")}</h2>
           <div className="settings-group">
             <div className="settings-row settings-dropdown-row">
-              <span className="settings-dropdown-label">{t("Computer control")}</span>
+              <span className="settings-dropdown-label">
+                {t("Computer control")}
+              </span>
               <span className="settings-dropdown">
                 <select
                   aria-label={t("Computer control")}

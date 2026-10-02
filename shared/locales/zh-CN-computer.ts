@@ -112,4 +112,8 @@ export const zhComputer: Record<string, string> = {
     "每个请求都会说明将要做什么。你可以允许一次、允许该对话中的后续操作，或拒绝。",
   "Open Muse can't see or use apps you add here.":
     "Open Muse 无法查看或使用你在这里添加的 App。",
+  "Full Disk Access enables Open Muse to read and interact with your files and apps.":
+    "完全磁盘访问权限让 Open Muse 可以读取和处理你的文件与 App。",
+  "Open Muse can't see or use the folders you add here.":
+    "Open Muse 无法查看或使用你在这里添加的文件夹。",
 };

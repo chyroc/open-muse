@@ -55,7 +55,11 @@ describe("Mac file system access", () => {
     await act(async () => button("Open System Settings").click());
     expect(postMessage).toHaveBeenCalledWith({ operation: "full-disk-access" });
     await act(async () => button("Add folder").click());
-    expect(host!.textContent).toContain("/Users/me/Taxes");
+    // The row names the folder; the full path is its tooltip.
+    expect(host!.textContent).toContain("Taxes");
+    expect(
+      host!.querySelector('.computer-blocked-row[title="/Users/me/Taxes"]'),
+    ).not.toBeNull();
     await act(async () =>
       host!
         .querySelector<HTMLButtonElement>(
@@ -67,7 +71,7 @@ describe("Mac file system access", () => {
       operation: "unblock-folder",
       path: "/Users/me/Taxes",
     });
-    expect(host!.textContent).not.toContain("/Users/me/Taxes");
+    expect(host!.textContent).not.toContain("Taxes");
   });
   it("translates its copy", () => {
     for (const [, key] of readFileSync(
