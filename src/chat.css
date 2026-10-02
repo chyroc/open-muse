@@ -47,6 +47,29 @@ body {
   justify-content: center;
   color: #171719;
   flex-shrink: 0;
+  transition: transform var(--motion-press-duration) ease-out;
+}
+/* Press feedback lands on touch-down and releases on touch-up. */
+.glass-button:not(:disabled):active {
+  transform: scale(0.92);
+}
+.companion-status {
+  transition: transform var(--motion-press-duration) ease-out;
+}
+.companion-status:active {
+  transform: translateX(-50%) scale(var(--motion-press-scale));
+}
+.side-chat-row {
+  transition: background-color var(--motion-press-duration) ease-out;
+}
+.side-chat-row:active {
+  background: #ececee;
+}
+.chat-bubble {
+  transition: transform var(--motion-press-duration) ease-out;
+}
+.chat-bubble:active {
+  transform: scale(0.985);
 }
 .header-left,
 .header-right {

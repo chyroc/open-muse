@@ -124,6 +124,14 @@
   border-radius: 24px;
   min-width: 0;
 }
+.companion-tabs button {
+  transition:
+    background-color var(--motion-fade-duration) ease-out,
+    transform var(--motion-press-duration) ease-out;
+}
+.companion-tabs button:active {
+  transform: scale(var(--motion-press-scale));
+}
 .companion-tabs button[aria-selected="true"] {
   background: #f2f2f5;
 }
