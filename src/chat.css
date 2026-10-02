@@ -300,6 +300,27 @@ body {
   align-items: flex-start;
   margin: 4px 0;
 }
+.chat-message-group.arriving {
+  animation: message-arrive var(--motion-release-duration)
+    var(--motion-release-ease) backwards;
+  transform-origin: 0 100%;
+}
+.chat-message-group.from-user.arriving {
+  transform-origin: 100% 100%;
+}
+@keyframes message-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes message-arrive {
+    from {
+      opacity: 0;
+    }
+  }
+}
 .chat-message-group.from-user {
   align-items: flex-end;
   margin: 12px 0;

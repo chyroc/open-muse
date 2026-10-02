@@ -669,6 +669,24 @@ function Workspace({
       (eventText(event) || messageAttachments(event).length),
   );
   const isChat = tab === "home";
+  // Messages that arrive while a conversation is open rise into place; a
+  // batch of several at once is history loading and appears without motion.
+  const seenMessages = useRef<{ conversation?: string; ids: Set<string> }>({
+    ids: new Set(),
+  });
+  if (seenMessages.current.conversation !== activeId)
+    seenMessages.current = { conversation: activeId, ids: new Set() };
+  const unseen = messageEvents.filter(
+    (event) => !seenMessages.current.ids.has(event.id),
+  );
+  const arriving = new Set(
+    unseen.length <= 2 && seenMessages.current.ids.size
+      ? unseen.map((event) => event.id)
+      : [],
+  );
+  useEffect(() => {
+    for (const event of messageEvents) seenMessages.current.ids.add(event.id);
+  });
   return (
     <div className="app-shell muse-shell companion-shell">
       <main
@@ -802,7 +820,7 @@ function Workspace({
                 return (
                   <div
                     key={event.id}
-                    className={`chat-message-group ${event.type === "user.message" ? "from-user" : "from-assistant"}`}
+                    className={`chat-message-group ${event.type === "user.message" ? "from-user" : "from-assistant"}${arriving.has(event.id) ? " arriving" : ""}`}
                   >
                     {showTime && (
                       <time className="chat-time" dateTime={date}>
