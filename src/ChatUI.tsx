@@ -114,6 +114,7 @@ export function ChatHeader({
   showSidebar = true,
   showMore = true,
   moreLabel,
+  activity,
 }: {
   onSidebar: () => void;
   onStatus: () => void;
@@ -125,6 +126,8 @@ export function ChatHeader({
   showSidebar?: boolean;
   showMore?: boolean;
   moreLabel?: string;
+  // What the companion is doing, shown under its name while not idle.
+  activity?: string;
 }) {
   return (
     <header className="companion-header">
@@ -151,6 +154,7 @@ export function ChatHeader({
       >
         <CompanionAvatar />
         <span className="companion-name">{name}</span>
+        {activity && <span className="companion-activity">{activity}</span>}
       </button>
       {showMore && (
         <button

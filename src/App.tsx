@@ -691,6 +691,7 @@ function Workspace({
             showSidebar={isChat}
             showMore={tab !== "discover"}
             status={status}
+            activity={status === t("Connected") ? undefined : status}
             sideTitle={sideTitle}
           />
         ) : (

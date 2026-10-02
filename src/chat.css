@@ -51,7 +51,7 @@ body {
 .header-left,
 .header-right {
   position: absolute;
-  top: calc(3px + env(safe-area-inset-top));
+  top: env(safe-area-inset-top);
 }
 .header-left {
   left: 16px;
@@ -163,6 +163,13 @@ body {
   border-bottom: 1px solid #8b5a45;
   border-radius: 50%;
 }
+.companion-activity {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 17px;
+  color: #8a8a8e;
+  white-space: nowrap;
+}
 .companion-name {
   background: #f9f9f9bf;
   border: 1px solid #ddd;
@@ -212,6 +219,36 @@ body {
 .companion-shell .inline-error {
   font-size: 14px;
   line-height: 1.5;
+}
+/* In a chat the messages scroll under the floating header; only the status
+   bar area fades to the page color. */
+.chat-page > .companion-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(132px + env(safe-area-inset-top));
+  pointer-events: none;
+}
+.chat-page > .companion-header::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: calc(env(safe-area-inset-top) + 8px);
+  background: linear-gradient(var(--chat-paper) 55%, transparent);
+}
+.chat-page > .companion-header > * {
+  pointer-events: auto;
+}
+.chat-page > .chat-timeline {
+  padding-top: calc(132px + env(safe-area-inset-top));
+}
+.chat-page > .connection-notices {
+  position: absolute;
+  top: calc(132px + env(safe-area-inset-top));
+  left: 0;
+  right: 0;
+  z-index: 2;
 }
 .chat-timeline {
   flex: 1;
