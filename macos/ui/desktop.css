@@ -272,7 +272,8 @@ h3 {
 .message-stack {
   display: flex;
   flex-direction: column;
-  max-width: 920px;
+  /* One reading column, 768 points with its gutters, centred in the chat. */
+  max-width: 720px;
   margin: 0 auto;
 }
 .message {
@@ -368,7 +369,10 @@ h3 {
   color: var(--text-2);
 }
 .desktop-composer {
-  margin: 16px 16px 14px;
+  margin: 16px auto 14px;
+  width: calc(100% - 32px);
+  max-width: 768px;
+  box-sizing: border-box;
   padding: 8px 10px 8px 12px;
   min-height: 56px;
   display: flex;
@@ -754,7 +758,7 @@ h3 {
 .thinking {
   color: var(--text-2);
   font-size: 13px;
-  max-width: 920px;
+  max-width: 720px;
   margin: 8px auto;
 }
 .loading-label {
