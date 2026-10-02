@@ -57,9 +57,10 @@ export const zhCN: Record<string, string> = {
   "Main navigation": "主导航",
   "Archive side chat": "归档旁聊",
   Message: "消息",
+  "Send a message": "发消息",
   Copied: "已复制",
   "Copy text": "复制文本",
-  "Saved to Library": "已保存到资料库",
+  "Saved to Library": "已保存到资源库",
   "Save reply": "保存回复",
   "Every step is visible": "每一步都有记录",
   "Tools run directly by default and may send data to external services, change files, or incur charges. Upstream denials still apply. Execution records stay in the conversation.":
@@ -324,8 +325,8 @@ export const zhCN: Record<string, string> = {
     "将指令保存到个人 MA 记忆中。更改仅影响之后生成的动态，不会修改现有动态。",
   "Connect to MA in Settings to save your own feed instructions.":
     "在设置中连接 MA 后，即可保存自己的动态指令。",
-  Chat: "对话",
-  Library: "资料库",
+  Chat: "聊天",
+  Library: "资源库",
   Close: "关闭",
   "My Space": "我的空间",
   More: "更多",
@@ -1008,7 +1009,7 @@ export const zhCN: Record<string, string> = {
   "Loading Library…": "正在加载资源库…",
   "Opening Library…": "正在打开资源库…",
   "Library could not load": "无法加载资源库",
-  "Refresh Library": "刷新资料库",
+  "Refresh Library": "刷新资源库",
   "The connection changed. Reopen Library before continuing.":
     "连接已变更。请重新打开资源库后继续。",
   "Document saved": "文档已保存",

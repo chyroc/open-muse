@@ -1093,7 +1093,7 @@ function Workspace({
             aria-current={tab === item.id ? "page" : undefined}
             className={tab === item.id ? "selected" : ""}
           >
-            <item.icon size={25} strokeWidth={1.9} />
+            <item.icon size={26} strokeWidth={2} />
             <span>{item.label}</span>
           </a>
         ))}

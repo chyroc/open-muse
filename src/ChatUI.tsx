@@ -258,7 +258,7 @@ export function ChatComposer({
           ref={input}
           rows={1}
           aria-label={t("Message {name}", { name })}
-          placeholder={t("Message")}
+          placeholder={t("Send a message")}
           maxLength={16000}
           value={value}
           onChange={(event) => setValue(event.target.value)}

@@ -1051,8 +1051,8 @@ final class MuseLiveUITests: XCTestCase {
         let name = card.label.replacingOccurrences(of: "Open file: ", with: "")
         verifyLibraryOutputs((name as NSString).deletingPathExtension)
         relaunch(language: "zh-Hans,en", locale: "zh_CN")
-        tap(app.links["资料库"], timeout: 40)
-        if !app.buttons["构件"].waitForExistence(timeout: 3) { tap(app.links["资料库"]) }
+        tap(app.links["资源库"], timeout: 40)
+        if !app.buttons["构件"].waitForExistence(timeout: 3) { tap(app.links["资源库"]) }
         XCTAssertTrue(app.buttons["影音内容"].waitForExistence(timeout: 20), app.debugDescription)
         let localized = app.buttons["打开文件：\(name)"]
         XCTAssertTrue(localized.waitForExistence(timeout: 60), app.debugDescription)
@@ -1178,7 +1178,7 @@ final class MuseLiveUITests: XCTestCase {
         relaunch()
         verifyToolConversation(sidebar: "Open sidebar", logLabel: "View execution log", noteLabel: "Shared attachment locations with tools", library: "Library", media: "Media", artifacts: "Artifacts")
         relaunch(language: "zh-Hans,en", locale: "zh_CN")
-        verifyToolConversation(sidebar: "打开侧边栏", logLabel: "查看执行日志", noteLabel: "已向工具提供附件位置", library: "资料库", media: "影音内容", artifacts: "构件")
+        verifyToolConversation(sidebar: "打开侧边栏", logLabel: "查看执行日志", noteLabel: "已向工具提供附件位置", library: "资源库", media: "影音内容", artifacts: "构件")
     }
 }
 #endif
@@ -1243,7 +1243,7 @@ final class MuseUITests: XCTestCase {
         app.launchArguments = ["-AppleLanguages", "(zh-Hans,en)", "-AppleLocale", "zh_CN"]
         app.launch()
         XCTAssertTrue(app.textViews["给 Muse 发消息"].waitForExistence(timeout: 30), app.debugDescription)
-        XCTAssertTrue(app.links["对话"].exists)
+        XCTAssertTrue(app.links["聊天"].exists)
         XCTAssertTrue(app.links["目标"].exists)
         tap(app.buttons["Muse 的状态：未连接"])
         tap(app.buttons["身份"])

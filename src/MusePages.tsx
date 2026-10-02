@@ -3,26 +3,29 @@ import { useEffect, useRef, type ReactNode } from "react";
 import {
   ChevronRight,
   History,
-  Lightbulb,
   MessageCircle,
   Settings2,
-  Shapes,
   Target,
   X,
   Blocks,
-  PanelsTopLeft,
-  SquareCheckBig,
 } from "lucide-react";
+import {
+  ChatGlyph,
+  FeedGlyph,
+  GoalsGlyph,
+  IdeasGlyph,
+  LibraryGlyph,
+} from "./TabIcons";
 import type { Goal, Session } from "../shared/types";
 import { categories, templates } from "./content";
 import { CategoryIcon } from "./components";
 
 export const primaryNavigation = [
-  { id: "home", path: "/", label: t("Chat"), icon: MessageCircle },
-  { id: "feed", path: "/feed", label: t("Feed"), icon: PanelsTopLeft },
-  { id: "discover", path: "/discover", label: t("Ideas"), icon: Lightbulb },
-  { id: "goals", path: "/goals", label: t("Goals"), icon: SquareCheckBig },
-  { id: "library", path: "/library", label: t("Library"), icon: Shapes },
+  { id: "home", path: "/", label: t("Chat"), icon: ChatGlyph },
+  { id: "feed", path: "/feed", label: t("Feed"), icon: FeedGlyph },
+  { id: "discover", path: "/discover", label: t("Ideas"), icon: IdeasGlyph },
+  { id: "goals", path: "/goals", label: t("Goals"), icon: GoalsGlyph },
+  { id: "library", path: "/library", label: t("Library"), icon: LibraryGlyph },
 ] as const;
 
 export function Sheet({
