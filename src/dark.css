@@ -14,7 +14,7 @@
     --line: #38383a;
     --green: #0a84ff;
     --chat-paper: #000;
-    --chat-gray: #262628;
+    --chat-gray: #1f1f1f;
     --chat-blue: #0b3d66;
   }
   /* chat.css */
@@ -980,14 +980,15 @@
   .companion-name,
   .sidebar-search,
   .page-sheet-close {
-    border-color: rgb(255 255 255 / 8%);
-    background: rgb(44 44 46 / 78%);
+    border-color: rgb(255 255 255 / 16%);
+    background: rgb(36 36 36 / 82%);
     box-shadow:
       inset 0 0 0 1px rgb(255 255 255 / 4%),
       0 4px 18px rgb(0 0 0 / 30%);
   }
+  /* The selection sits darker than the bar, as a recess. */
   .tab-selection {
-    background: rgb(255 255 255 / 14%);
+    background: rgb(0 0 0 / 60%);
   }
   .glass-tab-bar a,
   .glass-button,
