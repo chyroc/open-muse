@@ -190,7 +190,10 @@ export function ChatHeader({
           )}
         </button>
       )}
-      {sideTitle && <span className="side-chat-title">{sideTitle}</span>}
+      {/* A passing activity takes the title's place under the name. */}
+      {sideTitle && !activity && (
+        <span className="side-chat-title">{sideTitle}</span>
+      )}
     </header>
   );
 }
