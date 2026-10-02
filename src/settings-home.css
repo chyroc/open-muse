@@ -204,3 +204,15 @@
   transform: scale(0.97);
   opacity: 0.75;
 }
+.settings-list-row > .settings-row-value {
+  flex: 0 0 auto;
+  font-size: 16px;
+  color: #8e8e93;
+}
+.settings-list-row > .settings-check {
+  flex: 0 0 auto;
+  color: #0a66d8;
+}
+.settings-list[role="radiogroup"] .settings-list-row {
+  justify-content: space-between;
+}

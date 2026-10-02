@@ -3,14 +3,22 @@ import {
   ChevronRight,
   ExternalLink,
   Info,
+  Check,
   KeyRound,
+  Languages,
   MessageCircleHeart,
   Plug,
   ShieldCheck,
   SquareTerminal,
   Unplug,
 } from "lucide-react";
-import { t } from "../shared/i18n";
+import {
+  deviceLanguage,
+  languageChoice,
+  setLanguageChoice,
+  t,
+  type LanguageChoice,
+} from "../shared/i18n";
 import type { Client } from "./api";
 import { AuthPanel } from "./AuthPanel";
 import { CheckInSettings } from "./CheckInSettings";
@@ -19,7 +27,11 @@ import { MuseMark } from "./components";
 import { Sheet } from "./MusePages";
 import "./settings-home.css";
 
-type Section = "connectors" | "checkins" | "account" | "about" | "reset";
+type Section =
+  "connectors" | "checkins" | "language" | "account" | "about" | "reset";
+
+// Each language is named in itself, as system language pickers do.
+const languageNames = { en: "English", "zh-CN": "简体中文" } as const;
 
 // Settings as a status card and one list of sections, each in its own sheet.
 // Until the app is connected, sign-in stays on the page itself.
@@ -83,6 +95,16 @@ export function SettingsHome({
             onClick={() => setSection("checkins")}
           />
         )}
+        <Row
+          icon={<Languages size={21} />}
+          label={t("Language")}
+          value={
+            languageChoice() === "system"
+              ? t("Follow system")
+              : languageNames[languageChoice() as keyof typeof languageNames]
+          }
+          onClick={() => setSection("language")}
+        />
         {signedIn && (
           <Row
             icon={<KeyRound size={21} />}
@@ -114,6 +136,38 @@ export function SettingsHome({
           </button>
         </li>
       </ul>
+      {section === "language" && (
+        <Sheet title={t("Language")} onClose={close} grouped>
+          <ul className="settings-list" role="radiogroup">
+            {(["system", "en", "zh-CN"] as LanguageChoice[]).map((choice) => (
+              <li key={choice}>
+                <button
+                  className="settings-list-row"
+                  role="radio"
+                  aria-checked={languageChoice() === choice}
+                  onClick={() => {
+                    if (choice === languageChoice()) return close();
+                    setLanguageChoice(choice);
+                    location.reload();
+                  }}
+                >
+                  <span>
+                    {choice === "system"
+                      ? `${t("Follow system")} (${languageNames[deviceLanguage()]})`
+                      : languageNames[choice]}
+                  </span>
+                  {languageChoice() === choice && (
+                    <Check size={18} className="settings-check" />
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="settings-footnote">
+            {t("The app restarts in the language you choose.")}
+          </p>
+        </Sheet>
+      )}
       {section === "reset" && (
         <Sheet
           title={t("Reset this device")}
@@ -208,10 +262,12 @@ export function SettingsHome({
 function Row({
   icon,
   label,
+  value,
   onClick,
 }: {
   icon: ReactNode;
   label: string;
+  value?: string;
   onClick: () => void;
 }) {
   return (
@@ -219,6 +275,7 @@ function Row({
       <button className="settings-list-row" onClick={onClick}>
         <span aria-hidden="true">{icon}</span>
         <span>{label}</span>
+        {value && <span className="settings-row-value">{value}</span>}
         <ChevronRight size={18} aria-hidden="true" />
       </button>
     </li>

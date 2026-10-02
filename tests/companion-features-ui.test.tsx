@@ -151,6 +151,9 @@ describe("Settings home", () => {
     ])
       expect(html).toContain(label);
     expect(html).toContain("Reset this device");
+    expect(html).toContain("Language");
+    expect(html).toContain("Follow system");
+    expect(t("Follow system", {}, "zh-CN")).toBe("跟随系统");
     // Account details open in their own sheet instead of filling the page.
     expect(html).not.toContain("settings-card auth-card");
     expect(t("Account and workspace", {}, "zh-CN")).toBe("账号与工作区");
