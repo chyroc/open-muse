@@ -28,7 +28,8 @@ afterEach(() => vi.unstubAllGlobals());
 
 const signed =
   "https://storage-cn.tos-cn-beijing.volces.com/object/1?X-Tos-Signature=test";
-const now = Date.parse("2026-09-30T00:00:00Z");
+// Relative to the real clock: DirectLibrary drops files that have expired.
+const now = Math.floor(Date.now() / 1000) * 1000;
 function raw(id: string, overrides: Record<string, unknown> = {}) {
   return {
     object: "file",
@@ -72,7 +73,7 @@ describe("Library files", () => {
       session_id: "sesn-owned",
       session_title: "Trip notes",
     });
-    expect(item?.expires_at).toBe("2026-10-01T00:00:00.000Z");
+    expect(item?.expires_at).toBe(new Date(now + 86_400_000).toISOString());
     expect(JSON.stringify(item)).not.toContain("X-Tos-Signature");
     for (const rejected of [
       raw("file-two", { scope: { type: "session", id: "sesn-foreign" } }),
