@@ -29,18 +29,20 @@ const apiKeyLogin = z.object({
   apiKey,
   project: projectName.optional(),
 });
-// Earlier releases could also save a Volcano SSO session. Volcano SSO sign-in is
-// no longer supported: such a record is kept untouched until the user removes
-// it, and none of its session credentials is ever used.
-const legacySSO = z
-  .object({
-    accessKeyId: z.string().min(1),
-    secretKey: z.string().min(1),
-    sessionToken: z.string().min(1),
-    apiKey: apiKey.optional(),
-    project: projectName.optional(),
-  })
-  .passthrough();
+// Earlier releases could also save a Volcano SSO session. Sign-in is API-key
+// only now: such a record is kept untouched on this device but is never used.
+function retiredSSO(value: unknown) {
+  if (typeof value !== "object" || value === null) return false;
+  const { accessKeyId, secretKey, sessionToken } = value as Record<
+    string,
+    unknown
+  >;
+  return (
+    typeof accessKeyId === "string" &&
+    typeof secretKey === "string" &&
+    typeof sessionToken === "string"
+  );
+}
 export type APIKeyLogin = z.infer<typeof apiKeyLogin> & {
   // Set for keys stored in a Muse account: the verified owner and the stored
   // credential revision they were read at.
@@ -96,7 +98,7 @@ export class DirectAuth {
   // A login saved on this device by an earlier release. In account builds even
   // a saved API key is only offered for an explicit upload; it is never used
   // directly or attributed to an account automatically.
-  legacy?: { kind: "sso" | "api_key"; key?: AccountCredential };
+  legacy?: { kind: "api_key"; key: AccountCredential };
   private revision = 0;
   private owner?: string;
   private busy = false;
@@ -126,7 +128,6 @@ export class DirectAuth {
     if (raw) {
       const saved = JSON.parse(raw);
       const login = apiKeyLogin.safeParse(saved);
-      const sso = legacySSO.safeParse(saved);
       if (login.success && !this.accountMode()) this.value = login.data;
       else if (login.success)
         this.legacy = {
@@ -136,14 +137,7 @@ export class DirectAuth {
             project: login.data.project ?? "",
           },
         };
-      else if (sso.success)
-        this.legacy = {
-          kind: "sso",
-          key: sso.data.apiKey
-            ? { apiKey: sso.data.apiKey, project: sso.data.project ?? "" }
-            : undefined,
-        };
-      else
+      else if (!retiredSSO(saved))
         throw new Error(
           t(
             "Saved login is invalid. Clear this app's credentials and sign in again.",
@@ -260,7 +254,7 @@ export class DirectAuth {
         }
         if (path === "import-legacy") {
           confirmed.parse(body);
-          if (!this.legacy?.key)
+          if (!this.legacy)
             throw new ApiError(
               404,
               t("This device has no saved API key from an earlier version."),
@@ -293,13 +287,6 @@ export class DirectAuth {
         throw new ApiError(
           409,
           t("Sign out before connecting another account."),
-        );
-      if (this.legacy)
-        throw new ApiError(
-          409,
-          t(
-            "Remove the saved Volcano SSO sign-in before connecting with an API key.",
-          ),
         );
       const value = {
         kind: "api_key" as const,

@@ -65,8 +65,6 @@ export const zhErrors: Record<string, string> = {
     "已保存的登录信息无效。请清除此应用的凭据并重新登录。",
   "This console-only operation is not available with an Ark API key.":
     "使用 Ark API Key 时无法执行此仅限控制台的操作。",
-  "Remove the saved Volcano SSO sign-in before connecting with an API key.":
-    "请先移除已保存的火山引擎 SSO 登录，再使用 API Key 连接。",
   "A sign-in operation is already in progress. Please wait.":
     "登录操作正在进行中，请稍候。",
   "Sign out before connecting another account.":

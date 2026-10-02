@@ -1297,8 +1297,8 @@ describe("Direct MA client", () => {
 });
 
 describe("Direct credentials and origin boundaries", () => {
-  it("keeps an earlier Volcano SSO sign-in untouched but never uses it", async () => {
-    const vault = vaultFixture();
+  it("ignores an earlier Volcano SSO sign-in; only the API key connects", async () => {
+    const f = fixture();
     const legacy = JSON.stringify({
       accessKeyId: "test-legacy-ak",
       secretKey: "test-legacy-sk",
@@ -1308,35 +1308,27 @@ describe("Direct credentials and origin boundaries", () => {
       apiKey: "test-legacy-minted-key-123456",
       project: "legacy-project",
     });
-    await vault.write(legacy);
-    const fetcher = vi.fn<typeof fetch>();
-    const client = new Client({
-      vault,
-      database: new LocalDatabase(`test-${uuid()}`),
-      fetcher,
-    });
-    await client.restore();
-    expect(client.signedIn()).toBe(false);
-    expect(await client.auth("status")).toMatchObject({
+    await f.vault.write(legacy);
+    await f.client.restore();
+    expect(f.client.signedIn()).toBe(false);
+    expect(await f.client.auth("status")).toMatchObject({
       loggedIn: false,
       ready: false,
-      legacy: "sso",
+      legacy: undefined,
     });
     await expect(
-      client.send("session", { type: "user.message", text: "hello" }),
+      f.client.send("session", { type: "user.message", text: "hello" }),
     ).rejects.toThrow("API key");
-    await expect(
-      client.auth("api-key", { apiKey: key, project: "", confirm: true }),
-    ).rejects.toThrow("Remove the saved Volcano SSO");
     for (const path of ["begin", "complete", "projects", "project"])
-      await expect(client.auth(path, {})).rejects.toThrow("Unknown");
-    expect(fetcher).not.toHaveBeenCalled();
-    expect(await vault.read()).toBe(legacy);
-    await client.auth("logout", {});
-    expect(await vault.read()).toBe("");
-    expect((await client.auth<{ legacy?: string }>("status")).legacy).toBe(
-      undefined,
-    );
+      await expect(f.client.auth(path, {})).rejects.toThrow("Unknown");
+    expect(f.fetcher).not.toHaveBeenCalled();
+    // The retired record stays untouched until the user connects a key.
+    expect(await f.vault.read()).toBe(legacy);
+    await f.login();
+    expect(f.client.signedIn()).toBe(true);
+    expect(await f.vault.read()).not.toBe(legacy);
+    await f.client.auth("logout", {});
+    expect(await f.vault.read()).toBe("");
   });
   it("keeps browser secrets only in session storage", async () => {
     const memory = new Map<string, string>();

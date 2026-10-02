@@ -149,7 +149,6 @@ export type ConnectionStatus = {
   ready: boolean;
   project?: string;
   method?: "api_key";
-  legacy?: "sso";
 };
 
 export function connectionSummary(status: ConnectionStatus | undefined) {

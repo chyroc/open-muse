@@ -12,7 +12,7 @@ interface Status {
   ready: boolean;
   project?: string;
   method?: "api_key";
-  legacy?: "sso" | "api_key";
+  legacy?: "api_key";
   legacyKey?: boolean;
   // Present in builds with a Muse account service.
   account?: { signedIn: boolean };
@@ -54,13 +54,9 @@ function ArkAuthPanel({
   }
   const account = status?.account;
   const signedOut = Boolean(account && !account.signedIn);
-  // Local builds keep the earlier behavior: a saved earlier login must be
-  // removed before a key is added. Account builds never use it directly.
   const showForm =
     !signedOut &&
-    (account
-      ? !status?.ready || replacing
-      : !status?.loggedIn && !status?.legacy);
+    (account ? !status?.ready || replacing : !status?.loggedIn);
   return (
     <section className="settings-card auth-card">
       <div className="settings-card-heading">
@@ -87,13 +83,6 @@ function ArkAuthPanel({
       {signedOut && (
         <p className="auth-consent-note" role="status">
           {t("Sign in to your Muse account above to add your Ark API key.")}
-        </p>
-      )}
-      {status?.legacy === "sso" && !status.legacyKey && (
-        <p className="auth-consent-note" role="status">
-          {t(
-            "Volcano SSO sign-in is no longer supported. This device still holds the earlier SSO sign-in; it is not used. Remove it, then add an Ark API key. Data saved on this device is kept.",
-          )}
         </p>
       )}
       {account && status?.legacyKey && (
@@ -131,20 +120,6 @@ function ArkAuthPanel({
             </button>
           </div>
         </div>
-      )}
-      {account && status?.legacy === "sso" && !status.legacyKey && (
-        <button
-          className="button secondary"
-          disabled={busy}
-          onClick={() =>
-            void run(async () => {
-              await client.auth("remove-legacy", { confirm: true });
-              await refresh();
-            })
-          }
-        >
-          {t("Remove the earlier SSO sign-in")}
-        </button>
       )}
       {showForm && (
         <form
@@ -283,7 +258,7 @@ function ArkAuthPanel({
         </div>
       ) : (
         !account &&
-        (status?.loggedIn || status?.legacy || client.signedIn()) && (
+        (status?.loggedIn || client.signedIn()) && (
           <div className="logout-row">
             <button
               className="button secondary"
@@ -297,9 +272,7 @@ function ArkAuthPanel({
               }
             >
               <LogOut size={15} />
-              {status?.legacy
-                ? t("Remove the earlier SSO sign-in")
-                : t("Sign out of this login")}
+              {t("Sign out of this login")}
             </button>
             <small>
               {t(

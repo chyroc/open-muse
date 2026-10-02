@@ -79,9 +79,6 @@ export const zhCN: Record<string, string> = {
   "This device connects directly to Volcano Ark. Native apps store credentials in system-protected storage; the web app keeps them only for this browser session. The assistant and runtime are created automatically on first use; cloud calls may be billed.":
     "此设备直接连接火山方舟。原生应用将凭据存储在系统保护的存储区；网页应用仅在当前浏览器会话中保留凭据。首次使用时会自动创建助手和运行环境，云端调用可能产生费用。",
   "Connect with API Key": "使用 API Key 连接",
-  "Volcano SSO sign-in is no longer supported. This device still holds the earlier SSO sign-in; it is not used. Remove it, then add an Ark API key. Data saved on this device is kept.":
-    "已不再支持火山引擎 SSO 登录。此设备仍保存着之前的 SSO 登录信息，但不会再使用。请先移除它，再添加 Ark API Key。此设备上保存的数据会保留。",
-  "Remove the earlier SSO sign-in": "移除之前的 SSO 登录",
   Project: "项目",
   "Connected with API Key": "已通过 API Key 连接",
   "The key's own project": "密钥所属项目",
