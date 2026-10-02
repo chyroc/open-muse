@@ -78,7 +78,9 @@ describe("Upcoming delivery while closed", () => {
       <UpcomingPanel client={client(true)} name="Kit" />,
     );
     expect(local).not.toContain("Deliver even when Open Muse is closed");
-    expect(local).toContain("There are no push notifications yet.");
+    expect(local).toContain(
+      "This device does not show notifications for reminders.",
+    );
   });
 });
 

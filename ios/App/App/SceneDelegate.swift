@@ -2,6 +2,7 @@ import UIKit
 import Capacitor
 import WebKit
 import Security
+import UserNotifications
 
 
 // Only the bundled main frame can read or write this app's MA credentials.
@@ -74,6 +75,66 @@ final class MuseHapticsHandler: NSObject, WKScriptMessageHandler {
     }
 }
 
+// Reminders from the person's Upcoming list become local notifications, so a
+// due item is announced while Open Muse is closed. The page sends the full
+// set of upcoming occurrences each time; it replaces every earlier one.
+final class MuseRemindersHandler: NSObject, WKScriptMessageHandler, UNUserNotificationCenterDelegate {
+    private static let prefix = "open-muse-reminder-"
+    private let center = UNUserNotificationCenter.current()
+
+    override init() {
+        super.init()
+        center.delegate = self
+    }
+
+    func userContentController(_ userContentController: WKUserContentController,
+                               didReceive message: WKScriptMessage) {
+        let origin = message.frameInfo.securityOrigin
+        guard message.frameInfo.isMainFrame, origin.protocol == "capacitor", origin.host == "localhost",
+              let body = message.body as? [String: Any],
+              let rows = body["items"] as? [[String: Any]]
+        else { return }
+        let now = Date()
+        let items: [(id: String, title: String, at: Date)] = rows.prefix(48).compactMap { row in
+            guard let id = row["id"] as? String, id.range(of: "^[A-Za-z0-9._-]{1,120}$", options: .regularExpression) != nil,
+                  let title = row["title"] as? String, !title.isEmpty,
+                  let at = row["at"] as? Double
+            else { return nil }
+            let date = Date(timeIntervalSince1970: at / 1000)
+            return date > now ? (id, String(title.prefix(160)), date) : nil
+        }
+        center.getPendingNotificationRequests { [center] pending in
+            center.removePendingNotificationRequests(withIdentifiers: pending
+                .map(\.identifier)
+                .filter { $0.hasPrefix(Self.prefix) })
+            guard !items.isEmpty else { return }
+            // Ask once, when there is first something to announce.
+            center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+                guard granted else { return }
+                for item in items {
+                    let content = UNMutableNotificationContent()
+                    content.title = item.title
+                    content.sound = .default
+                    content.threadIdentifier = "open-muse-reminders"
+                    let parts = Calendar.current.dateComponents(
+                        [.year, .month, .day, .hour, .minute, .second], from: item.at)
+                    center.add(UNNotificationRequest(
+                        identifier: Self.prefix + item.id,
+                        content: content,
+                        trigger: UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)))
+                }
+            }
+        }
+    }
+
+    // In front, the main chat delivers the reminder itself; no banner repeats it.
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                willPresent notification: UNNotification,
+                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler(notification.request.identifier.hasPrefix(Self.prefix) ? [] : [.banner, .sound])
+    }
+}
+
 // Native text fields show no form navigation bar above the keyboard, so the
 // web view's content view reports no input accessory view.
 private final class NoInputAccessory: NSObject {
@@ -105,6 +166,7 @@ class MuseBridgeViewController: CAPBridgeViewController {
     private lazy var filesHandler = MuseFilesHandler(presenter: self)
     private let healthHandler = MuseHealthHandler()
     private let hapticsHandler = MuseHapticsHandler()
+    private let remindersHandler = MuseRemindersHandler()
 
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
@@ -121,6 +183,7 @@ class MuseBridgeViewController: CAPBridgeViewController {
         webView?.configuration.userContentController.addScriptMessageHandler(filesHandler, contentWorld: .page, name: "museFiles")
         webView?.configuration.userContentController.addScriptMessageHandler(healthHandler, contentWorld: .page, name: "museHealth")
         webView?.configuration.userContentController.add(hapticsHandler, contentWorld: .page, name: "museHaptics")
+        webView?.configuration.userContentController.add(remindersHandler, contentWorld: .page, name: "museReminders")
         #if DEBUG && targetEnvironment(simulator)
         // Real-MA acceptance uses separate mappings/resources without changing
         // the user's normal main chat or personal memory. No credential is injected.

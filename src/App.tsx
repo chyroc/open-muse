@@ -56,6 +56,10 @@ import { MessageMenu, type MessageMenuAction } from "./MessageMenu";
 import { haptic } from "./haptics";
 import { Studio } from "./Studio";
 import { appSurface, exportText, shareText } from "./platform";
+import {
+  announceReminders,
+  reminderNotificationsSupported,
+} from "./reminderNotifications";
 import { backgroundClient } from "./background-client";
 import { Sheet, primaryNavigation } from "./MusePages";
 import { LibraryPage } from "./LibraryPage";
@@ -533,6 +537,30 @@ function Workspace({
     welcomeBusy,
     reload,
   ]);
+  // Upcoming reminders are handed to the system to announce while the app is
+  // closed: refreshed on launch, after each change in the conversation (the
+  // companion may have just set one), and when the app goes to the background.
+  const signedIn = config?.mode === "ark";
+  useEffect(() => {
+    if (!reminderNotificationsSupported()) return;
+    if (!signedIn) {
+      announceReminders([]);
+      return;
+    }
+    let active = true;
+    const refresh = () =>
+      void client.upcoming().then(
+        ({ items }) => active && announceReminders(items),
+        () => {},
+      );
+    refresh();
+    const hidden = () => document.hidden && refresh();
+    document.addEventListener("visibilitychange", hidden);
+    return () => {
+      active = false;
+      document.removeEventListener("visibilitychange", hidden);
+    };
+  }, [client, signedIn, lastEventId]);
   useEffect(() => {
     if (config?.mode !== "ark" || !lastStatusId) return;
     let active = true;

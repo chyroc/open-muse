@@ -346,7 +346,15 @@ default. While the service delivers to the current main chat, the apps do not
 deliver locally; when the main chat continues into a new chapter, the app
 registers the new conversation. If the service cannot be reached, the app keeps
 its last known answer instead of starting to deliver itself.
-There are no push notifications yet.
+
+On iPhone, Open Muse also hands the next week of active items (up to 48) to
+the system as local notifications, so a due item is announced even while the
+app is closed. The list is replaced on launch, after each change in the
+conversation, when the app goes to the background, and after a change in the
+Upcoming tab; signing out clears it. Notifications are requested the first
+time there is something to announce and are not shown while the app is in
+front, where the main chat delivers the item itself. There are no remote push
+notifications, and the Mac and web apps show no notifications.
 
 ## Personal identity and memory
 

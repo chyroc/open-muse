@@ -15,6 +15,10 @@ import {
 } from "../shared/upcoming";
 import type { Client } from "./api";
 import "./upcoming.css";
+import {
+  announceReminders,
+  reminderNotificationsSupported,
+} from "./reminderNotifications";
 
 type Snapshot = { items: UpcomingItem[]; revision: string };
 
@@ -92,9 +96,14 @@ export function UpcomingPanel({
     setBusy(item.id);
     setError("");
     try {
-      setSnapshot(
-        await client.changeUpcoming(item.id, action, snapshot.revision),
+      const next = await client.changeUpcoming(
+        item.id,
+        action,
+        snapshot.revision,
       );
+      setSnapshot(next);
+      // Paused and deleted items stop being announced at once.
+      announceReminders(next.items);
     } catch (reason) {
       setError((reason as Error).message);
     } finally {
@@ -235,15 +244,20 @@ export function UpcomingPanel({
                   "The Open Muse service can no longer reach your main chat. Open the main chat to register it again.",
                 )
               : t(
-                  "The Open Muse service sends due reminders to your main chat even when the app is closed, and your agent handles them with its tools. Steps that need approval wait for you. There are no push notifications yet.",
+                  "The Open Muse service sends due reminders to your main chat even when the app is closed, and your agent handles them with its tools. Steps that need approval wait for you.",
                 )
             : supported
               ? t(
-                  "Reminders arrive in the main chat when Open Muse is open at or after their time. Turn on delivery while closed to let the Open Muse service use your saved Ark key to run them while you are away; each one is a real Ark request and may be billed. There are no push notifications yet.",
+                  "Reminders arrive in the main chat when Open Muse is open at or after their time. Turn on delivery while closed to let the Open Muse service use your saved Ark key to run them while you are away; each one is a real Ark request and may be billed.",
                 )
               : t(
-                  "Reminders arrive in the main chat when Open Muse is open at or after their time. There are no push notifications yet.",
-                )}
+                  "Reminders arrive in the main chat when Open Muse is open at or after their time.",
+                )}{" "}
+          {reminderNotificationsSupported()
+            ? t(
+                "This iPhone also shows a notification when an item falls due, if you allow notifications.",
+              )
+            : t("This device does not show notifications for reminders.")}
         </p>
       )}
     </section>
