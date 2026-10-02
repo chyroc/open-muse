@@ -119,7 +119,7 @@ describe("Mac data controls", () => {
       root!.render(<DataControls client={await signedIn()} />),
     );
     const importButton = [...host.querySelectorAll("button")].find(
-      (item) => item.textContent === "Import",
+      (item) => item.textContent === "Import memory",
     )!;
     await act(async () => importButton.click());
     const area = host.querySelector<HTMLTextAreaElement>("dialog textarea")!;
@@ -180,13 +180,13 @@ describe("Mac data controls", () => {
       [...document.querySelectorAll("button")].find(
         (item) => item.textContent === label,
       )!;
-    await act(async () => button("Reset").click());
+    await act(async () => button("Reset this device").click());
     expect(document.body.textContent).toContain(
       "Permissions you gave Open Muse in macOS System Settings stay there.",
     );
     await act(async () => button("Cancel").click());
     expect(reset).not.toHaveBeenCalled();
-    await act(async () => button("Reset").click());
+    await act(async () => button("Reset this device").click());
     const confirm = [...document.querySelectorAll(".pill-button.danger")];
     await act(async () => (confirm.at(-1) as HTMLButtonElement).click());
     expect(reset).toHaveBeenCalledOnce();
@@ -208,7 +208,7 @@ describe("Mac data controls", () => {
     await act(async () => root!.render(<DataControls client={client} />));
     await act(async () =>
       [...document.querySelectorAll("button")]
-        .find((item) => item.textContent === "Reset")!
+        .find((item) => item.textContent === "Reset this device")!
         .click(),
     );
     await act(async () =>

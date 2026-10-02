@@ -93,6 +93,19 @@ const ShieldKeyhole = createLucideIcon("shield-keyhole", [
   ["path", { d: "M12 13v3", key: "slot" }],
 ]);
 
+// A shield around a person, for privacy.
+const ShieldPerson = createLucideIcon("shield-person", [
+  [
+    "path",
+    {
+      d: "M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z",
+      key: "shield",
+    },
+  ],
+  ["circle", { cx: "12", cy: "10", r: "2.5", key: "head" }],
+  ["path", { d: "M7.8 17.2a5 5 0 0 1 8.4 0", key: "shoulders" }],
+]);
+
 const icons: Record<SettingsSectionId, typeof Settings> = {
   general: Settings,
   connectors: LayoutGrid,
@@ -592,15 +605,25 @@ export function SettingsWindow({ client }: { client: Client }) {
         )}
         {active.id === "data-controls" && (
           <>
-            <p className="settings-lead">
-              {backgroundClient.configured()
-                ? t(
-                    "Chats go straight to your Ark project. No analytics or crash reports leave this Mac.",
-                  )
-                : t(
-                    "Open Muse has no server of its own. Nothing is collected, and no analytics or crash reports leave this Mac.",
-                  )}
-            </p>
+            <div className="settings-group">
+              <div className="settings-row settings-privacy-row">
+                <ShieldPerson size={22} strokeWidth={1.7} aria-hidden="true" />
+                <div>
+                  <strong>{t("We care about your privacy")}</strong>
+                  <p>
+                    {backgroundClient.configured()
+                      ? t(
+                          "Chats go straight to your Ark project. No analytics or crash reports leave this Mac.",
+                        )
+                      : t(
+                          "Open Muse has no server of its own. Nothing is collected, and no analytics or crash reports leave this Mac.",
+                        )}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <DataControls client={client} />
+            <h2>{t("Where your data lives")}</h2>
             <div className="settings-group">
               <Row
                 title={t("On this Mac")}
@@ -629,8 +652,6 @@ export function SettingsWindow({ client }: { client: Client }) {
                 )}
               />
             </div>
-            <h2>{t("Your data")}</h2>
-            <DataControls client={client} />
           </>
         )}
         {!active.connected && (

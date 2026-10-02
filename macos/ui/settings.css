@@ -738,3 +738,17 @@
     animation: none;
   }
 }
+.settings-privacy-row svg {
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+.settings-gap {
+  margin-top: 24px;
+}
+.settings-row.settings-danger-row > span {
+  color: var(--danger);
+}
+.settings-nav-row:disabled {
+  opacity: 0.45;
+}

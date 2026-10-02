@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { t } from "../../shared/i18n";
 import type { Client } from "../../src/api";
@@ -37,80 +38,59 @@ export function DataControls({ client }: { client: Client }) {
       setResetting(false);
     }
   }
+  const download = () => {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    abort.current = new AbortController();
+    void client
+      .companionIdentity()
+      .then((identity) =>
+        downloadAgentData(client, identity.name, abort.current!.signal),
+      )
+      .then(setNotice)
+      .catch((failure: Error) => setError(failure.message))
+      .finally(() => setBusy(false));
+  };
   return (
     <>
       <div className="settings-group">
-        <div className="settings-row">
-          <div>
-            <strong>{t("Import memory")}</strong>
-            <p>
-              {t(
-                "Bring what another assistant knows about you. You review the message before your companion saves anything.",
-              )}
-            </p>
-          </div>
-          <button
-            className="settings-inline-button"
-            disabled={!signedIn}
-            onClick={() => setImporting(true)}
-          >
-            {t("Import")}
-          </button>
-        </div>
-        <div className="settings-row">
-          <div>
-            <strong>{t("Download your data")}</strong>
-            <p>
-              {t(
-                "Saves memory, goals, Upcoming and every conversation as one Markdown file. It only reads from your Ark project.",
-              )}
-            </p>
-          </div>
-          <button
-            className="settings-inline-button"
-            disabled={!signedIn || busy}
-            onClick={() => {
-              setBusy(true);
-              setError("");
-              setNotice("");
-              abort.current = new AbortController();
-              void client
-                .companionIdentity()
-                .then((identity) =>
-                  downloadAgentData(
-                    client,
-                    identity.name,
-                    abort.current!.signal,
-                  ),
-                )
-                .then(setNotice)
-                .catch((failure: Error) => setError(failure.message))
-                .finally(() => setBusy(false));
-            }}
-          >
-            {busy ? t("Preparing…") : t("Download")}
-          </button>
-        </div>
+        <button
+          className="settings-row settings-nav-row"
+          disabled={!signedIn}
+          onClick={() => setImporting(true)}
+        >
+          <span>{t("Import memory")}</span>
+          <ChevronRight size={18} aria-hidden="true" />
+        </button>
+        <button
+          className="settings-row settings-nav-row"
+          disabled={!signedIn || busy}
+          onClick={download}
+        >
+          <span>{busy ? t("Preparing…") : t("Download your agent data")}</span>
+          <ChevronRight size={18} aria-hidden="true" />
+        </button>
       </div>
-      <div className="settings-group">
-        <div className="settings-row">
-          <div>
-            <strong>{t("Reset this device")}</strong>
-            <p>
-              {t(
-                "Removes the saved Ark API key, sign-ins, local data and settings from this Mac. Your agents, conversations and memory in the cloud stay.",
-              )}
-            </p>
-          </div>
-          <button
-            className="settings-inline-button danger"
-            disabled={resetting}
-            onClick={() => setConfirmReset(true)}
-          >
-            {resetting ? t("Resetting…") : t("Reset")}
-          </button>
-        </div>
+      <p className="settings-footnote">
+        {t(
+          "Import brings what another assistant knows about you; you review the message before your companion saves anything. Download saves memory, goals, Upcoming and every conversation as one Markdown file, reading only from your Ark project.",
+        )}
+      </p>
+      <div className="settings-group settings-gap">
+        <button
+          className="settings-row settings-nav-row settings-danger-row"
+          disabled={resetting}
+          onClick={() => setConfirmReset(true)}
+        >
+          <span>{resetting ? t("Resetting…") : t("Reset this device")}</span>
+        </button>
       </div>
+      <p className="settings-footnote">
+        {t(
+          "Removes the saved Ark API key, sign-ins, local data and settings from this Mac. Your agents, conversations and memory in the cloud stay.",
+        )}
+      </p>
       {notice && <p className="settings-lead settings-after">{notice}</p>}
       {error && (
         <p className="settings-error" role="alert">

@@ -270,4 +270,9 @@ export const zhDesktop: Record<string, string> = {
     "连接 Ark MA 后即可为助手存储机密。",
   "Secure credential vault": "安全凭证存储库",
   "Loading devices": "正在加载设备",
+  "Download your agent data": "下载你的智能体数据",
+  "Import brings what another assistant knows about you; you review the message before your companion saves anything. Download saves memory, goals, Upcoming and every conversation as one Markdown file, reading only from your Ark project.":
+    "导入会带来另一个助手对你的了解；在伙伴保存任何内容之前，你会先审阅这条消息。下载会把记忆、目标、即将到来的事项和所有对话保存为一个 Markdown 文件，只会读取你的 Ark 项目。",
+  "We care about your privacy": "我们重视你的隐私",
+  "Where your data lives": "你的数据存放在哪里",
 };
