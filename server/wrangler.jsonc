@@ -14,5 +14,5 @@
       "migrations_dir": "migrations",
     },
   ],
-  "vars": { "OWNER_ID": "private-owner", "BACKGROUND_ENABLED": "false" },
+  "vars": { "BACKGROUND_ENABLED": "false" },
 }

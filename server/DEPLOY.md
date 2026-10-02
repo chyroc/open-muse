@@ -117,7 +117,9 @@ the apps' connection policy names its origin.
 The service also runs as a Worker with D1 (`wrangler.jsonc`, `migrations/`).
 Keep `migrations/` (SQLite) and `migrations-postgres/` in step, and write SQL
 that runs on both; `npm run check` runs every test on both databases. For a
-Worker deployment, set the same secrets with `wrangler secret put`, apply D1
+Worker deployment, set the same secrets with `wrangler secret put` and the
+public `SUPABASE_AUTH_URL` and `SUPABASE_ANON_KEY` as variables (without them
+every authenticated request returns 503), apply D1
 migrations with `wrangler d1 migrations apply DB --remote`, and either use
 Workers Cron (omit `SCHEDULER_SOURCE`) or point the veFaaS timer at the Worker.
 `*.workers.dev` is not reliably reachable from mainland networks, so a Worker

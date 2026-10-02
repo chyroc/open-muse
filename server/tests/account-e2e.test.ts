@@ -200,7 +200,6 @@ describe("Open Muse accounts end to end", () => {
     fixture = await database();
     env = {
       DB: fixture.db,
-      OWNER_ID: "private-owner",
       SUPABASE_AUTH_URL: auth,
       SUPABASE_ANON_KEY: publicKey,
       BACKGROUND_ENABLED: "true",

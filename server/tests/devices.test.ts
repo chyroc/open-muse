@@ -48,7 +48,6 @@ describe("Account device registry", () => {
     fixture = await database();
     env = {
       DB: fixture.db,
-      OWNER_ID: "private-owner",
       SUPABASE_AUTH_URL: origin,
       SUPABASE_ANON_KEY: "sb_publishable_test_public_key_only",
       CREDENTIAL_ENCRYPTION_KEYS: JSON.stringify({
@@ -183,7 +182,7 @@ describe("Account device registry", () => {
     expect(
       (
         await call(
-          "muse_device_" + "x".repeat(40),
+          "unknown-access-token-0000001",
           "/v1/account/devices",
         )
       ).status,

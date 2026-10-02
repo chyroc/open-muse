@@ -4,7 +4,6 @@ import { handle } from "../src/index";
 import { rewrapRetiredKeys } from "../src/account";
 import { encryptConfiguration } from "../src/connection";
 import { Repository } from "../src/repository";
-import { tokenHash } from "../src/auth";
 import { supabaseOwner } from "../../shared/supabase-auth";
 import type { Env } from "../src/env";
 
@@ -15,7 +14,7 @@ const rotatedKey = "test-rotated-ark-api-key-0002";
 // Opaque access tokens resolved by the fake Auth provider, never by the Worker.
 const users: Record<string, string> = {
   "alice-access-token-000000001": "159c19ab-cfba-4436-9038-87f5fca38a4b",
-  "alice-other-device-token-0001": "159c19ab-cfba-4436-9038-87f5fca38a4b",
+  "alice-second-access-token-01": "159c19ab-cfba-4436-9038-87f5fca38a4b",
   "bob-access-token-00000000001": "316c004b-07b0-4675-9b8d-deb5a740f03b",
   "carol-access-token-000000001": "9b1f0c8e-5d2a-4c3e-8f7a-1e2d3c4b5a69",
 };
@@ -85,7 +84,6 @@ describe("Per-account encrypted Ark credentials", () => {
     fixture = await database();
     env = {
       DB: fixture.db,
-      OWNER_ID: "legacy-owner",
       SUPABASE_AUTH_URL: origin,
       SUPABASE_ANON_KEY: publicKey,
       BACKGROUND_ENABLED: "true",
@@ -98,7 +96,7 @@ describe("Per-account encrypted Ark credentials", () => {
     expect((await put(env, alice, sharedKey, 0)).status).toBe(200);
     expect((await put(env, bob, sharedKey, 0)).status).toBe(200);
     const fromOtherDevice = await (
-      await call(env, "alice-other-device-token-0001")
+      await call(env, "alice-second-access-token-01")
     ).json();
     expect(fromOtherDevice).toMatchObject({
       configured: true,
@@ -151,7 +149,7 @@ describe("Per-account encrypted Ark credentials", () => {
   it("rejects stale revisions from another device instead of overwriting", async () => {
     const response = await put(
       env,
-      "alice-other-device-token-0001",
+      "alice-second-access-token-01",
       rotatedKey,
       0,
     );
@@ -284,21 +282,7 @@ describe("Per-account encrypted Ark credentials", () => {
     ).toHaveLength(10);
   });
 
-  it("refuses device-token owners and unauthenticated callers", async () => {
-    const deviceToken = "muse_device_" + "a".repeat(40);
-    const device = await call(
-      {
-        ...env,
-        DEVICE_TOKEN_HASHES: JSON.stringify({
-          [await tokenHash(deviceToken)]: {
-            ownerId: "private-owner",
-            deviceLabel: "Mac",
-          },
-        }),
-      },
-      deviceToken,
-    );
-    expect(device.status).toBe(403);
+  it("refuses unauthenticated callers", async () => {
     const forged = provider();
     expect(
       (

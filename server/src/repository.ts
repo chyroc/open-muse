@@ -26,9 +26,8 @@ export interface Run extends BackgroundRun {
   deadline_at: number;
 }
 const summary = "id, phase, session_id, error, created_at, scheduled_for";
-export type AuthorizationBinding = { revision: number | null; hash: string };
-const authorizationGuard = `(?=0 OR (CAST(? AS BIGINT) IS NULL AND NOT EXISTS(SELECT 1 FROM ark_connections WHERE owner_id=?))
-  OR EXISTS(SELECT 1 FROM ark_connections WHERE owner_id=? AND revision=? AND encrypted IS NOT NULL))`;
+export type AuthorizationBinding = { revision: number; hash: string };
+const authorizationGuard = `(?=0 OR EXISTS(SELECT 1 FROM ark_connections WHERE owner_id=? AND revision=? AND encrypted IS NOT NULL))`;
 export class Repository {
   constructor(
     readonly db: Database,
@@ -80,8 +79,6 @@ export class Repository {
         input.revision,
         this.owner,
         +(input.enabled && authorization !== undefined),
-        authorization?.revision ?? null,
-        this.owner,
         this.owner,
         authorization?.revision ?? null,
         input.revision,
@@ -129,8 +126,6 @@ export class Repository {
         this.owner,
         scheduledFor,
         +(authorization !== undefined),
-        authorization?.revision ?? null,
-        this.owner,
         this.owner,
         authorization?.revision ?? null,
       )

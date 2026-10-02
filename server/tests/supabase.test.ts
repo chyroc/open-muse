@@ -33,7 +33,6 @@ describe("Supabase end-user authentication trial", () => {
     fixture = await database();
     env = {
       DB: fixture.db,
-      OWNER_ID: "legacy-owner",
       SUPABASE_AUTH_URL: origin,
       SUPABASE_ANON_KEY: publicKey,
       BACKGROUND_ENABLED: "true",
@@ -73,9 +72,9 @@ describe("Supabase end-user authentication trial", () => {
       ),
     ).toBe(supabaseOwner(origin, ids[0]));
   });
-  it("keeps per-user results isolated and cannot see the old private owner", async () => {
+  it("keeps per-user results isolated and never reads rows of non-account owners", async () => {
     const a = new Repository(env.DB, supabaseOwner(origin, ids[0]));
-    const legacy = new Repository(env.DB, env.OWNER_ID);
+    const legacy = new Repository(env.DB, "private-owner");
     await a.enqueue("manual:account-test", Date.now(), Date.now());
     await legacy.enqueue("manual:legacy-test", Date.now(), Date.now());
     const first = (await (

@@ -8,9 +8,7 @@ import {
 } from "../../shared/background-connection";
 import { ArkRemote } from "./ark";
 import { ApiError } from "../../shared/ark";
-import { authorizedOwners } from "./auth";
-import { backgroundReady, HttpError, type Env } from "./env";
-import { isSupabaseOwner } from "../../shared/supabase-auth";
+import { HttpError, type Env } from "./env";
 
 type Row = { revision: number; encrypted: string | null; updated_at: number };
 const envelopeSchema = z
@@ -179,10 +177,12 @@ export function configurationEnv(
     ARK_SESSION_OVERRIDES: "true",
   };
 }
+// One account's background connection: its stored Ark key paired with the
+// workspace resources the service created for that account.
 export class ConnectionStore {
   constructor(
     private env: Env,
-    private owner = env.OWNER_ID,
+    private owner: string,
   ) {}
   row() {
     return this.env.DB.prepare(
@@ -201,18 +201,8 @@ export class ConnectionStore {
   }
   async resolve() {
     const row = await this.row();
-    // Retain existing private deployments. A revocation tombstone disables this
-    // fallback, so old service-level credentials can never resurrect access.
-    // End-user accounts never inherit the service-level Ark configuration.
-    if (!row)
-      return this.owner === this.env.OWNER_ID &&
-        !isSupabaseOwner(this.owner) &&
-        authorizedOwners(this.env).length === 1 &&
-        authorizedOwners(this.env)[0] === this.owner &&
-        backgroundReady(this.env)
-        ? { env: this.env, revision: null }
-        : undefined;
-    if (!row.encrypted) return;
+    // Accounts never inherit a service-level Ark configuration.
+    if (!row?.encrypted) return;
     const config = await decryptConfiguration(this.env, this.owner, row);
     return {
       env: configurationEnv({ ...this.env, OWNER_ID: this.owner }, config),
@@ -220,17 +210,12 @@ export class ConnectionStore {
     };
   }
   guardedFetch(
-    revision: number | null,
+    revision: number,
     fetcher: typeof fetch = edgeFetch,
   ): typeof fetch {
     return async (input, init) => {
       const row = await this.row();
-      if (revision !== null && (!row?.encrypted || row.revision !== revision))
-        throw new HttpError(
-          409,
-          "Background authorization changed. No further MA request was sent.",
-        );
-      if (revision === null && row)
+      if (!row?.encrypted || row.revision !== revision)
         throw new HttpError(
           409,
           "Background authorization changed. No further MA request was sent.",
@@ -241,15 +226,15 @@ export class ConnectionStore {
   async save(
     config: BackgroundConfiguration,
     revision: number,
+    // The binding is tied to one stored credential revision, so a concurrent
+    // key rotation makes this upload fail instead of reviving the old key. Its
+    // resources must carry the account's ownership label and may be bound by
+    // only one account.
+    account: { credentialRevision: number; workspaceKey: string },
     now = Date.now(),
     fetcher: typeof fetch = edgeFetch,
-    // Account workspaces bind to one stored credential revision, so a
-    // concurrent key rotation makes this upload fail instead of reviving the
-    // old key. Their resources must carry the account's ownership label and
-    // may be bound by only one account.
-    account: { credentialRevision: number; workspaceKey: string } | null = null,
   ) {
-    const credentialRevision = account?.credentialRevision ?? null;
+    const { credentialRevision } = account;
     const current = await this.row();
     if ((current?.revision ?? 0) !== revision)
       throw new HttpError(
@@ -266,7 +251,6 @@ export class ConnectionStore {
     // Only read-only validation is performed here. Uploading must never create
     // an agent, session, memory store, or generation as a side effect.
     if (
-      account &&
       (
         await this.env.DB.prepare(
           `SELECT count(*) AS n FROM account_resources WHERE owner_id=? AND (
@@ -293,7 +277,7 @@ export class ConnectionStore {
     );
     try {
       await remote.verifyAccess();
-      if (account) await remote.verifyOwnership(account.workspaceKey);
+      await remote.verifyOwnership(account.workspaceKey);
     } catch (error) {
       throw new HttpError(
         error instanceof HttpError && error.status === 403 ? 403 : 422,
@@ -304,8 +288,8 @@ export class ConnectionStore {
             : "The current Ark workspace could not be verified. Refresh the local workspace and retry.",
       );
     }
-    // Account bindings may use only resources the service created for this
-    // account (see workspace.ts). Labels and client input cannot add any.
+    // A binding may use only resources the service created for this account
+    // (see workspace.ts). Labels and client input cannot add any.
     const owned = `(SELECT count(*) FROM account_resources WHERE owner_id=? AND (
       (kind='agent' AND resource_id=?) OR (kind='environment' AND resource_id=?) OR (kind='memory_store' AND resource_id=?)))=3`;
     const ownedBinds = [
@@ -322,16 +306,16 @@ export class ConnectionStore {
       config,
     );
     const mutation = crypto.randomUUID();
-    const credential = `(CAST(? AS BIGINT) IS NULL OR EXISTS(SELECT 1 FROM account_credentials WHERE owner_id=? AND revision=? AND encrypted IS NOT NULL))`;
+    const credential = `EXISTS(SELECT 1 FROM account_credentials WHERE owner_id=? AND revision=? AND encrypted IS NOT NULL)`;
     const results = await this.env.DB.batch([
       this.env.DB.prepare(
         `INSERT INTO ark_connections(owner_id,revision,encrypted,updated_at,mutation_id)
       SELECT ?,1,?,?,? WHERE (?=0 OR EXISTS(SELECT 1 FROM ark_connections WHERE owner_id=?))
       AND NOT EXISTS(SELECT 1 FROM runs WHERE owner_id=? AND phase NOT IN ('complete','failed') AND (connection_hash IS NULL OR connection_hash<>?))
-      AND ${credential} AND (?=0 OR ${owned})
+      AND ${credential} AND ${owned}
       ON CONFLICT(owner_id) DO UPDATE SET revision=ark_connections.revision+1,encrypted=excluded.encrypted,updated_at=excluded.updated_at,mutation_id=excluded.mutation_id
       WHERE ark_connections.revision=? AND NOT EXISTS(SELECT 1 FROM runs WHERE owner_id=? AND phase NOT IN ('complete','failed') AND (connection_hash IS NULL OR connection_hash<>?))
-      AND ${credential} AND (?=0 OR ${owned})`,
+      AND ${credential} AND ${owned}`,
       ).bind(
         this.owner,
         encrypted,
@@ -341,18 +325,14 @@ export class ConnectionStore {
         this.owner,
         this.owner,
         fingerprint,
-        credentialRevision,
         this.owner,
         credentialRevision,
-        +Boolean(account),
         ...ownedBinds,
         revision,
         this.owner,
         fingerprint,
-        credentialRevision,
         this.owner,
         credentialRevision,
-        +Boolean(account),
         ...ownedBinds,
       ),
       this.env.DB.prepare(
@@ -362,7 +342,6 @@ export class ConnectionStore {
     ]);
     if (!results[0].meta.changes) {
       if (
-        account &&
         !(await this.env.DB.prepare(`SELECT 1 AS hit WHERE ${owned}`)
           .bind(...ownedBinds)
           .first())

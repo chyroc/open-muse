@@ -5,7 +5,6 @@ import { ArkRemote, type Remote } from "./ark";
 import { backgroundReady, HttpError, type Env } from "./env";
 import { Repository, type Run } from "./repository";
 import { ConnectionStore } from "./connection";
-import { authorizedOwners } from "./auth";
 import { isSupabaseOwner, supabaseOrigin } from "../../shared/supabase-auth";
 import { ACCOUNT_ACTIVITY_WINDOW } from "./account";
 import { deliverDueUpcoming } from "./upcoming";
@@ -197,12 +196,6 @@ export async function tick(
   clock = Date.now,
 ) {
   if (env.BACKGROUND_ENABLED !== "true") return;
-  let owners: string[] = [];
-  try {
-    owners = authorizedOwners(env);
-  } catch {
-    // Account-only deployments have no private device bindings.
-  }
   // Account owners only exist after a verified session created their rows.
   // They are scheduled only while their key was stored under the configured
   // issuer and they recently made a verified request. Each owner still
@@ -219,20 +212,19 @@ export async function tick(
     `SELECT owner_id FROM (
     SELECT owner_id,next_check_at AS due_at FROM runs WHERE phase NOT IN ('complete','failed','needs_attention') AND next_check_at<=?
     UNION ALL SELECT owner_id,next_run_at AS due_at FROM schedules WHERE enabled=1 AND next_run_at<=?
-  ) AS due WHERE owner_id IN (${owners.map(() => "?").join(",") || "NULL"}) OR (substr(owner_id,1,10)='muse_user_' AND owner_id IN (
-    SELECT owner_id FROM account_credentials WHERE encrypted IS NOT NULL AND issuer=? AND last_seen_at>=?))
+  ) AS due WHERE substr(owner_id,1,10)='muse_user_' AND owner_id IN (
+    SELECT owner_id FROM account_credentials WHERE encrypted IS NOT NULL AND issuer=? AND last_seen_at>=?)
   GROUP BY owner_id ORDER BY min(due_at),owner_id LIMIT 20`,
   )
     .bind(
       clock(),
       clock(),
-      ...owners,
       issuer,
       clock() - ACCOUNT_ACTIVITY_WINDOW,
     )
     .all<{ owner_id: string }>();
   for (const { owner_id: owner } of due.results) {
-    if (!owners.includes(owner) && !isSupabaseOwner(owner)) continue;
+    if (!isSupabaseOwner(owner)) continue;
     try {
       const store = new ConnectionStore(env, owner);
       const connection = await store.resolve();

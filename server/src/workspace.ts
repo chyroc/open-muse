@@ -760,9 +760,9 @@ export class AccountWorkspaces {
             memoryStoreId: binding.env.ARK_MEMORY_STORE_ID!,
           },
           binding.revision,
+          { credentialRevision, workspaceKey },
           now,
           this.fetcher,
-          { credentialRevision, workspaceKey },
         );
         background = "rebound";
       } catch {

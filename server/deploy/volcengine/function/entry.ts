@@ -59,7 +59,6 @@ const db = new PgDatabase({
 
 const env: Env = {
   DB: db,
-  OWNER_ID: "private-owner",
   SUPABASE_AUTH_URL: required("OPEN_MUSE_AUTH_URL"),
   SUPABASE_ANON_KEY: required("OPEN_MUSE_ANON_KEY"),
   ALLOWED_ORIGINS:

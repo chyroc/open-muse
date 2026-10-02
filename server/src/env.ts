@@ -2,11 +2,8 @@ import type { Database } from "./database";
 
 export interface Env {
   DB: Database;
-  OWNER_ID: string;
-  // Trusted device-token hash -> {ownerId, deviceLabel}. Never client-selected.
-  DEVICE_TOKEN_HASHES?: string;
-  // Auth-only trial. These are a fixed provider origin and a public anon key,
-  // never a service-role key. Existing private-device enrollment is separate.
+  // Open Muse account Auth: a fixed provider origin and a public anon key,
+  // never a service-role key. Without them every request is refused.
   SUPABASE_AUTH_URL?: string;
   SUPABASE_ANON_KEY?: string;
   ALLOWED_ORIGINS?: string;
@@ -19,13 +16,17 @@ export interface Env {
   // Worker secret: {"current":"v1","keys":{"v1":"<32-byte base64>"}}.
   // This keyring must never be stored in D1 or sent to clients.
   CREDENTIAL_ENCRYPTION_KEYS?: string;
+  // The fields below are set only on the per-account Env built from that
+  // account's sealed connection (see configurationEnv). They are never
+  // deployment settings, and accounts never inherit service-level values.
+  OWNER_ID?: string;
   ARK_API_KEY?: string;
   ARK_PROJECT?: string;
   ARK_AGENT_ID?: string;
   ARK_AGENT_VERSION?: string;
   ARK_ENVIRONMENT_ID?: string;
   ARK_MEMORY_STORE_ID?: string;
-  // Internal flag for a verified, uploaded app connection. Not client input.
+  // Internal flag for a verified account connection. Not client input.
   ARK_SESSION_OVERRIDES?: string;
 }
 

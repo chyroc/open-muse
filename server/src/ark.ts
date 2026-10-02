@@ -35,7 +35,8 @@ export class ArkRemote implements Remote {
     private env: Env,
     fetcher: typeof fetch = edgeFetch,
   ) {
-    this.owner = env.OWNER_ID;
+    // An Env without an account owner matches no task (see processRun).
+    this.owner = env.OWNER_ID ?? "";
     this.ark = new ArkClient(
       {
         arkBaseUrl: base,

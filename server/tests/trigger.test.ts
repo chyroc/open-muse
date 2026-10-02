@@ -21,7 +21,6 @@ describe("External scheduler trigger", () => {
     fixture = await database();
     env = {
       DB: fixture.db,
-      OWNER_ID: "test-owner",
       SCHEDULER_SOURCE: "external",
       SCHEDULER_TRIGGER_SECRET: secret,
       ALLOWED_ORIGINS: "capacitor://localhost",

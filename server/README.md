@@ -27,16 +27,9 @@ hour of monitoring, a run requires explicit review; this does not stop MA or
 guarantee a model-spend cap. Pausing a schedule stops future automatic dispatch,
 not already queued or running work.
 
-Private deployments can also enroll devices without accounts. Each authorized
-device uses a different random token.
-Only SHA-256 token hashes are configured on the server; each hash maps to a
-trusted `{ownerId, deviceLabel}` record. Different devices belonging to the same
-user share that user's stable, opaque `ownerId`. Different users must receive
-different IDs and tokens. The service derives ownership from this trusted
-binding, never from a submitted name, query string, or resource ID. Old
-label-only device maps are rejected rather than silently sharing one account.
-Never use an Ark API key or Cloudflare API token as a device token.
-Device tokens must start with `muse_device_` and contain a random suffix.
+Every endpoint except `/health` and the signed scheduler trigger requires an
+Open Muse account session (see below). The service derives ownership only from
+the verified session, never from a submitted name, query string, or resource ID.
 
 ### Upcoming reminders
 
@@ -68,15 +61,15 @@ UUID, so different devices retain one identity and different accounts remain
 separate even if they share an Ark key.
 
 An account uses only the Ark key it stored through
-`/v1/account/credential`; it never inherits the service-level `ARK_*`
-configuration or the private owner's data. The status response reports
+`/v1/account/credential`; there is no service-level Ark configuration to
+inherit. The status response reports
 `account: {provider, credential: {configured, revision, updatedAt}}`. To allow
 background work, an account sends only its workspace resource IDs to
 `PUT /v1/connection` as `{workspace, credentialRevision, revision, confirm}`.
 The service pairs them with the account's stored key, verifies them read-only,
 and seals the result. A binding prepared for an older key revision returns 409.
-Schedules and runs then work as for private devices, and the scheduler resolves
-each account's own sealed binding.
+Schedules and runs then use that binding, and the scheduler resolves each
+account's own sealed binding.
 
 ### Account workspaces
 
@@ -118,8 +111,8 @@ after at most 30 days without any action. Each account can submit at most 10 new
 keys for Ark validation per hour; provider signup policy bounds the number of
 accounts.
 
-Only one configured issuer is accepted. Device-token enrollment remains available
-independently, and device owners cannot claim account owner IDs. Public signup
+Only one configured issuer is accepted, and it is the only way to sign in:
+without `SUPABASE_AUTH_URL` every authenticated endpoint returns 503. Public signup
 policy, provider rate limiting, email verification, SMTP, and abuse protection
 are configured at Supabase. The service never needs an Auth administrative key,
 password, provider refresh token, or database connection string. CORS and
@@ -132,8 +125,8 @@ Configure the app build with `VITE_MUSE_BACKGROUND_URL`,
 API origin, a public Auth origin, and an anon/publishable key; service-role JWTs
 and secret keys are rejected. The exact Auth origin is added to both Apple
 clients' connection policies. Do not put credentials in URLs or tracked files.
-Builds without Auth configuration run in single-user local mode, retain
-private-device-token enrollment, and make no Supabase requests.
+Builds without Auth configuration run in single-user local mode, make no
+Supabase requests, and do not use this service.
 
 The **Open Muse account** settings card supports email/password signup and login.
 Signup requires explicit confirmation and does not count as a confirmed login;
@@ -200,21 +193,24 @@ mocked upstream calls. Development listens on port 4311.
 
 Configure local bindings in ignored `.dev.vars`:
 
-- `DEVICE_TOKEN_HASHES`: a JSON object from SHA-256 device-token hashes to
-  `{ownerId, deviceLabel}` records (maximum 200 devices).
-  Missing or malformed configuration disables authenticated endpoints.
+- `SUPABASE_AUTH_URL` and `SUPABASE_ANON_KEY`: the public Auth origin and its
+  anon or publishable key. Without them every authenticated endpoint returns
+  503.
+- `CREDENTIAL_ENCRYPTION_KEYS`: the keyring described under Background
+  authorization. Without it account keys cannot be stored.
 - `ALLOWED_ORIGINS`: comma-separated exact origins for the native WebViews,
   typically `capacitor://localhost,muse://app`. Verify the actual app origins.
   Requests with no Origin still require authentication. Opaque `null` origins
   and non-allowlisted origins are rejected.
 
-Store device tokens in native Keychain. Remove a hash to revoke that device.
-Never put tokens in tracked config, URLs, screenshots, logs, or build variables.
+Never put keys or tokens in tracked config, URLs, screenshots, logs, or build
+variables.
 
 ## Native app connection
 
-After deploying the private API, set `VITE_MUSE_BACKGROUND_URL` in the build
-process environment for each app. It is a public HTTPS origin, not a secret;
+After deploying the API, set `VITE_MUSE_BACKGROUND_URL` together with the Auth
+variables from Native email login in the build process environment for each
+app. It is a public HTTPS origin, not a secret;
 paths, credentials, query strings, and fragments are rejected. For example:
 
 ```sh
@@ -227,31 +223,25 @@ added to the app's connection policy. Builds without the variable have no
 background connection and make no requests to this service. Existing Ark
 requests still go directly to the existing allowlisted Volcano endpoints.
 
-Enter a separate device token in each app. iOS and macOS store it in a dedicated
-Keychain namespace, separate from Ark authentication. Connecting a device token
-alone does not upload Ark credentials. Signing out of Ark or removing the local
-background connection does not pause the server schedule. Pause the schedule
-explicitly before disconnecting if future automatic runs should stop. Revocation
-requires removing the corresponding token hash on the server.
+Each app signs in with an Open Muse account. Signing in alone does not allow
+background work. Signing out locally does not pause the server schedule; pause
+it explicitly first if future automatic runs should stop.
 
 The settings card supports revision-checked schedule changes with explicit
 consent, one-off generation, reviewed reconciliation, and recent runs. A pending
 one-off operation ID is saved in Keychain before submission and reused after a
 lost response or app restart; writes are not retried automatically. Refreshing
 does not discard unsaved schedule edits. Feed content is cached in owner- and
-origin-scoped IndexedDB for offline reading, without device tokens. Cached posts
+origin-scoped IndexedDB for offline reading, without account tokens. Cached posts
 remain on the device after disconnecting. Foreground and network-recovery events
 refresh results; native background timers are not needed.
 
-After connecting the private service, authorize **Sync current Ark configuration**
-in the settings card to upload the existing app login's data-plane API key and
-prepared workspace references. No key or resource ID needs to be entered again.
-The existing local workspace and personal memory must already be prepared;
-sync does not silently create cloud resources. Upload is not automatic on
-startup, refresh, login, or account switching. A replacement upload pauses the
-schedule; explicitly review and enable it again. Signing out locally does not
-remove uploaded access. Use **Remove uploaded Ark access** to revoke the server
-copy and pause the schedule; this is separate from removing the device token.
+Allowing background work is an explicit action in the settings card. It sends
+only the account workspace's resource IDs; the service pairs them with the key
+the account stored. It is not automatic on startup, refresh, login, or account
+switching. A replacement binding pauses the schedule; explicitly review and
+enable it again. Signing out locally does not remove the binding. Removing it
+(`DELETE /v1/connection`) revokes the server copy and pauses the schedule.
 
 This integration targets iOS and macOS. It has local client, UI, and build
 verification, but requires live origin/CORS, Keychain, and MA acceptance before
@@ -261,7 +251,8 @@ deployed or that a real unattended generation can complete.
 ## API
 
 - `GET /health`: public liveness only; no configuration or credentials.
-- `GET /v1/status`: requires `Authorization: Bearer <device-token>`; checks the database.
+- `GET /v1/status`: requires `Authorization: Bearer <account access token>`;
+  checks the database.
 - `PUT /v1/schedule`: `{enabled, timezone, local_time, revision, confirm}`;
   enabling requires `confirm: true`. Stale revisions return 409.
 - `POST /v1/runs`: `{confirm: true}` and a stable `Idempotency-Key` of 16–80
@@ -275,7 +266,7 @@ deployed or that a real unattended generation can complete.
   its persisted phase. An uncertain creation/message is only queried, not resent.
 - `GET /v1/account/credential`: Open Muse account sessions only. Returns
   `{configured, revision, updatedAt, credential?}` where `credential` is the
-  account's own `{apiKey, project}`. Device tokens receive 403.
+  account's own `{apiKey, project}`.
 - `PUT /v1/account/credential`: `{credential, revision, confirm: true}`. The key
   is checked with one read-only Ark request (`GET /agents?limit=1`) and then
   sealed for this account. A stale revision from another device returns 409.
@@ -410,23 +401,24 @@ cookie-based authentication. Origin checks do not replace token authentication.
 
 ## Background authorization
 
-The private API accepts the existing app's Ark API key, project, agent ID and
-version, environment ID, and memory-store ID through `PUT /v1/connection` with
-`{config, revision, confirm: true}`. Device authentication and exact origin checks
-apply. Upload performs only read-only Ark access checks; it never creates an MA
-resource or enables a schedule. SSO access/refresh credentials, vaults, tools,
-and arbitrary upstream URLs are not accepted. No separate Ark key or agent is
-required. Native opt-in integration is described above.
+An account allows background work through `PUT /v1/connection` with
+`{workspace, credentialRevision, revision, confirm: true}`, where `workspace`
+holds only the agent ID and version, environment ID, and memory-store ID of its
+own workspace. The service pairs them with the account's stored Ark key and
+project. Account authentication and exact origin checks apply. Binding performs
+only read-only Ark access checks; it never creates an MA resource or enables a
+schedule. Ark keys, SSO access/refresh credentials, vaults, tools, and arbitrary
+upstream URLs are not accepted. Native opt-in integration is described above.
 
 Configure `CREDENTIAL_ENCRYPTION_KEYS` as a service secret containing a keyring:
 `{"current":"v1","keys":{"v1":"<base64-encoded random 32-byte key>"}}`.
-The entire uploaded configuration is AES-256-GCM encrypted with a fresh 96-bit
+The entire bound configuration is AES-256-GCM encrypted with a fresh 96-bit
 nonce and owner/revision-bound authenticated data. The database stores only the encrypted
 envelope and non-secret revision/time metadata. The keyring never goes into the database,
 an app, a response, or Git. This is encryption at rest, **not end-to-end
 encryption**: the authorized service briefly decrypts the key to call Ark.
 Administrators of the hosting platform with runtime or secret access remain trusted. HTTPS
-protects uploads in transit; do not enable request-body logging or tracing.
+protects requests in transit; do not enable request-body logging or tracing.
 
 For rotation, add a new key ID and switch `current`, retaining previous keys
 until all retained envelopes/backups have been migrated or expired. Do not
@@ -435,37 +427,34 @@ or backup purge. Database backups can retain older ciphertext; removing
 the live row is not proof of physical erasure from backups.
 
 `DELETE /v1/connection` with `{revision, confirm: true}` removes the live encrypted
-configuration and leaves a revision tombstone. It atomically pauses future
+binding and leaves a revision tombstone. It atomically pauses future
 scheduling, invalidates job leases, and clears pending prompts. Unsubmitted
 local work stops; ambiguous submissions and already-running MA work require
 review and are **not cancelled** upstream. Loaded invocations check revocation
 before each further Ark request; an already in-flight request cannot be recalled.
-Existing Feed posts remain. Removing the upload does not revoke the original
-Ark key; use the Ark console to do that. Deletion is available even if the
+Existing Feed posts remain. Removing the binding does not revoke the Ark key; use the Ark console to do that. Deletion is available even if the
 encryption keyring is unavailable. Unresolved submissions can only be reconciled
 after explicitly restoring the original connection and reviewing the run.
 
 Credentials, schedules, job claims, run limits, results, and revocation are
-scoped to the authenticated user. Cron selects up to 20 oldest-due authorized
-users per invocation and creates a separate Ark adapter from each user's own
+scoped to the authenticated user. Each tick selects up to 20 oldest-due accounts
+per invocation and creates a separate Ark adapter from each user's own
 encrypted configuration. The adapter owner must match the task owner before
 claiming work. A missing or unreadable user configuration cannot borrow another
 user's key, and a failure for one user does not change another user's results.
 
-The owner is an Open Muse end user, not an Ark account or API-key owner. Multiple
-users may explicitly upload the same Ark key. Each still has a separate
+The owner is an Open Muse account, not an Ark account or API-key owner. Multiple
+accounts may store the same Ark key. Each still has a separate
 owner-bound encrypted configuration, schedule, job state, result set, and
 revocation operation. There is no global key-ownership registry and no
-deduplication of users or connections by key. Revoking one user's upload does
-not revoke another user's upload; revoking the key at Ark affects everyone
-using it. Device enrollment is a trusted administrative operation; end users
-sign in with Open Muse accounts as described above.
+deduplication of users or connections by key. Revoking one account's binding does
+not revoke another's; revoking the key at Ark affects everyone using it.
 
 ### End-user identity
 
-Device tokens identify users only through the trusted server-side enrollment
-binding. Open Muse accounts identify users only through sessions the configured Auth
-provider verifies. A random client UUID, a person's name or email, an Ark key,
+Open Muse accounts identify users only through sessions the configured Auth
+provider verifies. Only account owners (`muse_user_*`) are served or
+scheduled; rows recorded under any other owner are never read. A random client UUID, a person's name or email, an Ark key,
 an API-key digest, an Apple device ID, or a claimed user ID is not
 authentication.
 
@@ -482,14 +471,11 @@ boundary. Use separately scoped Ark credentials if the users must not be able
 to access one another's data outside Open Muse.
 
 Different credentials/workspaces cannot replace an unresolved run's connection.
-Unchanged syncs are deduplicated. Stale revisions fail instead of overwriting a
-newer device's upload. Older service-level `ARK_*` bindings remain supported for
-existing private deployments **only** when there is exactly one authorized
-owner matching `OWNER_ID`. They are never a shared multi-user fallback.
-A revocation tombstone also disables the fallback. `OWNER_ID` no longer selects
-an HTTP request's owner. Migrate device-token maps before deploying this version.
+Unchanged bindings are deduplicated. Stale revisions fail instead of overwriting
+a newer device's binding. There is no service-level Ark configuration and no
+fallback to one.
 
-The uploaded app agent is version-pinned and reused with per-session overrides:
+The bound agent is version-pinned and reused with per-session overrides:
 empty tools, MCP servers, and skills, plus a background-only system instruction.
 Coordinator agents are rejected. The service verifies the effective session's
 agent ID/version, the background system instruction, and empty execution
@@ -503,8 +489,8 @@ not access device-local likes or main-chat selection. Tool access remains out
 of scope.
 
 Only set `BACKGROUND_ENABLED=true` after real-account policy and connectivity
-verification. Upload requires explicit native consent; local sign-out does not
-remove previously uploaded authorization. This
+verification. Binding requires explicit native consent; local sign-out does not
+remove a previous binding. This
 service never accepts or stores a cloud management token in its runtime.
 
 Creation/message markers are persisted before POST. Ambiguous results are

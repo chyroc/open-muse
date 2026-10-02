@@ -107,8 +107,8 @@ deploying a Worker or writing a cron expression.
    marker; if the outcome is still unknown, retain that state and do not resend.
 6. Start with read-only research. A prompt alone is not a permission boundary:
    configure and verify a suitable MA tool policy for unattended work rather
-   than inheriting the current app agent's broad tool permissions. The private
-   implementation accepts an explicit encrypted upload and reuses its agent
+   than inheriting the current app agent's broad tool permissions. The service
+   binds an account's own workspace on explicit consent and reuses its agent
    only with verified no-tools session overrides. Approval-required
    actions must wait for the user. Do not enable autonomous memory maintenance
    or goal edits as a side effect of adding scheduled Feed generation.
@@ -119,7 +119,7 @@ deploying a Worker or writing a cron expression.
 8. Persist a notification outbox after confirmed completion. Deduplicate sends,
    support quiet hours and revocation, and avoid private content in default
    push payloads. APNs credentials, each app's signing/entitlements, topics,
-   sandbox/production environments, user permission, and device-token lifecycle
+   sandbox/production environments, user permission, and APNs token lifecycle
    require separate iOS and macOS integration and acceptance tests. Unlink tokens
    on sign-out and remove invalid registrations. Push delivery is not guaranteed:
    notification taps and app foregrounding must fetch authoritative state, and

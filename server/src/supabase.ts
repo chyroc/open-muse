@@ -1,5 +1,4 @@
 import {
-  isSupabaseOwner,
   supabaseOrigin,
   supabaseOwner,
   supabasePublicKey,
@@ -7,8 +6,6 @@ import {
   authToken,
 } from "../../shared/supabase-auth";
 import { HttpError, type Env } from "./env";
-
-export { isSupabaseOwner };
 
 export async function authenticateSupabase(
   token: string,

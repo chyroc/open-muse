@@ -15,21 +15,26 @@ import {
   encryptConfiguration,
 } from "../src/connection";
 import { handle } from "../src/index";
-import { tokenHash } from "../src/auth";
 import { Repository } from "../src/repository";
 import { ArkRemote } from "../src/ark";
 import { tick } from "../src/jobs";
 import type { Env } from "../src/env";
 import type { BackgroundConfiguration } from "../../shared/background-connection";
+import {
+  accountEnv,
+  seedAccount,
+  session,
+  withAuth,
+  workspaceKey,
+} from "./accounts";
 
-const config: BackgroundConfiguration = {
-  apiKey: "test-private-existing-ark-key",
-  project: "test-project",
-  agentId: "agent-existing",
-  agentVersion: 3,
-  environmentId: "env-existing",
-  memoryStoreId: "memory-existing",
-};
+let config: BackgroundConfiguration, owner: string, token: string;
+// The same workspace bound with a replacement key.
+const replaced = () => ({ ...config, apiKey: "test-another-existing-key" });
+const account = (c = config) => ({
+  credentialRevision: 1,
+  workspaceKey: workspaceKey(c, owner),
+});
 const ring = (current = "v1") =>
   JSON.stringify({
     current,
@@ -38,21 +43,27 @@ const ring = (current = "v1") =>
       v2: btoa("b".repeat(32)),
     },
   });
-const token = "muse_device_" + "a".repeat(40);
+// Ark resources carry the ownership label for the key they are read with.
 function upstream() {
   return vi.fn<typeof fetch>(async (input, init) => {
     const path = new URL(String(input)).pathname;
     expect(init?.redirect).toBe("error");
-    if (path.endsWith("/agents/agent-existing"))
+    const apiKey = (new Headers(init?.headers).get("Authorization") ?? "").slice(
+      7,
+    );
+    const label = workspaceKey({ ...config, apiKey }, owner);
+    const metadata = { open_muse_workspace: label, open_muse_identity: label };
+    if (path.endsWith(`/agents/${config.agentId}`))
       return Response.json({
         id: config.agentId,
         version: config.agentVersion,
         tools: [{ type: "agent_toolset_20260701" }],
+        metadata,
       });
-    if (path.endsWith("/environments/env-existing"))
-      return Response.json({ id: config.environmentId });
-    if (path.endsWith("/memory_stores/memory-existing"))
-      return Response.json({ id: config.memoryStoreId });
+    if (path.endsWith(`/environments/${config.environmentId}`))
+      return Response.json({ id: config.environmentId, metadata });
+    if (path.endsWith(`/memory_stores/${config.memoryStoreId}`))
+      return Response.json({ id: config.memoryStoreId, metadata });
     return Response.json({ data: [] });
   });
 }
@@ -65,17 +76,30 @@ describe("Encrypted app connection custody", () => {
   });
   afterAll(async () => fixture.dispose());
   beforeEach(async () => {
-    const ownerId = crypto.randomUUID();
-    env = {
-      DB: fixture.db,
-      OWNER_ID: ownerId,
-      CREDENTIAL_ENCRYPTION_KEYS: ring(),
-      DEVICE_TOKEN_HASHES: JSON.stringify({
-        [await tokenHash(token)]: { ownerId, deviceLabel: "test-device" },
-      }),
-      BACKGROUND_ENABLED: "true",
+    const user = session();
+    owner = user.owner;
+    token = user.token;
+    const id = crypto.randomUUID();
+    config = {
+      apiKey: "test-private-existing-ark-key",
+      project: "test-project",
+      agentId: `agent-${id}`,
+      agentVersion: 3,
+      environmentId: `env-${id}`,
+      memoryStoreId: `memory-${id}`,
     };
-    store = new ConnectionStore(env);
+    env = accountEnv(fixture.db, {
+      CREDENTIAL_ENCRYPTION_KEYS: ring(),
+      BACKGROUND_ENABLED: "true",
+    });
+    await seedAccount(env, owner, config);
+    store = new ConnectionStore(env, owner);
+  });
+  const workspace = () => ({
+    agentId: config.agentId,
+    agentVersion: config.agentVersion,
+    environmentId: config.environmentId,
+    memoryStoreId: config.memoryStoreId,
   });
   const request = (value: unknown, method = "PUT") =>
     new Request("https://example.com/v1/connection", {
@@ -87,15 +111,15 @@ describe("Encrypted app connection custody", () => {
       body: JSON.stringify(value),
     });
   it("encrypts the entire configuration with a fresh authenticated nonce", async () => {
-    const encrypted = await encryptConfiguration(env, env.OWNER_ID, 1, config);
+    const encrypted = await encryptConfiguration(env, owner, 1, config);
     expect(encrypted).not.toContain(config.apiKey);
     expect(encrypted).not.toContain(config.agentId);
     expect(encrypted).not.toContain(config.project);
-    expect(await encryptConfiguration(env, env.OWNER_ID, 1, config)).not.toBe(
+    expect(await encryptConfiguration(env, owner, 1, config)).not.toBe(
       encrypted,
     );
     expect(
-      await decryptConfiguration(env, env.OWNER_ID, {
+      await decryptConfiguration(env, owner, {
         encrypted,
         revision: 1,
         updated_at: 1,
@@ -103,47 +127,51 @@ describe("Encrypted app connection custody", () => {
     ).toEqual(config);
   });
   it("rejects owner substitution, stale revisions, ciphertext tampering, and a missing key", async () => {
-    const encrypted = await encryptConfiguration(env, env.OWNER_ID, 1, config);
+    const encrypted = await encryptConfiguration(env, owner, 1, config);
     const row = { encrypted, revision: 1, updated_at: 1 };
-    for (const [e, owner, r] of [
+    for (const [e, o, r] of [
       [env, "someone-else", row],
-      [env, env.OWNER_ID, { ...row, revision: 2 }],
-      [{ ...env, CREDENTIAL_ENCRYPTION_KEYS: undefined }, env.OWNER_ID, row],
+      [env, owner, { ...row, revision: 2 }],
+      [{ ...env, CREDENTIAL_ENCRYPTION_KEYS: undefined }, owner, row],
       [
         env,
-        env.OWNER_ID,
+        owner,
         {
           ...row,
           encrypted: encrypted.replace('"ciphertext":"', '"ciphertext":"AAAA'),
         },
       ],
     ] as const)
-      await expect(decryptConfiguration(e, owner, r)).rejects.toThrow(
+      await expect(decryptConfiguration(e, o, r)).rejects.toThrow(
         "storage is unavailable",
       );
   });
   it("supports key rotation while retaining the previous decrypt key", async () => {
-    const old = await encryptConfiguration(env, env.OWNER_ID, 1, config);
+    const old = await encryptConfiguration(env, owner, 1, config);
     env.CREDENTIAL_ENCRYPTION_KEYS = ring("v2");
     expect(
-      await decryptConfiguration(env, env.OWNER_ID, {
+      await decryptConfiguration(env, owner, {
         encrypted: old,
         revision: 1,
         updated_at: 1,
       }),
     ).toEqual(config);
     expect(
-      JSON.parse(await encryptConfiguration(env, env.OWNER_ID, 2, config))
+      JSON.parse(await encryptConfiguration(env, owner, 2, config))
         .keyId,
     ).toBe("v2");
   });
-  it("accepts the current app agent without granting its tools or writing to MA", async () => {
+  const bind = (value: object = {}) =>
+    request({
+      workspace: workspace(),
+      credentialRevision: 1,
+      revision: 0,
+      confirm: true,
+      ...value,
+    });
+  it("accepts the account's agent without granting its tools or writing to MA", async () => {
     const fetcher = upstream();
-    const response = await handle(
-      request({ config, revision: 0, confirm: true }),
-      env,
-      fetcher,
-    );
+    const response = await handle(bind(), env, withAuth(fetcher));
     expect(response.status).toBe(200);
     const text = await response.text();
     expect(JSON.parse(text)).toEqual({
@@ -164,14 +192,15 @@ describe("Encrypted app connection custody", () => {
   });
   it("compares revisions, safely deduplicates unchanged syncs, and permits rotation when idle", async () => {
     const fetcher = upstream();
-    await store.save(config, 0, 1, fetcher);
-    expect((await store.save(config, 1, 2, fetcher)).revision).toBe(1);
-    await expect(store.save(config, 0, 3, fetcher)).rejects.toThrow("changed");
+    await store.save(config, 0, account(), 1, fetcher);
+    expect((await store.save(config, 1, account(), 2, fetcher)).revision).toBe(1);
+    await expect(store.save(config, 0, account(), 3, fetcher)).rejects.toThrow("changed");
     expect(
       (
         await store.save(
-          { ...config, apiKey: "test-another-existing-key" },
+          replaced(),
           1,
+          account(replaced()),
           4,
           fetcher,
         )
@@ -179,13 +208,14 @@ describe("Encrypted app connection custody", () => {
     ).toBe(2);
   });
   it("blocks account/key changes during unresolved work", async () => {
-    await store.save(config, 0, 1, upstream());
-    const repo = new Repository(env.DB, env.OWNER_ID);
+    await store.save(config, 0, account(), 1, upstream());
+    const repo = new Repository(env.DB, owner);
     await repo.enqueue("manual:unresolved-test", 2, 2);
     await expect(
       store.save(
-        { ...config, apiKey: "test-another-existing-key" },
+        replaced(),
         1,
+        account(replaced()),
         3,
         upstream(),
       ),
@@ -193,10 +223,10 @@ describe("Encrypted app connection custody", () => {
     expect((await store.status()).revision).toBe(1);
   });
   it("pauses an existing schedule on credential replacement and rejects stale authorization bindings", async () => {
-    await store.save(config, 0, 1, upstream());
-    const repo = new Repository(env.DB, env.OWNER_ID);
+    await store.save(config, 0, account(), 1, upstream());
+    const repo = new Repository(env.DB, owner);
     const hash = await new ArkRemote(
-      configurationEnv(env, config),
+      configurationEnv({ ...env, OWNER_ID: owner }, config),
     ).fingerprint();
     const auth = { revision: 1, hash };
     await repo.saveSchedule(
@@ -205,8 +235,9 @@ describe("Encrypted app connection custody", () => {
       auth,
     );
     await store.save(
-      { ...config, apiKey: "test-another-existing-key" },
+      replaced(),
       1,
+      account(replaced()),
       2,
       upstream(),
     );
@@ -221,8 +252,8 @@ describe("Encrypted app connection custody", () => {
     expect(await repo.runs()).toHaveLength(0);
   });
   it("revokes encrypted credentials, cancels unsubmitted work, and pauses the schedule atomically", async () => {
-    await store.save(config, 0, 1, upstream());
-    const repo = new Repository(env.DB, env.OWNER_ID);
+    await store.save(config, 0, account(), 1, upstream());
+    const repo = new Repository(env.DB, owner);
     await repo.saveSchedule(
       { enabled: true, timezone: "UTC", local_time: "09:00", revision: 0 },
       1,
@@ -235,12 +266,12 @@ describe("Encrypted app connection custody", () => {
     expect((await store.row())?.encrypted).toBeNull();
     expect((await repo.schedule()).enabled).toBe(false);
     expect((await repo.runs())[0].phase).toBe("failed");
-    expect((await store.save(config, 2, 5, upstream())).revision).toBe(3);
+    expect((await store.save(config, 2, account(), 5, upstream())).revision).toBe(3);
     expect((await repo.schedule()).enabled).toBe(false);
   });
   it("marks uncertain submissions for review and only restores their original connection", async () => {
-    await store.save(config, 0, 1, upstream());
-    const repo = new Repository(env.DB, env.OWNER_ID);
+    await store.save(config, 0, account(), 1, upstream());
+    const repo = new Repository(env.DB, owner);
     await repo.enqueue("manual:submitted-test", 2, 2);
     const run = (await repo.claim(2))!;
     await repo.transition(
@@ -250,7 +281,7 @@ describe("Encrypted app connection custody", () => {
         phase: "sending",
         prompt: "private pending prompt",
         connection_hash: await new ArkRemote(
-          configurationEnv(env, config),
+          configurationEnv({ ...env, OWNER_ID: owner }, config),
         ).fingerprint(),
       },
       2,
@@ -265,17 +296,18 @@ describe("Encrypted app connection custody", () => {
     expect(row).toEqual({ prompt: "", lease_token: null });
     await expect(
       store.save(
-        { ...config, apiKey: "test-another-existing-key" },
+        replaced(),
         2,
+        account(replaced()),
         4,
         upstream(),
       ),
     ).rejects.toThrow("unresolved");
-    await store.save(config, 2, 5, upstream());
+    await store.save(config, 2, account(), 5, upstream());
     expect((await repo.runs())[0].phase).toBe("needs_attention");
   });
   it("checks revocation before every subsequent upstream call", async () => {
-    await store.save(config, 0, 1, upstream());
+    await store.save(config, 0, account(), 1, upstream());
     const fetcher = upstream(),
       guarded = store.guardedFetch(1, fetcher);
     await guarded(
@@ -288,15 +320,15 @@ describe("Encrypted app connection custody", () => {
     ).rejects.toThrow("authorization changed");
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
-  it("never resurrects revoked credentials from legacy environment bindings", async () => {
-    const legacy = configurationEnv(env, config);
-    const s = new ConnectionStore(legacy);
-    expect(await s.resolve()).toBeTruthy();
-    await s.remove(0, 1);
-    expect(await s.resolve()).toBeUndefined();
+  it("never falls back to service-level Ark settings", async () => {
+    const service = new ConnectionStore(configurationEnv(env, config), owner);
+    expect(await service.resolve()).toBeUndefined();
+    await store.save(config, 0, account(), 1, upstream());
+    await store.remove(1, 2);
+    expect(await service.resolve()).toBeUndefined();
   });
   it("keeps removal available without a decrypt key and does not auto-enable generation", async () => {
-    await store.save(config, 0, 1, upstream());
+    await store.save(config, 0, account(), 1, upstream());
     const disabled = {
       ...env,
       BACKGROUND_ENABLED: "false",
@@ -310,34 +342,31 @@ describe("Encrypted app connection custody", () => {
         await handle(
           request({ revision: 1, confirm: true }, "DELETE"),
           disabled,
+          withAuth(),
         )
       ).status,
     ).toBe(200);
   });
   it("requires authentication, explicit consent, bounded schemas, and a valid keyring", async () => {
-    const fetcher = upstream();
-    const unauthenticated = request({ config, revision: 0, confirm: true });
+    const ark = upstream(),
+      fetcher = withAuth(ark);
+    const unauthenticated = bind();
     unauthenticated.headers.delete("Authorization");
     expect((await handle(unauthenticated, env, fetcher)).status).toBe(401);
     for (const value of [
-      { config, revision: 0, confirm: false },
-      { config, revision: 0, confirm: true, owner: "other" },
-      {
-        config: { ...config, refreshToken: "secret-sso-token" },
-        revision: 0,
-        confirm: true,
-      },
-      {
-        config: { ...config, apiKey: "cfat_not-an-ark-key" },
-        revision: 0,
-        confirm: true,
-      },
+      bind({ confirm: false }),
+      bind({ owner: "other" }),
+      bind({ credentialRevision: undefined }),
+      bind({ workspace: { ...workspace(), apiKey: config.apiKey } }),
+      bind({ workspace: { ...workspace(), refreshToken: "secret-sso-token" } }),
+      // A full Ark configuration with a key is never accepted.
+      request({ config, revision: 0, confirm: true }),
     ])
-      expect((await handle(request(value), env, fetcher)).status).toBe(400);
+      expect((await handle(value, env, fetcher)).status).toBe(400);
     expect(
       (
         await handle(
-          request({ config, revision: 0, confirm: true }),
+          bind(),
           { ...env, CREDENTIAL_ENCRYPTION_KEYS: undefined },
           fetcher,
         )
@@ -346,17 +375,14 @@ describe("Encrypted app connection custody", () => {
     expect(
       (await handle(request({ data: "a".repeat(9000) }), env, fetcher)).status,
     ).toBe(413);
-    expect(fetcher).not.toHaveBeenCalled();
+    expect(ark).not.toHaveBeenCalled();
+    expect(await store.row()).toBeNull();
   });
   it("sanitizes upstream errors and does not store rejected configurations", async () => {
     const fetcher = vi.fn<typeof fetch>(async () => {
       throw new Error(config.apiKey);
     });
-    const result = await handle(
-      request({ config, revision: 0, confirm: true }),
-      env,
-      fetcher,
-    );
+    const result = await handle(bind(), env, withAuth(fetcher));
     expect(result.status).toBe(422);
     expect(await result.text()).not.toContain(config.apiKey);
     expect(await store.row()).toBeNull();

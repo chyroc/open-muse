@@ -205,7 +205,6 @@ describe("Account workspace settings changes", () => {
     fixture = await database();
     env = {
       DB: fixture.db,
-      OWNER_ID: "private-owner",
       SUPABASE_AUTH_URL: origin,
       SUPABASE_ANON_KEY: "sb_publishable_test_public_key_only",
       BACKGROUND_ENABLED: "true",

@@ -8,7 +8,7 @@ import {
   vi,
 } from "vitest";
 import { database } from "./database";
-import { authenticate, tokenHash } from "../src/auth";
+import { authenticate } from "../src/auth";
 import { handle } from "../src/index";
 import { ConnectionStore } from "../src/connection";
 import { Repository } from "../src/repository";
@@ -17,8 +17,15 @@ import type { Env } from "../src/env";
 import type { Remote } from "../src/ark";
 import type { AgentEvent } from "../../shared/types";
 import type { BackgroundConfiguration } from "../../shared/background-connection";
+import {
+  accountEnv,
+  arkWorkspaces,
+  seedAccount,
+  session,
+  withAuth,
+} from "./accounts";
 
-describe("Per-user background execution isolation", () => {
+describe("Per-account background execution isolation", () => {
   let fixture: Awaited<ReturnType<typeof database>>, env: Env;
   let owners: string[], tokens: string[], configs: BackgroundConfiguration[];
   beforeAll(async () => {
@@ -26,124 +33,92 @@ describe("Per-user background execution isolation", () => {
   });
   afterAll(async () => fixture.dispose());
   beforeEach(async () => {
-    owners = [crypto.randomUUID(), crypto.randomUUID()];
-    tokens = owners.map(
-      () => "muse_device_" + crypto.randomUUID().replaceAll("-", "") + "abcd",
-    );
-    configs = owners.map((owner, i) => ({
-      apiKey: `test-private-key-${owner}`,
+    const users = [session(), session()];
+    owners = users.map((u) => u.owner);
+    tokens = users.map((u) => u.token);
+    configs = users.map((u, i) => ({
+      apiKey: `test-private-key-${u.id}`,
       project: `project-${i}`,
-      agentId: `agent-${i}`,
+      agentId: `agent-${u.id}`,
       agentVersion: 1,
-      environmentId: `env-${i}`,
-      memoryStoreId: `memory-${i}`,
+      environmentId: `env-${u.id}`,
+      memoryStoreId: `memory-${u.id}`,
     }));
-    env = {
-      DB: fixture.db,
-      OWNER_ID: "not-a-user",
+    env = accountEnv(fixture.db, {
       BACKGROUND_ENABLED: "true",
       CREDENTIAL_ENCRYPTION_KEYS: JSON.stringify({
         current: "v1",
         keys: { v1: btoa("c".repeat(32)) },
       }),
-      DEVICE_TOKEN_HASHES: JSON.stringify(
-        Object.fromEntries(
-          await Promise.all(
-            tokens.map(async (token, i) => [
-              await tokenHash(token),
-              { ownerId: owners[i], deviceLabel: `device-${i}` },
-            ]),
-          ),
-        ),
-      ),
-    };
+    });
   });
-  const upstream: typeof fetch = async (input, init) => {
-    const key = new Headers(init?.headers).get("Authorization"),
-      authorized = configs.filter((c) => key === `Bearer ${c.apiKey}`);
-    if (!authorized.length) return Response.json({}, { status: 401 });
-    const path = new URL(String(input)).pathname;
-    for (const c of authorized) {
-      if (path.endsWith(`/agents/${c.agentId}`))
-        return Response.json({
-          id: c.agentId,
-          version: c.agentVersion,
-          tools: [],
-        });
-      if (path.endsWith(`/environments/${c.environmentId}`))
-        return Response.json({ id: c.environmentId });
-      if (path.endsWith(`/memory_stores/${c.memoryStoreId}`))
-        return Response.json({ id: c.memoryStoreId });
-    }
-    return Response.json({}, { status: 403 });
-  };
-  const request = (i: number, path: string, value?: unknown, method = "GET") =>
+  // Read at call time, so a test may make both accounts share one key.
+  const ark: typeof fetch = (input, init) =>
+    arkWorkspaces(owners.map((owner, i) => ({ owner, config: configs[i] })))(
+      input,
+      init,
+    );
+  const upstream = withAuth(ark);
+  // Stores each account's key and records its workspace, as the account flow
+  // does before background work can be allowed.
+  const seed = () =>
+    Promise.all(owners.map((owner, i) => seedAccount(env, owner, configs[i])));
+  const workspace = (i: number) => ({
+    agentId: configs[i].agentId,
+    agentVersion: configs[i].agentVersion,
+    environmentId: configs[i].environmentId,
+    memoryStoreId: configs[i].memoryStoreId,
+  });
+  const request = (
+    i: number,
+    path: string,
+    value?: unknown,
+    method = "GET",
+    token = tokens[i],
+  ) =>
     new Request(`https://example.com${path}`, {
       method,
       headers: {
-        Authorization: `Bearer ${tokens[i]}`,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
         "Idempotency-Key": "per-user-manual-action",
       },
       ...(value !== undefined ? { body: JSON.stringify(value) } : {}),
     });
+  const bind = (i: number, extra: object = {}) =>
+    request(
+      i,
+      "/v1/connection",
+      {
+        workspace: workspace(i),
+        credentialRevision: 1,
+        revision: 0,
+        confirm: true,
+        ...extra,
+      },
+      "PUT",
+    );
   const setup = async () => {
+    await seed();
     for (let i = 0; i < 2; i++)
-      expect(
-        (
-          await handle(
-            request(
-              i,
-              "/v1/connection",
-              { config: configs[i], revision: 0, confirm: true },
-              "PUT",
-            ),
-            env,
-            upstream,
-          )
-        ).status,
-      ).toBe(200);
+      expect((await handle(bind(i), env, upstream)).status).toBe(200);
   };
-  it("derives ownership from the trusted token binding, ignoring names and query IDs", async () => {
+  it("derives ownership from the verified session, ignoring query IDs and body fields", async () => {
     for (let i = 0; i < 2; i++) {
       const r = request(i, `/v1/status?owner=${owners[1 - i]}`);
-      expect(await authenticate(r, env)).toBe(owners[i]);
-      expect(await (await handle(r, env)).json()).toMatchObject({
+      expect(await authenticate(r, env, upstream)).toBe(owners[i]);
+      expect(await (await handle(r, env, upstream)).json()).toMatchObject({
         owner: owners[i],
       });
     }
-    const hash = await tokenHash(tokens[0]);
-    const malformed = {
-      ...env,
-      DEVICE_TOKEN_HASHES: JSON.stringify({ [hash]: "legacy-shared-user" }),
-    };
-    expect((await handle(request(0, "/v1/status"), malformed)).status).toBe(
-      503,
-    );
+    await seed();
     expect(
-      (
-        await handle(
-          request(
-            0,
-            "/v1/connection",
-            {
-              config: configs[0],
-              revision: 0,
-              confirm: true,
-              owner: owners[1],
-            },
-            "PUT",
-          ),
-          env,
-          upstream,
-        )
-      ).status,
+      (await handle(bind(0, { owner: owners[1] }), env, upstream)).status,
     ).toBe(400);
   });
   it("never falls back to a shared Ark key for missing user credentials", async () => {
     const shared = {
       ...env,
-      OWNER_ID: owners[0],
       ARK_API_KEY: configs[0].apiKey,
       ARK_AGENT_ID: configs[0].agentId,
       ARK_AGENT_VERSION: "1",
@@ -172,22 +147,14 @@ describe("Per-user background execution isolation", () => {
       await remotes[1].fingerprint(),
     );
   });
-  it("binds multiple devices to one user independently of Ark credentials", async () => {
-    const secondDevice = "muse_device_" + "z".repeat(40);
-    const identities = JSON.parse(env.DEVICE_TOKEN_HASHES!);
-    identities[await tokenHash(secondDevice)] = {
-      ownerId: owners[0],
-      deviceLabel: "second-device",
-    };
-    const sameUser = {
-      ...env,
-      DEVICE_TOKEN_HASHES: JSON.stringify(identities),
-    };
+  it("serves one account on several devices independently of Ark credentials", async () => {
     await setup();
-    const r = request(0, "/v1/status");
-    r.headers.set("Authorization", `Bearer ${secondDevice}`);
-    expect(await authenticate(r, sameUser)).toBe(owners[0]);
-    expect(await (await handle(r, sameUser)).json()).toMatchObject({
+    const id = configs[0].agentId.slice("agent-".length);
+    const second = session(id, "second-device");
+    expect(second.owner).toBe(owners[0]);
+    const r = request(0, "/v1/status", undefined, "GET", second.token);
+    expect(await authenticate(r, env, upstream)).toBe(owners[0]);
+    expect(await (await handle(r, env, upstream)).json()).toMatchObject({
       owner: owners[0],
       connection: { configured: true, revision: 1 },
     });
@@ -195,10 +162,11 @@ describe("Per-user background execution isolation", () => {
   it("stores a shared key independently and revokes only the requesting user's connection", async () => {
     configs[1].apiKey = configs[0].apiKey;
     configs[1].project = configs[0].project;
+    const bindings = await seed();
     const first = new ConnectionStore(env, owners[0]),
       second = new ConnectionStore(env, owners[1]);
-    await first.save(configs[0], 0, 1, upstream);
-    await second.save(configs[1], 0, 2, upstream);
+    await first.save(configs[0], 0, bindings[0], 1, ark);
+    await second.save(configs[1], 0, bindings[1], 2, ark);
     expect((await first.row())?.encrypted).not.toBe(
       (await second.row())?.encrypted,
     );
@@ -209,18 +177,19 @@ describe("Per-user background execution isolation", () => {
       ARK_API_KEY: configs[1].apiKey,
       ARK_MEMORY_STORE_ID: configs[1].memoryStoreId,
     });
-    await first.save(configs[0], 2, 4, upstream);
+    await first.save(configs[0], 2, bindings[0], 4, ark);
     expect((await first.resolve())?.env.OWNER_ID).toBe(owners[0]);
     expect((await second.status()).revision).toBe(1);
   });
   it("permits simultaneous uploads with the same key without merging users", async () => {
     configs[1].apiKey = configs[0].apiKey;
     configs[1].project = configs[0].project;
+    const bindings = await seed();
     const a = new ConnectionStore(env, owners[0]),
       b = new ConnectionStore(env, owners[1]);
     const results = await Promise.allSettled([
-      a.save(configs[0], 0, 1, upstream),
-      b.save(configs[1], 0, 1, upstream),
+      a.save(configs[0], 0, bindings[0], 1, ark),
+      b.save(configs[1], 0, bindings[1], 1, ark),
     ]);
     expect(results.every((r) => r.status === "fulfilled")).toBe(true);
     const resolved = await Promise.all([a.resolve(), b.resolve()]);
@@ -243,7 +212,7 @@ describe("Per-user background execution isolation", () => {
       await setup();
       for (let i = 0; i < 2; i++)
         expect(
-          (await handle(request(i, "/v1/runs", { confirm: true }, "POST"), env))
+          (await handle(request(i, "/v1/runs", { confirm: true }, "POST"), env, upstream))
             .status,
         ).toBe(202);
       let now = Date.now() + 1000;
@@ -310,13 +279,13 @@ describe("Per-user background execution isolation", () => {
         expect(remotes[i].create).toHaveBeenCalledTimes(1);
         expect(remotes[i].send).toHaveBeenCalledTimes(1);
         const feed = (await (
-          await handle(request(i, "/v1/feed"), env)
+          await handle(request(i, "/v1/feed"), env, upstream)
         ).json()) as { items: { title: string }[] };
         expect(feed.items.map((item) => item.title)).toEqual([
           `Private idea ${i}`,
         ]);
         const runs = (await (
-          await handle(request(i, "/v1/runs"), env)
+          await handle(request(i, "/v1/runs"), env, upstream)
         ).json()) as { runs: { phase: string }[] };
         expect(runs.runs).toHaveLength(1);
         expect(runs.runs[0].phase).toBe("complete");
@@ -343,6 +312,7 @@ describe("Per-user background execution isolation", () => {
         await handle(
           request(1, `/v1/runs/${run.id}/recheck`, { confirm: true }, "POST"),
           env,
+          upstream,
         )
       ).status,
     ).toBe(409);
@@ -356,6 +326,7 @@ describe("Per-user background execution isolation", () => {
             "DELETE",
           ),
           env,
+          upstream,
         )
       ).status,
     ).toBe(200);
