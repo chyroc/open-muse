@@ -518,9 +518,14 @@ body {
   border-radius: 50%;
   padding: 0;
 }
+/* Send is a pale blue disc with a dark arrow. */
 .composer-send {
-  background: #151517;
-  color: #fff;
+  background: #cbe5ff;
+  color: #111112;
+  transition: transform var(--motion-press-duration) ease-out;
+}
+.composer-send:not(:disabled):active {
+  transform: scale(0.9);
 }
 .dictation-button {
   color: #c6c6c6;

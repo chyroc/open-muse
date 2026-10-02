@@ -296,7 +296,7 @@ export function ChatComposer({
             {busy ? (
               <LoaderCircle size={18} className="spin" />
             ) : (
-              <ArrowUp size={21} />
+              <ArrowUp size={20} strokeWidth={2.6} />
             )}
           </button>
         ) : (
