@@ -28,14 +28,14 @@
 .settings-sidebar button {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 12px;
   height: 32px;
   flex-shrink: 0;
   margin: 0 16px;
-  padding: 0 10px;
-  border-radius: 9px;
+  padding: 0 12px;
+  border-radius: 10px;
   text-align: left;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text);
 }
 .settings-sidebar button svg {
@@ -47,7 +47,6 @@
 }
 .settings-sidebar button[aria-current] {
   background: var(--fill-strong);
-  font-weight: 550;
 }
 .settings-sidebar button[aria-current] svg {
   color: var(--text);

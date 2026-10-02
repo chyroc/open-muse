@@ -1,24 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Blocks,
   ChevronDown,
-  Fingerprint,
-  FileText,
-  Globe,
-  HardDrive,
-  Info,
-  KeyRound,
+  CircleHelp,
+  File,
+  Hand,
+  LayoutGrid,
+  Lock,
   LogOut,
-  MessageSquare,
-  MonitorSmartphone,
+  MessageCircle,
+  Mic,
   Monitor,
   Moon,
-  Mouse,
-  Scale,
+  Settings,
   ShieldCheck,
-  SlidersHorizontal,
   Sun,
+  TabletSmartphone,
   Wallet,
+  createLucideIcon,
 } from "lucide-react";
 import { t, type LanguageChoice } from "../../shared/i18n";
 import type { Client } from "../../src/api";
@@ -68,20 +66,33 @@ import {
 } from "./settings";
 import "./settings.css";
 
-const icons: Record<SettingsSectionId, typeof KeyRound> = {
-  general: SlidersHorizontal,
-  connectors: Blocks,
-  "computer-use": Mouse,
-  "file-system": FileText,
-  dictation: MessageSquare,
+// A shield with a keyhole marks the secrets the assistant may use.
+const ShieldKeyhole = createLucideIcon("shield-keyhole", [
+  [
+    "path",
+    {
+      d: "M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z",
+      key: "shield",
+    },
+  ],
+  ["circle", { cx: "12", cy: "11", r: "2", fill: "currentColor", key: "hole" }],
+  ["path", { d: "M12 13v3", key: "slot" }],
+]);
+
+const icons: Record<SettingsSectionId, typeof Settings> = {
+  general: Settings,
+  connectors: LayoutGrid,
+  "computer-use": Monitor,
+  "file-system": File,
+  dictation: Mic,
   wallet: Wallet,
-  "secure-storage": KeyRound,
-  permissions: ShieldCheck,
-  "message-channels": Globe,
-  devices: MonitorSmartphone,
-  "data-controls": HardDrive,
-  help: Info,
-  legal: Scale,
+  "secure-storage": ShieldKeyhole,
+  permissions: Hand,
+  "message-channels": MessageCircle,
+  devices: TabletSmartphone,
+  "data-controls": Lock,
+  help: CircleHelp,
+  legal: ShieldCheck,
 };
 
 const appearanceIcons: Record<Appearance, typeof Sun> = {
@@ -222,14 +233,14 @@ export function SettingsWindow({ client }: { client: Client }) {
                 aria-current={id === section ? "page" : undefined}
                 onClick={() => setSection(id)}
               >
-                <Icon size={17} strokeWidth={1.8} />
+                <Icon size={15} strokeWidth={1.75} />
                 {t(label)}
               </button>
             );
           })}
         </div>
         <button className="settings-sign-out" onClick={() => setSignOut({})}>
-          <LogOut size={17} strokeWidth={1.8} />
+          <LogOut size={15} strokeWidth={1.75} />
           {t("Sign out")}
         </button>
       </nav>
