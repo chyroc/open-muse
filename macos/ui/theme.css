@@ -14,6 +14,7 @@
   --fill-strong: #e9e9ec;
   --sidebar: #fbfbfc;
   --line: #e7e7e8;
+  --divider: #0000000a;
   --line-strong: #d9d9dc;
   --text: #111112;
   --text-2: #6f6f75;
@@ -56,6 +57,7 @@
   --fill-strong: #ffffff1f;
   --sidebar: #1f1f20;
   --line: #ffffff1f;
+  --divider: #ffffff0f;
   --line-strong: #ffffff2e;
   --text: #fff;
   --text-2: #f2f7ff87;
