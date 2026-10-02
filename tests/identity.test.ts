@@ -428,6 +428,8 @@ describe("Personal identity documents", () => {
   });
   it("appends managed instructions without replacing custom persona or duplicating the block", () => {
     const initial = systemWithIdentity("Custom system instructions.");
+    // The stored name is the companion's own, never the person's.
+    expect(initial).toContain("not the person's: never call them by it");
     expect(initial).toContain("Custom system instructions.");
     expect(systemWithIdentity(initial)).toBe(initial);
     expect(
