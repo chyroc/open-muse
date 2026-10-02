@@ -89,14 +89,9 @@ export const zhCN: Record<string, string> = {
   "Not signed in": "未登录",
   "Sign-in method": "登录方式",
   "Paste an existing Ark API Key": "粘贴已有的 Ark API Key",
-  "Project name (optional)": "项目名称（可选）",
-  "Leave blank to use the key's own project": "留空以使用密钥所属项目",
-  "This device connects directly to Volcano Ark. Native apps store credentials in system-protected storage; the web app keeps them only for this browser session. The assistant and runtime are created automatically on first use; cloud calls may be billed.":
-    "此设备直接连接火山方舟。原生应用将凭据存储在系统保护的存储区；网页应用仅在当前浏览器会话中保留凭据。首次使用时会自动创建助手和运行环境，云端调用可能产生费用。",
   "Connect with API Key": "使用 API Key 连接",
   Project: "项目",
   "Connected with API Key": "已通过 API Key 连接",
-  "The key's own project": "密钥所属项目",
   "Sign out of this login": "退出当前登录",
   "Removing the login deletes this device's saved credentials but does not revoke the cloud API Key. You can revoke it in the Ark console.":
     "移除登录会删除此设备上保存的凭据，但不会撤销云端 API Key。可以在 Ark 控制台撤销密钥。",

@@ -24,7 +24,6 @@ function ArkAuthPanel({
 }) {
   const [status, setStatus] = useState<Status>();
   const [apiKey, setAPIKey] = useState("");
-  const [keyProject, setKeyProject] = useState("");
   const [replacing, setReplacing] = useState(false);
   const [removeConsent, setRemoveConsent] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -92,7 +91,6 @@ function ArkAuthPanel({
               try {
                 await client.auth("api-key", {
                   apiKey: apiKey.trim(),
-                  project: keyProject.trim(),
                   confirm: true,
                 });
               } finally {
@@ -120,26 +118,6 @@ function ArkAuthPanel({
               placeholder={t("Paste an existing Ark API Key")}
             />
           </label>
-          <label className="field">
-            {t("Project name (optional)")}
-            <input
-              autoComplete="off"
-              autoCapitalize="none"
-              maxLength={128}
-              value={keyProject}
-              onChange={(event) => setKeyProject(event.target.value)}
-              placeholder={t("Leave blank to use the key's own project")}
-            />
-          </label>
-          <p className="auth-consent-note">
-            {account
-              ? t(
-                  "Ark checks the key once, then it is stored encrypted in your Open Muse account so your signed-in devices can use it. The key is a model-service credential, not your identity. Replacing it starts a separate workspace and stops background work tied to the old key. Cloud calls may be billed.",
-                )
-              : t(
-                  "This device connects directly to Volcano Ark. Native apps store credentials in system-protected storage; the web app keeps them only for this browser session. The assistant and runtime are created automatically on first use; cloud calls may be billed.",
-                )}
-          </p>
           <div className="background-actions">
             <button
               className="button primary"
@@ -167,14 +145,12 @@ function ArkAuthPanel({
           <p>
             {account
               ? t("Saved in your Open Muse account")
-              : t("Connected with API Key")}{" "}
-            ·{" "}
-            {status.project ? (
+              : t("Connected with API Key")}
+            {status.project && (
               <>
-                {t("Project")} <strong>{status.project}</strong>
+                {" "}
+                · {t("Project")} <strong>{status.project}</strong>
               </>
-            ) : (
-              t("The key's own project")
             )}
           </p>
           <WorkspacePanel client={client} />

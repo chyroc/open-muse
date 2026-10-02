@@ -101,6 +101,13 @@ describe("Localized mobile UI", () => {
       );
       expect(auth).toContain(chinese ? "未连接" : "Not connected");
       expect(auth).not.toContain("SSO");
+      // Only the Ark API key is asked for, without a project or a long note.
+      expect(auth.match(/<input/g)).toHaveLength(1);
+      expect(auth).toContain('type="password"');
+      expect(auth).not.toMatch(
+        chinese ? /项目|直接连接火山/ : /Project|Volcano Ark/,
+      );
+      expect(auth).not.toContain("auth-consent-note");
     },
   );
 

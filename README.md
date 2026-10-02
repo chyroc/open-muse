@@ -59,11 +59,11 @@ selects a device when several are paired.
 
 ## Connect to Ark
 
-Open **Settings → Connect to Ark MA** and enter an existing Ark API key,
-optionally specifying its project. A read-only MA request verifies access. In
-an account build the key is then stored encrypted in the account by the Open
-Open Muse service and every device signed in to that account reads it from there;
-it is kept in memory only, never in device storage. Replacing the key starts a
+Open **Settings → Connect to Ark MA** and enter an existing Ark API key; the
+key's own project is used. A read-only MA request verifies access. In an
+account build the key is then stored encrypted in the account by the Open Muse
+service and every device signed in to that account reads it from there; it is
+kept in memory only, never in device storage. Replacing the key starts a
 separate workspace and stops background work tied to the old key; removing it
 applies to all of the account's devices. Volcano SSO sign-in is not supported,
 and console-only (TOP) actions are not offered.

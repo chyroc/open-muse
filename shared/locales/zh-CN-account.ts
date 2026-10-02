@@ -54,8 +54,6 @@ export const zhAccount: Record<string, string> = {
     "登录 Open Muse 账号后开始对话",
   "Sign in to your Open Muse account above to add your Ark API key.":
     "请先在上方登录 Open Muse 账号，再添加 Ark API Key。",
-  "Ark checks the key once, then it is stored encrypted in your Open Muse account so your signed-in devices can use it. The key is a model-service credential, not your identity. Replacing it starts a separate workspace and stops background work tied to the old key. Cloud calls may be billed.":
-    "Ark 会先校验一次密钥，然后将其加密保存到你的 Open Muse 账号，供已登录的设备使用。此密钥只是模型服务凭据，不代表你的身份。更换密钥会使用另一个独立工作区，并停止与旧密钥关联的后台任务。云端调用可能产生费用。",
   "Save API key to my account": "将 API Key 保存到我的账号",
   "Saved in your Open Muse account": "已保存在你的 Open Muse 账号中",
   "Replace API key": "更换 API Key",
