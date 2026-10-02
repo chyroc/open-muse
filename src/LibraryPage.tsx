@@ -69,7 +69,7 @@ export async function loadThumbnails(
 }
 
 // A file extension reads better than a generic MIME type such as text/plain.
-function fileTypeLabel(item: LibraryFile) {
+export function fileTypeLabel(item: LibraryFile) {
   const extension = item.name.match(/\.([a-z0-9]{1,8})$/i)?.[1];
   return extension ? extension.toUpperCase() : item.mime_type.split(";")[0];
 }

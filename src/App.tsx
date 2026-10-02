@@ -82,6 +82,9 @@ import {
   messageAttachments,
 } from "../shared/attachments";
 import { videoFrameCount, videoFrames } from "./videoFrames";
+import { turnOutputs } from "../shared/turn-outputs";
+import type { LibraryFile } from "../shared/library";
+import { TurnOutputs } from "./TurnOutputs";
 import { workCards } from "../shared/work-steps";
 import { WorkCard } from "./WorkCard";
 import { companionActivity } from "../shared/companion-activity";
@@ -817,6 +820,32 @@ function Workspace({
       : undefined;
   // A task's narration is folded into one card per turn.
   const work = workCards(events, state === "running");
+  // Files the companion saved to the Library in this conversation, shown
+  // under the reply of the turn that made them. Read again after each turn.
+  const [savedFiles, setSavedFiles] = useState<LibraryFile[]>([]);
+  const conversationIds = [
+    ...new Set(
+      [activeId, ...events.map((event) => event.source_session_id)].filter(
+        (id): id is string => Boolean(id),
+      ),
+    ),
+  ].join(",");
+  const turnDone = state !== "running" && state !== "attention";
+  useEffect(() => {
+    if (!conversationIds || !turnDone) return;
+    let active = true;
+    const ids = new Set(conversationIds.split(","));
+    void client.libraryFiles().then(
+      ({ data }) =>
+        active &&
+        setSavedFiles(data.filter((file) => ids.has(file.session_id))),
+      () => {},
+    );
+    return () => {
+      active = false;
+    };
+  }, [client, conversationIds, turnDone, lastEventId]);
+  const outputs = turnOutputs(events, savedFiles, work.hidden);
   const messageEvents = events.filter(
     (event) =>
       ["user.message", "agent.message"].includes(event.type) &&
@@ -1111,6 +1140,12 @@ function Workspace({
                             <Markdown text={eventText(event)} />
                           )}
                         </MessageBubble>
+                      )}
+                      {outputs.get(event.id) && (
+                        <TurnOutputs
+                          files={outputs.get(event.id)!}
+                          client={client}
+                        />
                       )}
                     </div>
                   </Fragment>
