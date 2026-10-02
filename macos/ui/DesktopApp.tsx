@@ -1286,12 +1286,14 @@ export function DesktopApp({ client }: { client: Client }) {
                 // With the status panel closed, the companion sits at the top
                 // of the conversation and reopens it.
                 <button
-                  className="toolbar-avatar"
+                  className="toolbar-avatar companion-float"
                   aria-label={t("Assistant status")}
                   onClick={() => setStatusOpen(true)}
                 >
-                  <Avatar />
-                  <span>{name}</span>
+                  <span className="companion-face">
+                    <Avatar />
+                  </span>
+                  <span className="companion-name">{name}</span>
                 </button>
               )}
               {inspirationPage && (
@@ -1781,6 +1783,23 @@ export function DesktopApp({ client }: { client: Client }) {
           </div>
         )}
       </main>
+      {route.page !== "chat" && !document && (
+        // Away from the chat the companion keeps its place above the chat
+        // column, and opens the chat with its status.
+        <button
+          className="page-companion companion-float"
+          aria-label={t("Assistant status")}
+          onClick={() => {
+            setStatusOpen(true);
+            goPage("chat");
+          }}
+        >
+          <span className="companion-face">
+            <Avatar />
+          </span>
+          <span className="companion-name">{name}</span>
+        </button>
+      )}
       {route.page === "chat" && !document && !statusOpen && !panelSettle && (
         <PanelEdgeHandle
           mode="open"
