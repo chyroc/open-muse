@@ -102,6 +102,11 @@ describe("Managed environment toolbox", () => {
     ).toBe("Before\n" + toolingInstructions + "\nAfter");
     expect(first).toContain("/opt/open-muse/check");
     expect(first).toContain("Login, MFA and CAPTCHAs");
+    // Blocked sites are left after two plain attempts, never worked around.
+    expect(first).toContain("stop after at most two plain attempts");
+    expect(first).toContain("intercept, block or rewrite its network requests");
+    expect(first).toContain("disguise the browser");
+    expect(first).toContain("past about 40 tool calls");
     expect(first).toContain("do not expand the scope");
   });
   it("tells the agent where deliverables must go to reach the Library", () => {
