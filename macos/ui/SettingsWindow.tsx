@@ -635,7 +635,7 @@ export function SettingsWindow({ client }: { client: Client }) {
               <Row
                 title={t("Not connected")}
                 detail={t(
-                  "This section is listed because the desktop app it follows has it. Nothing here is simulated.",
+                  "Open Muse doesn't offer this yet. Nothing here is simulated.",
                 )}
               />
             </div>

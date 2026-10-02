@@ -1123,8 +1123,8 @@ export const zhCN: Record<string, string> = {
   "Signing out": "退出登录",
   "Removes this Mac's credentials. Local records are preserved and are unreadable without the same connection.":
     "只移除此 Mac 的凭据。本地记录会保留，且在没有同一连接的情况下无法读取。",
-  "This section is listed because the desktop app it follows has it. Nothing here is simulated.":
-    "此分类之所以列出，是因为参照的桌面应用有它；这里不会模拟任何内容。",
+  "Open Muse doesn't offer this yet. Nothing here is simulated.":
+    "Open Muse 暂未提供此功能，这里不会模拟任何内容。",
   "MCP connectors and their OAuth flows are not wired into this Mac build. Tools stay limited to what your agent already has.":
     "此 Mac 版本尚未接入 MCP 连接器及其 OAuth 流程，可用工具仅限智能体已有的能力。",
   "This Mac build cannot let an agent control your computer. Nothing on this Mac is exposed to MA.":
