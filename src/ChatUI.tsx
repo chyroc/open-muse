@@ -347,6 +347,8 @@ export function ConversationSidebar({
     const element = dialog.current!;
     const focused = document.activeElement;
     element.showModal();
+    // Focus the panel, not its first button, so no focus ring flashes on open.
+    element.focus({ preventScroll: true });
     return () => {
       element.close();
       if (focused instanceof HTMLElement) focused.focus();
@@ -367,6 +369,7 @@ export function ConversationSidebar({
     <dialog
       ref={dialog}
       className="conversation-sidebar"
+      tabIndex={-1}
       aria-label={t("Conversations")}
       onCancel={(e) => {
         e.preventDefault();

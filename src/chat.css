@@ -626,20 +626,29 @@ body {
   position: relative;
   padding: 0 0 20px;
 }
+/* Sidebar text uses the 17pt body size (it grows with the system text
+   size); the main chat row is a 52pt capsule at the larger sizes. */
 .conversation-sidebar > header strong {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 19px;
-  font-weight: 550;
+  font-size: 17px;
+  font-weight: 600;
+}
+.conversation-sidebar:focus {
+  outline: none;
 }
 .main-chat-row {
   display: block;
   flex-shrink: 0;
-  border-radius: 28px;
-  padding: 14px 17px;
-  font-size: 19px;
-  font-weight: 650;
+  border-radius: 26px;
+  padding: 13px 17px;
+  font-size: 17px;
+  font-weight: 600;
+  transition: background-color var(--motion-press-duration) ease-out;
+}
+.main-chat-row:active {
+  background: #ececee;
 }
 .main-chat-row.selected {
   background: #e6e6e7;
@@ -654,8 +663,8 @@ body {
   color: #929298;
 }
 .side-chat-section h2 {
-  font-size: 16px;
-  font-weight: 550;
+  font-size: 17px;
+  font-weight: 400;
 }
 .side-chat-section button {
   display: grid;
@@ -680,13 +689,13 @@ body {
   padding-bottom: 25px;
 }
 .side-chat-empty h2 {
-  font-size: 23px;
+  font-size: 20px;
   margin: 16px 0 5px;
-  font-weight: 650;
+  font-weight: 700;
 }
 .side-chat-empty p {
   color: #77777d;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.4;
   max-width: 340px;
 }
@@ -706,7 +715,7 @@ body {
   flex: 1;
   min-width: 0;
   padding: 14px 10px;
-  font-size: 16px;
+  font-size: 17px;
 }
 .side-chat-row > a > span {
   overflow: hidden;
@@ -751,7 +760,7 @@ body {
   background: transparent;
   border: 0;
   outline: none;
-  font-size: 16px;
+  font-size: calc(17px * var(--type-scale, 1));
 }
 .chat-action-list {
   display: flex;
