@@ -753,6 +753,10 @@ export const zhCN: Record<string, string> = {
   "Searching files": "查找文件",
   "Recalling memory": "回想记忆",
   "Updating memory": "更新记忆",
+  "Working on it": "工作过程",
+  Done: "已完成",
+  "{count} step": "{count} 步",
+  "{count} steps": "{count} 步",
   "{name} can make mistakes. Check anything about your health carefully.":
     "{name} 可能会出错。涉及健康的内容请务必仔细核对。",
   "Summaries you share become part of the conversation and are kept in your Ark account.":

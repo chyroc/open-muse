@@ -1,0 +1,142 @@
+/* A task's steps folded into one card in the conversation: a 36pt icon, a
+   title with progress, the latest step in two lines, every step on tap. */
+.work-card {
+  width: 100%;
+  max-width: 420px;
+  margin: 2px 0;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow:
+    0 0 0 0.5px rgb(0 0 0 / 10%),
+    0 2px 10px rgb(0 0 0 / 4%);
+  overflow: hidden;
+  animation: work-card-in var(--motion-release-duration)
+    var(--motion-release-ease) backwards;
+}
+.work-card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  text-align: left;
+  color: inherit;
+  transition: background-color var(--motion-press-duration) ease-out;
+}
+.work-card-head:active:not(:disabled) {
+  background: rgb(0 0 0 / 4%);
+}
+.work-card-icon {
+  flex: 0 0 36px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  color: #1f8f4e;
+  background: #e8f6ee;
+}
+.work-card.running .work-card-icon {
+  animation: work-card-pulse 1.6s ease-in-out infinite;
+}
+.work-card-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.work-card-title strong {
+  font-size: 16px;
+  line-height: 21px;
+  font-weight: 600;
+}
+.work-card-title small {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 18px;
+  color: #6e6e73;
+}
+.work-card-chevron {
+  color: #8e8e93;
+  transition: transform var(--motion-release-duration)
+    var(--motion-release-ease);
+}
+.work-card-head[aria-expanded="true"] .work-card-chevron {
+  transform: rotate(180deg);
+}
+.work-card-latest {
+  display: -webkit-box;
+  margin: -4px 14px 12px 62px;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 20px;
+  color: #6e6e73;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.work-card-steps {
+  margin: -2px 14px 12px 62px;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  line-height: 20px;
+  color: #3a3a3c;
+  animation: work-card-steps-in var(--motion-fade-duration) ease-out;
+}
+.work-card-steps li + li {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 0.5px solid rgb(0 0 0 / 8%);
+}
+.work-card-steps .markdown p {
+  margin: 0;
+}
+@keyframes work-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+@keyframes work-card-steps-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+@keyframes work-card-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .work-card.running .work-card-icon {
+    animation: none;
+  }
+  @keyframes work-card-in {
+    from {
+      opacity: 0;
+    }
+  }
+}
+@media (prefers-color-scheme: dark) {
+  .work-card {
+    background: #1c1c1e;
+    box-shadow: 0 0 0 0.5px rgb(255 255 255 / 10%);
+  }
+  .work-card-icon {
+    color: #4cd38a;
+    background: rgb(76 211 138 / 14%);
+  }
+  .work-card-title small,
+  .work-card-latest {
+    color: #aeaeb2;
+  }
+  .work-card-steps {
+    color: #d1d1d6;
+  }
+  .work-card-steps li + li {
+    border-top-color: rgb(255 255 255 / 10%);
+  }
+}

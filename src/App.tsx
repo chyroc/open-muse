@@ -1,5 +1,12 @@
 import { formatLocale, systemLanguage, t } from "../shared/i18n";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Archive,
   ArrowLeft,
@@ -75,6 +82,8 @@ import {
   messageAttachments,
 } from "../shared/attachments";
 import { videoFrameCount, videoFrames } from "./videoFrames";
+import { workCards } from "../shared/work-steps";
+import { WorkCard } from "./WorkCard";
 import { companionActivity } from "../shared/companion-activity";
 import {
   ChatActions,
@@ -806,6 +815,8 @@ function Workspace({
           interrupted: Boolean(task.error || loadError),
         })
       : undefined;
+  // A task's narration is folded into one card per turn.
+  const work = workCards(events, state === "running");
   const messageEvents = events.filter(
     (event) =>
       ["user.message", "agent.message"].includes(event.type) &&
@@ -1014,6 +1025,9 @@ function Workspace({
                 )
               )}
               {messageEvents.map((event, position) => {
+                const card = work.cardAt.get(event.id);
+                if (work.hidden.has(event.id))
+                  return card ? <WorkCard key={card.id} work={card} /> : null;
                 const date = event.created_at ?? event.processed_at;
                 const previousDate =
                   messageEvents[position - 1]?.created_at ??
@@ -1024,82 +1038,85 @@ function Workspace({
                   (!previousDate ||
                     timestamp - Date.parse(previousDate) > 5 * 60 * 1000);
                 return (
-                  <div
-                    key={event.id}
-                    className={`chat-message-group ${event.type === "user.message" ? "from-user" : "from-assistant"}${arriving.has(event.id) ? " arriving" : ""}`}
-                  >
-                    {showTime && (
-                      <time className="chat-time" dateTime={date}>
-                        {new Date(timestamp).toLocaleString(formatLocale(), {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </time>
-                    )}
-                    {event.type === "agent.message" ? (
-                      <AssistantMessage
-                        welcome={
-                          event.welcome_reply ||
-                          isWelcomeReply(events, event.id)
-                        }
-                        label={t("Reply options {number}", {
-                          number: position + 1,
-                        })}
-                        onOptions={(bubble) => {
-                          setSelectedBubble(bubble);
-                          setSelectedMessage(event);
-                        }}
-                        reaction={reactions[reactionKey(event)]}
-                        text={eventText(event)}
-                        reply={event.choice_reply}
-                        active={
-                          !event.source_session_id &&
-                          currentChoiceEvent(events)?.id === event.id
-                        }
-                        busy={busy || task.loading}
-                        streaming={state === "running"}
-                        onChoose={(option) =>
-                          void action(async () => {
-                            if (!activeId) return;
-                            try {
-                              await client.answerChoice(
-                                activeId,
-                                event.id,
-                                option,
-                                digest(eventText(event)),
-                              );
-                              setAwayFromBottom(false);
-                            } finally {
-                              await task.refresh();
-                            }
-                          })
-                        }
-                      />
-                    ) : (
-                      <MessageBubble
-                        label={t("Message options {number}", {
-                          number: position + 1,
-                        })}
-                        onOptions={(bubble) => {
-                          setSelectedBubble(bubble);
-                          setSelectedMessage(event);
-                        }}
-                        reaction={reactions[reactionKey(event)]}
-                      >
-                        <MessageAttachments
-                          items={messageAttachments(event, attachmentNames)}
-                          load={sentMedia}
+                  <Fragment key={event.id}>
+                    {card && <WorkCard work={card} />}
+                    <div
+                      className={`chat-message-group ${event.type === "user.message" ? "from-user" : "from-assistant"}${arriving.has(event.id) ? " arriving" : ""}`}
+                    >
+                      {showTime && (
+                        <time className="chat-time" dateTime={date}>
+                          {new Date(timestamp).toLocaleString(formatLocale(), {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </time>
+                      )}
+                      {event.type === "agent.message" ? (
+                        <AssistantMessage
+                          welcome={
+                            event.welcome_reply ||
+                            isWelcomeReply(events, event.id)
+                          }
+                          label={t("Reply options {number}", {
+                            number: position + 1,
+                          })}
+                          onOptions={(bubble) => {
+                            setSelectedBubble(bubble);
+                            setSelectedMessage(event);
+                          }}
+                          reaction={reactions[reactionKey(event)]}
+                          text={eventText(event)}
+                          reply={event.choice_reply}
+                          active={
+                            !event.source_session_id &&
+                            currentChoiceEvent(events)?.id === event.id
+                          }
+                          busy={busy || task.loading}
+                          streaming={state === "running"}
+                          onChoose={(option) =>
+                            void action(async () => {
+                              if (!activeId) return;
+                              try {
+                                await client.answerChoice(
+                                  activeId,
+                                  event.id,
+                                  option,
+                                  digest(eventText(event)),
+                                );
+                                setAwayFromBottom(false);
+                              } finally {
+                                await task.refresh();
+                              }
+                            })
+                          }
                         />
-                        {eventText(event) && (
-                          <Markdown text={eventText(event)} />
-                        )}
-                      </MessageBubble>
-                    )}
-                  </div>
+                      ) : (
+                        <MessageBubble
+                          label={t("Message options {number}", {
+                            number: position + 1,
+                          })}
+                          onOptions={(bubble) => {
+                            setSelectedBubble(bubble);
+                            setSelectedMessage(event);
+                          }}
+                          reaction={reactions[reactionKey(event)]}
+                        >
+                          <MessageAttachments
+                            items={messageAttachments(event, attachmentNames)}
+                            load={sentMedia}
+                          />
+                          {eventText(event) && (
+                            <Markdown text={eventText(event)} />
+                          )}
+                        </MessageBubble>
+                      )}
+                    </div>
+                  </Fragment>
                 );
               })}
+              {work.trailing && <WorkCard work={work.trailing} />}
               {permissions.some((event) =>
                 task.autoApprovalFailures.includes(event.id),
               ) && (
