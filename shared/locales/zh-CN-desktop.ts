@@ -269,4 +269,5 @@ export const zhDesktop: Record<string, string> = {
   "Connect to Ark MA to store secrets for your assistant.":
     "连接 Ark MA 后即可为助手存储机密。",
   "Secure credential vault": "安全凭证存储库",
+  "Loading devices": "正在加载设备",
 };

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { Laptop, Smartphone } from "lucide-react";
 import { formatLocale, t } from "../../shared/i18n";
 import type { DeviceRecord } from "../../shared/devices";
 import { backgroundClient } from "../../src/background-client";
@@ -34,18 +33,15 @@ export function DevicesSettings() {
   }, [account]);
   useEffect(load, [load]);
   const others = (devices ?? []).filter((device) => device.id !== id);
-  const icon = (platform: string) =>
-    platform === "ios" ? <Smartphone size={17} /> : <Laptop size={17} />;
   return (
     <>
       <h2>{t("This device")}</h2>
       <div className="settings-group">
         <div className="settings-row settings-device-row">
-          {icon("mac")}
           <div>
             <strong>{thisDeviceName()}</strong>
+            <p>{t("Online")}</p>
           </div>
-          <span className="device-online">{t("Online")}</span>
         </div>
       </div>
       <h2>{t("Other devices")}</h2>
@@ -60,6 +56,16 @@ export function DevicesSettings() {
               </p>
             </div>
           </div>
+        ) : !devices && !error ? (
+          // Placeholder rows hold the layout while the list loads.
+          <div
+            className="settings-skeleton"
+            role="status"
+            aria-label={t("Loading devices")}
+          >
+            <span />
+            <span />
+          </div>
         ) : devices && !others.length ? (
           <div className="settings-row">
             <div>
@@ -69,7 +75,6 @@ export function DevicesSettings() {
         ) : (
           others.map((device) => (
             <div className="settings-row settings-device-row" key={device.id}>
-              {icon(device.platform)}
               <div>
                 <strong>{device.name}</strong>
                 <p>

@@ -428,9 +428,6 @@
 .settings-device-row > button {
   margin-left: auto;
 }
-.device-online {
-  color: #2f9e44 !important;
-}
 .settings-inline-button.danger {
   color: var(--danger);
 }
@@ -710,4 +707,34 @@
 }
 .settings-accent-button:disabled {
   opacity: 0.45;
+}
+/* Loading placeholders: soft bars that breathe while a list arrives. */
+.settings-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+.settings-skeleton span {
+  height: 14px;
+  border-radius: 7px;
+  background: var(--fill-strong);
+  animation: settings-skeleton 1.4s ease-in-out infinite;
+}
+.settings-skeleton span:first-child {
+  width: 40%;
+}
+.settings-skeleton span:last-child {
+  width: 25%;
+  height: 10px;
+}
+@keyframes settings-skeleton {
+  50% {
+    opacity: 0.55;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .settings-skeleton span {
+    animation: none;
+  }
 }
