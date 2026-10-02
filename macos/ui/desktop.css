@@ -233,6 +233,15 @@ h3 {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* A long side-chat title ends in an ellipsis; the menu icon keeps its place. */
+.glass-pill > svg {
+  flex-shrink: 0;
+}
+.glass-pill-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .pill-button {
   background: var(--fill-hover);
 }

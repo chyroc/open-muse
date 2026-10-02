@@ -1334,7 +1334,7 @@ export function DesktopApp({ client }: { client: Client }) {
                 onClick={() => setDrawer((value) => !value)}
               >
                 <Menu size={19} />
-                {chatTitle}
+                <span className="glass-pill-label">{chatTitle}</span>
               </button>
               <div className="toolbar-spacer" />
               {route.page === "chat" && !statusOpen && (
