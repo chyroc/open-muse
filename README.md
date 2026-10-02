@@ -200,11 +200,14 @@ Native system sheets, such as permission prompts, follow the system language.
 **Appearance (iOS):** the app follows the system light or dark appearance and
 the system text size (Dynamic Type). Settings opens as a sheet over the current
 page. Feed, Ideas, Goals, and Library refresh when pulled down from the top.
-Long-pressing a message offers Reply (quotes it into the composer), Copy,
-Select, Share, and for the assistant's replies, Save to Library. Library shows
-a list or a grid, ordered by last modified or by title, from its header menu.
-The plus button in the composer adds a photo from the camera or library, or a
-document (PDF, text, Markdown, or CSV) from Files.
+Long-pressing a message offers a quick emoji reaction (more in a searchable
+sheet), Reply (quotes it into the composer), Copy, Select, Share, and for the
+assistant's replies, Save to Library. Reactions are kept on the device for the
+signed-in identity and are not sent to Ark. Library shows a list or a grid,
+ordered by last modified or by title, from its header menu. The plus button in
+the composer adds a photo from the camera or library, a document (PDF, text,
+Markdown, or CSV) from Files, or a video, which is attached as up to four
+evenly spaced still frames; the video itself never leaves the device.
 
 **Android:** the Capacitor app uses the same direct client and includes a native
 credential-storage plugin. Open with `npm run android`; build the Gradle project
