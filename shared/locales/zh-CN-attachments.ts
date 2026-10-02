@@ -6,6 +6,7 @@ export const zhAttachments: Record<string, string> = {
   "Uploading…": "正在上传…",
   "Add video": "添加视频",
   "Preparing video…": "正在准备视频…",
+  "Video · {count} frames": "视频 · {count} 帧",
   "This video could not be read.": "无法读取这个视频。",
   "Upload failed": "上传失败",
   "Ready to send": "可以发送",

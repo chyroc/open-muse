@@ -29,6 +29,24 @@ export function frameName(videoName: string, seconds: number) {
   return `${(stem || "video").slice(0, 200)}-frame-${time}.jpg`;
 }
 
+// The video a frame came from, by the name frameName gave it.
+export function frameSource(name: string) {
+  return name.match(/^(.+)-frame-(?:\d+m)?\d{2}s\.jpg$/)?.[1];
+}
+
+// Consecutive frames of one video, as attached together, form one group;
+// anything else stays on its own.
+export function groupFrames<T extends { name: string }>(items: readonly T[]) {
+  const groups: { video?: string; items: T[] }[] = [];
+  for (const item of items) {
+    const video = frameSource(item.name);
+    const last = groups.at(-1);
+    if (video && last?.video === video) last.items.push(item);
+    else groups.push({ video, items: [item] });
+  }
+  return groups;
+}
+
 // Fits a frame within the long-edge limit, keeping its aspect ratio.
 export function frameSize(width: number, height: number) {
   const scale = Math.min(1, longEdge / Math.max(width, height, 1));

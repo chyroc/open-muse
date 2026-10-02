@@ -1,10 +1,18 @@
-import { FileText, Image, LoaderCircle, TriangleAlert, X } from "lucide-react";
+import {
+  FileText,
+  Image,
+  LoaderCircle,
+  TriangleAlert,
+  Video,
+  X,
+} from "lucide-react";
 import { t } from "../shared/i18n";
 import type {
   Attachment,
   AttachmentKind,
   SentAttachment,
 } from "../shared/attachments";
+import { groupFrames } from "./videoFrames";
 import "./attachments.css";
 
 export interface StagedAttachment {
@@ -46,13 +54,37 @@ export function StagedAttachments({
   onRemove: (key: string) => void;
 }) {
   if (!items.length) return null;
+  // A video's frames show as one attachment, removed together.
+  const chips = groupFrames(items).map(({ video, items: group }) => {
+    if (!video) return { item: group[0], keys: [group[0].key] };
+    const state: StagedAttachment["state"] = group.some(
+      (frame) => frame.state === "failed",
+    )
+      ? "failed"
+      : group.some((frame) => frame.state === "uploading")
+        ? "uploading"
+        : "ready";
+    return {
+      item: {
+        ...group[0],
+        name: t("Video · {count} frames", { count: group.length }),
+        state,
+        preview: group.find((frame) => frame.preview)?.preview,
+        error: group.find((frame) => frame.error)?.error,
+        video: true,
+      },
+      keys: group.map((frame) => frame.key),
+    };
+  });
   return (
     <ul className="staged-attachments" aria-label={t("Attachments")}>
-      {items.map((item) => (
+      {chips.map(({ item, keys }) => (
         <li key={item.key} className={`staged-attachment is-${item.state}`}>
           <span className="attachment-thumb" aria-hidden="true">
             {item.preview ? (
               <img src={item.preview} alt="" />
+            ) : "video" in item ? (
+              <Video size={18} />
             ) : item.kind === "image" ? (
               <Image size={18} />
             ) : (
@@ -81,7 +113,7 @@ export function StagedAttachments({
             type="button"
             aria-label={t("Remove attachment: {name}", { name: item.name })}
             disabled={item.state === "uploading"}
-            onClick={() => onRemove(item.key)}
+            onClick={() => keys.forEach(onRemove)}
           >
             <X size={15} />
           </button>
@@ -99,16 +131,23 @@ export function MessageAttachments({
   if (!items.length) return null;
   return (
     <ul className="message-attachments" aria-label={t("Attachments")}>
-      {items.map((item) => (
-        <li key={item.key}>
-          {item.kind === "image" ? (
-            <Image size={16} aria-hidden="true" />
-          ) : (
-            <FileText size={16} aria-hidden="true" />
-          )}
-          <span>{item.name}</span>
-        </li>
-      ))}
+      {groupFrames(items).map(({ video, items: group }) =>
+        video ? (
+          <li key={group[0].key}>
+            <Video size={16} aria-hidden="true" />
+            <span>{t("Video · {count} frames", { count: group.length })}</span>
+          </li>
+        ) : (
+          <li key={group[0].key}>
+            {group[0].kind === "image" ? (
+              <Image size={16} aria-hidden="true" />
+            ) : (
+              <FileText size={16} aria-hidden="true" />
+            )}
+            <span>{group[0].name}</span>
+          </li>
+        ),
+      )}
     </ul>
   );
 }

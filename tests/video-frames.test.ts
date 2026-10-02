@@ -3,6 +3,8 @@ import { checkAttachment } from "../shared/attachments";
 import {
   frameName,
   frameSize,
+  frameSource,
+  groupFrames,
   frameTimes,
   videoFrameCount,
 } from "../src/videoFrames";
@@ -31,6 +33,26 @@ describe("Video frames", () => {
     expect(checkAttachment(name, "image/jpeg", 1, videoFrameCount - 1)).toEqual(
       { kind: "image", mime: "image/jpeg", inline: false },
     );
+  });
+  it("groups consecutive frames of one video", () => {
+    expect(frameSource("IMG_0042-frame-1m15s.jpg")).toBe("IMG_0042");
+    expect(frameSource("clip-frame-03s.jpg")).toBe("clip");
+    expect(frameSource("holiday.jpg")).toBeUndefined();
+    const items = [
+      { name: "notes.md" },
+      { name: "a-frame-00s.jpg" },
+      { name: "a-frame-01s.jpg" },
+      { name: "b-frame-00s.jpg" },
+      { name: "cat.png" },
+    ];
+    expect(
+      groupFrames(items).map((group) => [group.video, group.items.length]),
+    ).toEqual([
+      [undefined, 1],
+      ["a", 2],
+      ["b", 1],
+      [undefined, 1],
+    ]);
   });
   it("fits frames within 1280 pixels, keeping the aspect ratio", () => {
     expect(frameSize(3840, 2160)).toEqual({ width: 1280, height: 720 });

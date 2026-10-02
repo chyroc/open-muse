@@ -80,6 +80,33 @@ describe("Attachment rules", () => {
     expect(html).toContain("Add video");
     expect(html).toContain('accept="video/*"');
   });
+  it("shows a video's frames as one attachment", () => {
+    const frames = [0, 1, 2, 3].map((second) => ({
+      key: `k${second}`,
+      name: `8126438339-frame-0${second}s.jpg`,
+      kind: "image" as const,
+      state: "ready" as const,
+    }));
+    const staged = renderToStaticMarkup(
+      <StagedAttachments
+        items={[
+          ...frames,
+          { key: "doc", name: "notes.md", kind: "document", state: "ready" },
+        ]}
+        onRemove={() => {}}
+      />,
+    );
+    expect(staged.match(/<li /g)).toHaveLength(2);
+    expect(staged).toContain("Video · 4 frames");
+    expect(staged).not.toContain("8126438339");
+    const sent = renderToStaticMarkup(
+      <MessageAttachments
+        items={frames.map(({ key, name, kind }) => ({ key, name, kind }))}
+      />,
+    );
+    expect(sent.match(/<li>/g)).toHaveLength(1);
+    expect(sent).toContain("Video · 4 frames");
+  });
   it("limits count, size and empty files", () => {
     expect(() => checkAttachment("a.png", "image/png", 1, 4)).toThrow(
       "Attach up to 4 files per message.",
