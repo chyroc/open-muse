@@ -33,7 +33,9 @@ private func localized(_ english: String) -> String {
 private final class BundleAssets: NSObject, WKURLSchemeHandler {
     func webView(_ webView: WKWebView, start urlSchemeTask: WKURLSchemeTask) {
         guard let url = urlSchemeTask.request.url, url.scheme == "muse", url.host == "app",
-              let root = Bundle.main.resourceURL?.appendingPathComponent("web", isDirectory: true)
+              // Standardize the root too: standardizing drops a leading /private,
+              // so an app opened from /private/tmp would otherwise fail the prefix check.
+              let root = Bundle.main.resourceURL?.appendingPathComponent("web", isDirectory: true).standardizedFileURL
         else { urlSchemeTask.didFailWithError(URLError(.badURL)); return }
         let file = root.appendingPathComponent(url.path == "/" || url.path.isEmpty ? "index.html" : String(url.path.dropFirst())).standardizedFileURL
         guard file.path.hasPrefix(root.path + "/"), let data = try? Data(contentsOf: file)
