@@ -92,7 +92,7 @@ export function Sheet({
             aria-label={t("Close")}
             onClick={dismiss}
           >
-            <X size={22} />
+            <X size={20} strokeWidth={2.2} />
           </button>
         </header>
         {children}

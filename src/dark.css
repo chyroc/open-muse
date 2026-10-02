@@ -976,7 +976,8 @@
   .chat-composer,
   .companion-name,
   .sidebar-search,
-  .page-sheet-close {
+  .page-sheet-close,
+  .sheet-body > header .icon-button {
     border-color: rgb(255 255 255 / 16%);
     background: rgb(36 36 36 / 82%);
     box-shadow:
@@ -989,7 +990,8 @@
   }
   .glass-tab-bar a,
   .glass-button,
-  .page-sheet-close {
+  .page-sheet-close,
+  .sheet-body > header .icon-button {
     color: #fff;
   }
   /* A presented sheet is elevated, so its cards step up one level. */

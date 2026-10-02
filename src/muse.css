@@ -979,18 +979,22 @@
   .muse-empty {
     padding: 68px 12px;
   }
+  /* Sheets float 8pt from the screen edges with concentric corners, a
+     centered 17pt title, and a glass close button. */
   .muse-sheet {
     position: fixed;
-    inset: auto 0 auto;
+    inset: auto 8px auto;
     /* Keep WebKit top-layer hit testing aligned without a transform. */
-    bottom: calc(100dvh - var(--app-top, 0px) - var(--app-height, 100dvh));
+    bottom: calc(
+      100dvh - var(--app-top, 0px) - var(--app-height, 100dvh) + 8px
+    );
     margin: 0;
-    width: 100%;
+    width: auto;
     max-width: none;
     max-height: calc(
-      var(--app-height, 100dvh) - max(env(safe-area-inset-top), 16px) - 16px
+      var(--app-height, 100dvh) - max(env(safe-area-inset-top), 16px) - 24px
     );
-    border-radius: 28px 28px 0 0;
+    border-radius: 38px;
     /* Rises on the sheet spring; backwards fill lets a finger move it after. */
     animation: muse-sheet-up var(--motion-sheet-duration)
       var(--motion-sheet-ease) backwards;
@@ -1007,18 +1011,42 @@
     touch-action: none;
   }
   .sheet-body {
-    padding: 10px 22px calc(22px + env(safe-area-inset-bottom));
+    padding: 6px 16px 24px;
   }
   .sheet-grip {
     display: block;
-    margin: 0 auto 16px;
-    width: 34px;
-    height: 4px;
-    border-radius: 4px;
+    margin: 0 auto 4px;
+    width: 36px;
+    height: 5px;
+    border-radius: 3px;
     background: #d1d1d6;
   }
+  .sheet-body > header {
+    position: relative;
+    justify-content: center;
+    min-height: 44px;
+    margin-bottom: 16px;
+    padding: 0 44px;
+  }
   .sheet-body > header h2 {
-    font-size: 21px;
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 24px;
+    text-align: center;
+  }
+  .sheet-body > header .icon-button {
+    position: absolute;
+    top: 50%;
+    right: 3px;
+    display: grid;
+    place-items: center;
+    width: 35px;
+    height: 35px;
+    margin-top: -17.5px;
+    border: 1px solid rgb(0 0 0 / 8%);
+    border-radius: 50%;
+    background: rgb(255 255 255 / 78%);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
   }
   .document-preview {
     padding: 16px;
