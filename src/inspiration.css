@@ -5,7 +5,7 @@
   display: grid;
   place-items: center;
   width: 44px;
-  height: 36px;
+  height: 34px;
   color: #77777c;
 }
 .feed-instructions-card {
@@ -140,24 +140,37 @@
   align-items: center;
   gap: 4px;
 }
+/* An idea row: a 40pt symbol, then title and summary 16pt to its right. */
 .personal-idea {
+  position: relative;
   display: flex;
   flex-direction: column;
   text-align: left;
   width: 100%;
   border-bottom: 1px solid #e8e8eb;
-  padding: 20px 0 20px 54px;
+  padding: 24px 0 24px 56px;
+  transition: opacity var(--motion-press-duration) ease-out;
 }
-.personal-idea:first-child {
-  padding-top: 0;
+.personal-idea:active {
+  opacity: 0.6;
+}
+.personal-idea > .idea-glyph {
+  position: absolute;
+  top: 24px;
+  left: 0;
+  width: 40px;
+  font-size: 32px;
+  line-height: 40px;
+  text-align: center;
+  color: initial;
 }
 .personal-idea strong {
-  font-size: 18px;
-  line-height: 1.35;
-  font-weight: 650;
-  margin-bottom: 5px;
+  font-size: 17px;
+  line-height: 1.4;
+  font-weight: 700;
+  margin-bottom: 4px;
 }
-.personal-idea > span {
+.personal-idea > span:not(.idea-glyph) {
   font-size: 17px;
   line-height: 1.4;
   color: #75757a;
@@ -165,11 +178,6 @@
   -webkit-line-clamp: 5;
   -webkit-box-orient: vertical;
   overflow: hidden;
-}
-.personal-idea small {
-  color: #97979e;
-  font-size: 12px;
-  margin-top: 12px;
 }
 .inspiration-empty {
   max-width: 330px;

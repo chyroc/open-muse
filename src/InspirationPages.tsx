@@ -92,9 +92,11 @@ export function InspirationIdea({
       aria-label={t("View idea: {title}", { title: item.title })}
       onClick={onOpen}
     >
+      <span className="idea-glyph" aria-hidden="true">
+        {item.emoji || "💡"}
+      </span>
       <strong>{item.title}</strong>
       <span>{item.body}</span>
-      <small>{item.category}</small>
     </button>
   );
 }
