@@ -192,7 +192,19 @@ describe("Mac settings window", () => {
     expect(host!.textContent).not.toContain("Every other tool");
     expect(host!.textContent).toContain("never retried automatically");
     expect(host!.querySelectorAll("input[type=checkbox]")).toHaveLength(0);
-    expect(host!.querySelectorAll("input[type=radio]")).toHaveLength(0);
+    // The one choice here is whether this device approves web requests the
+    // agent asks about; it can only make approvals stricter.
+    const radios = [
+      ...host!.querySelectorAll<HTMLInputElement>("input[type=radio]"),
+    ];
+    expect(radios.map((item) => item.value)).toEqual(["some", "always"]);
+    expect(radios[0].checked).toBe(true);
+    await act(async () => radios[1].click());
+    expect(localStorage.getItem("open-muse.webAccess")).toBe("always");
+    expect(host!.textContent).not.toContain("Pending web_search");
+    await act(async () => radios[0].click());
+    expect(localStorage.getItem("open-muse.webAccess")).toBeNull();
+    expect(host!.textContent).not.toContain("Connector defaults");
   });
   it("picks the app language and keeps following the system by default", async () => {
     vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", ["zh-Hans-CN", "en"]);

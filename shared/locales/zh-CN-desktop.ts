@@ -252,4 +252,16 @@ export const zhDesktop: Record<string, string> = {
   "Input device": "输入设备",
   "Dictation enables Open Muse to turn speech to text.":
     "听写让 Open Muse 可以把语音转换为文字。",
+  "Ask for some actions": "请求某些操作",
+  "Always ask": "始终询问",
+  "Web access defaults": "网络访问默认设置",
+  "How requests are handled": "请求的处理方式",
+  "Only computer control on this Mac, if you choose Always allow in Computer use. Calendar and Location always ask.":
+    "仅限这台 Mac 上的电脑控制，且需你在 Computer use 中选择「始终允许」。日历和位置始终询问。",
+  "Web searches and page reads your agent asks about are approved for you":
+    "智能体请求批准的网页搜索和页面读取会自动为你批准",
+  "Every web request your agent asks about waits for you":
+    "智能体请求批准的每个网页请求都等你处理",
+  "This applies to requests your agent sends for approval; tools it is allowed to run directly are not asked about. Computer control has its own choice under Computer use.":
+    "此设置只作用于智能体发来请求批准的操作；允许直接运行的工具不会询问。电脑控制在 Computer use 中单独设置。",
 };

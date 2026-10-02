@@ -197,12 +197,15 @@ and dialogs follow from the next launch; Follow system removes both, and Reset
 this device clears them. The bundle version follows. The shared sign-in
 panel stays collapsed behind a "manage connection" row instead of pushing those
 groups out of view; the end of the about group still needs scrolling. Secure
-storage describes where credentials actually live. Permissions reports, without changing anything, that the
+storage describes where credentials actually live. Permissions offers one
+choice, the web access default: Ask for some actions keeps auto-approving pending
+`web_search`/`web_fetch` requests by exact protocol name, and Always ask leaves
+every web request the agent asks about for you; the choice is kept on this
+device and can only make approvals stricter. The page then reports that the
 provisioned agent toolset is set to always-allow so MA runs those tools directly;
 that MA still sends a request for whatever its own policy evaluates as ask; that
-this client auto-approves only pending `web_search`/`web_fetch` by exact protocol
-name; that every other pending request waits in the conversation; and that writes
-are never retried. Data controls inventories local and cloud records. Both
+every other pending request waits in the conversation; and that writes are never
+retried. Data controls inventories local and cloud records. Both
 sign-out paths — the sidebar entry and the shared panel's own button — stop at
 the same confirmation, and neither revokes the cloud key.
 

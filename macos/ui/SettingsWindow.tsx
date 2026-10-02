@@ -28,6 +28,11 @@ import {
   createLucideIcon,
 } from "lucide-react";
 import { t, type LanguageChoice } from "../../shared/i18n";
+import {
+  setWebAccessDefault,
+  webAccessDefault,
+  type WebAccess,
+} from "../../shared/approval-policy";
 import type { Client } from "../../src/api";
 import { backgroundClient } from "../../src/background-client";
 import { AuthPanel } from "../../src/AuthPanel";
@@ -139,6 +144,7 @@ export function SettingsWindow({ client }: { client: Client }) {
   const [manage, setManage] = useState(false);
   // General > Language opens its own page within the section.
   const [languagePage, setLanguagePage] = useState(false);
+  const [webAccess, setWebAccess] = useState(webAccessDefault);
   useEffect(() => setLanguagePage(false), [section]);
   const [appearance, setAppearance] = useState<Appearance>(storedAppearance);
   const [theme, setTheme] = useState<ThemeColor>(storedTheme);
@@ -489,11 +495,56 @@ export function SettingsWindow({ client }: { client: Client }) {
         )}
         {active.id === "permissions" && (
           <>
-            <p className="settings-lead">
-              {t(
-                "Your MA agent and environment decide what may run. This window reports those rules and the client's own handling; it changes neither.",
-              )}
-            </p>
+            <section>
+              <h2>{t("Web access defaults")}</h2>
+              <div className="settings-group" role="radiogroup">
+                {(
+                  [
+                    [
+                      "some",
+                      t("Ask for some actions"),
+                      t(
+                        "Web searches and page reads your agent asks about are approved for you",
+                      ),
+                    ],
+                    [
+                      "always",
+                      t("Always ask"),
+                      t(
+                        "Every web request your agent asks about waits for you",
+                      ),
+                    ],
+                  ] as [WebAccess, string, string][]
+                ).map(([value, title, detail]) => (
+                  <label
+                    className="settings-row settings-radio-row"
+                    key={value}
+                  >
+                    <div>
+                      <strong>{title}</strong>
+                      <p>{detail}</p>
+                    </div>
+                    <input
+                      type="radio"
+                      name="open-muse-web-access"
+                      value={value}
+                      className="settings-radio"
+                      checked={webAccess === value}
+                      onChange={() => {
+                        setWebAccessDefault(value);
+                        setWebAccess(webAccessDefault());
+                      }}
+                    />
+                  </label>
+                ))}
+              </div>
+              <p className="settings-footnote">
+                {t(
+                  "This applies to requests your agent sends for approval; tools it is allowed to run directly are not asked about. Computer control has its own choice under Computer use.",
+                )}
+              </p>
+            </section>
+            <h2>{t("How requests are handled")}</h2>
             <div className="settings-group">
               <Row
                 title={t("Built-in tools")}
@@ -509,9 +560,15 @@ export function SettingsWindow({ client }: { client: Client }) {
               />
               <Row
                 title={t("Automatically approved")}
-                detail={t(
-                  "Pending web_search and web_fetch requests, matched by exact protocol name, and computer control on this Mac only if you choose Always allow in Computer use. Calendar and Location always ask.",
-                )}
+                detail={
+                  webAccess === "some"
+                    ? t(
+                        "Pending web_search and web_fetch requests, matched by exact protocol name, and computer control on this Mac only if you choose Always allow in Computer use. Calendar and Location always ask.",
+                      )
+                    : t(
+                        "Only computer control on this Mac, if you choose Always allow in Computer use. Calendar and Location always ask.",
+                      )
+                }
               />
               <Row
                 title={t("Everything else waits")}
