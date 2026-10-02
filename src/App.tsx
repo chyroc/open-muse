@@ -55,7 +55,7 @@ import { PullToRefresh } from "./PullToRefresh";
 import { MessageMenu, type MessageMenuAction } from "./MessageMenu";
 import { haptic } from "./haptics";
 import { Studio } from "./Studio";
-import { exportText, shareText } from "./platform";
+import { appSurface, exportText, shareText } from "./platform";
 import { backgroundClient } from "./background-client";
 import { Sheet, primaryNavigation } from "./MusePages";
 import { LibraryPage } from "./LibraryPage";
@@ -99,6 +99,7 @@ export default function App() {
           globalThis as typeof globalThis & { __MUSE_TEST_PROFILE__?: string }
         ).__MUSE_TEST_PROFILE__,
         account: backgroundClient,
+        surface: appSurface(),
       }),
     [],
   );

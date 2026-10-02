@@ -218,8 +218,11 @@ describe("Direct MA client", () => {
     await f.login();
     await f.client.startWelcome("en-US");
     expect(f.resources.sessions).toHaveLength(1);
-    expect(f.events).toHaveLength(1);
+    // The message and its context note for the agent.
+    expect(f.events).toHaveLength(2);
     expect(f.events[0].type).toBe("user.message");
+    expect(f.events[1].type).toBe("system.message");
+    expect(f.events[1].content?.[0].text).toContain("<open-muse-context>");
     expect(f.events[0].app_initiation).toBeUndefined();
     const id = (await f.client.conversationIndex()).mainId!;
     expect((await f.client.events(id))[0].app_initiation).toBe("welcome");
@@ -230,11 +233,13 @@ describe("Direct MA client", () => {
       welcome_reply: true,
       content: [{ type: "text", text: "Actual user input" }],
     });
-    const history = await f.client.events(id);
-    expect(history[1].app_initiation).toBeUndefined();
-    expect(history[1].welcome_reply).toBeUndefined();
+    const forged = (await f.client.events(id)).find(
+      (event) => event.id === "forged",
+    )!;
+    expect(forged.app_initiation).toBeUndefined();
+    expect(forged.welcome_reply).toBeUndefined();
     await f.client.startWelcome("en-US");
-    expect(f.events).toHaveLength(2);
+    expect(f.events).toHaveLength(3);
     expect(String(f.resources.agents[0].system)).toContain(
       "<open-muse-welcome>",
     );
@@ -638,7 +643,10 @@ describe("Direct MA client", () => {
       type: "user.message",
       text: "Continue the same conversation",
     });
-    expect(f.sessionEvents.get(next.id)).toHaveLength(1);
+    expect(f.sessionEvents.get(next.id)?.map((event) => event.type)).toEqual([
+      "user.message",
+      "system.message",
+    ]);
     expect(
       f.fetcher.mock.calls.some(([, init]) => init?.method === "DELETE"),
     ).toBe(false);
@@ -704,7 +712,11 @@ describe("Direct MA client", () => {
       type: "user.message",
       text: "Now confirmed",
     });
-    expect(f.events).toHaveLength(2);
+    expect(f.events.map((event) => event.type)).toEqual([
+      "user.message",
+      "user.message",
+      "system.message",
+    ]);
   });
   it("does not mark a session creation as ambiguous when memory preparation fails first", async () => {
     const f = fixture();
@@ -978,7 +990,9 @@ describe("Direct MA client", () => {
     });
     const saved = await f.client.saveReply(session.id, "reply");
     expect(saved.text).toBe("42");
-    expect(await f.client.events(session.id)).toHaveLength(2);
+    expect(
+      (await f.client.events(session.id)).map((event) => event.type),
+    ).toEqual(["user.message", "system.message", "agent.message"]);
     expect((await f.client.sessions()).data[0].category).toBe("research");
     await Promise.all([
       f.client.saveReply(session.id, "reply"),
@@ -1113,7 +1127,11 @@ describe("Direct MA client", () => {
     });
     expect(f.events.at(-1)?.content?.[0].text).toContain(path);
     await f.client.send(session.id, { type: "user.message", text: "Plain" });
-    expect(f.events.at(-1)?.type).toBe("user.message");
+    expect(f.events.at(-2)?.type).toBe("user.message");
+    expect(f.events.at(-1)?.content?.[0].text).toContain("<open-muse-context>");
+    expect(f.events.at(-1)?.content?.[0].text).not.toContain(
+      "<open-muse-attachments>",
+    );
     await expect(
       f.client.send(session.id, {
         type: "user.message",

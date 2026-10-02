@@ -50,6 +50,7 @@ import {
   maxAttachments,
   type Attachment,
 } from "../shared/attachments";
+import { turnContext, type Surface } from "../shared/turn-context";
 import { identityDefaults } from "../shared/identity";
 import {
   agentSnapshot,
@@ -194,6 +195,8 @@ export class Client {
   // this device instead of continuing with the key held in memory.
   private accountCheck: { read: number; write: number; interval: number };
   private now: () => number;
+  private surface: Surface;
+  private timeZone: () => string;
   private verifiedAt = 0;
   private verifying?: Promise<void>;
   constructor(
@@ -210,6 +213,9 @@ export class Client {
       // how often an open runtime is re-checked.
       accountCheck?: { read: number; write: number; interval: number };
       now?: () => number;
+      // Which Open Muse app this is, told to the agent with each message.
+      surface?: Surface;
+      timeZone?: () => string;
     } = {},
   ) {
     this.db = options.database ?? new LocalDatabase();
@@ -220,6 +226,10 @@ export class Client {
       interval: 30_000,
     };
     this.now = options.now ?? Date.now;
+    this.surface = options.surface ?? "web";
+    this.timeZone =
+      options.timeZone ??
+      (() => Intl.DateTimeFormat().resolvedOptions().timeZone);
     this.vault = options.vault ?? credentials;
     this.identity = new DirectAuth(
       options.vault,
@@ -1490,27 +1500,31 @@ export class Client {
           ...attachmentBlocks(input.attachments ?? []),
           ...(input.text ? [{ type: "text", text: input.text }] : []),
         ];
+      // Each message carries the person's local time and app as context.
       // Files are mounted before the message is sent, so a failure leaves
       // nothing half-sent; the paths then reach the agent's tools.
       let note: Partial<AgentEvent> | undefined;
-      if (input.type === "user.message" && input.attachments?.length) {
-        const files = input.attachments.filter((item) => "file_id" in item);
-        const mounts = files.length
-          ? await this.mountAttachments(r, id, files, signal)
-          : [];
+      if (input.type === "user.message") {
+        const notes = [
+          turnContext(new Date(this.now()), this.timeZone(), this.surface),
+        ];
+        if (input.attachments?.length) {
+          const files = input.attachments.filter((item) => "file_id" in item);
+          const mounts = files.length
+            ? await this.mountAttachments(r, id, files, signal)
+            : [];
+          notes.push(
+            attachmentToolNote(
+              mounts,
+              input.attachments
+                .filter((item) => "text" in item)
+                .map((item) => item.name),
+            ),
+          );
+        }
         note = {
           type: "system.message",
-          content: [
-            {
-              type: "text",
-              text: attachmentToolNote(
-                mounts,
-                input.attachments
-                  .filter((item) => "text" in item)
-                  .map((item) => item.name),
-              ),
-            },
-          ],
+          content: [{ type: "text", text: notes.join("\n\n") }],
         };
       }
       if (

@@ -2,7 +2,18 @@ import { t } from "../shared/i18n";
 import { Capacitor } from "@capacitor/core";
 import { Share } from "@capacitor/share";
 import { uuid } from "../shared/crypto";
+import type { Surface } from "../shared/turn-context";
 export const nativeMobile = () => Capacitor.isNativePlatform();
+
+// Which Open Muse app this page runs in: the iPhone app, the Mac shell (known
+// by its computer-control bridge), or a browser.
+export function appSurface(): Surface {
+  if (Capacitor.getPlatform() === "ios") return "iphone";
+  const shell = globalThis as unknown as {
+    webkit?: { messageHandlers?: { museComputer?: unknown } };
+  };
+  return shell.webkit?.messageHandlers?.museComputer ? "mac" : "web";
+}
 
 export async function exportText(
   name: string,
