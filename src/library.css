@@ -41,6 +41,11 @@
   min-height: 42px;
   margin: 6px 0 14px;
 }
+/* With nothing loading, the toolbar collapses to the section spacing. */
+.library-toolbar:empty {
+  min-height: 0;
+  margin: 0 0 20px;
+}
 .library-toolbar > span {
   display: flex;
   align-items: center;
