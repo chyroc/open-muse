@@ -53,11 +53,15 @@ export function useDragToDismiss({
   axis,
   direction,
   onDismiss,
+  onProgress,
 }: {
   target: RefObject<HTMLElement | null>;
   axis: Axis;
   direction: 1 | -1;
   onDismiss: () => void;
+  // How far the panel has been pulled, 0 to 1 of its size, while a finger
+  // holds it (dragging true) and when it is let go (dragging false).
+  onProgress?: (progress: number, dragging: boolean) => void;
 }) {
   const drag = useRef<{
     start: number;
@@ -107,6 +111,8 @@ export function useDragToDismiss({
       state.distance = distance;
       state.time = event.timeStamp;
       element.style.transform = offset(axis, distance * direction);
+      const size = axis === "x" ? element.offsetWidth : element.offsetHeight;
+      onProgress?.(Math.min(Math.max(distance / (size || 1), 0), 1), true);
     },
     onPointerUp: release,
     onPointerCancel: release,
@@ -120,9 +126,11 @@ export function useDragToDismiss({
       state.distance > motionToken("--motion-dismiss-distance", 120) ||
       state.velocity > motionToken("--motion-dismiss-velocity", 0.5)
     ) {
+      onProgress?.(1, false);
       onDismiss();
       return;
     }
+    onProgress?.(0, false);
     element.style.transition =
       "transform var(--motion-release-duration) var(--motion-release-ease)";
     element.style.transform = "";

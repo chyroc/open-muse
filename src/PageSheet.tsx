@@ -146,7 +146,19 @@ export function PushedPage({
     axis: "x",
     direction: 1,
     onDismiss: dismiss,
+    // The page beneath follows the drag back toward its resting place.
+    onProgress: (progress, dragging) => {
+      host.style.setProperty("--push-progress", String(progress));
+      host.classList.toggle("dragging-back", dragging);
+    },
   });
+  useEffect(
+    () => () => {
+      host.style.removeProperty("--push-progress");
+      host.classList.remove("dragging-back");
+    },
+    [host],
+  );
   return createPortal(
     <section
       ref={ref}

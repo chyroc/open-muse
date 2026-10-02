@@ -111,7 +111,10 @@
 }
 .page-sheet:has(> .pushed-page:not(.closing))
   > :is(.page-sheet-header, .page-sheet-body) {
-  transform: translateX(-30%);
+  transform: translateX(calc(-30% * (1 - var(--push-progress, 0))));
+}
+.page-sheet.dragging-back > :is(.page-sheet-header, .page-sheet-body) {
+  transition: none;
 }
 .pushed-page {
   position: absolute;
