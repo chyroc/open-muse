@@ -1,2 +1,6 @@
 /* Shown by iOS when Open Muse first asks to read a type of Health data. */
 "NSHealthShareUsageDescription" = "当你向伙伴询问运动、体能训练、睡眠、心率或体重时，Open Muse 会读取你选择共享的健康数据。";
+/* Shown by iOS when Open Muse first uses the camera for an attachment. */
+"NSCameraUsageDescription" = "当你拍照或录像发送给伙伴时，Open Muse 会使用相机。";
+/* Shown by iOS when a video recorded for an attachment first uses the microphone. */
+"NSMicrophoneUsageDescription" = "当你录像发送给伙伴时，Open Muse 会同时录制声音。";

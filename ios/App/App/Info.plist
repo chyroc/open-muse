@@ -27,6 +27,10 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Open Muse uses the camera when you take a photo or record a video to send to your companion.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Open Muse records sound with a video you take to send to your companion.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Open Muse reads the Health data you choose to share when you ask your companion about your activity, workouts, sleep, heart rate, or weight.</string>
 	<key>LSRequiresIPhoneOS</key>
