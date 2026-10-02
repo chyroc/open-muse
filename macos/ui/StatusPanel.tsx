@@ -1,8 +1,13 @@
 import { formatLocale, t } from "../../shared/i18n";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import {
   Check,
-  Clock3,
   CircleUserRound,
   Fingerprint,
   Heart,
@@ -10,6 +15,7 @@ import {
   Pencil,
   ShieldCheck,
   X,
+  createLucideIcon,
 } from "lucide-react";
 import type {
   CompanionIdentity,
@@ -20,6 +26,16 @@ import { PermissionCard } from "../../src/PermissionCard";
 import { Avatar, Empty } from "./Chrome";
 import { statusTabLabel } from "./labels";
 import { activityEvents } from "./model";
+
+// Upcoming: a clock whose earlier half is still dashed.
+const UpcomingIcon = createLucideIcon("clock-half-dashed", [
+  ["path", { d: "M12 3a9 9 0 0 1 0 18", key: "done" }],
+  [
+    "path",
+    { d: "M12 21a9 9 0 0 1 0-18", strokeDasharray: "2.2 2.6", key: "ahead" },
+  ],
+  ["path", { d: "M12 7.5V12H8.5", key: "hands" }],
+]);
 
 export type StatusTab = "activity" | "approvals" | "upcoming" | "identity";
 export function fileDate(value?: string) {
@@ -161,7 +177,7 @@ export function StatusPanel({
   const tabs = [
     { id: "activity", label: statusTabLabel("activity"), Icon: List },
     { id: "approvals", label: statusTabLabel("approvals"), Icon: ShieldCheck },
-    { id: "upcoming", label: t("Upcoming"), Icon: Clock3 },
+    { id: "upcoming", label: t("Upcoming"), Icon: UpcomingIcon },
     { id: "identity", label: t("Identity"), Icon: Fingerprint },
   ] as const;
   return (
@@ -231,7 +247,17 @@ export function StatusPanel({
         className="status-tabs"
         role="tablist"
         aria-label={t("Assistant information")}
+        style={
+          {
+            "--count": tabs.length,
+            "--index": Math.max(
+              0,
+              tabs.findIndex((item) => item.id === tab),
+            ),
+          } as CSSProperties
+        }
       >
+        <span className="status-tabs-pill" aria-hidden="true" />
         {tabs.map(({ id, label, Icon }) => (
           <button
             role="tab"
@@ -243,7 +269,7 @@ export function StatusPanel({
             title={label}
             onClick={() => onTab(id)}
           >
-            <Icon size={17} />
+            <Icon size={18} strokeWidth={1.7} />
           </button>
         ))}
       </div>

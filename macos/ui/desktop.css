@@ -505,25 +505,57 @@ h3 {
   margin: 0;
 }
 .status-tabs {
+  position: relative;
   display: flex;
-  border-radius: 23px;
+  border-radius: 999px;
   background: var(--fill-hover);
-  padding: 3px;
-  gap: 3px;
+  padding: 4px;
+}
+/* The selected tab's pill slides between tabs on a near-critical spring. */
+.status-tabs-pill {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: calc(4px + (100% - 8px) / var(--count) * var(--index));
+  width: calc((100% - 8px) / var(--count));
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 2px 9px #00000010;
+  transition: left 0.32s cubic-bezier(0.25, 1, 0.5, 1);
 }
 .status-tabs button {
+  position: relative;
   flex: 1;
-  border-radius: 20px;
-  height: 29px;
+  border-radius: 16px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--muted);
+  color: var(--text-2);
+  transition: color 0.15s ease-out;
 }
 .status-tabs button[aria-selected="true"] {
-  background: var(--surface);
-  box-shadow: 0 2px 9px #00000010;
-  color: var(--text-2);
+  color: var(--text);
+}
+/* Hairlines separate neighbours that are both unselected. */
+.status-tabs button + button::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  background: var(--line-strong);
+  transition: opacity 0.15s ease-out;
+}
+.status-tabs button[aria-selected="true"]::before,
+.status-tabs button[aria-selected="true"] + button::before {
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .status-tabs-pill {
+    transition: left 0.12s ease-out;
+  }
 }
 .status-content {
   padding: 18px 0;
