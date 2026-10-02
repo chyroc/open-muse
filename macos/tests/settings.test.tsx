@@ -194,6 +194,49 @@ describe("Mac settings window", () => {
     expect(host!.querySelectorAll("input[type=checkbox]")).toHaveLength(0);
     expect(host!.querySelectorAll("input[type=radio]")).toHaveLength(0);
   });
+  it("picks the app language and keeps following the system by default", async () => {
+    vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", ["zh-Hans-CN", "en"]);
+    const postMessage = vi.fn();
+    Object.defineProperty(window, "webkit", {
+      configurable: true,
+      value: { messageHandlers: { museWindow: { postMessage } } },
+    });
+    localStorage.removeItem("open-muse.language");
+    await mount(<SettingsWindow client={await fixture()} />);
+    const select = host!.querySelector<HTMLSelectElement>(
+      'select[aria-label="界面语言"]',
+    )!;
+    expect(select.value).toBe("system");
+    expect([...select.options].map((option) => option.textContent)).toEqual([
+      "跟随系统 (简体中文)",
+      "English",
+      "简体中文",
+    ]);
+    await act(async () => {
+      select.value = "en";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(localStorage.getItem("open-muse.language")).toBe("en");
+    expect(postMessage).toHaveBeenCalledWith({ name: "language", value: "en" });
+    expect(activeLanguage()).toMatchObject({
+      language: "en",
+      choice: "en",
+      device: "zh-CN",
+    });
+    await act(async () => {
+      select.value = "system";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(localStorage.getItem("open-muse.language")).toBeNull();
+    const swift = readFileSync("macos/OpenMuse.swift", "utf8");
+    expect(swift).toContain(
+      'body?["name"] == "language", message.webView === settingsWebView',
+    );
+    // The page sees the system's list, not this app's own override.
+    expect(swift).toContain(
+      "persistentDomain(forName: UserDefaults.globalDomain)",
+    );
+  });
   it("says what the Open Muse service keeps only when the build has one", async () => {
     const configured = vi
       .spyOn(backgroundClient, "configured")

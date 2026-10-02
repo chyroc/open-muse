@@ -183,8 +183,11 @@ through the native credential bridge, and native callbacks answer the window tha
 asked for them.
 
 General opens with grouped rows: connection status, sign-in method and project,
-then the resolved interface language with the rule that the app follows the
-system list and stores no override, then the bundle version. The shared sign-in
+then the interface language picker: Follow system (naming the language that
+resolves to), English or 简体中文. A choice is stored on this Mac only, reloads
+every window in that language, and sets the app's own AppleLanguages so menus
+and dialogs follow from the next launch; Follow system removes both, and Reset
+this device clears them. The bundle version follows. The shared sign-in
 panel stays collapsed behind a "manage connection" row instead of pushing those
 groups out of view; the end of the about group still needs scrolling. Secure
 storage describes where credentials actually live. Permissions reports, without changing anything, that the
@@ -242,10 +245,10 @@ Other sections:
 The section list matches the reference, including the three names the reference
 leaves in English inside a Chinese interface. They are ordinary catalog entries
 whose Simplified Chinese value is the same English text, so the shared
-localization mechanism and the system-language rule are unchanged. The account,
-usage and language panes are replaced by facts this client can prove instead of
-an account portal, a quota meter and a 47-language picker it has no data or
-override for.
+localization mechanism is unchanged. The account and usage panes are replaced
+by facts this client can prove instead of an account portal and a quota meter
+it has no data for, and the language pane offers only the two languages the app
+is translated into.
 
 ## Appearance tokens
 

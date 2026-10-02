@@ -1044,8 +1044,8 @@ export const zhCN: Record<string, string> = {
   Language: "语言",
   About: "关于",
   "Interface language": "界面语言",
-  "Open Muse follows your system language list and keeps no separate override, so changing it in System Settings changes the app.":
-    "Open Muse 跟随你的系统语言列表，不保存独立的语言设置；在「系统设置」中更改语言即可改变本应用。",
+  "Open Muse follows your system language list unless you pick a language here. Menus and dialogs switch the next time Open Muse opens.":
+    "除非你在这里选择语言，否则 Open Muse 会跟随系统语言列表。菜单和对话框会在下次打开 Open Muse 时切换。",
   "Date and number format": "日期与数字格式",
   "System preference list": "系统语言偏好顺序",
   Version: "版本",

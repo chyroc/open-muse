@@ -267,7 +267,10 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
                 injectionTime: .atDocumentStart, forMainFrameOnly: true
             ))
         }
-        if let data = try? JSONSerialization.data(withJSONObject: Locale.preferredLanguages),
+        // The page gets the system's own list: an app language picked in
+        // Settings is stored for this app and would otherwise hide it.
+        let systemLanguages = UserDefaults.standard.persistentDomain(forName: UserDefaults.globalDomain)?["AppleLanguages"] as? [String]
+        if let data = try? JSONSerialization.data(withJSONObject: systemLanguages ?? Locale.preferredLanguages),
            let languages = String(data: data, encoding: .utf8) {
             configuration.userContentController.addUserScript(WKUserScript(
                 source: "window.__OPEN_MUSE_LANGUAGES__ = \(languages);",
@@ -1110,6 +1113,17 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
                 }
             }
             if body?["name"] == "appearance" { applyAppearance(body?["value"], from: message.webView) }
+            // Settings picked the app language: menus and dialogs follow it from
+            // the next launch, and every page reloads in it now.
+            if body?["name"] == "language", message.webView === settingsWebView {
+                switch body?["value"] {
+                case "en": UserDefaults.standard.set(["en"], forKey: "AppleLanguages")
+                case "zh-CN": UserDefaults.standard.set(["zh-Hans"], forKey: "AppleLanguages")
+                case "system": UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+                default: return
+                }
+                for view in [webView, settingsWebView, quickWebView] { view?.reload() }
+            }
             // Only the workspace counts unread replies; the label is a short count.
             if body?["name"] == "badge", message.webView === webView {
                 let label = body?["value"] ?? ""

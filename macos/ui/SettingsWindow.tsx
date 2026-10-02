@@ -20,7 +20,7 @@ import {
   Sun,
   Wallet,
 } from "lucide-react";
-import { t } from "../../shared/i18n";
+import { t, type LanguageChoice } from "../../shared/i18n";
 import type { Client } from "../../src/api";
 import { backgroundClient } from "../../src/background-client";
 import { AuthPanel } from "../../src/AuthPanel";
@@ -55,6 +55,7 @@ import {
 } from "./startup";
 import {
   activeLanguage,
+  chooseLanguage,
   appVersion,
   clientWithConfirmedSignOut,
   connectionSummary,
@@ -276,13 +277,30 @@ export function SettingsWindow({ client }: { client: Client }) {
             )}
             <h2>{t("Language")}</h2>
             <div className="settings-group">
-              <Row
-                title={t("Interface language")}
-                detail={t(
-                  "Open Muse follows your system language list and keeps no separate override, so changing it in System Settings changes the app.",
-                )}
-                value={language.language === "zh-CN" ? "简体中文" : "English"}
-              />
+              <div className="settings-row">
+                <div>
+                  <strong>{t("Interface language")}</strong>
+                  <p>
+                    {t(
+                      "Open Muse follows your system language list unless you pick a language here. Menus and dialogs switch the next time Open Muse opens.",
+                    )}
+                  </p>
+                </div>
+                <select
+                  className="settings-select"
+                  aria-label={t("Interface language")}
+                  value={language.choice}
+                  onChange={(event) =>
+                    chooseLanguage(event.target.value as LanguageChoice)
+                  }
+                >
+                  <option value="system">
+                    {`${t("Follow system")} (${language.device === "zh-CN" ? "简体中文" : "English"})`}
+                  </option>
+                  <option value="en">English</option>
+                  <option value="zh-CN">简体中文</option>
+                </select>
+              </div>
             </div>
             <h2>{t("Appearance")}</h2>
             <div className="settings-group">

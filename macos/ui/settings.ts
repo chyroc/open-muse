@@ -1,4 +1,11 @@
-import { formatLocale, systemLanguage } from "../../shared/i18n";
+import {
+  deviceLanguage,
+  formatLocale,
+  languageChoice,
+  setLanguageChoice,
+  systemLanguage,
+  type LanguageChoice,
+} from "../../shared/i18n";
 
 export type SettingsSectionId =
   | "general"
@@ -72,13 +79,15 @@ export function settingsPath(id: SettingsSectionId) {
   return `#/settings/${id}`;
 }
 
-// The app follows the system preference list and never stores its own override,
-// so the window reports the resolved language instead of offering a picker.
+// The app follows the system preference list unless the person picked a
+// language in Settings; the window shows both the choice and the result.
 export function activeLanguage() {
   const preferred = (window as unknown as { __OPEN_MUSE_LANGUAGES__?: unknown })
     .__OPEN_MUSE_LANGUAGES__;
   return {
     language: systemLanguage(),
+    choice: languageChoice(),
+    device: deviceLanguage(),
     locale: formatLocale(),
     preferred: Array.isArray(preferred)
       ? preferred.filter((value): value is string => typeof value === "string")
@@ -92,6 +101,26 @@ export function appVersion() {
   return typeof version === "string" && /^[\w.\- ()]{1,40}$/.test(version)
     ? version
     : "";
+}
+
+// Stores the choice for every window, then asks the shell to keep menus and
+// dialogs in step from the next launch and to reload the open windows.
+// Without the shell the page reloads itself.
+export function chooseLanguage(choice: LanguageChoice) {
+  setLanguageChoice(choice);
+  const bridge = (
+    window as unknown as {
+      webkit?: {
+        messageHandlers?: { museWindow?: { postMessage: (v: object) => void } };
+      };
+    }
+  ).webkit?.messageHandlers?.museWindow;
+  try {
+    if (bridge) return bridge.postMessage({ name: "language", value: choice });
+  } catch {
+    // Fall through to reloading this page only.
+  }
+  location.reload();
 }
 
 // The native shell owns the separate settings window. Without it, the caller
