@@ -25,6 +25,7 @@ npm run build         # Static site in dist/
 npm start             # Preview the static site on port 4310
 npm run macos:build   # .build/macos/Open Muse.app
 npm run ios:build     # iOS Simulator app
+npm run ios:install   # Muse-account build, signed and installed on a paired iPhone
 npm run native:sync   # Build and sync the iOS and Android bundles
 ```
 
@@ -48,6 +49,13 @@ at the provider on sign-out. Other devices stay signed in.
 
 Builds without these values run in single-user local mode: the API key is kept
 on the device and no account or service request is made.
+
+`npm run ios:install` produces such a build for a paired iPhone in one step. It
+takes the three values from the environment, or reads them with the Volcengine
+CLI from the Supabase workspace named `open-muse` (override with
+`OPEN_MUSE_SUPABASE_WORKSPACE`), checks the service's `/health`, signs with the
+Apple Development team, installs, and launches the app. `OPEN_MUSE_DEVICE`
+selects a device when several are paired.
 
 ## Connect to Ark
 
