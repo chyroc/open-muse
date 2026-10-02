@@ -29,13 +29,17 @@
 .message-menu-bubble {
   position: fixed;
   overflow: hidden;
+  border-radius: 22px;
+  /* A filter on the clipping box casts its shadow outside the clip, so the
+     rounded corners stay clean. */
+  filter: drop-shadow(0 10px 30px rgb(0 0 0 / 12%));
   animation: message-menu-lift var(--motion-release-duration)
     var(--motion-release-ease) both;
 }
 .message-menu-bubble > .chat-bubble {
   max-width: none;
   width: 100%;
-  box-shadow: 0 10px 30px rgb(0 0 0 / 12%);
+  margin: 0;
 }
 .message-menu-actions {
   position: fixed;
@@ -129,4 +133,92 @@
   overflow-wrap: anywhere;
   -webkit-user-select: text;
   user-select: text;
+}
+/* Quick reactions: emoji 42pt apart in a glass capsule that scrolls beneath
+   a pinned 33pt button for more. The chosen one sits on a gray disc. */
+.message-reactions {
+  position: fixed;
+  height: 54px;
+  overflow: hidden;
+  border-radius: 27px;
+  background: rgb(250 250 250 / 72%);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 70%),
+    0 12px 40px rgb(0 0 0 / 14%);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  backdrop-filter: blur(24px) saturate(1.6);
+  animation: message-menu-open var(--motion-release-duration)
+    var(--motion-release-ease) both;
+}
+.message-reactions-row {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 52px 0 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.message-reactions-row::-webkit-scrollbar {
+  display: none;
+}
+.message-reactions-row button {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  margin-right: 4px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 28px;
+  line-height: 1;
+  transition:
+    transform var(--motion-press-duration) ease-out,
+    background-color var(--motion-press-duration) ease-out;
+}
+.message-reactions-row button.selected {
+  background: rgb(118 118 128 / 18%);
+}
+.message-reactions-row button:active {
+  transform: scale(0.85);
+}
+.message-reactions-more {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  display: grid;
+  place-items: center;
+  width: 33px;
+  height: 33px;
+  margin-top: -16.5px;
+  padding: 0;
+  border-radius: 50%;
+  color: #6b6b70;
+  background: rgb(255 255 255 / 86%);
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 6%),
+    0 2px 8px rgb(0 0 0 / 10%);
+  transition: transform var(--motion-press-duration) ease-out;
+}
+.message-reactions-more:active {
+  transform: scale(var(--motion-press-scale));
+}
+.message-menu.closing .message-reactions {
+  opacity: 0;
+  transform: scale(0.96);
+  transition:
+    opacity 160ms ease-in,
+    transform 160ms ease-in;
+}
+@media (prefers-color-scheme: dark) {
+  .message-reactions {
+    background: rgb(44 44 46 / 80%);
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 8%),
+      0 12px 40px rgb(0 0 0 / 50%);
+  }
+  .message-reactions-more {
+    color: #d1d1d6;
+    background: rgb(72 72 74 / 90%);
+  }
 }

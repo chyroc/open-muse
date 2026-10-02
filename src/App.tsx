@@ -230,6 +230,14 @@ function Workspace({
   useEffect(() => {
     void client.attachmentNames().then(setAttachmentNames, () => {});
   }, [client]);
+  // This device's reactions, by the message's source event.
+  const [reactions, setReactions] = useState<Record<string, string>>({});
+  useEffect(() => {
+    setReactions({});
+    void client.reactions().then(setReactions, () => {});
+  }, [client]);
+  const reactionKey = (message: AgentEvent) =>
+    message.source_event_id ?? message.id;
   const readyAttachments = staged.filter((item) => item.state === "ready");
   const stagedCount = useRef(0);
   stagedCount.current = staged.length;
@@ -504,7 +512,8 @@ function Workspace({
       body.scrollTop = body.scrollHeight;
       initialScroll.current = activeId;
     }
-  }, [activeId, lastEventId, task.loading, awayFromBottom]);
+    // A reaction adds room under its message, so it also keeps the pin.
+  }, [activeId, lastEventId, task.loading, awayFromBottom, reactions]);
   useEffect(() => {
     if (!toast) return;
     const timeout = setTimeout(() => setToast(""), 3000);
@@ -916,6 +925,7 @@ function Workspace({
                           setSelectedBubble(bubble);
                           setSelectedMessage(event);
                         }}
+                        reaction={reactions[reactionKey(event)]}
                         text={eventText(event)}
                         reply={event.choice_reply}
                         active={
@@ -950,6 +960,7 @@ function Workspace({
                           setSelectedBubble(bubble);
                           setSelectedMessage(event);
                         }}
+                        reaction={reactions[reactionKey(event)]}
                       >
                         <MessageAttachments
                           items={messageAttachments(event, attachmentNames)}
@@ -1307,6 +1318,18 @@ function Workspace({
             setSelectedBubble(undefined);
           }}
           actions={messageActions(selectedMessage)}
+          reaction={reactions[reactionKey(selectedMessage)]}
+          onReact={(emoji) => {
+            // Shown at once; the stored record is the source of truth.
+            const key = reactionKey(selectedMessage);
+            setReactions(({ [key]: _, ...rest }) =>
+              emoji ? { ...rest, [key]: emoji } : rest,
+            );
+            void client
+              .setReaction(key, emoji)
+              .catch(() => client.reactions())
+              .then(setReactions, () => {});
+          }}
         />
       )}
       {selectingText !== undefined && (

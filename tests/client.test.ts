@@ -1127,6 +1127,24 @@ describe("Direct MA client", () => {
     });
     expect(await f.client.attachmentNames()).toEqual({});
   });
+  it("keeps reactions on this device for the signed-in identity only", async () => {
+    const f = fixture();
+    await f.login();
+    const before = f.events.length;
+    expect(await f.client.reactions()).toEqual({});
+    expect(await f.client.setReaction("evt_1", "👍")).toEqual({ evt_1: "👍" });
+    await f.client.setReaction("evt_2", "🔥");
+    expect(await f.client.setReaction("evt_1", null)).toEqual({ evt_2: "🔥" });
+    expect(await f.client.reactions()).toEqual({ evt_2: "🔥" });
+    // Reactions are local marks; nothing is sent to Ark.
+    expect(f.events).toHaveLength(before);
+    await f.client.auth("logout", {});
+    await f.client.auth("api-key", {
+      apiKey: "test-other-account-key-123456789",
+      confirm: true,
+    });
+    expect(await f.client.reactions()).toEqual({});
+  });
   it("serializes concurrent cloud goal updates without losing records", async () => {
     const f = fixture();
     await f.login();

@@ -100,11 +100,13 @@ export function AssistantMessage({
   welcome,
   label,
   onOptions,
+  reaction,
   ...props
 }: Parameters<typeof ChoiceMessage>[0] & {
   welcome?: boolean;
   label: string;
   onOptions: (bubble?: HTMLElement) => void;
+  reaction?: string;
 }) {
   const message = parseChoiceMessage(props.text);
   const split = welcome && message.choice && Boolean(message.before);
@@ -115,7 +117,7 @@ export function AssistantMessage({
           <Markdown text={message.before!} />
         </MessageBubble>
       )}
-      <MessageBubble label={label} onOptions={onOptions}>
+      <MessageBubble label={label} onOptions={onOptions} reaction={reaction}>
         <ChoiceMessage {...props} omitIntroduction={Boolean(split)} />
       </MessageBubble>
     </>

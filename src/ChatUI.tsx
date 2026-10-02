@@ -44,11 +44,14 @@ export function MessageBubble({
   children,
   label,
   onOptions,
+  reaction,
 }: {
   children: ReactNode;
   label: string;
   // Receives the bubble so a menu can lift a copy of it.
   onOptions: (bubble?: HTMLElement) => void;
+  // An emoji this person reacted with, shown on the bubble's lower corner.
+  reaction?: string;
 }) {
   const bubble = useRef<HTMLElement>(null);
   const open = () => onOptions(bubble.current ?? undefined);
@@ -63,7 +66,7 @@ export function MessageBubble({
   return (
     <article
       ref={bubble}
-      className="chat-bubble"
+      className={`chat-bubble${reaction ? " reacted" : ""}`}
       onContextMenu={(event) => {
         event.preventDefault();
         cancel();
@@ -102,6 +105,15 @@ export function MessageBubble({
       onTouchCancel={cancel}
     >
       {children}
+      {reaction && (
+        <span
+          className="bubble-reaction"
+          role="img"
+          aria-label={t("Reaction: {emoji}", { emoji: reaction })}
+        >
+          {reaction}
+        </span>
+      )}
       <button className="bubble-options" aria-label={label} onClick={open}>
         •••
       </button>

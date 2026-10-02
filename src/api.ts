@@ -1898,6 +1898,27 @@ export class Client {
       )) ?? {}
     );
   }
+  // Reactions are this device's own marks on messages, kept beside the
+  // identity's other local records and never sent to Ark.
+  async reactions(): Promise<Record<string, string>> {
+    if (!this.signedIn()) return {};
+    return (
+      (await this.db.get<Record<string, string>>(
+        `${this.context().key}:reactions`,
+      )) ?? {}
+    );
+  }
+  async setReaction(event_id: string, emoji: string | null) {
+    return this.db.update<Record<string, string>>(
+      `${this.context().key}:reactions`,
+      (reactions) => {
+        const next = { ...reactions };
+        if (emoji) next[event_id] = emoji;
+        else delete next[event_id];
+        return next;
+      },
+    );
+  }
   async saveReply(session_id: string, event_id: string) {
     const r = this.context();
     const session = await r.ark.get(validId(session_id));

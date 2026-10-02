@@ -422,6 +422,47 @@ html.sidebar-dragging .companion-shell {
   max-width: 100%;
   overflow-x: auto;
 }
+/* A reaction sits on the bubble's lower trailing corner (leading for the
+   person's own messages), ringed in the page color, and the bubble makes
+   room beneath it. */
+.chat-bubble.reacted {
+  margin-bottom: 17px;
+}
+.bubble-reaction {
+  position: absolute;
+  right: 8px;
+  bottom: -19px;
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 11px;
+  background: var(--chat-gray);
+  box-shadow: 0 0 0 2px var(--chat-paper);
+  font-size: 15px;
+  line-height: 1;
+  animation: bubble-reaction-in var(--motion-release-duration)
+    var(--motion-release-ease) backwards;
+}
+.from-user .bubble-reaction {
+  right: auto;
+  left: 8px;
+  background: var(--chat-blue);
+}
+@keyframes bubble-reaction-in {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes bubble-reaction-in {
+    from {
+      opacity: 0;
+    }
+  }
+}
 .bubble-options {
   position: absolute;
   bottom: 0;

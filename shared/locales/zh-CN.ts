@@ -9,6 +9,7 @@ import { zhUpcoming } from "./zh-CN-upcoming";
 import { zhHealth } from "./zh-CN-health";
 import { zhConnectors } from "./zh-CN-connectors";
 import { zhSettingsHome } from "./zh-CN-settings-home";
+import { zhReactions } from "./zh-CN-reactions";
 
 // English source messages are stable keys. Keep protocol names and user data out.
 export const zhCN: Record<string, string> = {
@@ -23,6 +24,7 @@ export const zhCN: Record<string, string> = {
   ...zhHealth,
   ...zhConnectors,
   ...zhSettingsHome,
+  ...zhReactions,
   "Restoring connection…": "正在恢复连接…",
   Retry: "重试",
   "If submission is unconfirmed, refresh history before trying again.":
