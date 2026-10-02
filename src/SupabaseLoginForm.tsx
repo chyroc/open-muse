@@ -8,7 +8,9 @@ export function SupabaseLoginForm({
 }: {
   busy: boolean;
   onSignIn(email: string, password: string): Promise<void>;
-  onSignUp(email: string, password: string): Promise<void>;
+  // Resolves true once a registration was submitted, so the form can offer
+  // sign-in next instead of a second registration.
+  onSignUp(email: string, password: string): Promise<boolean>;
 }) {
   const [email, setEmail] = useState(""),
     [password, setPassword] = useState("");
@@ -23,7 +25,10 @@ export function SupabaseLoginForm({
         if (busy || (register && !consent)) return;
         const action = register ? onSignUp : onSignIn;
         void action(email.trim(), password).then(
-          () => setPassword(""),
+          (submitted) => {
+            setPassword("");
+            if (submitted) setRegister(false);
+          },
           () => setPassword(""),
         );
       }}

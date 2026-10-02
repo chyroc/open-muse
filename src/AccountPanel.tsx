@@ -136,16 +136,28 @@ export function AccountPanel({
               await switched();
             })
           }
-          onSignUp={(email, password) =>
-            run(async () => {
+          onSignUp={async (email, password) => {
+            let submitted = false;
+            await run(async () => {
               await service.signUpAccount(email, password);
-              setNotice(
-                t(
-                  "Registration submitted. Check your email if verification is required, then sign in. This does not confirm that a new account was created.",
-                ),
-              );
-            })
-          }
+              submitted = true;
+              // Without email verification the new account can sign in at
+              // once, through the ordinary sign-in; the signup response itself
+              // is never adopted as a session.
+              try {
+                await service.signInAccount(email, password);
+              } catch {
+                setNotice(
+                  t(
+                    "Registration submitted. Check your email if verification is required, then sign in. This does not confirm that a new account was created.",
+                  ),
+                );
+                return;
+              }
+              await switched();
+            });
+            return submitted;
+          }}
         />
       )}
       {busy && (
