@@ -50,31 +50,40 @@
   background: #0069df;
   color: white;
 }
+/* Feed posts share the idea row rhythm: a 40pt symbol, 16pt gap, 17pt text. */
 .inspiration-post {
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr);
-  gap: 14px;
-  padding: 0 0 22px;
+  gap: 16px;
+  padding: 24px 0 8px;
+  border-bottom: 1px solid #e8e8eb;
 }
 .post-symbol {
-  padding-top: 2px;
-  font-size: 30px;
+  font-size: 32px;
+  line-height: 40px;
   text-align: center;
 }
 .post-content h2 {
-  font-size: 18px;
-  line-height: 1.35;
+  font-size: 17px;
+  line-height: 1.4;
   margin: 0 0 4px;
-  font-weight: 650;
-  letter-spacing: -0.25px;
+  font-weight: 700;
 }
 .post-content .markdown {
   font-size: 17px;
-  line-height: 1.5;
+  line-height: 1.4;
   overflow-wrap: anywhere;
 }
 .post-content .markdown p {
-  margin: 0 0 12px;
+  margin: 0 0 10px;
+}
+.post-content .markdown :is(ul, ol) {
+  margin: 0 0 10px;
+  padding-left: 22px;
+}
+.post-content .markdown li {
+  margin: 4px 0;
+  line-height: 1.4;
 }
 .post-content .markdown a,
 .post-sources a {
