@@ -30,6 +30,36 @@ final class Computer {
     private var awake: IOPMAssertionID = 0
     private var awakeUntil = Date.distantPast
 
+    // The app the person last used before Open Muse came to the front. Answering
+    // a request in Open Muse brings it forward, so input goes back to this app.
+    private weak var lastOtherApp: NSRunningApplication?
+    private var activationObserver: NSObjectProtocol?
+
+    init() {
+        remember(NSWorkspace.shared.frontmostApplication)
+        activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
+        ) { [weak self] note in
+            let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+            MainActor.assumeIsolated { self?.remember(app) }
+        }
+    }
+
+    private func remember(_ app: NSRunningApplication?) {
+        guard let app, app.processIdentifier != ProcessInfo.processInfo.processIdentifier else { return }
+        lastOtherApp = app
+    }
+
+    // Clicks and keys go to the front app, so hand the front back first when
+    // Open Muse itself is there only because the person just answered it.
+    private func returnFocus() async {
+        guard NSWorkspace.shared.frontmostApplication?.processIdentifier == ProcessInfo.processInfo.processIdentifier,
+              let app = lastOtherApp, !app.isTerminated, !isBlocked(app)
+        else { return }
+        app.activate()
+        try? await Task.sleep(nanoseconds: 300_000_000)
+    }
+
     var accessibility: Bool { AXIsProcessTrusted() }
     var screen: Bool { CGPreflightScreenCaptureAccess() }
 
@@ -97,7 +127,9 @@ final class Computer {
             config.showsCursor = true
             let hidden = content.applications.filter { blocked.contains($0.bundleIdentifier) }
             let filter = SCContentFilter(display: display, excludingApplications: hidden, exceptingWindows: [])
-            let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+            guard let image = await Self.capture(filter, config) else {
+                return failure("The screen capture did not finish. macOS may be asking the person to confirm screen access; ask them to answer that prompt, then try again.")
+            }
             pointsPerPixel = CGFloat(display.width) / CGFloat(config.width)
             shotSize = CGSize(width: config.width, height: config.height)
             guard let data = NSBitmapImageRep(cgImage: image).representation(using: .jpeg, properties: [.compressionFactor: 0.7])
@@ -112,6 +144,27 @@ final class Computer {
             return Output(ok: true, text: json(info), image: data.base64EncodedString())
         } catch {
             return failure("The screen could not be captured.")
+        }
+    }
+
+    // A capture can wait indefinitely on a macOS consent prompt, which would
+    // leave the request unanswered; give up after a bounded wait instead.
+    private static let captureTimeout: UInt64 = 15_000_000_000
+    private static func capture(_ filter: SCContentFilter, _ config: SCStreamConfiguration) async -> CGImage? {
+        await withCheckedContinuation { (done: CheckedContinuation<CGImage?, Never>) in
+            var finished = false
+            let finish = { (image: CGImage?) in
+                guard !finished else { return }
+                finished = true
+                done.resume(returning: image)
+            }
+            Task { @MainActor in
+                finish(try? await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config))
+            }
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: captureTimeout)
+                finish(nil)
+            }
         }
     }
 
@@ -191,6 +244,7 @@ final class Computer {
 
     private func act(_ input: [String: Any]) async -> Output {
         guard accessibility else { return failure("Accessibility is off for Open Muse, so it cannot control this Mac.") }
+        await returnFocus()
         guard !isBlocked(NSWorkspace.shared.frontmostApplication)
         else { return failure("The app in front is blocked for the assistant. Ask the person to switch apps.") }
         guard let action = input["action"] as? String else { return failure("Choose an action.") }
@@ -230,14 +284,20 @@ final class Computer {
         case "type":
             guard let text = input["text"] as? String, !text.isEmpty, text.count <= 2000
             else { return failure("Give 1 to 2000 characters to type.") }
+            // Text goes straight to the front app's process: macOS drops typed
+            // Unicode posted to the HID stream, and an input method such as
+            // Pinyin would otherwise compose the events instead of inserting them.
+            guard let target = NSWorkspace.shared.frontmostApplication?.processIdentifier
+            else { return failure("No app is in front to type into.") }
             let units = Array(text.utf16)
             var index = 0
             while index < units.count {
                 var chunk = Array(units[index..<min(index + 16, units.count)])
                 for down in [true, false] {
                     let event = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: down)
+                    event?.flags = []
                     event?.keyboardSetUnicodeString(stringLength: chunk.count, unicodeString: &chunk)
-                    post(event)
+                    event?.postToPid(target)
                 }
                 index += 16
                 try? await Task.sleep(nanoseconds: 8_000_000)
@@ -249,6 +309,14 @@ final class Computer {
                 let event = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: down)
                 event?.flags = flags
                 post(event)
+            }
+            // Report the modifiers released, or the system keeps them as held
+            // and the person's next click arrives as a Control-click.
+            if !flags.isEmpty {
+                let release = CGEvent(source: source)
+                release?.type = .flagsChanged
+                release?.flags = []
+                post(release)
             }
         default:
             return failure("Unknown action \(action).")
