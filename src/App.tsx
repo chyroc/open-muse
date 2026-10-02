@@ -1205,9 +1205,6 @@ function Workspace({
           status={status}
           isMain={activeId === index.mainId}
           sessionId={activeId}
-          sessions={sessions.filter(
-            (session) => !index.entries[session.id]?.continuedBy,
-          )}
           events={events}
           permissions={permissions}
           busy={busy || automaticCount > 0}

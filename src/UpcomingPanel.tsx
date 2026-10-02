@@ -4,7 +4,6 @@ import {
   LoaderCircle,
   Pause,
   Play,
-  RefreshCw,
   Trash2,
 } from "lucide-react";
 import { formatLocale, t } from "../shared/i18n";
@@ -20,6 +19,15 @@ import "./upcoming.css";
 type Snapshot = { items: UpcomingItem[]; revision: string };
 
 // Reminders and recurring tasks saved in personal memory, soonest first.
+// Groups follow how often an item repeats, most frequent first.
+const repetitions = ["daily", "weekly", "monthly", "once"] as const;
+const repetitionLabels = {
+  daily: "Daily",
+  weekly: "Weekly",
+  monthly: "Monthly",
+  once: "One time",
+} as const;
+
 export function UpcomingPanel({
   client,
   name,
@@ -106,18 +114,6 @@ export function UpcomingPanel({
     );
   return (
     <section className="companion-upcoming">
-      <div className="upcoming-heading">
-        <h2>{t("Upcoming")}</h2>
-        {signedIn && (
-          <button
-            className="icon-button"
-            aria-label={t("Refresh upcoming items")}
-            onClick={() => void load()}
-          >
-            <RefreshCw size={18} />
-          </button>
-        )}
-      </div>
       {error && (
         <p className="inline-error" role="alert">
           {error}
@@ -134,65 +130,78 @@ export function UpcomingPanel({
           <LoaderCircle size={26} className="spin" />
         </div>
       ) : items.length ? (
-        <ul className="upcoming-list">
-          {items.map(({ item, next }) => (
-            <li
-              key={item.id}
-              className={item.status === "paused" ? "paused" : undefined}
-            >
-              <CalendarClock size={21} />
-              <div>
-                <strong>{item.title}</strong>
-                <span>{describeSchedule(item, locale)}</span>
-                <small>
-                  {item.status === "paused"
-                    ? t("Paused")
-                    : next
-                      ? t("Next: {date}", {
-                          date: new Date(next).toLocaleString(locale, {
-                            weekday: "short",
-                            month: "short",
-                            day: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                          }),
-                        })
-                      : t("No upcoming time")}
-                </small>
-              </div>
-              <button
-                className="icon-button"
-                disabled={Boolean(busy)}
-                aria-label={t(
-                  item.status === "paused" ? "Resume {title}" : "Pause {title}",
-                  { title: item.title },
-                )}
-                onClick={() =>
-                  void change(
-                    item,
-                    item.status === "paused" ? "resume" : "pause",
-                  )
-                }
-              >
-                {busy === item.id ? (
-                  <LoaderCircle size={18} className="spin" />
-                ) : item.status === "paused" ? (
-                  <Play size={18} />
-                ) : (
-                  <Pause size={18} />
-                )}
-              </button>
-              <button
-                className="icon-button"
-                disabled={Boolean(busy)}
-                aria-label={t("Delete {title}", { title: item.title })}
-                onClick={() => void change(item, "delete")}
-              >
-                <Trash2 size={18} />
-              </button>
-            </li>
-          ))}
-        </ul>
+        repetitions
+          .map((kind) => ({
+            kind,
+            entries: items.filter(({ item }) => item.schedule.kind === kind),
+          }))
+          .filter((group) => group.entries.length)
+          .map((group) => (
+            <section key={group.kind} className="upcoming-group">
+              <h3>{t(repetitionLabels[group.kind])}</h3>
+              <ul className="upcoming-list">
+                {group.entries.map(({ item, next }) => (
+                  <li
+                    key={item.id}
+                    className={item.status === "paused" ? "paused" : undefined}
+                  >
+                    <CalendarClock size={21} />
+                    <div>
+                      <strong>{item.title}</strong>
+                      <span>{describeSchedule(item, locale)}</span>
+                      <small>
+                        {item.status === "paused"
+                          ? t("Paused")
+                          : next
+                            ? t("Next: {date}", {
+                                date: new Date(next).toLocaleString(locale, {
+                                  weekday: "short",
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "numeric",
+                                  minute: "2-digit",
+                                }),
+                              })
+                            : t("No upcoming time")}
+                      </small>
+                    </div>
+                    <button
+                      className="icon-button"
+                      disabled={Boolean(busy)}
+                      aria-label={t(
+                        item.status === "paused"
+                          ? "Resume {title}"
+                          : "Pause {title}",
+                        { title: item.title },
+                      )}
+                      onClick={() =>
+                        void change(
+                          item,
+                          item.status === "paused" ? "resume" : "pause",
+                        )
+                      }
+                    >
+                      {busy === item.id ? (
+                        <LoaderCircle size={18} className="spin" />
+                      ) : item.status === "paused" ? (
+                        <Play size={18} />
+                      ) : (
+                        <Pause size={18} />
+                      )}
+                    </button>
+                    <button
+                      className="icon-button"
+                      disabled={Boolean(busy)}
+                      aria-label={t("Delete {title}", { title: item.title })}
+                      onClick={() => void change(item, "delete")}
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
       ) : (
         snapshot && (
           <div className="companion-empty">

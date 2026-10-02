@@ -142,11 +142,31 @@
   padding: 20px 16px max(24px, env(safe-area-inset-bottom));
 }
 .companion-tab-content h2 {
-  font-size: 25px;
-  letter-spacing: -0.6px;
-  line-height: 32px;
-  font-weight: 650;
+  font-size: 22px;
+  letter-spacing: -0.3px;
+  line-height: 28px;
+  font-weight: 700;
   margin: 0 0 20px;
+}
+/* An empty tab names itself and its state in the middle of the space. */
+.companion-approvals:has(.centered) {
+  height: 100%;
+}
+.companion-empty.centered {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+  margin: 0 auto;
+}
+.companion-empty.centered h3 {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 600;
+}
+.companion-empty.centered p {
+  margin: 0;
+  font-size: 15px;
 }
 .identity-edit {
   display: flex;
@@ -157,7 +177,7 @@
   border-radius: 30px;
   background: #f3f3f3;
   width: 100%;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
   margin: 8px 0 20px;
 }
@@ -189,15 +209,16 @@
   pointer-events: none;
   z-index: -1;
 }
+/* Soul is a misty slate blue, memory a deep olive. */
 .identity-card.soul {
   background:
-    radial-gradient(ellipse at 84% 75%, #b8a273, transparent 80%),
-    radial-gradient(ellipse at 60% -15%, #946953, transparent 65%), #6f6a4b;
+    radial-gradient(ellipse at 0% 0%, #94b2b9, transparent 60%),
+    radial-gradient(ellipse at 100% 100%, #4c7187, transparent 70%), #56768a;
 }
 .identity-card.memory {
   background:
-    radial-gradient(ellipse at 93% 80%, #2ac023, transparent 65%),
-    radial-gradient(ellipse at 6% 10%, #26ae3d, transparent 65%), #067526;
+    radial-gradient(ellipse at 15% 100%, #7c772b, transparent 65%),
+    radial-gradient(ellipse at 100% 0%, #6c5e22, transparent 70%), #615419;
 }
 .identity-card strong {
   font-size: 22px;

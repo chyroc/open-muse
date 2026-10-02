@@ -1,11 +1,9 @@
-import { formatLocale, t } from "../shared/i18n";
+import { systemLanguage, t } from "../shared/i18n";
 import { useEffect, useRef, useState } from "react";
 import {
-  CalendarClock,
   ChevronDown,
   Fingerprint,
   Heart,
-  History,
   List,
   LoaderCircle,
   MessageCircle,
@@ -21,7 +19,7 @@ import type {
   IdentityDocument,
   IdentityDocumentName,
 } from "../shared/identity";
-import type { AgentEvent, Session } from "../shared/types";
+import type { AgentEvent } from "../shared/types";
 import type { Client } from "./api";
 import { CompanionAvatar } from "./ChatUI";
 import { Markdown, PermissionCard } from "./components";
@@ -31,14 +29,48 @@ import { activityTurns } from "../shared/activity";
 import { UpcomingPanel } from "./UpcomingPanel";
 import "./identity.css";
 
+// Scheduled work: a clock whose face is drawn as dashes.
+function UpcomingIcon({
+  size = 23,
+  strokeWidth = 1.8,
+}: {
+  size?: number;
+  strokeWidth?: number;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M12 3a9 9 0 1 1-8.5 6" strokeDasharray="2.6 2.6" />
+      <path d="M12 7.5V12l3 2" />
+    </svg>
+  );
+}
+
 const tabs = [
   { name: "Activity", icon: List },
   { name: "Approvals", icon: ShieldCheck },
-  { name: "Upcoming", icon: CalendarClock },
   { name: "Desktop", icon: Monitor },
-  { name: "Recent", icon: History },
+  { name: "Upcoming", icon: UpcomingIcon },
   { name: "Identity", icon: Fingerprint },
 ] as const;
+
+// Chinese names these tabs differently from the shared wording; English keeps
+// the shared source strings, so other clients are unaffected.
+function tabLabel(name: (typeof tabs)[number]["name"]) {
+  if (systemLanguage() !== "zh-CN") return t(name);
+  if (name === "Approvals") return t("Approvals tab");
+  if (name === "Desktop") return t("Desktop tab");
+  if (name === "Upcoming") return t("Upcoming tab");
+  return t(name);
+}
 
 export function IdentityCards({
   identity,
@@ -81,13 +113,13 @@ export function IdentityCards({
               <footer>
                 <time>
                   {date && Number.isFinite(date.getTime())
-                    ? date
-                        .toLocaleDateString(formatLocale(), {
-                          month: "2-digit",
-                          day: "2-digit",
-                          year: "2-digit",
-                        })
-                        .replaceAll("/", ".")
+                    ? [
+                        date.getMonth() + 1,
+                        date.getDate(),
+                        date.getFullYear() % 100,
+                      ]
+                        .map((part) => String(part).padStart(2, "0"))
+                        .join(".")
                     : doc.id
                       ? t("Saved")
                       : t("Not saved yet")}
@@ -113,7 +145,6 @@ export function CompanionSheet({
   onClose,
   status,
   sessionId,
-  sessions,
   events,
   permissions,
   busy,
@@ -127,7 +158,6 @@ export function CompanionSheet({
   onClose: () => void;
   status: string;
   sessionId?: string;
-  sessions: Session[];
   events: AgentEvent[];
   permissions: AgentEvent[];
   busy: boolean;
@@ -260,7 +290,7 @@ export function CompanionSheet({
           <button
             key={name}
             role="tab"
-            aria-label={t(name)}
+            aria-label={tabLabel(name)}
             aria-selected={tab === name}
             aria-controls="companion-tab-content"
             onClick={() => setTab(name)}
@@ -273,7 +303,7 @@ export function CompanionSheet({
         className="companion-tab-content"
         id="companion-tab-content"
         role="tabpanel"
-        aria-label={t(tab)}
+        aria-label={tabLabel(tab)}
       >
         {error && (
           <p className="inline-error" role="alert">
@@ -346,7 +376,6 @@ export function CompanionSheet({
         )}
         {tab === "Approvals" && (
           <section className="companion-approvals">
-            <h2>{t("Approvals")}</h2>
             {permissions.length ? (
               permissions.map((event) => (
                 <PermissionCard
@@ -357,14 +386,9 @@ export function CompanionSheet({
                 />
               ))
             ) : (
-              <div className="companion-empty">
-                <ShieldCheck size={31} />
-                <h3>{t("You’re all caught up")}</h3>
-                <p>
-                  {t(
-                    "No actions are waiting for your approval in this conversation.",
-                  )}
-                </p>
+              <div className="companion-empty centered">
+                <h3>{tabLabel("Approvals")}</h3>
+                <p>{t("No approvals yet")}</p>
               </div>
             )}
           </section>
@@ -384,28 +408,6 @@ export function CompanionSheet({
             <a href="#/studio" onClick={onClose}>
               {t("View workspace in MA Studio")}
             </a>
-          </section>
-        )}
-        {tab === "Recent" && (
-          <section className="companion-recent">
-            <h2>{t("Recent conversations")}</h2>
-            {sessions.length ? (
-              sessions.slice(0, 20).map((session) => (
-                <a
-                  href={`#/task/${session.id}`}
-                  key={session.id}
-                  onClick={onClose}
-                >
-                  <MessageCircle size={21} />
-                  <span>{session.title || t("Untitled conversation")}</span>
-                </a>
-              ))
-            ) : (
-              <div className="companion-empty">
-                <History size={30} />
-                <h3>{t("No conversations yet")}</h3>
-              </div>
-            )}
           </section>
         )}
       </div>

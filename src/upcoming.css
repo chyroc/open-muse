@@ -1,7 +1,11 @@
-.upcoming-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+/* Items group under how often they repeat, like the Activity days. */
+.upcoming-group + .upcoming-group {
+  margin-top: 20px;
+}
+.upcoming-group h3 {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 700;
 }
 .upcoming-list {
   list-style: none;
@@ -28,19 +32,16 @@
   gap: 3px;
 }
 .upcoming-list strong {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.upcoming-list span {
-  font-size: 14px;
-  color: #3a3a3c;
-}
+.upcoming-list span,
 .upcoming-list small {
-  font-size: 13px;
-  color: #8e8e93;
+  font-size: 15px;
+  color: #77777c;
 }
 .upcoming-list li.paused > div {
   opacity: 0.55;

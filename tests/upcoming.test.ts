@@ -193,6 +193,7 @@ describe("Upcoming schedules", () => {
       t("Every {days} at {time}", { days: "周一", time: "09:00" }, "zh-CN"),
     ).toBe("每周一 09:00");
     expect(t("Upcoming", {}, "zh-CN")).toBe("即将到来");
+    expect(t("Upcoming tab", {}, "zh-CN")).toBe("近期");
   });
 
   it("tells the agent how to keep and honestly describe upcoming items", () => {
