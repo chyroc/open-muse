@@ -13,6 +13,18 @@
 
 Open Muse is a personal AI task assistant built on Volcano Ark Managed Agents (MA). It ships a mobile-first web app, an iOS app, a macOS native shell, and a retained Android project.
 
+Current focus: the iOS app comes first, the macOS app second. Do not modify the web app or the Android project unless explicitly requested.
+
+Goals for the iOS app:
+
+1. Read iOS health data (HealthKit), including on-demand reads triggered from the conversation, e.g. asking "how was my workout today?" triggers a fresh health query.
+2. Carry out arbitrary Lark (Feishu) operations through lark-cli.
+
+Goals for the macOS app:
+
+1. Operate the Mac through computer-use integration.
+2. Carry out arbitrary Lark (Feishu) operations through lark-cli.
+
 - `src/` — React UI and direct MA client; `src/direct/` owns local auth, storage, and provisioning
 - `shared/` — event types, approval policy, and the MA API catalog/contract
 - `server/` — Open Muse service (Cloudflare Worker + D1): Muse account verification, per-account encrypted Ark keys, background work
@@ -43,10 +55,38 @@ Requires Node.js 22.21+. Native Apple builds require Xcode.
 
 - Run `npm run check` and `npm run build` before committing. When changing native bridges or assets, also verify the affected platform build; state explicitly which checks were not run.
 - Use Conventional Commits (`feat`, `fix`, `refactor`, `test`, `docs`, `chore`), one logical change per commit.
-- Commit only source code, required build configuration, reproducible tests, and public documentation. Never commit credentials, databases, private hostnames, personal paths, device logs, IPAs, or DMGs.
+- Commit only source code, required build configuration, reproducible tests, and public documentation. Never commit sensitive information of any kind: credentials, API keys, tokens, passwords, secrets, databases, private hostnames, personal paths, device logs, IPAs, or DMGs. Never commit confidential company information, including internal product names, internal hosts or URLs, internal tools, and unreleased code or documents.
 - Keep generated artifacts and personal research in ignored local directories (`.build/`, `.data/`, `resources/`, `references/`).
 - Stage files selectively; review `git diff --cached` and `git diff --cached --check` before committing.
 - Docs describe current behavior and usage, not work history. Real cloud testing requires explicit authorization and non-destructive cases.
+
+## Concurrent sessions
+
+- Multiple sessions may work in the same directory at the same time. The worktree, branch, Git index, running processes, and generated output are shared; never assume exclusive ownership.
+- Check `git status --short` and relevant diffs before editing. Re-read the target content immediately before applying changes; unexpected changes may belong to another active session.
+- Keep edits scoped to the current task. Preserve unrelated changes, including untracked files; never overwrite, revert, delete, or stash another session's work. Avoid repository-wide formatting or cleanup.
+- If concurrent edits overlap and cannot be safely combined, pause work on that file and coordinate with the user or the other session. Continue independent work where possible.
+- Stage and commit only this session's changes, using selective hunks when a file contains shared edits. Inspect the shared index before staging and committing; never unstage or commit another session's changes. Branch switches and worktree-wide Git operations require explicit authorization and coordination.
+- Do not stop another session's processes. Use session-specific temporary and build paths where supported, and coordinate commands that overwrite shared generated output.
+
+## Interaction and motion
+
+The iOS and macOS apps target the interaction and animation quality of a polished first-party companion app. Calibrate the *feel* against a best-in-class reference app on a real device.
+
+- Experience the reference app directly (on-device, in the Simulator, or via screen recording). Capture observable behavior only: what moves, in which direction, for how long, with what easing, and how it responds to input.
+- Translate observations into concrete, named motion specs we own — duration, spring response/damping ratio, content-transition style, opacity/scale/offset curves, gesture thresholds, and haptics. Put shared numbers in one place rather than scattering magic values.
+
+What "not stiff" means in practice:
+
+- Prefer spring curves over linear/ease-in-out for anything driven by touch or focus; reserve ease-out/ease-in curves for short non-interactive fades.
+- Views follow gestures while they happen, not after they finish; cancellation springs back to the rest state.
+- Navigation and sheet transitions carry their content (shared-element feel where reasonable) and keep interactive pop/dismiss working.
+- Message streams animate insertion, updates, and loading as a continuous flow; typing/streaming state settles without jumps, and keyboard tracking never fights the scroll position.
+- Buttons and rows have press feedback (scale/opacity/highlight) that releases on touch-up; nothing should only react on tap-end.
+- Respect the user's Reduce Motion setting: replace large movement with short opacity/scale crossfades instead of dropping animation entirely.
+- Match dark/light appearance, Dynamic Type, and the localization catalog; motion and layout must hold up in both English and Simplified Chinese.
+
+Before considering a screen done, run it on the target device and compare the interaction rhythm against the reference. If a transition feels mechanical, tune the spring/timing first instead of accepting it.
 
 ## Safety boundaries
 
