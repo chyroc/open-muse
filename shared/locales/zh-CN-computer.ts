@@ -95,4 +95,21 @@ export const zhComputer: Record<string, string> = {
   "App data": "App 数据",
   "This app has no tools that read Mail, Messages, Notes or WhatsApp data, so there is nothing to allow per app.":
     "此 App 没有读取邮件、信息、备忘录或 WhatsApp 数据的工具，因此无需逐个 App 授权。",
+  "Permissions required": "所需权限",
+  "Turn off in System Settings": "在系统设置中关闭",
+  "Turn off in System Settings: {permission}": "在系统设置中关闭：{permission}",
+  "Open System Settings: {permission}": "打开系统设置：{permission}",
+  "{permission} granted": "已授予{permission}",
+  "Computer use enables Open Muse to click, type and use apps on your computer.":
+    "电脑操控让 Open Muse 可以在你的电脑上点按、输入和使用 App。",
+  "Every action still waits for your approval in the chat.":
+    "每个操作仍会在聊天中等待你的批准。",
+  "Screenshots, clicks, typing and opening apps run as soon as your assistant asks. Calendar and Location still ask.":
+    "截屏、点按、输入和打开 App 会在助手请求时直接执行。日历和位置仍会询问。",
+  "Every computer control request is declined, and your assistant is told not to try another way.":
+    "所有电脑控制请求都会被拒绝，助手也会被告知不要换一种方式尝试。",
+  "Each request shows what it will do. Allow it once, allow the rest of that conversation, or decline.":
+    "每个请求都会说明将要做什么。你可以允许一次、允许该对话中的后续操作，或拒绝。",
+  "Open Muse can't see or use apps you add here.":
+    "Open Muse 无法查看或使用你在这里添加的 App。",
 };

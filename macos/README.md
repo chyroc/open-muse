@@ -115,8 +115,9 @@ the language for one run. Builds without the variable do not contain the tour.
 
 The agent declares `mac_*` custom tools (screenshot, click, type, keys, scroll,
 drag, open an app, address or file, list apps and windows). MA waits for this
-app to answer them. Nothing runs until Settings > Computer use is on, where the
-Screen Recording and Accessibility permissions are shown and requested. Each
+app to answer them. Settings > Computer use lists the Accessibility and Screen
+Recording permissions first; its controls stay faded until macOS grants both,
+and nothing runs until computer use is then switched on. Each
 pending call is described above the composer and needs an answer: allow once,
 allow the rest of that chat, or decline. Under Manage permissions, Computer
 control can instead be set to Always allow, which runs screenshot, input, open

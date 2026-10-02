@@ -217,7 +217,7 @@ describe("Mac computer control policy", () => {
       value: { messageHandlers: { museComputer: { postMessage } } },
     });
     await mount(<ComputerSettings />);
-    expect(host!.textContent).toContain("Every action asks first");
+    expect(host!.textContent).toContain("Each request shows what it will do");
     const select = host!.querySelector<HTMLSelectElement>(
       'select[aria-label="Computer control"]',
     )!;
@@ -229,7 +229,7 @@ describe("Mac computer control policy", () => {
       operation: "policy",
       value: "allow",
     });
-    expect(host!.textContent).toContain("Computer control runs without asking");
+    expect(host!.textContent).toContain("run as soon as your assistant asks");
     const swift = readFileSync("macos/OpenMuse.swift", "utf8");
     expect(swift).toContain('private let policyKey = "computerUse.policy"');
   });
@@ -280,17 +280,31 @@ describe("Mac computer use", () => {
       is_error: true,
     });
   });
-  it("turns computer use on and asks macOS for the missing permission", async () => {
+  it("waits for both macOS permissions, then turns computer use on", async () => {
     const post = shell(false);
     await mount(<ComputerSettings />);
     const toggle = host!.querySelector<HTMLInputElement>("input[role=switch]")!;
     expect(toggle.checked).toBe(false);
-    await act(async () => toggle.click());
-    expect(post).toHaveBeenCalledWith({ operation: "enable", value: "true" });
-    // Accessibility is granted; Screen Recording is not.
-    expect(host!.textContent).toContain("Allowed");
+    // Accessibility is granted; Screen Recording is not, so the controls wait.
+    expect(toggle.disabled).toBe(true);
+    expect(
+      host!.querySelector(".permission-settings-controls")!.getAttribute(
+        "data-disabled",
+      ),
+    ).toBe("true");
+    expect(host!.textContent).toContain("Turn off in System Settings");
+    expect(host!.textContent).toContain("Accessibility granted");
     await act(async () => button("Open System Settings").click());
     expect(post).toHaveBeenCalledWith({ operation: "request", kind: "screen" });
+    post.mockImplementation(async () => ({
+      enabled: false,
+      accessibility: true,
+      screen: true,
+    }));
+    await act(async () => window.dispatchEvent(new Event("focus")));
+    expect(toggle.disabled).toBe(false);
+    await act(async () => toggle.click());
+    expect(post).toHaveBeenCalledWith({ operation: "enable", value: "true" });
   });
   it("keeps the screen awake and blocks apps from settings", async () => {
     let state = {

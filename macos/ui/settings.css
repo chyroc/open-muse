@@ -442,3 +442,154 @@
 .settings-search {
   margin: 0 0 12px;
 }
+/* Computer use: the permission rows lead, with a blue link per permission,
+   and the controls below stay faded until macOS grants both. */
+.computer-permissions {
+  padding: 0;
+}
+.computer-permission-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px 14px 8px 8px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+.computer-permission-row:last-child {
+  border-bottom: 0;
+}
+.computer-permission-icon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+.computer-permission-title {
+  flex: 1;
+  min-width: 0;
+}
+.settings-link {
+  flex-shrink: 0;
+  padding: 0 8px 0 0;
+  border-radius: 8px;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 500;
+}
+.settings-link:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+.settings-footnote {
+  margin: 0;
+  padding: 8px 8px 4px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text-2);
+}
+.permission-settings-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 24px;
+}
+.permission-settings-controls h2 {
+  margin-top: 0 !important;
+}
+.permission-settings-controls[data-disabled="true"] {
+  pointer-events: none;
+  opacity: 0.35;
+}
+.permission-settings-controls[data-disabled="true"] :disabled {
+  opacity: 1;
+}
+/* A choice shown as its value and a chevron, without a filled pill. */
+.settings-dropdown-row {
+  align-items: center;
+  min-height: 48px;
+}
+.settings-row > .settings-dropdown-label {
+  margin-left: 0;
+  font-size: 14px;
+  color: var(--text);
+}
+.settings-dropdown {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  color: var(--text-2);
+}
+.settings-dropdown select {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  padding: 4px 22px 4px 4px;
+  text-align: right;
+  cursor: pointer;
+}
+.settings-dropdown svg {
+  position: absolute;
+  right: 0;
+  pointer-events: none;
+}
+.computer-blocked {
+  padding: 6px;
+}
+.computer-blocked-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+.computer-blocked-row span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.computer-blocked-row .icon-button {
+  opacity: 0;
+  color: var(--text-2);
+}
+.computer-blocked-row:hover,
+.computer-blocked-row:focus-within {
+  background: var(--fill-hover);
+}
+.computer-blocked-row:hover .icon-button,
+.computer-blocked-row:focus-within .icon-button {
+  opacity: 1;
+}
+.computer-add-app {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 8px;
+  border-radius: 12px;
+  color: var(--accent);
+  font-size: 15px;
+  line-height: 20px;
+  text-align: start;
+}
+.computer-add-app:hover:not(:disabled) {
+  background: var(--fill-hover);
+}
+.computer-add-app:disabled {
+  cursor: not-allowed;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
