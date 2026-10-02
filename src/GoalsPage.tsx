@@ -1,6 +1,7 @@
 import { systemLanguage, t } from "../shared/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  CircleDot,
   Building2,
   Check,
   ChevronRight,
@@ -12,7 +13,6 @@ import {
   MessageCircle,
   Palette,
   Plus,
-  RefreshCw,
   Users,
 } from "lucide-react";
 import { goalCategories, type GoalCategory } from "../shared/goals";
@@ -21,6 +21,7 @@ import type { Client } from "./api";
 import { Markdown } from "./components";
 import { PageHeader, Sheet } from "./MusePages";
 import { useRefreshHandler } from "./PullToRefresh";
+import { PopoverMenu } from "./PopoverMenu";
 import "./goals.css";
 
 // In Chinese, career goals are named 事业 here. The shared catalog
@@ -301,36 +302,31 @@ export function GoalsPage({
         </Sheet>
       )}
       {optionsOpen && (
-        <Sheet title={t("Goals options")} onClose={onOptionsClose}>
-          <div className="chat-action-list">
-            <button
-              onClick={() => {
-                onOptionsClose();
-                setCompleted(true);
-              }}
-            >
-              {t("Completed goals")}
-              <ChevronRight size={19} />
-            </button>
-            <button
-              onClick={() => {
-                setSubtitles(!subtitles);
-                onOptionsClose();
-              }}
-            >
-              {subtitles ? t("Hide subtitles") : t("Show subtitles")}
-            </button>
-            <button
-              onClick={() => {
-                onOptionsClose();
-                void reload();
-              }}
-            >
-              <RefreshCw size={20} />
-              {t("Refresh goals")}
-            </button>
-          </div>
-        </Sheet>
+        <PopoverMenu
+          label={t("Goals options")}
+          onClose={onOptionsClose}
+          items={[
+            {
+              kind: "item",
+              label: t("Show subtitles"),
+              checked: subtitles,
+              onSelect: () => setSubtitles(true),
+            },
+            {
+              kind: "item",
+              label: t("Hide subtitles"),
+              checked: !subtitles,
+              onSelect: () => setSubtitles(false),
+            },
+            { kind: "separator" },
+            {
+              kind: "item",
+              label: t("Completed goals"),
+              icon: <CircleDot size={21} aria-hidden="true" />,
+              onSelect: () => setCompleted(true),
+            },
+          ]}
+        />
       )}
       {completed && !current && (
         <Sheet title={t("Completed goals")} onClose={() => setCompleted(false)}>

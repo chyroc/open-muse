@@ -569,7 +569,7 @@ final class MuseLiveUITests: XCTestCase {
         tap(app.links["Goals"], timeout: 40)
         if !app.buttons["Goals options"].waitForExistence(timeout: 3) { tap(app.links["Goals"]) }
         tap(app.buttons["Goals options"])
-        tap(app.buttons["Completed goals"])
+        tap(app.menuItems["Completed goals"])
         let saved = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Open goal: Goal-check-")).firstMatch
         XCTAssertTrue(saved.waitForExistence(timeout: 60))
         let originalName = saved.label.replacingOccurrences(of: "Open goal: ", with: "")
@@ -608,7 +608,7 @@ final class MuseLiveUITests: XCTestCase {
         tap(app.links["Goals"], timeout: 40)
         if !app.buttons["Goals options"].waitForExistence(timeout: 3) { tap(app.links["Goals"]) }
         tap(app.buttons["Goals options"])
-        tap(app.buttons["Completed goals"])
+        tap(app.menuItems["Completed goals"])
         tap(app.buttons["Open goal: \(originalName)-edited"], timeout: 60)
         renameGoal(originalName)
         capture("goals-name-restore-verified")
@@ -684,7 +684,7 @@ final class MuseLiveUITests: XCTestCase {
         tap(app.links["Goals"], timeout: 40)
         if !app.buttons["Goals options"].waitForExistence(timeout: 3) { tap(app.links["Goals"]) }
         tap(app.buttons["Goals options"])
-        tap(app.buttons["Completed goals"])
+        tap(app.menuItems["Completed goals"])
         tap(app.buttons["Open goal: \(marker)"], timeout: 60)
         XCTAssertTrue(app.buttons["Mark as active"].exists)
         capture("goal-completion-survives-relaunch")

@@ -1,0 +1,109 @@
+/* A glass menu anchored under the trailing header button, opening from its
+   top-right corner on the release spring; 52pt rows of 17pt text. */
+.popover-menu {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.popover-menu:focus {
+  outline: none;
+}
+.popover-menu::backdrop {
+  background: rgb(0 0 0 / 4%);
+}
+.popover-menu-card {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 2px);
+  right: 16px;
+  width: 250px;
+  padding: 6px 0;
+  border-radius: 28px;
+  background: rgb(252 252 252 / 88%);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 70%),
+    0 14px 48px rgb(0 0 0 / 16%);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  backdrop-filter: blur(24px) saturate(1.6);
+  transform-origin: 100% 0;
+  animation: popover-menu-open var(--motion-release-duration)
+    var(--motion-release-ease) both;
+}
+.popover-menu-card button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 20px;
+  font-size: 17px;
+  color: #000;
+  text-align: left;
+  transition: background-color var(--motion-press-duration) ease-out;
+}
+.popover-menu-card button.with-check {
+  padding-left: 12px;
+}
+.popover-menu-card button:active {
+  background: rgb(0 0 0 / 6%);
+}
+.popover-menu-check {
+  display: grid;
+  flex: 0 0 18px;
+  place-items: center;
+}
+.popover-menu-header {
+  margin: 0;
+  padding: 10px 20px 4px 42px;
+  font-size: 15px;
+  color: #8a8a8e;
+}
+.popover-menu-card hr {
+  height: 1px;
+  margin: 6px 20px;
+  border: 0;
+  background: rgb(0 0 0 / 8%);
+}
+.popover-menu.closing .popover-menu-card {
+  opacity: 0;
+  transform: scale(0.9);
+  transition:
+    opacity 160ms ease-in,
+    transform 160ms ease-in;
+}
+@keyframes popover-menu-open {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes popover-menu-open {
+    from {
+      opacity: 0;
+    }
+  }
+}
+@media (prefers-color-scheme: dark) {
+  .popover-menu-card {
+    background: rgb(44 44 46 / 88%);
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 8%),
+      0 14px 48px rgb(0 0 0 / 50%);
+  }
+  .popover-menu-card button {
+    color: #fff;
+  }
+  .popover-menu-card button:active {
+    background: rgb(255 255 255 / 8%);
+  }
+  .popover-menu-card hr {
+    background: rgb(255 255 255 / 12%);
+  }
+}

@@ -278,7 +278,7 @@ export const zhCN: Record<string, string> = {
   "Connect to start a goal": "连接后开始制定目标",
   "Opening chat prepares a draft. Nothing is sent until you press Send.":
     "打开对话只会准备草稿，点击发送后才会提交。",
-  "Completed goals": "已完成的目标",
+  "Completed goals": "已完成目标",
   "Hide subtitles": "隐藏副标题",
   "Show subtitles": "显示副标题",
   "No completed goals yet.": "暂无已完成的目标。",
