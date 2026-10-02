@@ -1,0 +1,95 @@
+/* A floating sheet 8pt from the screen edges with concentric corners:
+   77pt tiles, 54pt rows, 15pt padding, rising on the sheet spring. */
+.attach-sheet {
+  position: fixed;
+  inset: auto 8px auto;
+  bottom: calc(100dvh - var(--app-top, 0px) - var(--app-height, 100dvh) + 8px);
+  width: auto;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 15px 15px 22px;
+  border: 0;
+  border-radius: 38px;
+  color: #000;
+  background: rgb(242 242 244 / 96%);
+  box-shadow: 0 10px 40px rgb(0 0 0 / 14%);
+  -webkit-backdrop-filter: blur(30px);
+  backdrop-filter: blur(30px);
+  transform-origin: 30px 100%;
+  animation: attach-sheet-in var(--motion-sheet-duration)
+    var(--motion-release-ease) backwards;
+}
+.attach-sheet:focus {
+  outline: none;
+}
+.attach-sheet::backdrop {
+  background: var(--sheet-dim);
+  animation: attach-sheet-dim var(--motion-sheet-duration) ease-out both;
+}
+.attach-sheet h2 {
+  margin: 0 0 12px 23px;
+  font-size: 15px;
+  line-height: 30px;
+  font-weight: 400;
+  color: #8a8a8e;
+}
+.attach-tiles {
+  display: flex;
+  gap: 8px;
+}
+.attach-tile {
+  display: grid;
+  place-items: center;
+  width: 77px;
+  height: 77px;
+  border-radius: 20px;
+  color: #000;
+  background: #fff;
+  transition: transform var(--motion-press-duration) ease-out;
+}
+.attach-tile:active {
+  transform: scale(var(--motion-press-scale));
+}
+.attach-rows {
+  margin-top: 30px;
+  overflow: hidden;
+  border-radius: 20px;
+  background: #fff;
+}
+.attach-rows button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 54px;
+  padding: 0 16px;
+  font-size: 17px;
+  color: #000;
+  text-align: left;
+  transition: background-color var(--motion-press-duration) ease-out;
+}
+.attach-rows button:active {
+  background: #ececee;
+}
+.attach-rows button + button {
+  border-top: 1px solid #e8e8e8;
+}
+
+@keyframes attach-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.92);
+  }
+}
+@keyframes attach-sheet-dim {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes attach-sheet-in {
+    from {
+      opacity: 0;
+    }
+  }
+}

@@ -9,10 +9,13 @@ import {
   attachmentToolNote,
   attachmentType,
   checkAttachment,
+  documentAccept,
+  imageAccept,
   messageAttachments,
 } from "../shared/attachments";
 import type { AgentEvent } from "../shared/types";
 import { DirectAttachments } from "../src/direct/attachments";
+import { AttachmentSheet } from "../src/AttachmentSheet";
 import { MessageAttachments, StagedAttachments } from "../src/Attachments";
 import { ChatComposer } from "../src/ChatUI";
 
@@ -60,6 +63,20 @@ describe("Attachment rules", () => {
     expect(attachmentAccept).toContain("image/png");
     expect(attachmentAccept).toContain(".md");
     expect(attachmentAccept).not.toContain("svg");
+    // Documents alone, so the file browser opens without a photo menu first.
+    expect(documentAccept).toContain(".pdf");
+    expect(documentAccept).not.toContain("image");
+    expect(imageAccept).toContain("image/png");
+  });
+  it("offers camera, photos, and documents in the attachment sheet", () => {
+    const html = renderToStaticMarkup(
+      <AttachmentSheet onClose={() => {}} onFiles={() => {}} />,
+    );
+    expect(html).toContain('aria-label="Camera"');
+    expect(html).toContain('aria-label="Photos"');
+    expect(html).toContain("Add file");
+    expect(html).toContain('capture="environment"');
+    expect(html).toContain(`accept="${documentAccept}"`);
   });
   it("limits count, size and empty files", () => {
     expect(() => checkAttachment("a.png", "image/png", 1, 4)).toThrow(
@@ -276,7 +293,7 @@ describe("DirectAttachments", () => {
 });
 
 describe("Attachment UI", () => {
-  it("replaces the composer's plus action with a native file picker", () => {
+  it("opens the attachment sheet from the composer's plus action", () => {
     const html = renderToStaticMarkup(
       <ChatComposer
         value=""
@@ -291,8 +308,7 @@ describe("Attachment UI", () => {
       />,
     );
     expect(html).toContain('aria-label="Add attachment"');
-    expect(html).toContain('type="file"');
-    expect(html).toContain("multiple");
+    expect(html).toContain('aria-haspopup="dialog"');
     expect(html).not.toContain('aria-label="Chat actions"');
     expect(html).toMatch(/aria-label="Send message"(?! disabled)/);
     const pending = renderToStaticMarkup(

@@ -26,6 +26,14 @@ const documentTypes: Record<string, string> = {
   markdown: "text/markdown",
   csv: "text/csv",
 };
+// Picker filters for the photo library and for documents. Any image type in
+// a filter makes the system offer the photo library first, so documents are
+// listed on their own and the file browser opens directly.
+export const imageAccept = [...imageTypes].join(",");
+export const documentAccept = [
+  ...new Set(Object.values(documentTypes)),
+  ...Object.keys(documentTypes).map((extension) => `.${extension}`),
+].join(",");
 export const attachmentAccept = [
   ...imageTypes,
   ...new Set(Object.values(documentTypes)),

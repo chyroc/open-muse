@@ -1064,13 +1064,21 @@ final class MuseLiveUITests: XCTestCase {
         closePreview(openPreview(file: name, content: "# Library check \((name as NSString).deletingPathExtension)", close: "关闭预览"), detail: "预览文件")
     }
 
-    // Picks a synthetic fixture from "On My iPhone" through the system picker.
-    // Setup: put attachment-check.png (a solid teal square) and attachment-check.md
-    // (containing "The verification word is juniper-4821.") in the simulator's
-    // On My iPhone storage. Never use personal photos or documents.
+    // Picks a synthetic fixture through the attachment sheet: the image from the
+    // photo library, the document from "On My iPhone".
+    // Setup: add attachment-check.png (a solid teal square) as the newest photo
+    // with `xcrun simctl addmedia`, and put attachment-check.md (containing
+    // "The verification word is juniper-4821.") in the simulator's On My iPhone
+    // storage. Never use personal photos or documents.
     private func chooseFixture(_ identifier: String) {
         tap(app.buttons["Add attachment"], timeout: 30)
-        tap(app.buttons["Choose Files"])
+        if identifier.hasSuffix("png") {
+            tap(app.buttons["Photos"])
+            tap(app.scrollViews.images.firstMatch, timeout: 20)
+            if app.buttons["Add"].waitForExistence(timeout: 3) { app.buttons["Add"].tap() }
+            return
+        }
+        tap(app.buttons["Add file"])
         let search = app.searchFields["Search"]
         tap(search, timeout: 20)
         search.typeText("attachment-check")

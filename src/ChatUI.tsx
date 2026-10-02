@@ -21,7 +21,7 @@ import {
   X,
 } from "lucide-react";
 import type { Session } from "../shared/types";
-import { attachmentAccept } from "../shared/attachments";
+import { AttachmentSheet } from "./AttachmentSheet";
 import type { ConversationIndex } from "./direct/conversations";
 import { Sheet } from "./MusePages";
 
@@ -205,7 +205,7 @@ export function ChatComposer({
   name?: string;
 }) {
   const input = useRef<HTMLTextAreaElement>(null);
-  const picker = useRef<HTMLInputElement>(null);
+  const [attaching, setAttaching] = useState(false);
   const [dictationHint, setDictationHint] = useState(false);
   const sendable =
     (Boolean(value.trim()) || attachmentsReady) && !attachmentsPending;
@@ -236,25 +236,19 @@ export function ChatComposer({
           if (sendable && !busy && !disabled && !running) onSend();
         }}
       >
-        <input
-          ref={picker}
-          type="file"
-          multiple
-          hidden
-          accept={attachmentAccept}
-          onChange={(event) => {
-            const files = [...(event.target.files ?? [])];
-            // Reset so choosing the same file again still fires a change.
-            event.target.value = "";
-            if (files.length) onAttach(files);
-          }}
-        />
+        {attaching && (
+          <AttachmentSheet
+            onClose={() => setAttaching(false)}
+            onFiles={onAttach}
+          />
+        )}
         <button
           type="button"
           className="composer-action"
           aria-label={t("Add attachment")}
+          aria-haspopup="dialog"
           disabled={disabled || busy}
-          onClick={() => picker.current?.click()}
+          onClick={() => setAttaching(true)}
         >
           <Plus size={24} strokeWidth={1.5} />
         </button>
