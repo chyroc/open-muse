@@ -1,0 +1,1011 @@
+/* Dark appearance. The app follows the system setting with the iOS dark
+   palette: a black page, elevated surfaces at #1c1c1e and #2c2c2e, glass
+   controls as translucent dark gray, white text with gray secondary text,
+   and accents lifted for contrast. Illustrations keep their own colors. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    color: #fff;
+    background: #000;
+    --bg: #000;
+    --surface: #1c1c1e;
+    --ink: #fff;
+    --muted: #98989f;
+    --line: #38383a;
+    --green: #0a84ff;
+    --chat-paper: #000;
+    --chat-gray: #262628;
+    --chat-blue: #0b3d66;
+  }
+  /* chat.css */
+  .glass-button {
+    border: 1px solid #38383a;
+    box-shadow:
+      inset 0 0 0 2px rgb(255 255 255 / 5%),
+      0 3px 14px rgb(0 0 0 / 5%);
+    background: rgb(0 0 0 / 68%);
+    color: #ffffff;
+  }
+  .companion-subtitle {
+    color: #8e8e93;
+  }
+  .companion-name {
+    background: rgb(0 0 0 / 75%);
+    border: 1px solid #38383a;
+    box-shadow:
+      inset 0 0 0 2px rgb(255 255 255 / 4%),
+      0 3px 12px rgb(0 0 0 / 4%);
+  }
+  .side-chat-title {
+    color: #aeaeb2;
+  }
+  .connect-notice {
+    color: #aeaeb2;
+    background: #2c2c2e;
+  }
+  .main-chat-empty {
+    color: #aeaeb2;
+  }
+  .main-chat-empty h1 {
+    color: #ffffff;
+  }
+  .chat-loading {
+    color: #aeaeb2;
+  }
+  .chat-time {
+    color: #aeaeb2;
+  }
+  .chat-bubble {
+    color: #ffffff;
+  }
+  .bubble-options {
+    color: #aeaeb2;
+  }
+  .chat-typing i {
+    background: #636366;
+  }
+  .companion-shell .activity-toggle {
+    color: #8e8e93;
+  }
+  .chat-composer {
+    border: 1px solid #38383a;
+    background: rgb(44 44 46 / 82%);
+    box-shadow:
+      inset 0 0 0 2px rgb(255 255 255 / 6%),
+      0 4px 18px rgb(0 0 0 / 12%);
+  }
+  .chat-composer textarea {
+    color: #ffffff;
+  }
+  .chat-composer textarea::placeholder {
+    color: #8e8e93;
+  }
+  .composer-send {
+    background: #f2f2f7;
+    color: #000000;
+  }
+  .dictation-button {
+    color: #636366;
+  }
+  .dictation-hint,
+  .approval-notice {
+    color: #aeaeb2;
+  }
+  .scroll-to-latest {
+    background: #1c435f;
+    box-shadow: 0 2px 7px rgb(0 0 0 / 20%);
+  }
+  .glass-tab-bar {
+    border: 1px solid #38383a;
+    background: rgb(44 44 46 / 82%);
+    box-shadow:
+      inset 0 0 0 2px rgb(255 255 255 / 6%),
+      0 4px 18px rgb(0 0 0 / 12%);
+  }
+  .glass-tab-bar a {
+    color: #ffffff;
+  }
+  .tab-selection {
+    background: #3a3a3c;
+  }
+  .settings-studio-link {
+    background: #2c2c2e;
+  }
+  .conversation-sidebar {
+    background: #000000;
+    color: #ffffff;
+    box-shadow: 8px 0 45px rgb(0 0 0 / 40%);
+  }
+  .conversation-sidebar::backdrop {
+    background: rgb(0 0 0 / 50%);
+  }
+  .main-chat-row:active {
+    background: #3a3a3c;
+  }
+  .main-chat-row.selected {
+    background: #3a3a3c;
+  }
+  .side-chat-section {
+    border-top: 1px solid #38383a;
+    color: #8e8e93;
+  }
+  .side-chat-empty p {
+    color: #aeaeb2;
+  }
+  .side-chat-row.selected {
+    background: #2c2c2e;
+  }
+  .side-chat-row > a i {
+    background: #636366;
+  }
+  .side-chat-row > button {
+    color: #8e8e93;
+  }
+  .sidebar-search {
+    border: 1px solid #38383a;
+    background: rgb(44 44 46 / 60%);
+    box-shadow: inset 0 0 0 2px rgb(255 255 255 / 7%);
+    color: #8e8e93;
+  }
+  .companion-status-detail p {
+    color: #aeaeb2;
+  }
+  /* settings-home.css */
+  .settings-status {
+    background: #1c1c1e;
+  }
+  .settings-status-badge {
+    color: #aeaeb2;
+  }
+  .settings-status p {
+    color: #aeaeb2;
+  }
+  .settings-status button {
+    border-top: 1px solid #38383a;
+    color: #0e82ff;
+  }
+  .settings-list {
+    background: #1c1c1e;
+  }
+  .settings-list li + li::before {
+    background: #3a3a3c;
+  }
+  .settings-list-row {
+    color: #ffffff;
+  }
+  .settings-list-row:active {
+    background: #3a3a3c;
+  }
+  .settings-list-row > span:first-child,
+  .settings-list-row > svg:first-child {
+    color: #ffffff;
+  }
+  .settings-list-row > svg:last-child {
+    color: #8e8e93;
+  }
+  .companion-main:has(.settings-home),
+  .muse-sheet.grouped {
+    background: #2c2c2e;
+  }
+  .muse-sheet.grouped .settings-card {
+    background: #1c1c1e;
+  }
+  .settings-switch-row {
+    background: #1c1c1e;
+  }
+  .ios-switch {
+    background: #3a3a3c;
+  }
+  .ios-switch::before {
+    background: #1c1c1e;
+    box-shadow:
+      0 3px 8px rgb(0 0 0 / 45%),
+      0 1px 1px rgb(0 0 0 / 48%);
+  }
+  .ios-switch:checked {
+    background: #62d67f;
+  }
+  .muse-sheet.grouped .privacy-grid {
+    background: #1c1c1e;
+  }
+  .muse-sheet.grouped .about-line {
+    background: #1c1c1e;
+  }
+  .settings-reset-copy {
+    background: #1c1c1e;
+    color: #ffffff;
+  }
+  .settings-reset-actions button {
+    background: #1c1c1e;
+    color: #ffffff;
+  }
+  .settings-reset-actions .settings-reset-confirm {
+    color: #000000;
+  }
+  .settings-list-row > .settings-row-value {
+    color: #aeaeb2;
+  }
+  .settings-list-row > .settings-check {
+    color: #0e82ff;
+  }
+  /* page-sheet.css */
+  .page-sheet {
+    color: #ffffff;
+    background: #2c2c2e;
+  }
+  .page-sheet-close {
+    border: 1px solid rgb(209 209 214 / 8%);
+    color: #ffffff;
+    background: rgb(28 28 30 / 78%);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 30%);
+  }
+  /* goals.css */
+  .goals-page {
+    color: #ffffff;
+  }
+  .goal-tracking > p,
+  .goal-loading {
+    color: #aeaeb2;
+  }
+  .goal-create-section::before {
+    border-top: 1px solid #38383a;
+  }
+  .goal-create-section > p {
+    color: #aeaeb2;
+  }
+  .goal-categories button > svg {
+    color: #8e8e93;
+  }
+  .tracked-goal-row {
+    border-bottom: 1px solid #38383a;
+  }
+  .tracked-goal-row > svg {
+    color: #8e8e93;
+  }
+  .tracked-goal-row small {
+    color: #aeaeb2;
+  }
+  .goal-chat-intro > svg {
+    color: #8e8e93;
+  }
+  .goal-chat-intro p + p {
+    color: #aeaeb2;
+  }
+  .goal-chat-intro small {
+    color: #8e8e93;
+  }
+  .goal-continue {
+    background: #328bf8;
+    color: #000000;
+  }
+  .goal-state {
+    color: #aeaeb2;
+  }
+  .goal-parent {
+    color: #1e8bff;
+  }
+  .goal-plan .done {
+    color: #8e8e93;
+  }
+  .goal-subgoals > p {
+    color: #aeaeb2;
+  }
+  .goal-subgoals > button:not(.tracked-goal-row) {
+    color: #1e8bff;
+  }
+  .goal-detail-action {
+    color: #1e8bff;
+    border-bottom: 1px solid #38383a;
+  }
+  .goal-rename input {
+    border: 1px solid #38383a;
+  }
+  .goal-rename button {
+    color: #1e8bff;
+  }
+  .goal-sync-note {
+    color: #8e8e93;
+  }
+  .completed-goals > p {
+    color: #aeaeb2;
+  }
+  /* inspiration.css */
+  .inspiration-page {
+    color: #ffffff;
+  }
+  .inspiration-refresh {
+    color: #aeaeb2;
+  }
+  .feed-instructions-card {
+    border: 1px solid #38383a;
+    background: #1c1c1e;
+    box-shadow: 0 10px 30px rgb(0 0 0 / 11%);
+  }
+  .feed-instructions-card p {
+    color: #aeaeb2;
+  }
+  .feed-instructions-card footer button {
+    background: #3a3a3c;
+  }
+  .feed-instructions-card footer button:last-child {
+    background: #1d88ff;
+    color: #000000;
+  }
+  .inspiration-post {
+    border-bottom: 1px solid #38383a;
+  }
+  .post-content .markdown a,
+  .post-sources a {
+    color: #218cff;
+  }
+  .post-actions {
+    color: #aeaeb2;
+  }
+  .post-information {
+    background: #2c2c2e;
+  }
+  .post-information p {
+    color: #aeaeb2;
+  }
+  .post-information a {
+    color: #1787ff;
+  }
+  .personal-idea {
+    border-bottom: 1px solid #38383a;
+  }
+  .personal-idea > span:not(.idea-glyph) {
+    color: #aeaeb2;
+  }
+  .inspiration-empty {
+    color: #aeaeb2;
+  }
+  .inspiration-empty > svg {
+    color: #8e8e93;
+  }
+  .inspiration-empty h2 {
+    color: #ffffff;
+  }
+  .inspiration-empty a {
+    color: #1d88ff;
+  }
+  .inspiration-status {
+    color: #aeaeb2;
+  }
+  .inspiration-latest {
+    color: #8e8e93;
+  }
+  .generate-inspiration {
+    background: #2c2c2e;
+  }
+  .inspiration-bottom > a {
+    color: #aeaeb2;
+  }
+  .inspiration-bottom p {
+    color: #8e8e93;
+  }
+  .idea-detail > small {
+    color: #aeaeb2;
+  }
+  .idea-reason {
+    color: #aeaeb2;
+  }
+  .idea-start {
+    background: #1d88ff;
+    color: #000000;
+  }
+  .feed-instructions-editor::backdrop {
+    background: rgb(0 0 0 / 83%);
+  }
+  .instructions-save {
+    color: #1d88ff;
+  }
+  .feed-instructions-editor > p {
+    color: #aeaeb2;
+  }
+  .feed-instructions-editor footer {
+    color: #8e8e93;
+  }
+  /* identity.css */
+  .companion-sheet,
+  .identity-document {
+    color: #ffffff;
+  }
+  .companion-sheet::backdrop {
+    background: #000000;
+  }
+  .identity-connection svg {
+    color: #37dc77;
+  }
+  .companion-tabs {
+    border: 1px solid #38383a;
+    background: #1c1c1e;
+  }
+  .companion-tabs button[aria-selected="true"] {
+    background: #2c2c2e;
+  }
+  .identity-edit {
+    background: #2c2c2e;
+  }
+  .identity-note {
+    color: #aeaeb2;
+  }
+  .identity-note button {
+    color: #5095de;
+  }
+  .identity-note a {
+    color: #5095de;
+  }
+  .companion-empty {
+    color: #aeaeb2;
+  }
+  .companion-empty h2,
+  .companion-empty h3 {
+    color: #ffffff;
+  }
+  .companion-empty a {
+    color: #4e95e0;
+  }
+  .companion-recent a {
+    border-bottom: 1px solid #38383a;
+  }
+  .identity-document[open] {
+    background: #1c1c1e;
+  }
+  .identity-document::backdrop {
+    background: rgb(174 174 178 / 38%);
+  }
+  .document-about {
+    color: #aeaeb2;
+  }
+  .identity-document .markdown {
+    color: #ffffff;
+  }
+  .document-save {
+    color: #3a94ec;
+  }
+  .document-saved {
+    color: #1dbc5f;
+  }
+  .document-field input,
+  .document-field textarea {
+    border: 1px solid #38383a;
+    background: #000000;
+    color: #ffffff;
+  }
+  .document-cancel {
+    color: #aeaeb2;
+  }
+  .document-conflict {
+    border: 1px solid #38383a;
+  }
+  .document-conflict button,
+  .identity-document .inline-error button {
+    color: #2a87e5;
+  }
+  .document-discard {
+    background: #2c2c2e;
+  }
+  .document-discard button {
+    color: #2a87e5;
+  }
+  .document-discard button:last-child {
+    color: #d15a5a;
+  }
+  .activity-turn-icon {
+    color: #000000;
+    background: linear-gradient(160deg, #636366, #aeaeb2);
+  }
+  .activity-turn-text > span,
+  .activity-turn-text time {
+    color: #aeaeb2;
+  }
+  /* library.css */
+  .library-segments {
+    border: 1px solid #38383a;
+    background: #1c1c1e;
+  }
+  .library-segments button[aria-selected="true"] {
+    background: #2c2c2e;
+  }
+  .library-segments button:focus-visible {
+    outline: 2px solid #5b97df;
+  }
+  .library-empty > span {
+    color: #8e8e93;
+  }
+  .library-empty h2 {
+    color: #aeaeb2;
+  }
+  .library-file-cover {
+    background: #2c2c2e;
+    color: #8e8e93;
+  }
+  .library-file-cover.has-thumbnail {
+    background: #2c2c2e;
+  }
+  .file-image {
+    background: #2c2c2e;
+    color: #8e8e93;
+  }
+  .file-audio {
+    background: #2c2c2e;
+    color: #8e8e93;
+  }
+  .file-video {
+    background: #2c2c2e;
+    color: #8e8e93;
+  }
+  /* attachment-sheet.css */
+  .attach-sheet {
+    color: #ffffff;
+    background: rgb(44 44 46 / 96%);
+    box-shadow: 0 10px 40px rgb(0 0 0 / 42%);
+  }
+  .attach-sheet h2 {
+    color: #8e8e93;
+  }
+  .attach-tile {
+    color: #ffffff;
+    background: #1c1c1e;
+  }
+  .attach-rows {
+    background: #1c1c1e;
+  }
+  .attach-rows button {
+    color: #ffffff;
+  }
+  .attach-rows button:active {
+    background: #3a3a3c;
+  }
+  .attach-rows button + button {
+    border-top: 1px solid #38383a;
+  }
+  /* connectors.css */
+  .connector-search {
+    background: #1c1c1e;
+  }
+  .connector-search input {
+    color: #ffffff;
+  }
+  .connector-group {
+    background: #1c1c1e;
+  }
+  .connector-group li + li {
+    border-top: 1px solid #38383a;
+  }
+  .connector-icon {
+    background: #1c1c1e;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 15%);
+    color: #ffffff;
+  }
+  .connector-chevron {
+    color: #636366;
+  }
+  .connector-connect {
+    color: #2a85f5;
+  }
+  .connector-detail {
+    color: #aeaeb2;
+  }
+  .settings-connectors-row {
+    background: #1c1c1e;
+  }
+  /* upcoming.css */
+  .upcoming-list li {
+    border-bottom: 1px solid #38383a;
+  }
+  .upcoming-list span {
+    color: #ffffff;
+  }
+  /* choices.css */
+  .chat-choice-options button {
+    border: 1px dashed #38383a;
+    color: #ffffff;
+  }
+  .chat-choice-options button.inactive {
+    color: #aeaeb2;
+  }
+  .chat-choice-options button.selected {
+    border-color: #d1d1d6;
+  }
+  .chat-choice-options button:not(:disabled):active {
+    background: rgb(0 0 0 / 8%);
+  }
+  .choice-check {
+    color: #000000;
+    background: #f2f2f7;
+  }
+  .chat-choice small,
+  .choice-unavailable {
+    color: #aeaeb2;
+  }
+  /* attachments.css */
+  .staged-attachment {
+    border: 1px solid #38383a;
+    background: rgb(28 28 30 / 90%);
+    box-shadow: 0 1px 8px rgb(0 0 0 / 9%);
+  }
+  .attachment-thumb {
+    background: #2c2c2e;
+    color: #8e8e93;
+  }
+  .is-failed .attachment-text small {
+    color: #c46e5a;
+  }
+  .message-attachments li {
+    background: rgb(28 28 30 / 80%);
+  }
+  /* muse.css */
+  :root {
+    color: #ffffff;
+    background: #2c2c2e;
+  }
+  .muse-shell .sidebar {
+    background: #2c2c2e;
+  }
+  .muse-shell .sidebar nav a {
+    color: #aeaeb2;
+  }
+  .muse-shell .sidebar nav a.active {
+    background: #3a3a3c;
+  }
+  .muse-shell .sidebar-recents a {
+    color: #aeaeb2;
+  }
+  .muse-shell .sidebar-recents .selected {
+    background: #3a3a3c;
+  }
+  .muse-shell .mode-badge {
+    color: #aeaeb2;
+    background: rgb(28 28 30 / 60%);
+  }
+  .muse-shell .button.primary,
+  .muse-sheet .button.primary {
+    color: #000000;
+    background: #1282ff;
+  }
+  .muse-shell .button.primary:hover,
+  .muse-sheet .button.primary:hover {
+    background: #006ff1;
+  }
+  .muse-shell .button.secondary,
+  .muse-sheet .button.secondary {
+    color: #0379ff;
+    background: #2c2c2e;
+  }
+  .icon-button.filled {
+    background: #3a3a3c;
+  }
+  .text-button {
+    color: #1282ff;
+  }
+  .list-caption {
+    color: #aeaeb2;
+  }
+  .prompt-chips button {
+    background: #1c1c1e;
+    color: #aeaeb2;
+  }
+  .muse-shell .composer {
+    background: #1c1c1e;
+    border: 1px solid #38383a;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 4%);
+  }
+  .muse-shell .composer:focus-within {
+    box-shadow: 0 0 0 3px rgb(18 130 255 / 4%);
+  }
+  .muse-shell .composer textarea::placeholder {
+    color: #8e8e93;
+  }
+  .muse-shell .send-button {
+    background: #f2f2f7;
+    color: #000000;
+  }
+  .muse-shell .send-button:disabled {
+    background: #3a3a3c;
+    color: #8e8e93;
+  }
+  .muse-shell .category-select {
+    background: #2c2c2e;
+    color: #aeaeb2;
+  }
+  .goal-context {
+    color: #1282ff;
+  }
+  .idea-list {
+    background: #1c1c1e;
+  }
+  .idea-row + .idea-row {
+    border-top: 1px solid #38383a;
+  }
+  .idea-symbol {
+    background: #2c2c2e;
+    color: #aeaeb2;
+  }
+  .idea-symbol.life {
+    background: #2c2c2e;
+    color: #aeaeb2;
+  }
+  .idea-symbol.research {
+    background: #2c2c2e;
+  }
+  .idea-symbol.writing {
+    background: #2c2c2e;
+    color: #c59977;
+  }
+  .feed-card {
+    background: #1c1c1e;
+  }
+  .feed-card p {
+    color: #aeaeb2;
+  }
+  .status-running {
+    color: #1282ff;
+  }
+  .library-search {
+    background: #3a3a3c;
+  }
+  .document-preview {
+    background: #1c1c1e;
+  }
+  .document-preview::after {
+    background: linear-gradient(transparent, #1c1c1e);
+  }
+  .document-preview > svg {
+    color: #8e8e93;
+  }
+  .document-preview p {
+    color: #aeaeb2;
+  }
+  .muse-empty > span {
+    color: #aeaeb2;
+  }
+  .muse-sheet {
+    background: #1c1c1e;
+    box-shadow: 0 16px 70px rgb(0 0 0 / 40%);
+  }
+  .muse-sheet::backdrop {
+    background: rgb(0 0 0 / 83%);
+  }
+  .muse-sheet .field input,
+  .muse-sheet .field textarea {
+    background: #2c2c2e;
+    border-color: #38383a;
+  }
+  .more-links a > svg:last-child {
+    color: #8e8e93;
+  }
+  .more-recents a {
+    color: #aeaeb2;
+  }
+  .muse-shell .user-message {
+    background: #3a3a3c;
+  }
+  .muse-shell .assistant-label {
+    color: #aeaeb2;
+  }
+  .muse-shell .markdown a {
+    color: #1282ff;
+  }
+  .muse-shell .task-state,
+  .muse-shell .stream-status {
+    color: #aeaeb2;
+  }
+  .muse-shell .task-state.running {
+    color: #1282ff;
+  }
+  .muse-shell .composer-hint,
+  .muse-shell .fine-print {
+    color: #8e8e93;
+  }
+  .muse-shell .activity {
+    background: #2c2c2e;
+    color: #aeaeb2;
+    border-color: #38383a;
+  }
+  .muse-shell .activity-toggle,
+  .muse-shell .activity li p,
+  .muse-shell .approval-hint,
+  .muse-shell .permission-description,
+  .muse-shell .permission-details > summary,
+  .muse-shell .permission-scope {
+    color: #aeaeb2;
+  }
+  .muse-shell .timeline-dot,
+  .muse-shell .mode-badge > span {
+    background: #636366;
+  }
+  .muse-shell .mode-badge.live > span {
+    background: #1282ff;
+  }
+  .muse-shell .permission-icon {
+    background: #2c2c2e;
+    border-color: #1c385f;
+  }
+  .muse-shell .permission-details pre,
+  .muse-shell .activity pre,
+  .muse-shell .markdown pre,
+  .muse-sheet .markdown pre {
+    background: #2c2c2e;
+    color: #aeaeb2;
+  }
+  .muse-shell .markdown :not(pre) > code,
+  .muse-sheet .markdown :not(pre) > code {
+    background: #3a3a3c;
+  }
+  .muse-shell .markdown blockquote,
+  .muse-sheet .markdown blockquote {
+    border-color: #38383a;
+    color: #aeaeb2;
+  }
+  .muse-shell .markdown th,
+  .muse-sheet .markdown th {
+    background: #2c2c2e;
+  }
+  .muse-shell .button.subtle,
+  .muse-sheet .button.subtle {
+    background: #2c2c2e;
+    color: #aeaeb2;
+  }
+  .muse-shell .icon-button:hover,
+  .muse-sheet .icon-button:hover {
+    background: #3a3a3c;
+  }
+  .muse-shell .working-note,
+  .muse-shell .field,
+  .muse-shell .settings-description,
+  .muse-shell .settings-card-heading p,
+  .muse-shell .info-note,
+  .muse-shell .privacy-grid h3,
+  .muse-shell .privacy-grid p,
+  .muse-shell .about-line {
+    color: #aeaeb2;
+  }
+  .muse-shell .field small {
+    color: #aeaeb2;
+  }
+  .muse-shell .field input::placeholder,
+  .muse-sheet .field input::placeholder {
+    color: #8e8e93;
+  }
+  .muse-shell .small-badge,
+  .muse-shell .config-example {
+    background: #2c2c2e;
+    color: #aeaeb2;
+  }
+  .muse-shell .working-dots i {
+    background: #aeaeb2;
+  }
+  .muse-shell .save-reply {
+    color: #aeaeb2;
+  }
+  .muse-shell .settings-card,
+  .muse-shell .selection-card,
+  .muse-shell .ma-console,
+  .muse-shell .ma-result {
+    background: #1c1c1e;
+  }
+  .muse-shell .field input,
+  .muse-shell .field select,
+  .muse-shell .field textarea {
+    background: #2c2c2e;
+    border-color: #38383a;
+  }
+  .muse-shell .settings-symbol,
+  .muse-shell .studio-status {
+    background: #2c2c2e;
+    color: #6a91bf;
+  }
+  .auth-methods {
+    background: #2c2c2e;
+  }
+  .auth-methods button {
+    color: #aeaeb2;
+  }
+  .auth-methods button[aria-pressed="true"] {
+    background: #1c1c1e;
+    color: #ffffff;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 12%);
+  }
+  .muse-shell .session-row {
+    background: #1c1c1e;
+  }
+  .muse-shell .toast {
+    background: #f2f2f7;
+    color: #000000;
+  }
+  .muse-shell .mobile-nav {
+    border-top: 1px solid rgb(56 56 58 / 50%);
+    background: rgb(44 44 46 / 95%);
+  }
+  .muse-shell .mobile-nav a {
+    color: #8e8e93;
+  }
+  .muse-shell .mobile-nav a.active {
+    color: #ffffff;
+  }
+  .muse-shell .mobile-nav a.active > svg {
+    fill: rgb(255 255 255 / 8%);
+  }
+  .sheet-grip {
+    background: #3a3a3c;
+  }
+  /* background.css */
+  .background-form input:not([type="checkbox"]) {
+    border: 1px solid #38383a;
+    background: #1c1c1e;
+    color: #ffffff;
+  }
+  .background-note {
+    color: #aeaeb2;
+  }
+  .background-run {
+    border-top: 1px solid #38383a;
+  }
+  .background-feed {
+    border-top: 1px solid #38383a;
+  }
+  .background-post {
+    border-bottom: 1px solid #38383a;
+  }
+  .background-post small,
+  .background-post details {
+    color: #aeaeb2;
+  }
+  .background-disconnect {
+    border-top: 1px solid #38383a;
+  }
+  .background-disconnect small {
+    color: #aeaeb2;
+  }
+  .background-authorization {
+    border-block: 1px solid #38383a;
+  }
+
+  /* Shared surfaces, after the per-file mappings so they take precedence. */
+  .companion-shell,
+  .muse-shell,
+  .muse-sheet,
+  .page-sheet,
+  .companion-sheet,
+  .identity-document,
+  .conversation-sidebar,
+  .attach-sheet {
+    color: #fff;
+  }
+  /* Glass controls: translucent dark gray with a faint top highlight. */
+  .glass-button,
+  .glass-tab-bar,
+  .chat-composer,
+  .companion-name,
+  .sidebar-search,
+  .page-sheet-close {
+    border-color: rgb(255 255 255 / 8%);
+    background: rgb(44 44 46 / 78%);
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 4%),
+      0 4px 18px rgb(0 0 0 / 30%);
+  }
+  .tab-selection {
+    background: rgb(255 255 255 / 14%);
+  }
+  .glass-tab-bar a,
+  .glass-button,
+  .page-sheet-close {
+    color: #fff;
+  }
+  /* A presented sheet is elevated, so its cards step up one level. */
+  .page-sheet,
+  .attach-sheet {
+    background: #1c1c1e;
+  }
+  .page-sheet .settings-status,
+  .page-sheet .settings-list,
+  .attach-tile,
+  .attach-rows {
+    background: #2c2c2e;
+  }
+  .chat-page > .companion-header::before {
+    background: linear-gradient(#000 55%, transparent);
+  }
+}

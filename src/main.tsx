@@ -6,6 +6,7 @@ import "./motion.css";
 import "./styles.css";
 import "./muse.css";
 import "./chat.css";
+import "./dark.css";
 import { initializeLanguage } from "../shared/i18n";
 import { followDynamicType } from "./dynamic-type";
 

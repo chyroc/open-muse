@@ -96,6 +96,19 @@ class MuseBridgeViewController: CAPBridgeViewController {
         }
     }
 
+    // Use the page color of the current appearance behind the web view, so
+    // launch, overscroll and rotation never flash the other appearance.
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        let page = UIColor { traits in
+            traits.userInterfaceStyle == .dark ? .black : UIColor(white: 252.0 / 255, alpha: 1)
+        }
+        view.backgroundColor = page
+        webView?.isOpaque = false
+        webView?.backgroundColor = page
+        webView?.scrollView.backgroundColor = page
+    }
+
     deinit {
         keyboardObservers.forEach { NotificationCenter.default.removeObserver($0) }
     }
