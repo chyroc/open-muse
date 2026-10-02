@@ -43,6 +43,7 @@ function fixture() {
   const events: AgentEvent[] = [];
   const sessionEvents = new Map<string, AgentEvent[]>();
   const files: Record<string, unknown>[] = [];
+  const mounts: Record<string, unknown>[] = [];
   const fetcher = vi.fn<typeof fetch>(async (input, init = {}) => {
     const url = new URL(String(input));
     expect(url.origin).toBe("https://ark.cn-beijing.volces.com");
@@ -71,6 +72,23 @@ function fixture() {
       );
     }
     const resourcePath = path.match(/^\/sessions\/([^/]+)\/resources$/);
+    if (resourcePath && init.method === "POST") {
+      const row = resources.sessions.find(
+        (item) => item.id === resourcePath[1],
+      );
+      const { file_id } = JSON.parse(String(init.body));
+      const source = files.find((file) => file.id === file_id);
+      if (!row || !source) return Response.json({}, { status: 404 });
+      const mount = {
+        id: `sesrsc-${mounts.length + 1}`,
+        type: "file",
+        file_id: `file-copy-${mounts.length + 1}`,
+        mount_path: `/mnt/session/uploads/${source.filename}`,
+      };
+      mounts.push({ session: row.id, ...mount });
+      row.resources = [...((row.resources as unknown[]) ?? []), mount];
+      return Response.json(mount);
+    }
     if (resourcePath)
       return Response.json({
         data:
@@ -172,6 +190,7 @@ function fixture() {
     events,
     sessionEvents,
     files,
+    mounts,
     fetcher,
     login,
   };
@@ -871,7 +890,11 @@ describe("Direct MA client", () => {
     };
     const toolset = (agent.tools as Record<string, unknown>[])[0];
     // An agent from before device tools, with an older mac_open definition.
-    agent.tools = [toolset, foreign, { ...deviceTools[2], description: "old" }];
+    agent.tools = [
+      toolset,
+      foreign,
+      { ...deviceTools[2], description: "old" },
+    ];
     const updates = () =>
       f.fetcher.mock.calls.filter(
         ([url, init]) =>
@@ -1059,7 +1082,8 @@ describe("Direct MA client", () => {
       text: "",
       attachments: [image, note],
     });
-    expect(f.events.at(-1)?.content).toEqual([
+    const [message, guidance] = f.events.slice(-2);
+    expect(message.content).toEqual([
       { type: "image", source: { type: "file", file_id: image.file_id } },
       {
         type: "document",
@@ -1067,15 +1091,28 @@ describe("Direct MA client", () => {
         title: "notes.md",
       },
     ]);
+    // The file is mounted before sending, and its path reaches the tools.
+    expect(f.mounts).toHaveLength(1);
+    expect(f.mounts[0]).toMatchObject({ session: session.id });
+    expect(image.stored).toMatch(/^cat-[a-f0-9]{8}\.png$/);
+    const path = `/mnt/session/uploads/${image.stored}`;
+    expect(guidance.type).toBe("system.message");
+    expect(guidance.content?.[0].text).toContain(`"cat.png": ${path}`);
+    expect(guidance.content?.[0].text).toContain('"notes.md"');
+    expect(guidance.content?.[0].text).not.toContain("# Notes");
     await f.client.send(session.id, {
       type: "user.message",
       text: "Compare them",
       attachments: [image],
     });
-    expect(f.events.at(-1)?.content?.at(-1)).toEqual({
+    expect(f.mounts).toHaveLength(1);
+    expect(f.events.at(-2)?.content?.at(-1)).toEqual({
       type: "text",
       text: "Compare them",
     });
+    expect(f.events.at(-1)?.content?.[0].text).toContain(path);
+    await f.client.send(session.id, { type: "user.message", text: "Plain" });
+    expect(f.events.at(-1)?.type).toBe("user.message");
     await expect(
       f.client.send(session.id, {
         type: "user.message",

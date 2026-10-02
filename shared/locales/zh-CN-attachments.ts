@@ -18,6 +18,9 @@ export const zhAttachments: Record<string, string> = {
   "This file is still processing. Remove it and attach it again.":
     "此文件仍在处理中。请移除后重新添加。",
   "Write a message or attach a file.": "请输入消息或添加文件。",
+  "Couldn't make {name} available to tools. Nothing was sent.":
+    "无法让工具访问 {name}，消息未发送。",
+  "Shared attachment locations with tools": "已向工具提供附件位置",
   "This text file is not valid UTF-8.": "此文本文件不是有效的 UTF-8 编码。",
   "Text attachments can be at most {count} characters.":
     "文本附件最多 {count} 个字符。",

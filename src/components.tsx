@@ -243,6 +243,8 @@ export function Activity({
     "agent.tool_result": t("Tool returned result"),
     "agent.mcp_tool_result": t("Tool returned result"),
     "session.error": t("Execution error"),
+    // Open Muse sends system messages only to tell tools where attachments are.
+    "system.message": t("Shared attachment locations with tools"),
   };
   if (!actions.length) return null;
   return (
@@ -285,7 +287,9 @@ export function Activity({
                 {event.input != null && (
                   <pre>{JSON.stringify(event.input, null, 2)}</pre>
                 )}
-                {eventText(event) && <p>{eventText(event)}</p>}
+                {event.type !== "system.message" && eventText(event) && (
+                  <p>{eventText(event)}</p>
+                )}
               </div>
             </li>
           ))}

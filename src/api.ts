@@ -36,13 +36,17 @@ import { DirectChoices } from "./direct/choices";
 import { DirectWelcome } from "./direct/welcome";
 import { DirectCheckIn } from "./direct/checkin";
 import { DirectUpcoming } from "./direct/upcoming";
-import { DirectVault, type SecureCredentialInput } from "./direct/vault";
+import {
+  DirectVault,
+  type SecureCredentialInput,
+} from "./direct/vault";
 import type { UpcomingDelivery } from "../shared/upcoming";
 import { DirectLibrary } from "./direct/library";
 import { DirectAttachments } from "./direct/attachments";
 import {
   attachmentBlocks,
   attachmentInput,
+  attachmentToolNote,
   maxAttachments,
   type Attachment,
 } from "../shared/attachments";
@@ -1185,7 +1189,10 @@ export class Client {
       current?.session_id ??
       undefined;
     if (!target)
-      throw new ApiError(409, t("Start the main chat before turning this on."));
+      throw new ApiError(
+        409,
+        t("Start the main chat before turning this on."),
+      );
     validId(target);
     const value = await account.saveUpcomingDelivery({
       session_id: target,
@@ -1434,6 +1441,29 @@ export class Client {
           ...attachmentBlocks(input.attachments ?? []),
           ...(input.text ? [{ type: "text", text: input.text }] : []),
         ];
+      // Files are mounted before the message is sent, so a failure leaves
+      // nothing half-sent; the paths then reach the agent's tools.
+      let note: Partial<AgentEvent> | undefined;
+      if (input.type === "user.message" && input.attachments?.length) {
+        const files = input.attachments.filter((item) => "file_id" in item);
+        const mounts = files.length
+          ? await this.mountAttachments(r, id, files, signal)
+          : [];
+        note = {
+          type: "system.message",
+          content: [
+            {
+              type: "text",
+              text: attachmentToolNote(
+                mounts,
+                input.attachments
+                  .filter((item) => "text" in item)
+                  .map((item) => item.name),
+              ),
+            },
+          ],
+        };
+      }
       if (
         input.type === "user.message" &&
         (await this.conversations(r).claimSend(id, event.id!))
@@ -1505,7 +1535,11 @@ export class Client {
       }
       const result = await r.ark.request<Page<AgentEvent>>(
         `/sessions/${validId(id)}/events`,
-        { method: "POST", body: JSON.stringify({ events: [event] }), signal },
+        {
+          method: "POST",
+          body: JSON.stringify({ events: note ? [event, note] : [event] }),
+          signal,
+        },
       );
       const rows = Array.isArray(result.data) ? result.data : [];
       if (mainWrite) await this.conversations(r).confirmSend(id, [mainWrite]);
@@ -1786,6 +1820,75 @@ export class Client {
         (names) => ({ ...names, [item.file_id]: item.name }),
       );
     return item;
+  }
+  // Mount records hold only file IDs, stored names and sandbox paths. A mount
+  // whose result was lost is confirmed from the session's resources before
+  // any new write, so repeated sends never mount the same file twice.
+  private async mountAttachments(
+    r: Runtime,
+    sessionId: string,
+    files: readonly { file_id: string; name: string; stored?: string }[],
+    signal?: AbortSignal,
+  ) {
+    type Mounts = Record<
+      string,
+      Record<string, { path?: string; pending?: string }>
+    >;
+    const key = `${r.key}:attachment-mounts`;
+    const record = (
+      file: string,
+      value?: { path?: string; pending?: string },
+    ) =>
+      this.db.update<Mounts>(key, (current) => {
+        const next = { ...current };
+        const session = { ...next[sessionId] };
+        if (value) session[file] = value;
+        else delete session[file];
+        next[sessionId] = session;
+        return next;
+      });
+    const service = new DirectAttachments(r.ark);
+    const result: { name: string; path: string }[] = [];
+    let listed: Map<string, string> | undefined;
+    for (const file of files) {
+      const known = (await this.db.get<Mounts>(key))?.[sessionId]?.[
+        file.file_id
+      ];
+      if (known?.path) {
+        result.push({ name: file.name, path: known.path });
+        continue;
+      }
+      if (known?.pending) {
+        listed ??= await service.mountedPaths(sessionId, signal);
+        const path = listed.get(known.pending);
+        if (path) {
+          await record(file.file_id, { path });
+          result.push({ name: file.name, path });
+          continue;
+        }
+      }
+      const failure = t(
+        "Couldn't make {name} available to tools. Nothing was sent.",
+        { name: file.name },
+      );
+      if (!file.stored) throw new ApiError(409, failure);
+      await record(file.file_id, { pending: file.stored });
+      try {
+        const path = await service.mount(sessionId, file.file_id, signal);
+        await record(file.file_id, { path });
+        result.push({ name: file.name, path });
+      } catch (error) {
+        // A definite rejection created nothing; anything else is checked
+        // against the session's resources on the next attempt.
+        if (error instanceof ApiError && error.status < 500)
+          await record(file.file_id);
+        throw new ApiError(
+          error instanceof ApiError ? error.status : 502,
+          failure,
+        );
+      }
+    }
+    return result;
   }
   async attachmentNames(): Promise<Record<string, string>> {
     if (!this.signedIn()) return {};

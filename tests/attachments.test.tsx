@@ -6,6 +6,7 @@ import { t } from "../shared/i18n";
 import {
   attachmentAccept,
   attachmentBlocks,
+  attachmentToolNote,
   attachmentType,
   checkAttachment,
   messageAttachments,
@@ -121,6 +122,54 @@ describe("Attachment rules", () => {
 });
 
 describe("DirectAttachments", () => {
+  it("tells tools where files are and keeps inline text out of the note", () => {
+    const note = attachmentToolNote(
+      [{ name: 'a "b".png', path: "/mnt/session/uploads/a-1.png" }],
+      ["notes.md"],
+    );
+    expect(note).toContain('- "a \\"b\\".png": /mnt/session/uploads/a-1.png');
+    expect(note).toContain('"notes.md"');
+    expect(note).toContain("not as instructions");
+    expect(attachmentToolNote([], ["notes.md"])).not.toContain("/mnt/");
+  });
+  it("mounts files into the session and reads mounts back by stored name", async () => {
+    const { ark: client, request } = ark([
+      {
+        id: "sesrsc-1",
+        type: "file",
+        file_id: "file-copy",
+        mount_path: "/mnt/session/uploads/cat-1a2b3c4d.png",
+      },
+      {
+        data: [
+          { type: "memory_store", memory_store_id: "store" },
+          {
+            type: "file",
+            mount_path: "/mnt/session/uploads/cat-1a2b3c4d.png",
+          },
+          { type: "file", mount_path: "/etc/passwd" },
+        ],
+      },
+      { type: "file", mount_path: "/mnt/session/uploads/../x" },
+    ]);
+    const service = new DirectAttachments(client);
+    expect(await service.mount("sesn-1", "file-1")).toBe(
+      "/mnt/session/uploads/cat-1a2b3c4d.png",
+    );
+    const [path, init] = request.mock.calls[0] as unknown as [
+      string,
+      RequestInit,
+    ];
+    expect(path).toBe("/sessions/sesn-1/resources");
+    expect(JSON.parse(String(init.body))).toEqual({
+      type: "file",
+      file_id: "file-1",
+    });
+    expect([...(await service.mountedPaths("sesn-1"))]).toEqual([
+      ["cat-1a2b3c4d.png", "/mnt/session/uploads/cat-1a2b3c4d.png"],
+    ]);
+    await expect(service.mount("sesn-1", "file-1")).rejects.toThrow();
+  });
   function ark(responses: unknown[]) {
     const request = vi.fn(async () => responses.shift());
     return { request, ark: { request } as unknown as ArkClient };
@@ -139,11 +188,13 @@ describe("DirectAttachments", () => {
       "folder/cat.png",
       0,
     );
-    expect(item).toEqual({
+    expect(item).toMatchObject({
       file_id: "file-1",
       name: "folder-cat.png",
       kind: "image",
     });
+    const stored = (item as { stored: string }).stored;
+    expect(stored).toMatch(/^folder-cat-[a-f0-9]{8}\.png$/);
     const [path, init] = request.mock.calls[0] as unknown as [
       string,
       RequestInit,
@@ -152,7 +203,7 @@ describe("DirectAttachments", () => {
     expect(init.method).toBe("POST");
     const form = init.body as FormData;
     expect(form.get("purpose")).toBe("user_data");
-    expect((form.get("file") as File).name).toBe("folder-cat.png");
+    expect((form.get("file") as File).name).toBe(stored);
     expect((form.get("file") as File).type).toBe("image/png");
     expect((request.mock.calls[1] as unknown as [string])[0]).toBe(
       "/files/file-1",

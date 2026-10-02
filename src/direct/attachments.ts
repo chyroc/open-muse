@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ApiError, type ArkClient } from "../../shared/ark";
 import { t } from "../../shared/i18n";
+import { uuid } from "../../shared/crypto";
 import {
   checkAttachment,
   maxInlineCharacters,
@@ -58,9 +59,10 @@ export class DirectAttachments {
         );
       return { name: clean, kind: "document", text };
     }
+    const stored = storedName(clean);
     const form = new FormData();
     form.append("purpose", "user_data");
-    form.append("file", new Blob([file], { type: mime }), clean);
+    form.append("file", new Blob([file], { type: mime }), stored);
     const result = uploaded.safeParse(
       await this.ark.request("/files", { method: "POST", body: form, signal }),
     );
@@ -85,6 +87,63 @@ export class DirectAttachments {
           ? t("MA could not process this file.")
           : t("This file is still processing. Remove it and attach it again."),
       );
-    return { file_id: result.data.id, name: clean, kind };
+    return { file_id: result.data.id, name: clean, kind, stored };
   }
+
+  // Mounting copies the file into the session sandbox at a path derived from
+  // its stored name. This is a write and is never retried here.
+  async mount(sessionId: string, fileId: string, signal?: AbortSignal) {
+    const result = mounted.safeParse(
+      await this.ark.request(
+        `/sessions/${encodeURIComponent(sessionId)}/resources`,
+        {
+          method: "POST",
+          body: JSON.stringify({ type: "file", file_id: fileId }),
+          signal,
+        },
+      ),
+    );
+    if (!result.success)
+      throw new ApiError(502, t("MA returned an unexpected upload result."));
+    return result.data.mount_path;
+  }
+
+  // Maps stored file names to their sandbox paths, to confirm an earlier
+  // mount whose result was not received.
+  async mountedPaths(sessionId: string, signal?: AbortSignal) {
+    const page = z
+      .object({ data: z.array(z.unknown()) })
+      .safeParse(
+        await this.ark.request(
+          `/sessions/${encodeURIComponent(sessionId)}/resources?limit=100`,
+          { signal },
+        ),
+      );
+    if (!page.success)
+      throw new ApiError(502, t("MA returned an unexpected upload result."));
+    const paths = new Map<string, string>();
+    for (const row of page.data.data) {
+      const item = mounted.safeParse(row);
+      if (item.success)
+        paths.set(item.data.mount_path.split("/").pop()!, item.data.mount_path);
+    }
+    return paths;
+  }
+}
+
+const mounted = z.object({
+  type: z.literal("file"),
+  mount_path: z
+    .string()
+    .max(512)
+    .regex(/^\/mnt\/session\/uploads\/[^/\0]+$/),
+});
+
+// A short random suffix keeps two same-named files from sharing one sandbox
+// path in a session. People still see the original name.
+function storedName(name: string) {
+  const dot = name.lastIndexOf(".");
+  const stem = dot > 0 ? name.slice(0, dot) : name;
+  const extension = dot > 0 ? name.slice(dot) : "";
+  return `${stem.slice(0, 200)}-${uuid().slice(0, 8)}${extension}`;
 }
