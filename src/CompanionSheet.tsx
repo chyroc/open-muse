@@ -26,6 +26,7 @@ import type { Client } from "./api";
 import { CompanionAvatar } from "./ChatUI";
 import { Markdown, PermissionCard } from "./components";
 import { ActivityList } from "./ActivityList";
+import { animateAway, useDragToDismiss } from "./gesture";
 import { activityTurns } from "../shared/activity";
 import { UpcomingPanel } from "./UpcomingPanel";
 import "./identity.css";
@@ -141,6 +142,19 @@ export function CompanionSheet({
   const [error, setError] = useState("");
   const [mounted, setMounted] = useState<boolean>();
   const [refresh, setRefresh] = useState(0);
+  const closing = useRef(false);
+  // Slides down and away, then reports closed.
+  const dismiss = () => {
+    if (closing.current) return;
+    closing.current = true;
+    animateAway(dialog.current, "y", 1, onClose);
+  };
+  const drag = useDragToDismiss({
+    target: dialog,
+    axis: "y",
+    direction: 1,
+    onDismiss: dismiss,
+  });
   useEffect(() => {
     const element = dialog.current!;
     const focused = document.activeElement;
@@ -186,14 +200,14 @@ export function CompanionSheet({
       aria-label={t("Companion details")}
       onCancel={(e) => {
         e.preventDefault();
-        if (!selected) onClose();
+        if (!selected) dismiss();
       }}
     >
-      <header className="identity-header">
+      <header className="identity-header" {...drag}>
         <button
           className="glass-button identity-dismiss"
           aria-label={t("Close companion details")}
-          onClick={onClose}
+          onClick={dismiss}
         >
           <X size={23} />
         </button>

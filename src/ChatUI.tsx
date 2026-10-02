@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import type { Session } from "../shared/types";
 import { AttachmentSheet } from "./AttachmentSheet";
+import { animateAway, useDragToDismiss } from "./gesture";
 import type { ConversationIndex } from "./direct/conversations";
 import { Sheet } from "./MusePages";
 
@@ -337,6 +338,19 @@ export function ConversationSidebar({
   const search = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [archived, setArchived] = useState(false);
+  const closing = useRef(false);
+  // Slides away to the left, then reports closed; links navigate meanwhile.
+  const dismiss = () => {
+    if (closing.current) return;
+    closing.current = true;
+    animateAway(dialog.current, "x", -1, onClose);
+  };
+  const drag = useDragToDismiss({
+    target: dialog,
+    axis: "x",
+    direction: -1,
+    onDismiss: dismiss,
+  });
   useEffect(() => {
     const element = dialog.current!;
     const focused = document.activeElement;
@@ -364,10 +378,11 @@ export function ConversationSidebar({
       ref={dialog}
       className="conversation-sidebar"
       tabIndex={-1}
+      {...drag}
       aria-label={t("Conversations")}
       onCancel={(e) => {
         e.preventDefault();
-        onClose();
+        dismiss();
       }}
     >
       <header>
@@ -375,7 +390,7 @@ export function ConversationSidebar({
         <button
           className="glass-button"
           aria-label={t("Close sidebar")}
-          onClick={onClose}
+          onClick={dismiss}
         >
           <ArrowRight size={24} strokeWidth={1.5} />
         </button>
@@ -383,7 +398,7 @@ export function ConversationSidebar({
       <a
         className={`main-chat-row ${!activeId || activeId === index.mainId ? "selected" : ""}`}
         href="#/"
-        onClick={onClose}
+        onClick={dismiss}
       >
         {t("Main chat")}
       </a>
@@ -411,7 +426,7 @@ export function ConversationSidebar({
               key={session.id}
               className={`side-chat-row ${activeId === session.id ? "selected" : ""}`}
             >
-              <a href={`#/task/${session.id}`} onClick={onClose}>
+              <a href={`#/task/${session.id}`} onClick={dismiss}>
                 <MessageCircle size={19} />
                 <span>{index.entries[session.id]?.title ?? session.title}</span>
                 {["running", "rescheduling"].includes(session.status) && (
@@ -473,7 +488,7 @@ export function ConversationSidebar({
           disabled={busy}
           onClick={() => {
             onNew();
-            onClose();
+            dismiss();
           }}
         >
           <SquarePen size={24} strokeWidth={1.5} />

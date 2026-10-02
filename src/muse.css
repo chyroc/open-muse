@@ -991,6 +991,20 @@
       var(--app-height, 100dvh) - max(env(safe-area-inset-top), 16px) - 16px
     );
     border-radius: 28px 28px 0 0;
+    /* Rises on the sheet spring; backwards fill lets a finger move it after. */
+    animation: muse-sheet-up var(--motion-sheet-duration)
+      var(--motion-sheet-ease) backwards;
+  }
+  .muse-sheet::backdrop {
+    animation: muse-sheet-dim var(--motion-sheet-duration) ease-out both;
+  }
+  .muse-sheet.closing::backdrop {
+    opacity: 0;
+    transition: opacity var(--motion-sheet-dismiss-duration) ease-in;
+  }
+  .sheet-grip,
+  .sheet-body > header {
+    touch-action: none;
   }
   .sheet-body {
     padding: 10px 22px calc(22px + env(safe-area-inset-bottom));
@@ -1036,5 +1050,23 @@
   }
   .muse-shell .mode-badge {
     font-size: 9px;
+  }
+}
+
+@keyframes muse-sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes muse-sheet-dim {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes muse-sheet-up {
+    from {
+      opacity: 0;
+    }
   }
 }

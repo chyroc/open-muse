@@ -628,6 +628,35 @@ body {
 .conversation-sidebar[open] {
   display: flex;
   flex-direction: column;
+  /* Slides in from the leading edge on the sheet spring; backwards fill so a
+     finger can move it once it has landed. */
+  animation: sidebar-in var(--motion-sheet-duration) var(--motion-sheet-ease)
+    backwards;
+  touch-action: pan-y;
+}
+.conversation-sidebar[open]::backdrop {
+  animation: sidebar-dim var(--motion-sheet-duration) ease-out both;
+}
+.conversation-sidebar.closing::backdrop {
+  opacity: 0;
+  transition: opacity var(--motion-sheet-dismiss-duration) ease-in;
+}
+@keyframes sidebar-in {
+  from {
+    transform: translateX(-100%);
+  }
+}
+@keyframes sidebar-dim {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes sidebar-in {
+    from {
+      opacity: 0;
+    }
+  }
 }
 .conversation-sidebar::backdrop {
   background: #0003;

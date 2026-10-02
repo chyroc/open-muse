@@ -20,8 +20,37 @@
   margin: 0 auto;
   overflow: hidden;
 }
+.companion-sheet[open] {
+  animation: companion-sheet-up var(--motion-sheet-duration)
+    var(--motion-sheet-ease) backwards;
+}
 .companion-sheet::backdrop {
   background: #0007;
+  animation: companion-sheet-dim var(--motion-sheet-duration) ease-out both;
+}
+.companion-sheet.closing::backdrop {
+  opacity: 0;
+  transition: opacity var(--motion-sheet-dismiss-duration) ease-in;
+}
+.identity-header {
+  touch-action: none;
+}
+@keyframes companion-sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes companion-sheet-dim {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes companion-sheet-up {
+    from {
+      opacity: 0;
+    }
+  }
 }
 .identity-header {
   position: relative;

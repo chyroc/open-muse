@@ -19,6 +19,7 @@ import {
 import type { Goal, Session } from "../shared/types";
 import { categories, templates } from "./content";
 import { CategoryIcon } from "./components";
+import { animateAway, useDragToDismiss } from "./gesture";
 
 export const primaryNavigation = [
   { id: "home", path: "/", label: t("Chat"), icon: ChatGlyph },
@@ -41,6 +42,19 @@ export function Sheet({
   grouped?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const closing = useRef(false);
+  // Slides down and away, then reports closed.
+  const dismiss = () => {
+    if (closing.current) return;
+    closing.current = true;
+    animateAway(ref.current, "y", 1, onClose);
+  };
+  const drag = useDragToDismiss({
+    target: ref,
+    axis: "y",
+    direction: 1,
+    onDismiss: dismiss,
+  });
   useEffect(() => {
     const dialog = ref.current!;
     const focused = document.activeElement;
@@ -63,20 +77,20 @@ export function Sheet({
       aria-label={title}
       onCancel={(event) => {
         event.preventDefault();
-        onClose();
+        dismiss();
       }}
       onClick={(e) => {
-        if (e.target === ref.current) onClose();
+        if (e.target === ref.current) dismiss();
       }}
     >
       <div className="sheet-body">
-        <div className="sheet-grip" aria-hidden="true" />
-        <header>
+        <div className="sheet-grip" aria-hidden="true" {...drag} />
+        <header {...drag}>
           <h2>{title}</h2>
           <button
             className="icon-button"
             aria-label={t("Close")}
-            onClick={onClose}
+            onClick={dismiss}
           >
             <X size={22} />
           </button>

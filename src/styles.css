@@ -2799,12 +2799,12 @@ code {
     max-width: 145px;
   }
 }
+/* Reduce Motion keeps feedback but swaps movement for short fades; see the
+   tokens and keyframe overrides in motion.css and each component. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *:before,
   *:after {
-    animation: none !important;
-    transition: none !important;
     scroll-behavior: auto !important;
   }
 }
