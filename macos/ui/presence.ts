@@ -87,3 +87,21 @@ export async function resetThisMac() {
   if (!native) return false;
   return (await native.postMessage({ operation: "reset" })) === true;
 }
+
+export type CompanionState = "" | "thinking" | "speaking";
+
+// Tells the shell the companion's name and what it is doing, for the pill it
+// shows while the workspace window is closed.
+export function postCompanion(name: string, state: CompanionState) {
+  (
+    window as unknown as {
+      webkit?: {
+        messageHandlers?: { museWindow?: { postMessage: (v: object) => void } };
+      };
+    }
+  ).webkit?.messageHandlers?.museWindow?.postMessage({
+    name: "companion",
+    value: name,
+    state,
+  });
+}

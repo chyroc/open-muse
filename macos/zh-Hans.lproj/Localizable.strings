@@ -39,3 +39,7 @@
 "Calendar and Reminders are off on this Mac." = "此 Mac 上的日历与提醒事项已关闭。";
 "Another Open Muse shortcut already uses these keys." = "这组按键已被 Open Muse 的另一个快捷键使用。";
 "Location is off on this Mac." = "此 Mac 上的位置已关闭。";
+"Space" = "空格键";
+"Press %@ to start a chat" = "按 %@ 开始聊天";
+"Thinking" = "正在思考";
+"Speaking" = "正在说话";

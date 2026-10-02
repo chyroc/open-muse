@@ -81,9 +81,11 @@ the language for one run. Builds without the variable do not contain the tour.
 - Opening or searching a chat does not create a cloud session. The first explicit
   send prepares the MA workspace; unconfirmed writes are not automatically retried.
 - Closing the window keeps the app running; clicking its Dock icon, the menu
-  bar icon or the floating button restores it. The floating button appears
-  while the window is closed or minimized, can be dragged, and remembers its
-  place. General settings switch the menu bar icon, the floating button and
+  bar icon or the floating button restores it. The floating button is a dark
+  pill with the companion's portrait and name, and says when the companion is
+  thinking or speaking; hovering it names the Quick Chat shortcut. It appears
+  while the window is closed or minimized, can be dragged, stays on screen and
+  remembers its place. General settings switch the menu bar icon, the floating button and
   Run on startup; a login item macOS still holds for approval reads as pending.
 - Option-Space, or Quick chat in the menu bar icon, opens a small card over the
   app in front that shows and sends into the main chat. Pressing it again,

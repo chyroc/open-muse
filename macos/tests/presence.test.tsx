@@ -154,3 +154,39 @@ describe("Mac desktop presence", () => {
     expect(swift).toContain("accessibilityDisplayShouldReduceMotion");
   });
 });
+
+describe("floating pill", () => {
+  it("tells the shell the companion's name and what it is doing", async () => {
+    const { postCompanion } = await import("../ui/presence");
+    const postMessage = vi.fn();
+    Object.defineProperty(window, "webkit", {
+      configurable: true,
+      value: { messageHandlers: { museWindow: { postMessage } } },
+    });
+    postCompanion("Muse", "thinking");
+    expect(postMessage).toHaveBeenCalledWith({
+      name: "companion",
+      value: "Muse",
+      state: "thinking",
+    });
+    const swift = readFileSync("macos/OpenMuse.swift", "utf8");
+    // Only the workspace may rename the pill, and unknown states read as idle.
+    expect(swift).toContain(
+      'body?["name"] == "companion", message.webView === webView',
+    );
+    expect(swift).toContain('case "speaking": state = localized("Speaking")');
+    for (const lang of ["en", "zh-Hans"]) {
+      const strings = readFileSync(
+        `macos/${lang}.lproj/Localizable.strings`,
+        "utf8",
+      );
+      for (const key of [
+        "Thinking",
+        "Speaking",
+        "Space",
+        "Press %@ to start a chat",
+      ])
+        expect(strings, `${lang}: ${key}`).toContain(`"${key}" =`);
+    }
+  });
+});

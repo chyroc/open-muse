@@ -82,47 +82,156 @@ private final class QuickPanel: NSPanel {
 // Carbon delivers the global shortcut to a C callback, which forwards it here.
 nonisolated(unsafe) private var hotKeyAction: ((UInt32, Bool) -> Void)?
 
-// A round button that stays on screen while the workspace window is closed.
-// It follows the pointer while dragged, and a press that did not move reopens
-// the window on release. Press and hover answer immediately with a spring.
+// A dark pill that stays on screen while the workspace window is closed: the
+// companion's portrait, its name, and what it is doing while it replies. It
+// follows the pointer while dragged, and a press that did not move reopens the
+// window on release. Press and hover answer immediately with a spring.
 private final class FloatingButtonView: NSView {
     var onOpen: (() -> Void)?
+    var onResize: ((NSSize) -> Void)?
     private let bubble = CALayer()
     private let icon = CALayer()
+    private let title = CATextLayer()
+    private let detail = CATextLayer()
     private var pressOrigin: NSPoint?
     private var windowOrigin: NSPoint = .zero
     private var dragging = false
     private var hovering = false
-    static let diameter: CGFloat = 46
+    private var name = "Muse"
+    private var state = ""
+    static let height: CGFloat = 46
+    static let portrait: CGFloat = 38
+    static let margin: CGFloat = 10
 
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
         layer?.masksToBounds = false
-        let side = Self.diameter
-        bubble.bounds = CGRect(x: 0, y: 0, width: side, height: side)
-        bubble.position = CGPoint(x: frame.width / 2, y: frame.height / 2)
+        bubble.backgroundColor = NSColor(calibratedWhite: 0.17, alpha: 0.96).cgColor
+        bubble.borderColor = NSColor(calibratedWhite: 1, alpha: 0.12).cgColor
+        bubble.borderWidth = 1
+        bubble.cornerRadius = Self.height / 2
         bubble.shadowColor = NSColor.black.cgColor
-        bubble.shadowOpacity = 0.22
-        bubble.shadowRadius = 7
+        bubble.shadowOpacity = 0.25
+        bubble.shadowRadius = 8
         bubble.shadowOffset = CGSize(width: 0, height: -2)
-        bubble.shadowPath = CGPath(ellipseIn: bubble.bounds, transform: nil)
-        icon.frame = bubble.bounds
+        let side = Self.portrait
+        icon.bounds = CGRect(x: 0, y: 0, width: side, height: side)
         icon.cornerRadius = side / 2
         icon.masksToBounds = true
         icon.contentsGravity = .resizeAspectFill
-        icon.backgroundColor = NSColor.windowBackgroundColor.cgColor
-        if let image = NSApplication.shared.applicationIconImage {
-            var rect = CGRect(x: 0, y: 0, width: side * 2, height: side * 2)
-            icon.contents = image.cgImage(forProposedRect: &rect, context: nil, hints: nil)
+        icon.backgroundColor = NSColor(calibratedWhite: 0.95, alpha: 1).cgColor
+        var rect = CGRect(x: 0, y: 0, width: side * 2, height: side * 2)
+        icon.contents = Self.portraitImage(side: side).cgImage(forProposedRect: &rect, context: nil, hints: nil)
+        for text in [title, detail] {
+            text.contentsScale = NSScreen.main?.backingScaleFactor ?? 2
+            text.truncationMode = .end
         }
+        title.font = NSFont.systemFont(ofSize: 15, weight: .semibold)
+        title.fontSize = 15
+        title.foregroundColor = NSColor.white.cgColor
+        detail.font = NSFont.systemFont(ofSize: 11, weight: .regular)
+        detail.fontSize = 11
+        detail.foregroundColor = NSColor(calibratedWhite: 1, alpha: 0.65).cgColor
         bubble.addSublayer(icon)
+        bubble.addSublayer(title)
+        bubble.addSublayer(detail)
         layer?.addSublayer(bubble)
         setAccessibilityRole(.button)
         setAccessibilityLabel(localized("Show Open Muse"))
         addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self))
+        layoutPill()
     }
     required init?(coder: NSCoder) { nil }
+
+    // The companion as the workspace draws it (a 43 by 48 figure), close up on
+    // a light disc.
+    static func portraitImage(side: CGFloat) -> NSImage {
+        NSImage(size: NSSize(width: side, height: side), flipped: true) { bounds in
+            NSColor(calibratedWhite: 0.95, alpha: 1).setFill()
+            NSBezierPath(ovalIn: bounds).fill()
+            // A close-up: the head and shoulders fill the disc.
+            let scale = bounds.width / 54 * 1.5
+            let transform = NSAffineTransform()
+            transform.translateX(by: bounds.midX - 21.5 * scale, yBy: bounds.midY - 24 * scale + 7 * scale)
+            transform.scale(by: scale)
+            transform.concat()
+            func color(_ hex: UInt32) -> NSColor {
+                NSColor(calibratedRed: CGFloat(hex >> 16 & 0xff) / 255, green: CGFloat(hex >> 8 & 0xff) / 255, blue: CGFloat(hex & 0xff) / 255, alpha: 1)
+            }
+            func arm(_ rect: NSRect, _ degrees: CGFloat) {
+                NSGraphicsContext.saveGraphicsState()
+                let turn = NSAffineTransform()
+                turn.translateX(by: rect.midX, yBy: rect.midY)
+                turn.rotate(byDegrees: degrees)
+                turn.translateX(by: -rect.midX, yBy: -rect.midY)
+                turn.concat()
+                color(0xd6c8a7).setFill()
+                NSBezierPath(ovalIn: rect).fill()
+                NSGraphicsContext.restoreGraphicsState()
+            }
+            arm(NSRect(x: 4, y: 21, width: 7, height: 20), 15)
+            arm(NSRect(x: 36, y: 21, width: 7, height: 20), -17)
+            color(0xd7c9a9).setFill()
+            NSBezierPath(roundedRect: NSRect(x: 13, y: 38, width: 8, height: 9), xRadius: 4, yRadius: 4).fill()
+            NSBezierPath(roundedRect: NSRect(x: 24, y: 38, width: 8, height: 9), xRadius: 4, yRadius: 4).fill()
+            let body = NSBezierPath(roundedRect: NSRect(x: 8, y: 3, width: 29, height: 40), xRadius: 13, yRadius: 16)
+            NSGradient(starting: color(0xf0e7d2), ending: color(0xd8cbae))?.draw(in: body, angle: 20)
+            let face = NSBezierPath(roundedRect: NSRect(x: 12, y: 9, width: 21, height: 18), xRadius: 9, yRadius: 8)
+            NSGradient(starting: color(0xf7eccf), ending: color(0xecdbb4))?.draw(in: face, angle: 90)
+            color(0x493f2d).setFill()
+            NSBezierPath(ovalIn: NSRect(x: 17, y: 17, width: 2, height: 3)).fill()
+            NSBezierPath(ovalIn: NSRect(x: 26, y: 17, width: 2, height: 3)).fill()
+            let mouth = NSBezierPath()
+            mouth.move(to: NSPoint(x: 21, y: 21.5))
+            mouth.curve(to: NSPoint(x: 25, y: 21.5), controlPoint1: NSPoint(x: 22, y: 23), controlPoint2: NSPoint(x: 24, y: 23))
+            mouth.lineWidth = 1
+            color(0x86684a).setStroke()
+            mouth.stroke()
+            return true
+        }
+    }
+
+    // The companion's name, and what it is doing ("" while idle).
+    func show(name: String, state: String) {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.name = name.isEmpty ? "Muse" : String(name.prefix(24))
+        self.state = state
+        layoutPill()
+    }
+
+    static func size(name: String, state: String) -> NSSize {
+        let width = max(
+            (name as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 15, weight: .semibold)]).width,
+            (state as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 11)]).width)
+        let pill = 4 + portrait + 10 + min(ceil(width), 160) + 18
+        return NSSize(width: pill + margin * 2, height: height + margin * 2)
+    }
+
+    private func layoutPill() {
+        let size = Self.size(name: name, state: state)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        let pill = CGRect(x: 0, y: 0, width: size.width - Self.margin * 2, height: Self.height)
+        bubble.bounds = pill
+        bubble.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        bubble.shadowPath = CGPath(roundedRect: pill, cornerWidth: Self.height / 2, cornerHeight: Self.height / 2, transform: nil)
+        icon.position = CGPoint(x: 4 + Self.portrait / 2, y: Self.height / 2)
+        let textX = 4 + Self.portrait + 10
+        let textWidth = pill.width - textX - 14
+        title.string = name
+        detail.string = state
+        if state.isEmpty {
+            title.frame = CGRect(x: textX, y: (Self.height - 20) / 2, width: textWidth, height: 20)
+            detail.frame = .zero
+        } else {
+            title.frame = CGRect(x: textX, y: Self.height / 2 - 2, width: textWidth, height: 19)
+            detail.frame = CGRect(x: textX, y: Self.height / 2 - 16, width: textWidth, height: 14)
+        }
+        CATransaction.commit()
+        setAccessibilityValue(state.isEmpty ? nil : state)
+        if frame.size != size { onResize?(size) }
+    }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func accessibilityPerformPress() -> Bool { onOpen?(); return true }
 
@@ -181,6 +290,8 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     private var discardPromptOpen = false
     private var statusItem: NSStatusItem?
     private var floatingPanel: NSPanel?
+    private var companionName = "Muse"
+    private var companionState = ""
     private var quickPanel: QuickPanel?
     private var quickWebView: WKWebView?
     private var hotKeyRefs: [String: EventHotKeyRef] = [:]
@@ -799,8 +910,8 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         }
     }
     private func makeFloatingPanel() -> NSPanel {
-        let side: CGFloat = FloatingButtonView.diameter + 20
-        let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: side, height: side), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        let size = FloatingButtonView.size(name: companionName, state: companionState)
+        let panel = NSPanel(contentRect: NSRect(origin: .zero, size: size), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.isFloatingPanel = true
         panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
@@ -809,14 +920,55 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         panel.hasShadow = false
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
-        let view = FloatingButtonView(frame: NSRect(x: 0, y: 0, width: side, height: side))
+        let view = FloatingButtonView(frame: NSRect(origin: .zero, size: size))
         view.onOpen = { [weak self] in self?.showWorkspace() }
+        // The pill grows and shrinks with its text and keeps its left edge.
+        view.onResize = { [weak self, weak panel] size in
+            guard let panel else { return }
+            panel.setContentSize(size)
+            self?.keepOnScreen(panel)
+        }
         panel.contentView = view
         if !panel.setFrameUsingName("OpenMuseFloatingButton"), let screen = NSScreen.main?.visibleFrame {
-            panel.setFrameOrigin(NSPoint(x: screen.maxX - side - 16, y: screen.minY + 16))
+            panel.setFrameOrigin(NSPoint(x: screen.maxX - size.width - 16, y: screen.minY + 16))
         }
         panel.setFrameAutosaveName("OpenMuseFloatingButton")
+        panel.setContentSize(size)
+        keepOnScreen(panel)
+        view.show(name: companionName, state: companionState)
+        view.toolTip = quickShortcutTip()
         return panel
+    }
+    // A restored or resized pill stays wholly on its screen.
+    private func keepOnScreen(_ panel: NSPanel) {
+        guard let screen = (panel.screen ?? NSScreen.main)?.visibleFrame else { return }
+        var origin = panel.frame.origin
+        origin.x = min(max(origin.x, screen.minX), screen.maxX - panel.frame.width)
+        origin.y = min(max(origin.y, screen.minY), screen.maxY - panel.frame.height)
+        if origin != panel.frame.origin { panel.setFrameOrigin(origin) }
+    }
+    // "Press ⌥ Space to start a chat", in the shortcut Quick Chat listens for.
+    private func quickShortcutTip() -> String {
+        let (code, modifiers) = quickShortcut
+        var keys = ""
+        if modifiers & UInt32(controlKey) != 0 { keys += "⌃" }
+        if modifiers & UInt32(optionKey) != 0 { keys += "⌥" }
+        if modifiers & UInt32(shiftKey) != 0 { keys += "⇧" }
+        if modifiers & UInt32(cmdKey) != 0 { keys += "⌘" }
+        let named: [UInt32: String] = [UInt32(kVK_Space): localized("Space"), UInt32(kVK_Return): "↩", UInt32(kVK_Tab): "⇥"]
+        let letters = "asdfhgzxcv bqweryt123465=97-80]ou[ip lj'k;\\,/nm."
+        var key = named[code] ?? ""
+        if key.isEmpty, code < letters.count {
+            key = String(letters[letters.index(letters.startIndex, offsetBy: Int(code))]).uppercased()
+        }
+        return String(format: localized("Press %@ to start a chat"), "\(keys) \(key)")
+    }
+    // The workspace reports the companion's name and what it is doing, for the
+    // pill shown while the window is closed.
+    private func updateCompanion(name: String, state: String) {
+        companionName = name
+        companionState = state
+        (floatingPanel?.contentView as? FloatingButtonView)?.show(name: name, state: state)
     }
     // Every window shares one connection; tell the others what changed.
     private func broadcast(_ event: String, except sender: WKWebView?) {
@@ -902,7 +1054,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             }
         }
         hotKeyRegistered[name] = registered
-        if name == "quickChat" { updateQuickMenuItem() }
+        if name == "quickChat" { updateQuickMenuItem(); floatingPanel?.contentView?.toolTip = quickShortcutTip() }
     }
     private func applyHotKeys() {
         for name in Self.hotKeys.keys.sorted() { applyHotKey(name) }
@@ -1123,6 +1275,17 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
                 default: return
                 }
                 for view in [webView, settingsWebView, quickWebView] { view?.reload() }
+            }
+            // The workspace names the companion and says whether it is thinking
+            // or speaking; anything else reads as idle.
+            if body?["name"] == "companion", message.webView === webView {
+                let state: String
+                switch body?["state"] {
+                case "thinking": state = localized("Thinking")
+                case "speaking": state = localized("Speaking")
+                default: state = ""
+                }
+                updateCompanion(name: body?["value"] ?? "", state: state)
             }
             // Only the workspace counts unread replies; the label is a short count.
             if body?["name"] == "badge", message.webView === webView {

@@ -94,6 +94,7 @@ import { canAutoApprove } from "../../shared/approval-policy";
 import { ArchiveToggle, Avatar, Empty, Modal, Rail } from "./Chrome";
 import { ShortcutsDialog } from "./Shortcuts";
 import { groupLinks } from "./messageGroups";
+import { postCompanion, type CompanionState } from "./presence";
 import {
   PanelEdgeHandle,
   panelEdge,
@@ -966,6 +967,15 @@ export function DesktopApp({ client }: { client: Client }) {
   const messages = chatMessages(events);
   useUnreadBadge(id, messages);
   const readAloud = useReadAloud();
+  const companionState: CompanionState = running
+    ? "thinking"
+    : readAloud.speaking
+      ? "speaking"
+      : "";
+  useEffect(
+    () => postCompanion(name, companionState),
+    [name, companionState],
+  );
   // A voice conversation sends each spoken turn through the normal send, so
   // quotes, goals and connection checks apply exactly as when typing.
   const voice = useVoiceConversation({
