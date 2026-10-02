@@ -453,8 +453,40 @@
   color: var(--text-2);
   font-size: 12px;
 }
-.settings-search {
-  margin: 0 0 12px;
+/* A filled search pill, without an outline. */
+.settings-search.search-field {
+  height: 44px;
+  margin: 0 0 8px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--fill);
+  font-size: 15px;
+}
+.settings-row > .connector-tile {
+  margin-left: 0;
+}
+.connector-tile {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--text);
+}
+.connector-row {
+  align-items: center;
+}
+.connector-row > .settings-link,
+.connector-row > .connector-open {
+  margin-left: auto;
+  align-self: center;
+}
+.connector-open {
+  color: var(--text-2);
 }
 /* Computer use: the permission rows lead, with a blue link per permission,
    and the controls below stay faded until macOS grants both. */

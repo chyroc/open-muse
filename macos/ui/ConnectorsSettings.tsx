@@ -7,6 +7,7 @@ import {
   MessagesSquare,
   Search,
   SquareTerminal,
+  ChevronRight,
 } from "lucide-react";
 import { t } from "../../shared/i18n";
 import { draftInMainChat } from "./dataExport";
@@ -233,47 +234,68 @@ export function ConnectorsSettings({
           onChange={(event) => setQuery(event.target.value)}
         />
       </label>
-      <div className="settings-group">
-        {items.map(({ id, name, detail, Icon, connect, section }) => (
-          <div className="settings-row settings-device-row" key={id}>
-            <Icon size={17} />
-            <div>
-              <strong>{name}</strong>
-              <p>{detail}</p>
-            </div>
-            {connect ? (
-              <button
-                className="settings-inline-button"
-                onClick={() =>
-                  setNotice(
-                    draftInMainChat(t(connect))
-                      ? t("A draft is waiting in the main chat.")
-                      : t("Open the Mac app to continue."),
-                  )
-                }
-              >
-                {t("Connect")}
-              </button>
-            ) : section ? (
-              <button
-                className="settings-inline-button"
-                onClick={() => onSection(section)}
-              >
-                {t("Settings")}
-              </button>
-            ) : (
-              <span>{t("Included")}</span>
-            )}
-          </div>
-        ))}
-        {!items.length && (
+      {(
+        [
+          [t("Connected"), items.filter((item) => !item.connect)],
+          [t("Available"), items.filter((item) => item.connect)],
+        ] as [string, Connector[]][]
+      ).map(
+        ([heading, group]) =>
+          group.length > 0 && (
+            <section key={heading}>
+              <h2>{heading}</h2>
+              <div className="settings-group">
+                {group.map(({ id, name, detail, Icon, connect, section }) => (
+                  <div
+                    className="settings-row settings-device-row connector-row"
+                    key={id}
+                  >
+                    <span className="connector-tile" aria-hidden="true">
+                      <Icon size={18} strokeWidth={1.7} />
+                    </span>
+                    <div>
+                      <strong>{name}</strong>
+                      <p>{detail}</p>
+                    </div>
+                    {connect ? (
+                      <button
+                        className="settings-link"
+                        onClick={() =>
+                          setNotice(
+                            draftInMainChat(t(connect))
+                              ? t("A draft is waiting in the main chat.")
+                              : t("Open the Mac app to continue."),
+                          )
+                        }
+                      >
+                        {t("Connect")}
+                      </button>
+                    ) : (
+                      section && (
+                        <button
+                          className="connector-open icon-button"
+                          onClick={() => onSection(section)}
+                        >
+                          <ChevronRight size={18} aria-hidden="true" />
+                          <span className="sr-only">{t("Settings")}</span>
+                        </button>
+                      )
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          ),
+      )}
+      {!items.length && (
+        <div className="settings-group settings-gap">
           <div className="settings-row">
             <div>
               <p>{t("No results")}</p>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
       {computerAvailable() && <LocalConnectors term={term} />}
       {notice && <p className="settings-lead settings-after">{notice}</p>}
       <p className="settings-lead settings-after">
