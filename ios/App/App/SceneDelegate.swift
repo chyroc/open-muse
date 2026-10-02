@@ -74,6 +74,31 @@ final class MuseHapticsHandler: NSObject, WKScriptMessageHandler {
     }
 }
 
+// Native text fields show no form navigation bar above the keyboard, so the
+// web view's content view reports no input accessory view.
+private final class NoInputAccessory: NSObject {
+    @objc var inputAccessoryView: AnyObject? { nil }
+}
+
+private extension WKWebView {
+    func hideInputAccessoryBar() {
+        guard let content = scrollView.subviews.first(where: {
+            String(describing: type(of: $0)).hasPrefix("WKContent")
+        }), let base = object_getClass(content) else { return }
+        let name = "\(base)_NoInputAccessory"
+        var subclass: AnyClass? = NSClassFromString(name)
+        if subclass == nil, let created = objc_allocateClassPair(base, name, 0) {
+            let selector = #selector(getter: NoInputAccessory.inputAccessoryView)
+            if let method = class_getInstanceMethod(NoInputAccessory.self, selector) {
+                class_addMethod(created, selector, method_getImplementation(method), method_getTypeEncoding(method))
+            }
+            objc_registerClassPair(created)
+            subclass = created
+        }
+        if let subclass { object_setClass(content, subclass) }
+    }
+}
+
 class MuseBridgeViewController: CAPBridgeViewController {
     private var keyboardObservers: [NSObjectProtocol] = []
     private let credentialsHandler = MuseCredentialsHandler()
@@ -134,6 +159,7 @@ class MuseBridgeViewController: CAPBridgeViewController {
         webView?.isOpaque = false
         webView?.backgroundColor = page
         webView?.scrollView.backgroundColor = page
+        webView?.hideInputAccessoryBar()
     }
 
     deinit {
