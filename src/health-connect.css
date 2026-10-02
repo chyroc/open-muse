@@ -1,0 +1,181 @@
+/* What connecting Health means, as a floating sheet 8pt from the screen
+   edges: a 45pt app icon, a 20pt title, three explained points, a note, and a
+   44pt gradient Continue with a plain Cancel beneath. Text sizes are at the
+   default text size; Dynamic Type scales them. */
+.health-connect {
+  position: fixed;
+  inset: auto 8px auto;
+  bottom: calc(100dvh - var(--app-top, 0px) - var(--app-height, 100dvh) + 8px);
+  width: auto;
+  max-width: 520px;
+  max-height: calc(100dvh - max(env(safe-area-inset-top), 12px) - 24px);
+  margin: 0 auto;
+  padding: 0 0 12px;
+  border: 0;
+  border-radius: 40px;
+  color: #000;
+  background: #fcfcfc;
+  box-shadow: 0 10px 40px rgb(0 0 0 / 14%);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  animation: health-connect-in var(--motion-sheet-duration)
+    var(--motion-sheet-spring) backwards;
+}
+.health-connect:focus {
+  outline: none;
+}
+.health-connect::backdrop {
+  background: var(--sheet-dim);
+  animation: health-connect-dim var(--motion-sheet-duration) ease-out both;
+}
+.health-connect.closing::backdrop {
+  opacity: 0;
+  transition: opacity var(--motion-sheet-dismiss-duration) ease-in;
+}
+.health-connect-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 24px 0;
+  text-align: center;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.health-connect-grip {
+  width: 56px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgb(0 0 0 / 16%);
+}
+.health-connect-app {
+  display: grid;
+  place-items: center;
+  width: 45px;
+  height: 45px;
+  margin-top: 33px;
+  border-radius: 11px;
+  background: #fff;
+  box-shadow:
+    inset 0 0 0 1px rgb(0 0 0 / 8%),
+    0 2px 6px rgb(0 0 0 / 6%);
+}
+.health-connect h2 {
+  margin: 14px 0 0;
+  font-size: 20px;
+  line-height: 25px;
+  font-weight: 700;
+}
+.health-connect-top p {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: #6e6e73;
+}
+.health-connect-rows {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0 20px 0 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.health-connect-rows li {
+  display: flex;
+  gap: 12px;
+}
+.health-connect-row-icon {
+  flex: 0 0 22px;
+  display: grid;
+  place-items: center;
+  height: 21px;
+  color: #000;
+}
+.health-connect-rows strong {
+  display: block;
+  font-size: 16px;
+  line-height: 21px;
+  font-weight: 600;
+}
+.health-connect-rows small {
+  display: block;
+  margin-top: 2px;
+  font-size: 14px;
+  line-height: 20px;
+  color: #6e6e73;
+}
+.health-connect-note {
+  margin: 16px 0 0;
+  padding: 14px 20px 0;
+  border-top: 1px solid rgb(0 0 0 / 8%);
+  font-size: 14px;
+  line-height: 21px;
+  color: #6e6e73;
+}
+.health-connect-continue,
+.health-connect-cancel {
+  display: block;
+  width: calc(100% - 38px);
+  height: 44px;
+  margin: 0 auto;
+  border-radius: 22px;
+  font-size: 16px;
+  font-weight: 600;
+  transition: transform var(--motion-press-duration) ease-out;
+}
+.health-connect-continue {
+  margin-top: 16px;
+  color: #fff;
+  background: linear-gradient(90deg, #0866f5, #4f4ff0);
+}
+.health-connect-cancel {
+  margin-top: 6px;
+  color: #000;
+  background: transparent;
+}
+.health-connect-continue:active,
+.health-connect-cancel:active {
+  transform: scale(var(--motion-press-scale));
+}
+@keyframes health-connect-in {
+  from {
+    transform: translateY(calc(100% + 8px));
+  }
+}
+@keyframes health-connect-dim {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes health-connect-in {
+    from {
+      opacity: 0;
+      transform: scale(0.98);
+    }
+  }
+}
+@media (prefers-color-scheme: dark) {
+  .health-connect {
+    color: #fff;
+    background: #1c1c1e;
+  }
+  .health-connect-grip {
+    background: rgb(255 255 255 / 22%);
+  }
+  .health-connect-app {
+    background: #fff;
+  }
+  .health-connect-row-icon,
+  .health-connect-cancel {
+    color: #fff;
+  }
+  .health-connect-top p,
+  .health-connect-rows small,
+  .health-connect-note {
+    color: #aeaeb2;
+  }
+  .health-connect-note {
+    border-top-color: rgb(255 255 255 / 10%);
+  }
+}
