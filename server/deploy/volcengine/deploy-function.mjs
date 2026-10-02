@@ -11,6 +11,9 @@
 //   OPEN_MUSE_ANON_KEY=... CREDENTIAL_ENCRYPTION_KEYS='{"current":...}' \
 //   SCHEDULER_TRIGGER_SECRET=... node server/deploy/volcengine/deploy-function.mjs
 //
+// To update the code of an existing deployment, set only SUPABASE_WORKSPACE:
+// the function keeps its current secrets and the service role its password.
+//
 // Requires `ve` signed in. Secrets are never printed or passed as arguments.
 import { execFileSync } from "node:child_process";
 import {
@@ -35,13 +38,29 @@ const env = (name) => {
   return value;
 };
 const workspace = env("SUPABASE_WORKSPACE");
-const secrets = {
+const SECRET_INPUTS = [
+  "OPEN_MUSE_DB_HOST",
+  "OPEN_MUSE_DB_PASSWORD",
+  "OPEN_MUSE_AUTH_URL",
+  "OPEN_MUSE_ANON_KEY",
+  "CREDENTIAL_ENCRYPTION_KEYS",
+  "SCHEDULER_TRIGGER_SECRET",
+];
+const keepSecrets = SECRET_INPUTS.every((name) => !process.env[name]);
+const secrets = keepSecrets ? undefined : {
   OPEN_MUSE_DATABASE_URL: `postgresql://open_muse_service:${encodeURIComponent(env("OPEN_MUSE_DB_PASSWORD"))}@${env("OPEN_MUSE_DB_HOST")}:5432/postgres?sslmode=require`,
   OPEN_MUSE_AUTH_URL: new URL(env("OPEN_MUSE_AUTH_URL")).origin,
   OPEN_MUSE_ANON_KEY: env("OPEN_MUSE_ANON_KEY"),
   CREDENTIAL_ENCRYPTION_KEYS: env("CREDENTIAL_ENCRYPTION_KEYS"),
   SCHEDULER_TRIGGER_SECRET: env("SCHEDULER_TRIGGER_SECRET"),
 };
+const SERVICE_SECRETS = [
+  "OPEN_MUSE_DATABASE_URL",
+  "OPEN_MUSE_AUTH_URL",
+  "OPEN_MUSE_ANON_KEY",
+  "CREDENTIAL_ENCRYPTION_KEYS",
+  "SCHEDULER_TRIGGER_SECRET",
+];
 
 const cli = (args, input) =>
   execFileSync("ve", ["byted-supabase-cli", ...args, "--workspace-id", workspace], {
@@ -59,6 +78,18 @@ const sql = (text) => {
     rmSync(file, { force: true });
   }
 };
+
+// Keeping secrets is only for a deployment that already has all of them.
+if (keepSecrets) {
+  const listed = cli(["secrets", "list"]);
+  const missing = SERVICE_SECRETS.filter(
+    (name) => !new RegExp(`^\\s*${name}\\s*\\|`, "m").test(listed),
+  );
+  if (missing.length)
+    throw new Error(
+      `The function has no ${missing.join(", ")}; set ${SECRET_INPUTS.join(", ")} for a first deployment.`,
+    );
+}
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(join(out, "supabase/functions", NAME), { recursive: true });
@@ -80,7 +111,12 @@ console.log("Bundled the service.");
 
 // 2. Schema, role, and migrations. Tables live outside `public`, which the
 // Supabase data API exposes; only the service role may use them.
-const password = secrets.OPEN_MUSE_DATABASE_URL.match(/:([^:@]+)@/)[1];
+const password = secrets?.OPEN_MUSE_DATABASE_URL.match(/:([^:@]+)@/)[1];
+if (
+  keepSecrets &&
+  !sql("SELECT 1 FROM pg_roles WHERE rolname = 'open_muse_service'").length
+)
+  throw new Error("The open_muse_service role does not exist yet.");
 sql(`
 CREATE SCHEMA IF NOT EXISTS open_muse;
 REVOKE ALL ON SCHEMA open_muse FROM PUBLIC;
@@ -92,7 +128,11 @@ DO $$ BEGIN
     CREATE ROLE open_muse_service LOGIN;
   END IF;
 END $$;
-ALTER ROLE open_muse_service WITH LOGIN PASSWORD '${decodeURIComponent(password).replaceAll("'", "''")}';
+${
+  password
+    ? `ALTER ROLE open_muse_service WITH LOGIN PASSWORD '${decodeURIComponent(password).replaceAll("'", "''")}';`
+    : ""
+}
 ALTER ROLE open_muse_service SET search_path = open_muse;
 GRANT USAGE ON SCHEMA open_muse TO open_muse_service;
 ALTER DEFAULT PRIVILEGES IN SCHEMA open_muse GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO open_muse_service;
@@ -121,21 +161,23 @@ REVOKE ALL ON open_muse.schema_migrations FROM open_muse_service;`);
 console.log("Database is ready.");
 
 // 3. Secrets, from a private file that is removed right away.
-const dotenv = join(out, "secrets.env");
-writeFileSync(
-  dotenv,
-  Object.entries(secrets)
-    .map(([key, value]) => `${key}='${value.replaceAll("'", "")}'`)
-    .join("\n") + "\n",
-  { mode: 0o600 },
-);
-chmodSync(dotenv, 0o600);
-try {
-  cli(["secrets", "set", "--env-file", dotenv]);
-} finally {
-  rmSync(dotenv, { force: true });
-}
-console.log("Secrets are set.");
+if (secrets) {
+  const dotenv = join(out, "secrets.env");
+  writeFileSync(
+    dotenv,
+    Object.entries(secrets)
+      .map(([key, value]) => `${key}='${value.replaceAll("'", "")}'`)
+      .join("\n") + "\n",
+    { mode: 0o600 },
+  );
+  chmodSync(dotenv, 0o600);
+  try {
+    cli(["secrets", "set", "--env-file", dotenv]);
+  } finally {
+    rmSync(dotenv, { force: true });
+  }
+  console.log("Secrets are set.");
+} else console.log("Kept the function's current secrets.");
 
 // 4. Deploy.
 cli(["functions", "deploy", NAME, "--no-verify-jwt", "--workdir", out, "--yes"]);

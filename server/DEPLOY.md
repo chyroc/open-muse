@@ -68,6 +68,11 @@ private temporary file, and deploys the function. It is safe to rerun. Keep
 the secrets outside the repository; losing the keyring makes stored
 credentials unreadable.
 
+To ship new code to an existing deployment, set only `SUPABASE_WORKSPACE`.
+The script then checks that the function already has its secrets and the
+`open_muse_service` role exists, applies new migrations, and deploys without
+changing any secret or the role's password.
+
 ## 3. Scheduled tasks
 
 ```sh
