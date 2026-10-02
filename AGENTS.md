@@ -53,6 +53,7 @@ Requires Node.js 22.21+. Native Apple builds require Xcode.
 
 ## Conventions
 
+- Commit automatically: once a logical change is complete and its required checks pass, commit it without waiting to be asked. Do not push unless explicitly requested. If a required check fails or cannot be run, leave the change uncommitted and report why.
 - Run `npm run check` and `npm run build` before committing. When changing native bridges or assets, also verify the affected platform build; state explicitly which checks were not run.
 - Use Conventional Commits (`feat`, `fix`, `refactor`, `test`, `docs`, `chore`), one logical change per commit.
 - Commit only source code, required build configuration, reproducible tests, and public documentation. Never commit sensitive information of any kind: credentials, API keys, tokens, passwords, secrets, databases, private hostnames, personal paths, device logs, IPAs, or DMGs. Never commit confidential company information, including internal product names, internal hosts or URLs, internal tools, and unreleased code or documents.
