@@ -315,7 +315,8 @@ body {
   max-width: 94%;
   width: fit-content;
   background: var(--chat-gray);
-  border-radius: 23px 23px 23px 5px;
+  /* Bubbles round every corner equally, with no tail corner. */
+  border-radius: 22px;
   padding: 12px 16px;
   font-size: 17px;
   line-height: 1.42;
@@ -324,7 +325,7 @@ body {
 }
 .from-user .chat-bubble {
   background: var(--chat-blue);
-  border-radius: 24px;
+  border-radius: 22px;
   max-width: 87%;
 }
 .chat-bubble + .chat-bubble {
