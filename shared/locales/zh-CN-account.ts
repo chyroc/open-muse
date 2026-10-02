@@ -44,7 +44,7 @@ export const zhAccount: Record<string, string> = {
   "This device still holds a background device token from an earlier version of Open Muse. Device tokens are no longer supported, so it is not used. Remove it from this device to sign in to an Open Muse account.":
     "此设备上仍保存着旧版 Open Muse 的后台设备令牌。设备令牌已不再支持，因此不会使用它。请先从此设备移除它，再登录 Open Muse 账号。",
   "Remove the old device token": "移除旧的设备令牌",
-  "Signed in. Account ID: {id}": "已登录。账号 ID：{id}",
+  "Account ID: {id}": "账号 ID：{id}",
   "Signed out on this device. The account service could not confirm ending the session; it expires on its own.":
     "已在此设备上退出。账号服务未能确认结束该会话；它会自行过期。",
   "Sign out of Open Muse": "退出 Open Muse",

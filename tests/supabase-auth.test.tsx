@@ -400,6 +400,27 @@ describe("Native Supabase Auth trial", () => {
     },
   );
   it.each([[["en"]], [["zh-Hans"]]])(
+    "shows the signed-in account ID on its own %j",
+    async (languages) => {
+      vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", languages);
+      const f = fixture();
+      await f.client.signInAccount("person@example.com", password);
+      const html = renderToStaticMarkup(
+        <AccountPanel
+          service={f.client}
+          client={{ accountChanged: async () => {} }}
+          onChanged={() => {}}
+        />,
+      );
+      const id = supabaseOwner(origin, subject).slice(10, 18);
+      const chinese = languages[0].startsWith("zh");
+      expect(html).toContain(
+        chinese ? `账号 ID：${id}…` : `Account ID: ${id}…`,
+      );
+      expect(html).not.toContain(chinese ? "已登录。" : "Signed in.");
+    },
+  );
+  it.each([[["en"]], [["zh-Hans"]]])(
     "offers to remove an earlier device token instead of signing in %j",
     async (languages) => {
       vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", languages);

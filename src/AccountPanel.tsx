@@ -100,7 +100,7 @@ export function AccountPanel({
             role={unconfirmed ? "alert" : undefined}
           >
             {owner
-              ? t("Signed in. Account ID: {id}", {
+              ? t("Account ID: {id}", {
                   id: `${owner.slice(10, 18)}…`,
                 })
               : t(
