@@ -8,6 +8,9 @@ import {
   resolveLanguage,
   systemLanguage,
   t,
+  deviceLanguage,
+  languageChoice,
+  setLanguageChoice,
 } from "../shared/i18n";
 import { zhCN } from "../shared/locales/zh-CN";
 import { groups, labels } from "../shared/ma";
@@ -200,5 +203,41 @@ describe("Translation catalog integrity", () => {
     expect(readFileSync("AGENTS.md", "utf8")).toBe(
       readFileSync("CLAUDE.md", "utf8"),
     );
+  });
+});
+
+describe("Chosen app language", () => {
+  const storage = () => {
+    const values = new Map<string, string>();
+    return {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key),
+    };
+  };
+
+  it("follows the device until a language is chosen, and again after", () => {
+    vi.stubGlobal("localStorage", storage());
+    vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", ["zh-Hans-CN"]);
+    expect(languageChoice()).toBe("system");
+    expect(systemLanguage()).toBe("zh-CN");
+    setLanguageChoice("en");
+    expect(languageChoice()).toBe("en");
+    expect(systemLanguage()).toBe("en");
+    expect(deviceLanguage()).toBe("zh-CN");
+    expect(t("Settings")).toBe("Settings");
+    setLanguageChoice("system");
+    expect(systemLanguage()).toBe("zh-CN");
+    expect(t("Settings")).toBe("设置");
+  });
+
+  it("ignores unknown stored values and missing storage", () => {
+    const store = storage();
+    store.setItem("open-muse.language", "fr");
+    vi.stubGlobal("localStorage", store);
+    vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", ["en-US"]);
+    expect(languageChoice()).toBe("system");
+    vi.stubGlobal("localStorage", undefined);
+    expect(systemLanguage()).toBe("en");
   });
 });

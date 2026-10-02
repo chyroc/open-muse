@@ -12,7 +12,8 @@ export function resolveLanguage(languages: readonly string[]): Language {
   return "en";
 }
 
-export function systemLanguage(): Language {
+// The device's own preference list, resolved to a supported language.
+export function deviceLanguage(): Language {
   const native = (
     globalThis as typeof globalThis & {
       __OPEN_MUSE_LANGUAGES__?: string[];
@@ -26,6 +27,29 @@ export function systemLanguage(): Language {
           ? navigator.languages
           : [navigator.language]),
   );
+}
+
+// A person may pick the app language on this device. Without a choice the app
+// follows the device list; nothing is stored until someone picks a language.
+export type LanguageChoice = "system" | Language;
+const choiceKey = "open-muse.language";
+export function languageChoice(): LanguageChoice {
+  try {
+    const value = globalThis.localStorage?.getItem(choiceKey);
+    return value === "en" || value === "zh-CN" ? value : "system";
+  } catch {
+    return "system";
+  }
+}
+export function setLanguageChoice(choice: LanguageChoice) {
+  if (choice === "system") globalThis.localStorage?.removeItem(choiceKey);
+  else globalThis.localStorage?.setItem(choiceKey, choice);
+}
+
+// The language the app shows: the person's choice, else the device's.
+export function systemLanguage(): Language {
+  const choice = languageChoice();
+  return choice === "system" ? deviceLanguage() : choice;
 }
 
 export function formatLocale() {
