@@ -47,9 +47,21 @@ function ve(...args) {
   const profile = process.env.VE_PROFILE
     ? ["--profile", process.env.VE_PROFILE]
     : [];
-  return JSON.parse(
-    read("ve", ["byted-supabase-cli", ...args, ...profile, "-o", "json"]),
-  );
+  let output;
+  try {
+    output = read("ve", [
+      "byted-supabase-cli",
+      ...args,
+      ...profile,
+      "-o",
+      "json",
+    ]);
+  } catch {
+    fail(
+      "The Volcengine CLI could not read the Supabase workspace. Run `ve login` (and `ve byted-supabase-cli login` if asked), or set VITE_MUSE_BACKGROUND_URL, VITE_MUSE_SUPABASE_URL, and VITE_MUSE_SUPABASE_ANON_KEY.",
+    );
+  }
+  return JSON.parse(output);
 }
 
 function accountConfig() {
