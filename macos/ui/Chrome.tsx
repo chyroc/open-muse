@@ -43,7 +43,7 @@ const GoalsIcon = createLucideIcon("goal-box", [
 ]);
 
 // The library: four shapes in a grid.
-const LibraryIcon = createLucideIcon("shape-grid", [
+export const LibraryIcon = createLucideIcon("shape-grid", [
   ["path", { d: "M7 2.8 10.2 6 7 9.2 3.8 6z", key: "diamond" }],
   ["path", { d: "M17 3 20.5 9h-7z", key: "triangle" }],
   ["circle", { cx: "7", cy: "17", r: "3.3", key: "circle" }],

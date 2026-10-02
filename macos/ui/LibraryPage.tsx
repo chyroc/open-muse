@@ -16,11 +16,10 @@ import {
   Plus,
   RefreshCw,
   Search,
-  Shapes,
-  SlidersHorizontal,
+  ListFilter,
   Trash2,
-  Video,
   X,
+  createLucideIcon,
 } from "lucide-react";
 import { formatLocale, t } from "../../shared/i18n";
 import type { LibraryItem } from "../../shared/types";
@@ -30,7 +29,7 @@ import type {
 } from "../../shared/identity";
 import type { Client } from "../../src/api";
 import { Markdown } from "../../src/components";
-import { Empty, Modal } from "./Chrome";
+import { Empty, LibraryIcon, Modal } from "./Chrome";
 import { navLabel as sectionName } from "./labels";
 import {
   emptyLibraryPresentation,
@@ -43,12 +42,22 @@ import {
 } from "./library";
 import "./library.css";
 
+// Videos: a clip in front of another, with a play mark.
+const VideoIcon = createLucideIcon("video-stack", [
+  ["path", { d: "M4 16V5.5A1.5 1.5 0 0 1 5.5 4H16", key: "back" }],
+  [
+    "rect",
+    { x: "7.5", y: "7.5", width: "13", height: "13", rx: "2", key: "front" },
+  ],
+  ["path", { d: "m12.5 11.2 3.6 2.8-3.6 2.8z", key: "play" }],
+]);
+
 const icons = {
-  all: Shapes,
+  all: LibraryIcon,
   documents: FileText,
   web: Globe,
   images: Image,
-  video: Video,
+  video: VideoIcon,
   podcasts: AudioLines,
   files: Folder,
 };
@@ -497,7 +506,7 @@ export function LibraryPage({
                           aria-expanded={sortMenu}
                           onClick={() => setSortMenu((value) => !value)}
                         >
-                          <SlidersHorizontal size={19} />
+                          <ListFilter size={19} />
                         </button>
                         {sortMenu && (
                           <div
@@ -610,7 +619,7 @@ export function LibraryPage({
               ) : !client.signedIn() ? (
                 <Empty
                   title={t("Connect to view your Library")}
-                  icon={<Shapes size={28} />}
+                  icon={<LibraryIcon size={28} />}
                 >
                   <button className="pill-button" onClick={onConnect}>
                     {t("Connect to Ark MA")}
@@ -661,7 +670,7 @@ export function LibraryPage({
                     searching ? (
                       <Search size={28} strokeWidth={1.5} />
                     ) : (
-                      <Shapes size={28} strokeWidth={1.5} />
+                      <LibraryIcon size={28} strokeWidth={1.5} />
                     )
                   }
                 />
