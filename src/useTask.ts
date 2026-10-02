@@ -8,6 +8,9 @@ export function useTask(client: Client, id?: string) {
   const [events, setEvents] = useState<AgentEvent[]>([]);
   const [session, setSession] = useState<Session>();
   const [loading, setLoading] = useState(Boolean(id));
+  // The conversation the state above belongs to. Until the effect below runs
+  // for a new id, report it as loading rather than briefly empty.
+  const [current, setCurrent] = useState(id);
   const [error, setError] = useState("");
   const [connected, setConnected] = useState(false);
   const [autoApprovalFailures, setAutoApprovalFailures] = useState<string[]>(
@@ -20,6 +23,7 @@ export function useTask(client: Client, id?: string) {
     setSession(undefined);
     setError("");
     setLoading(Boolean(id));
+    setCurrent(id);
     setConnected(false);
     setAutoApprovalFailures([]);
     if (!id) return;
@@ -109,10 +113,11 @@ export function useTask(client: Client, id?: string) {
       syncRef.current = async () => {};
     };
   }, [client, id]);
+  const stale = current !== id;
   return {
-    events,
-    session,
-    loading,
+    events: stale ? [] : events,
+    session: stale ? undefined : session,
+    loading: loading || (stale && Boolean(id)),
     error,
     connected,
     refresh,
