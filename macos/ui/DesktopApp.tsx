@@ -93,6 +93,7 @@ import {
 import { canAutoApprove } from "../../shared/approval-policy";
 import { ArchiveToggle, Avatar, Empty, Modal, Rail } from "./Chrome";
 import { ShortcutsDialog } from "./Shortcuts";
+import { groupLinks } from "./messageGroups";
 import {
   PanelEdgeHandle,
   panelEdge,
@@ -983,6 +984,13 @@ export function DesktopApp({ client }: { client: Client }) {
   useEffect(() => () => endVoice(), [draftKey, endVoice]);
   const voiceAvailable = dictationAvailable() && speechAvailable();
   const parts = messageParts(messages, events);
+  const links = groupLinks(
+    parts.map(({ event, part }) => ({
+      side: event.type === "user.message" ? "user" : "agent",
+      at: event.processed_at ?? event.created_at,
+      reacted: Boolean(reactions[event.id]) && part !== "intro",
+    })),
+  );
   const found = findMatches(parts, find ?? "", (event) =>
     messageAttachments(event, fileNames).map((item) => item.name),
   );
@@ -1426,11 +1434,11 @@ export function DesktopApp({ client }: { client: Client }) {
                 </p>
               )}
               <div className="message-stack">
-                {parts.map(({ event, part }) => (
+                {parts.map(({ event, part }, index) => (
                   <article
                     key={`${event.id}:${part}`}
                     data-part={partKey({ event, part })}
-                    className={`message ${event.type === "user.message" ? "from-user" : "from-assistant"}${found.includes(partKey({ event, part })) ? " found" : ""}${current === partKey({ event, part }) ? " current" : ""}`}
+                    className={`message ${event.type === "user.message" ? "from-user" : "from-assistant"}${links[index].prev ? " grouped-prev" : ""}${links[index].next ? " grouped-next" : ""}${found.includes(partKey({ event, part })) ? " found" : ""}${current === partKey({ event, part }) ? " current" : ""}`}
                   >
                     <div className="message-bubble">
                       {event.type === "agent.message" ? (

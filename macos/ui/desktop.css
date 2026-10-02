@@ -272,7 +272,6 @@ h3 {
 .message-stack {
   display: flex;
   flex-direction: column;
-  gap: 5px;
   max-width: 920px;
   margin: 0 auto;
 }
@@ -282,13 +281,17 @@ h3 {
   align-items: flex-start;
   max-width: 100%;
   position: relative;
-  padding-bottom: 21px;
+  margin-bottom: 16px;
+}
+/* Bubbles in one group sit 4 points apart. */
+.message.grouped-next {
+  margin-bottom: 4px;
 }
 .message.from-user {
   align-items: flex-end;
 }
 .message-bubble {
-  border-radius: 23px;
+  border-radius: 22px;
   background: var(--fill-strong);
   padding: 10px 15px;
   max-width: min(82%, 730px);
@@ -297,6 +300,19 @@ h3 {
 }
 .from-user .message-bubble {
   background: var(--blue);
+}
+/* Corners shared with a neighbour in the same group tuck in. */
+.from-assistant.grouped-prev .message-bubble {
+  border-top-left-radius: 6px;
+}
+.from-assistant.grouped-next .message-bubble {
+  border-bottom-left-radius: 6px;
+}
+.from-user.grouped-prev .message-bubble {
+  border-top-right-radius: 6px;
+}
+.from-user.grouped-next .message-bubble {
+  border-bottom-right-radius: 6px;
 }
 .message-bubble p:last-child,
 .message-bubble ul:last-child,
@@ -321,13 +337,25 @@ h3 {
   max-width: 100%;
   border-radius: 12px;
 }
+/* Hover actions float just below the bubble on a small raised bar, so
+   they never push the next bubble away. */
 .message-actions {
   display: flex;
   gap: 3px;
   position: absolute;
-  bottom: 0;
+  top: calc(100% - 4px);
+  z-index: 4;
+  padding: 2px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 2px 10px #0000001a;
   opacity: 0;
+  pointer-events: none;
   transition: opacity 0.12s;
+}
+.message:hover .message-actions,
+.message:focus-within .message-actions {
+  pointer-events: auto;
 }
 .message:hover .message-actions,
 .message:focus-within .message-actions {
