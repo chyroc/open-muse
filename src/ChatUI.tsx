@@ -154,7 +154,7 @@ export function ChatHeader({
       >
         <CompanionAvatar />
         <span className="companion-name">{name}</span>
-        {activity && <span className="companion-activity">{activity}</span>}
+        {activity && <span className="companion-subtitle">{activity}</span>}
       </button>
       {showMore && (
         <button
