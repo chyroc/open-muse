@@ -58,6 +58,7 @@ export const zhCN: Record<string, string> = {
   "Archive side chat": "归档旁聊",
   Message: "消息",
   "Send a message": "发消息",
+  Refreshing: "正在刷新",
   Camera: "相机",
   Photos: "照片",
   "Add file": "添加文件",

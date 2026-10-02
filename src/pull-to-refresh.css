@@ -1,0 +1,39 @@
+/* The page content follows a downward pull at the top of the page (the
+   native top bounce is off), revealing the indicator above it. A refresh
+   holds the content 52pt down; release springs it back. */
+.pull-to-refresh {
+  position: relative;
+  overscroll-behavior-y: none;
+}
+.refresh-indicator {
+  position: absolute;
+  top: 12px;
+  left: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  color: #8e8e93;
+  z-index: 1;
+  pointer-events: none;
+  transition: opacity var(--motion-fade-duration) ease-out;
+}
+.refresh-content {
+  transition: transform var(--motion-release-duration)
+    var(--motion-release-ease);
+}
+.refresh-content.dragging {
+  transition: none;
+}
+.refresh-spinner.spinning {
+  animation: refresh-spin 0.8s steps(8) infinite;
+}
+@keyframes refresh-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .refresh-spinner.spinning {
+    animation-duration: 1.6s;
+  }
+}

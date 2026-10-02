@@ -16,6 +16,7 @@ import type {
   InspirationKind,
   InspirationSnapshot,
 } from "../shared/inspiration";
+import { useRefreshHandler } from "./PullToRefresh";
 import { Markdown, dateLabel } from "./components";
 import { PageHeader, Sheet } from "./MusePages";
 import { useTask } from "./useTask";
@@ -171,6 +172,7 @@ export function InspirationPage({
       if (alive.current) setLoading(false);
     }
   }, [client, kind]);
+  useRefreshHandler(refresh);
   useEffect(() => {
     alive.current = true;
     void refresh();
@@ -218,21 +220,7 @@ export function InspirationPage({
   const title = kind === "feed" ? t("Feed") : t("Ideas");
   return (
     <section className={`muse-page inspiration-page ${kind}`}>
-      <PageHeader
-        title={title}
-        action={
-          <button
-            className="inspiration-refresh"
-            aria-label={
-              kind === "feed" ? t("Refresh feed") : t("Refresh ideas")
-            }
-            disabled={loading || busy}
-            onClick={() => void refresh()}
-          >
-            <RefreshCw size={18} />
-          </button>
-        }
-      />
+      <PageHeader title={title} />
       {error && (
         <p className="inline-error" role="alert">
           {error}

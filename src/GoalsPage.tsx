@@ -20,6 +20,7 @@ import type { Goal } from "../shared/types";
 import type { Client } from "./api";
 import { Markdown } from "./components";
 import { PageHeader, Sheet } from "./MusePages";
+import { useRefreshHandler } from "./PullToRefresh";
 import "./goals.css";
 
 // In Chinese, career goals are named 事业 here. The shared catalog
@@ -168,6 +169,7 @@ export function GoalsPage({
       if (alive.current) setLoading(false);
     }
   }, [client]);
+  useRefreshHandler(reload);
   useEffect(() => {
     alive.current = true;
     void reload();

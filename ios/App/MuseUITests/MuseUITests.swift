@@ -818,7 +818,8 @@ final class MuseLiveUITests: XCTestCase {
         for _ in 0..<attempts {
             tap(app.buttons[section])
             if card.waitForExistence(timeout: 10) { return card }
-            tap(app.buttons["Refresh Library"])
+            // Pull down to refresh the Library.
+            app.webViews.firstMatch.swipeDown()
         }
         XCTAssertTrue(card.waitForExistence(timeout: 20), app.debugDescription)
         return card

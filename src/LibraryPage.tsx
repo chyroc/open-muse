@@ -6,7 +6,6 @@ import {
   Image,
   LoaderCircle,
   Music2,
-  RefreshCw,
   Share2,
   Shapes,
   Video,
@@ -17,6 +16,7 @@ import type { LibraryItem } from "../shared/types";
 import type { Client } from "./api";
 import { Markdown, dateLabel } from "./components";
 import { Sheet } from "./MusePages";
+import { useRefreshHandler } from "./PullToRefresh";
 import { exportText } from "./platform";
 import {
   canRenderThumbnails,
@@ -209,6 +209,7 @@ export function LibraryPage({ client }: { client: Client }) {
     );
     setLoading(false);
   }, [client]);
+  useRefreshHandler(reload);
   useEffect(() => {
     alive.current = true;
     void reload();
@@ -283,14 +284,6 @@ export function LibraryPage({ client }: { client: Client }) {
             {t("Loading…")}
           </span>
         )}
-        <button
-          className="icon-button"
-          aria-label={t("Refresh Library")}
-          disabled={loading}
-          onClick={() => void reload()}
-        >
-          <RefreshCw size={19} />
-        </button>
       </div>
       {error && (
         <div className="inline-error" role="alert">

@@ -48,6 +48,7 @@ import { HealthRequestCard } from "./HealthRequestCard";
 import { isHealthRequest } from "../shared/health";
 import { SettingsHome } from "./SettingsHome";
 import { PageSheet } from "./PageSheet";
+import { PullToRefresh } from "./PullToRefresh";
 import { Studio } from "./Studio";
 import { exportText } from "./platform";
 import { backgroundClient } from "./background-client";
@@ -1050,7 +1051,7 @@ function Workspace({
           </>
         )}
         {!isChat && (
-          <div className="companion-content">
+          <PullToRefresh className="companion-content">
             {tab === "feed" && (
               <InspirationPage
                 key="feed"
@@ -1100,7 +1101,7 @@ function Workspace({
             )}
             {tab === "library" && <LibraryPage client={client} />}
             {tab === "studio" && <Studio client={client} config={config} />}
-          </div>
+          </PullToRefresh>
         )}
       </main>
       <nav
