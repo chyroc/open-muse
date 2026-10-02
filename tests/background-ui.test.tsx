@@ -5,22 +5,19 @@ import { BackgroundSettings } from "../src/BackgroundSettings";
 import { BackgroundClient } from "../src/background-client";
 
 describe("Background connection UI", () => {
-  it("does not claim background capability on an unconfigured build", () => {
-    const html = renderToStaticMarkup(
-      <BackgroundSettings service={new BackgroundClient("")} />,
-    );
-    expect(html).toContain("no background service configured");
-    expect(html).not.toContain('type="password"');
-  });
-  it("uses a private device token and explains local removal versus server scheduling", () => {
-    const html = renderToStaticMarkup(
-      <BackgroundSettings
-        service={new BackgroundClient("https://background.example")}
-      />,
-    );
-    expect(html).toContain("Device token");
-    expect(html).toContain('type="password"');
-    expect(html).toContain("never an Ark key or Cloudflare token");
-    expect(html).toContain("Pause the schedule before disconnecting");
+  it("does not claim background capability on a build without accounts", () => {
+    for (const service of [
+      new BackgroundClient(""),
+      // A service origin alone no longer enables anything: background work
+      // needs an Open Muse account.
+      new BackgroundClient("https://background.example"),
+    ]) {
+      const html = renderToStaticMarkup(
+        <BackgroundSettings service={service} />,
+      );
+      expect(html).toContain("this build has no account service");
+      expect(html).not.toContain('type="password"');
+      expect(html).not.toContain("muse_device_");
+    }
   });
 });

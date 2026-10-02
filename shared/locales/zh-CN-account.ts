@@ -36,15 +36,14 @@ export const zhAccount: Record<string, string> = {
   "Sign in to an Open Muse account first.": "请先登录 Open Muse 账号。",
   "The previous login renewal could not be confirmed. Sign out of Open Muse and sign in again; it was not retried.":
     "上次登录凭据更新结果尚未确认。请退出 Open Muse 后重新登录；系统未重试。",
-  "This connection is independent of the Ark login above. Signing out of Ark does not stop this schedule.":
-    "此连接独立于上方的 Ark 登录。退出 Ark 不会停止此计划。",
   "The registration was not accepted. Check the email and password, or sign in if you already have an account. It was not retried.":
     "注册请求未被接受。请检查邮箱和密码；如已有账号，请直接登录。请求未重试。",
   "Your identity on every device. Your Ark API key, workspace, and history belong to it.":
     "你在所有设备上的身份。Ark API Key、工作区和历史记录都归属于此账号。",
   "Signed in": "已登录",
-  "This device is connected to the service with a private device token. Remove that connection under Background Feed to sign in to an Open Muse account.":
-    "此设备正通过私有设备令牌连接服务。请先在“后台动态”中移除该连接，再登录 Open Muse 账号。",
+  "This device still holds a background device token from an earlier version of Open Muse. Device tokens are no longer supported, so it is not used. Remove it from this device to sign in to an Open Muse account.":
+    "此设备上仍保存着旧版 Open Muse 的后台设备令牌。设备令牌已不再支持，因此不会使用它。请先从此设备移除它，再登录 Open Muse 账号。",
+  "Remove the old device token": "移除旧的设备令牌",
   "Signed in. Account ID: {id}": "已登录。账号 ID：{id}",
   "Signed out on this device. The account service could not confirm ending the session; it expires on its own.":
     "已在此设备上退出。账号服务未能确认结束该会话；它会自行过期。",

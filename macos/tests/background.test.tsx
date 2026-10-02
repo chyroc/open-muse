@@ -12,15 +12,19 @@ afterEach(async () => {
   host?.remove();
 });
 
-async function setup(withArk = false) {
+async function setup(withArk = false, signedIn = true) {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
   const status: BackgroundStatus = {
     connected: true,
-    owner: "private-owner",
+    owner: "muse_user_" + "a".repeat(64),
     backgroundReady: true,
     credentialStorageReady: true,
+    account: {
+      provider: "supabase",
+      credential: { configured: true, revision: 1, updatedAt: 10 },
+    },
     connection: { configured: true, revision: 1, updatedAt: 10 },
     schedule: {
       enabled: false,
@@ -41,7 +45,7 @@ async function setup(withArk = false) {
   const service = {
     origin: "https://background.example",
     configured: () => true,
-    connected: vi.fn(() => true),
+    connected: vi.fn(() => signedIn),
     pending: () => false,
     restore: vi.fn(async () => {}),
     cachedFeed: vi.fn(async () => ({ items: [], cursor: 0 })),
@@ -95,7 +99,7 @@ describe("Native background settings interactions", () => {
   it("does not sync on mount, refresh, or before explicit upload consent", async () => {
     const { service, client } = await setup(true);
     expect(service.syncConfiguration).not.toHaveBeenCalled();
-    expect(button("Sync current Ark configuration").disabled).toBe(true);
+    expect(button("Allow background work").disabled).toBe(true);
     await act(async () => button("Refresh").click());
     expect(service.syncConfiguration).not.toHaveBeenCalled();
     await act(async () =>
@@ -103,21 +107,23 @@ describe("Native background settings interactions", () => {
         .querySelector<HTMLInputElement>(".background-authorization input")!
         .click(),
     );
-    await act(async () => button("Sync current Ark configuration").click());
+    await act(async () => button("Allow background work").click());
     expect(service.syncConfiguration).toHaveBeenCalledExactlyOnceWith(client);
-    expect(button("Sync current Ark configuration").disabled).toBe(true);
-    expect(host.textContent).toContain("Current Ark configuration synced");
+    expect(button("Allow background work").disabled).toBe(true);
+    expect(host.textContent).toContain(
+      "Background work is allowed for this workspace",
+    );
   });
-  it("separates remote revocation from device disconnection and requires confirmation", async () => {
+  it("stops background work with confirmation, without removing the local session", async () => {
     const { service } = await setup(true);
-    expect(button("Remove uploaded Ark access").disabled).toBe(true);
+    expect(button("Stop background work").disabled).toBe(true);
     expect(host.textContent).toContain("not end-to-end encryption");
     await act(async () =>
       host
         .querySelector<HTMLInputElement>(".background-remove-consent input")!
         .click(),
     );
-    await act(async () => button("Remove uploaded Ark access").click());
+    await act(async () => button("Stop background work").click());
     expect(service.removeConfiguration).toHaveBeenCalledOnce();
     expect(service.disconnect).not.toHaveBeenCalled();
     expect(host.textContent).toContain("the original Ark key remains valid");
@@ -178,20 +184,19 @@ describe("Native background settings interactions", () => {
       button("Generate once · may incur charges").click();
     });
     expect(service.generate).toHaveBeenCalledTimes(1);
-    expect(button("Remove this device connection").disabled).toBe(true);
+    expect(button("Refresh").disabled).toBe(true);
     await act(async () => finish({ ...run, phase: "complete" }));
     expect(host.textContent).toContain("request is confirmed: complete");
     expect(host.textContent).not.toContain("The run is queued");
   });
 
-  it("removes only the local connection, without silently pausing the schedule", async () => {
-    const { service } = await setup();
+  it("asks a signed-out person to sign in to an account, with no device token form", async () => {
+    const { service } = await setup(true, false);
     expect(host.textContent).toContain(
-      "Signing out of Ark does not stop this schedule",
+      "Sign in to your Open Muse account above to use background features.",
     );
-    await act(async () => button("Remove this device connection").click());
-    expect(service.disconnect).toHaveBeenCalledOnce();
-    expect(service.saveSchedule).not.toHaveBeenCalled();
-    expect(host.querySelector('input[type="password"]')).not.toBeNull();
+    expect(host.querySelector('input[type="password"]')).toBeNull();
+    expect(host.textContent).not.toContain("Device token");
+    expect(service.refresh).not.toHaveBeenCalled();
   });
 });

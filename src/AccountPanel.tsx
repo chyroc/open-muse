@@ -49,7 +49,7 @@ export function AccountPanel({
     }
   }
   const unconfirmed = service.accountSessionUnconfirmed();
-  const device = service.connected() && !owner && !unconfirmed;
+  const retired = service.retiredConnection();
   return (
     <section className="settings-card account-card">
       <div className="settings-card-heading">
@@ -78,12 +78,21 @@ export function AccountPanel({
           {notice}
         </p>
       )}
-      {device ? (
-        <p className="background-note">
-          {t(
-            "This device is connected to the service with a private device token. Remove that connection under Background Feed to sign in to an Open Muse account.",
-          )}
-        </p>
+      {retired ? (
+        <div className="logout-row">
+          <p className="background-note">
+            {t(
+              "This device still holds a background device token from an earlier version of Open Muse. Device tokens are no longer supported, so it is not used. Remove it from this device to sign in to an Open Muse account.",
+            )}
+          </p>
+          <button
+            className="button secondary"
+            disabled={busy}
+            onClick={() => void run(() => service.disconnect())}
+          >
+            {t("Remove the old device token")}
+          </button>
+        </div>
       ) : owner || unconfirmed ? (
         <div className="logout-row">
           <p

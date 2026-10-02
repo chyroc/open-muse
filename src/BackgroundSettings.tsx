@@ -1,6 +1,6 @@
 import { formatLocale, t } from "../shared/i18n";
 import { useEffect, useRef, useState } from "react";
-import { Clock3, RefreshCw, ShieldCheck } from "lucide-react";
+import { Clock3, RefreshCw } from "lucide-react";
 import type {
   BackgroundPost,
   BackgroundRun,
@@ -25,8 +25,7 @@ export function BackgroundSettings({
   const [schedule, setSchedule] = useState<BackgroundSchedule>(),
     [runs, setRuns] = useState<BackgroundRun[]>([]),
     [posts, setPosts] = useState<BackgroundPost[]>([]);
-  const [token, setToken] = useState(""),
-    [consent, setConsent] = useState(false),
+  const [consent, setConsent] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const [notice, setNotice] = useState(""),
@@ -90,8 +89,6 @@ export function BackgroundSettings({
     setDirty(true);
     setSchedule((current) => (current ? { ...current, ...patch } : current));
   }
-  // Signed in with an Open Muse account rather than a private device token.
-  const account = connected && Boolean(service.accountConnected?.());
   return (
     <section
       className="settings-card background-panel"
@@ -116,76 +113,20 @@ export function BackgroundSettings({
       {!service.configured() ? (
         <p className="background-note">
           {t(
-            "This build has no background service configured. Direct Ark conversations still work. Set the public API origin when building the app to enable this connection.",
+            "Background features need an Open Muse account, and this build has no account service. Direct Ark conversations still work.",
           )}
         </p>
       ) : (
         <>
           <p className="background-origin">{service.origin}</p>
-          {!connected && service.accountConfigured?.() ? (
+          {!connected ? (
             <p className="background-note">
               {t(
                 "Sign in to your Open Muse account above to use background features.",
               )}
             </p>
-          ) : !connected ? (
-            <form
-              className="background-form"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void action(async () => {
-                  try {
-                    const next = await service.connect(token.trim());
-                    if (alive.current) {
-                      setStatus(next);
-                      setSchedule(next.schedule);
-                    }
-                  } finally {
-                    setToken("");
-                  }
-                  await load();
-                });
-              }}
-            >
-              <label className="field">
-                {t("Device token")}
-                <input
-                  type="password"
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  autoComplete="off"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  placeholder="muse_device_…"
-                  required
-                  disabled={busy}
-                />
-              </label>
-              <p className="background-note">
-                <ShieldCheck size={16} />{" "}
-                {t(
-                  "Use a private Open Muse device token, never an Ark key or Cloudflare token. The token stays in this app's separate Keychain entry.",
-                )}
-              </p>
-              <button
-                className="button primary"
-                disabled={busy || !token.trim()}
-              >
-                {t("Connect background service")}
-              </button>
-            </form>
           ) : (
             <>
-              {!account && (
-                <p className="background-note">
-                  {t("Private service account:")}{" "}
-                  {status?.owner ?? t("Checking…")}.{" "}
-                  {t(
-                    "This connection is independent of the Ark login above. Signing out of Ark does not stop this schedule.",
-                  )}
-                </p>
-              )}
               {status && !status.backgroundReady && (
                 <p className="background-note">
                   {t(
@@ -195,26 +136,16 @@ export function BackgroundSettings({
               )}
               {client && (
                 <div className="background-authorization">
-                  <h3>
-                    {account
-                      ? t("Allow background work with this workspace")
-                      : t("Use your current Ark workspace")}
-                  </h3>
+                  <h3>{t("Allow background work with this workspace")}</h3>
                   <p className="background-note">
-                    {account
-                      ? t(
-                          "Your Ark API key is already saved in your Open Muse account. Allowing background work lets the service use it with this workspace's agent, environment, and memory while you are away. The service keeps this binding encrypted and its administrators remain trusted; this is not end-to-end encryption.",
-                        )
-                      : t(
-                          "No second key or agent to configure. Sync the API key, project, agent version, environment, and memory-store IDs from this app. The service stores the configuration encrypted and decrypts it to call Ark while you are away. Its administrators remain trusted; this is not end-to-end encryption.",
-                        )}
+                    {t(
+                      "Your Ark API key is already saved in your Open Muse account. Allowing background work lets the service use it with this workspace's agent, environment, and memory while you are away. The service keeps this binding encrypted and its administrators remain trusted; this is not end-to-end encryption.",
+                    )}
                   </p>
                   <p className="background-note" role="status">
                     {status?.connection?.configured
-                      ? `${account ? t("Background work allowed") : t("Configuration uploaded")}${status.connection.updatedAt ? ` · ${new Date(status.connection.updatedAt).toLocaleString(formatLocale())}` : ""}`
-                      : account
-                        ? t("Background work is not allowed yet.")
-                        : t("No app configuration uploaded.")}
+                      ? `${t("Background work allowed")}${status.connection.updatedAt ? ` · ${new Date(status.connection.updatedAt).toLocaleString(formatLocale())}` : ""}`
+                      : t("Background work is not allowed yet.")}
                     {status &&
                       !status.credentialStorageReady &&
                       t("Encrypted storage is not available yet.")}
@@ -232,13 +163,9 @@ export function BackgroundSettings({
                         setUploadConsent(event.target.checked)
                       }
                     />
-                    {account
-                      ? t(
-                          "I allow the Open Muse service to use my saved Ark API key with this workspace for background Feed generation. Personal context will be read from Ark. Cloud calls may be billed.",
-                        )
-                      : t(
-                          "I authorize uploading this app's current Ark configuration to this private service for background Feed generation. Personal context will be read from Ark. Cloud calls may be billed.",
-                        )}
+                    {t(
+                      "I allow the Open Muse service to use my saved Ark API key with this workspace for background Feed generation. Personal context will be read from Ark. Cloud calls may be billed.",
+                    )}
                   </label>
                   <div className="background-actions">
                     <button
@@ -258,20 +185,14 @@ export function BackgroundSettings({
                           setConsent(false);
                           await load();
                           setNotice(
-                            account
-                              ? t(
-                                  "Background work is allowed for this workspace. Review the schedule before enabling it.",
-                                )
-                              : t(
-                                  "Current Ark configuration synced. A changed connection pauses the schedule; review it before enabling. Generation remains subject to the server's safety checks.",
-                                ),
+                            t(
+                              "Background work is allowed for this workspace. Review the schedule before enabling it.",
+                            ),
                           );
                         })
                       }
                     >
-                      {account
-                        ? t("Allow background work")
-                        : t("Sync current Ark configuration")}
+                      {t("Allow background work")}
                     </button>
                   </div>
                   {status?.connection?.configured && (
@@ -309,9 +230,7 @@ export function BackgroundSettings({
                           })
                         }
                       >
-                        {account
-                          ? t("Stop background work")
-                          : t("Remove uploaded Ark access")}
+                        {t("Stop background work")}
                       </button>
                     </>
                   )}
@@ -383,7 +302,7 @@ export function BackgroundSettings({
                         disabled={busy}
                       />
                       {t(
-                        "I authorize unattended generation using this private service's configured Ark account. Cloud calls may be billed.",
+                        "I authorize unattended generation with the Ark API key saved in my Open Muse account. Cloud calls may be billed.",
                       )}
                     </label>
                   )}
@@ -527,35 +446,6 @@ export function BackgroundSettings({
                 )}
               </div>
             </>
-          )}
-          {!account && (connected || !service.accountConfigured?.()) && (
-            <div className="background-disconnect">
-              <button
-                className="button secondary"
-                disabled={busy}
-                onClick={() =>
-                  void action(async () => {
-                    await service.disconnect();
-                    setStatus(undefined);
-                    setSchedule(undefined);
-                    setPosts([]);
-                    setRuns([]);
-                    dirtyRef.current = false;
-                    setDirty(false);
-                    setConsent(false);
-                    setUploadConsent(false);
-                    setRemoveConsent(false);
-                  })
-                }
-              >
-                {t("Remove this device connection")}
-              </button>
-              <small>
-                {t(
-                  "Removes the local token only. Pause the schedule before disconnecting to stop future automatic runs; revoke this device's token on the server if needed.",
-                )}
-              </small>
-            </div>
           )}
         </>
       )}

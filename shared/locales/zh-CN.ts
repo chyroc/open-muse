@@ -107,31 +107,15 @@ export const zhCN: Record<string, string> = {
     "无需保持应用开启，也能准备每日动态",
   Scheduled: "已设置计划",
   Optional: "可选",
-  "This build has no background service configured. Direct Ark conversations still work. Set the public API origin when building the app to enable this connection.":
-    "此版本未配置后台服务。仍可直接连接 Ark 进行对话。在构建应用时设置公共 API 来源地址，即可启用此连接。",
-  "Device token": "设备令牌",
-  "Use a private Open Muse device token, never an Ark key or Cloudflare token. The token stays in this app's separate Keychain entry.":
-    "请使用私有 Open Muse 设备令牌，不要使用 Ark 密钥或 Cloudflare 令牌。令牌保存在此应用独立的钥匙串条目中。",
-  "Connect background service": "连接后台服务",
-  "Private service account:": "私有服务账号：",
-  "Checking…": "正在检查…",
+  "Background features need an Open Muse account, and this build has no account service. Direct Ark conversations still work.":
+    "后台功能需要 Open Muse 账号，而此版本未配置账号服务。仍可直接连接 Ark 进行对话。",
   "The server is connected, but background MA access is disabled or not configured. No generation can start yet.":
     "已连接服务器，但后台 MA 访问已禁用或尚未配置，暂时无法开始生成。",
-  "Use your current Ark workspace": "使用当前 Ark 工作区",
-  "No second key or agent to configure. Sync the API key, project, agent version, environment, and memory-store IDs from this app. The service stores the configuration encrypted and decrypts it to call Ark while you are away. Its administrators remain trusted; this is not end-to-end encryption.":
-    "无需另行配置密钥或智能体。将此应用的 API Key、项目、智能体版本、环境和记忆存储 ID 同步到服务。服务会加密存储配置，并在后台调用 Ark 时解密。仍需信任服务管理员；这不是端到端加密。",
-  "No app configuration uploaded.": "尚未上传应用配置。",
   "Encrypted storage is not available yet.": "加密存储暂不可用。",
-  "I authorize uploading this app's current Ark configuration to this private service for background Feed generation. Personal context will be read from Ark. Cloud calls may be billed.":
-    "我授权将此应用当前的 Ark 配置上传到此私有服务，用于后台动态生成。服务将从 Ark 读取个人上下文，云端调用可能产生费用。",
-  "Current Ark configuration synced. A changed connection pauses the schedule; review it before enabling. Generation remains subject to the server's safety checks.":
-    "已同步当前 Ark 配置。连接变更会暂停计划，请检查后再启用。生成操作仍受服务器安全检查约束。",
-  "Sync current Ark configuration": "同步当前 Ark 配置",
   "Remove the uploaded configuration and pause future runs. Already submitted MA work will not be cancelled.":
     "移除已上传的配置并暂停后续运行。已提交的 MA 任务不会被取消。",
   "Uploaded access removed and the schedule paused. Existing MA work may still run; the original Ark key remains valid until revoked in Ark. Older encrypted backups may remain.":
     "已移除上传的访问配置并暂停计划。现有 MA 任务可能仍在运行；原 Ark 密钥在 Ark 中撤销前仍然有效。较早的加密备份可能仍会保留。",
-  "Remove uploaded Ark access": "移除已上传的 Ark 访问配置",
   "Daily schedule saved. MA calls may incur charges.":
     "已保存每日计划。MA 调用可能产生费用。",
   "Future scheduled runs are paused. Existing runs are not cancelled.":
@@ -139,8 +123,8 @@ export const zhCN: Record<string, string> = {
   "Prepare a daily Feed": "准备每日动态",
   "Local time": "当地时间",
   Timezone: "时区",
-  "I authorize unattended generation using this private service's configured Ark account. Cloud calls may be billed.":
-    "我授权使用此私有服务配置的 Ark 账号进行无人值守生成。云端调用可能产生费用。",
+  "I authorize unattended generation with the Ark API key saved in my Open Muse account. Cloud calls may be billed.":
+    "我授权使用 Open Muse 账号中保存的 Ark API Key 进行无人值守生成。云端调用可能产生费用。",
   "Save schedule": "保存计划",
   "Discard changes": "放弃更改",
   "Next due:": "下次运行：",
@@ -160,9 +144,6 @@ export const zhCN: Record<string, string> = {
   "Event:": "事件：",
   "No background posts yet. Results appear here after a confirmed generation.":
     "暂无后台动态。确认生成完成后，结果会显示在此处。",
-  "Remove this device connection": "移除此设备连接",
-  "Removes the local token only. Pause the schedule before disconnecting to stop future automatic runs; revoke this device's token on the server if needed.":
-    "仅移除本地令牌。如需停止后续自动运行，请先暂停计划再断开连接；必要时，在服务器上撤销此设备的令牌。",
   "Checking the background service…": "正在检查后台服务…",
   "Open sidebar": "打开侧边栏",
   "Edit feed instructions": "编辑动态指令",
@@ -819,7 +800,6 @@ export const zhCN: Record<string, string> = {
   "“{title}” and its {count} subgoal will be removed from personal memory. This cannot be undone here. Conversation history is preserved.":
     "「{title}」及其 {count} 个子目标将从个人记忆中移除，无法在此撤销。对话历史会保留。",
   "Finding ideas for you…": "正在寻找适合的点子…",
-  "Configuration uploaded": "已上传配置",
   "The generation request is confirmed: {phase}. See recent runs for details.":
     "已确认生成请求：{phase}。详情请查看最近运行。",
   "Confirm deletion of {target}. Deletion may also remove related data and cannot be undone from this app.":
@@ -934,7 +914,6 @@ export const zhCN: Record<string, string> = {
   "Existing steps (preserve completion status):": "现有步骤（保留完成状态）：",
   "Read the latest goal record in personal memory. Ask a focused question if something important is missing. Update progress only from what I actually report, and read back any saved changes. For external actions, ask for approval first.":
     "读取个人记忆中最新的目标记录。如果缺少重要信息，请提出一个具体问题。仅根据我实际报告的情况更新进展，并回读已保存的更改。执行外部操作前，请先征求批准。",
-  "This device token was rejected or revoked.": "此设备令牌被拒绝或已撤销。",
   "The action conflicts with current server state. Refresh and review the schedule or active run.":
     "此操作与服务器当前状态冲突。请刷新并检查计划或正在运行的任务。",
   "Background service request failed (HTTP {status}).":

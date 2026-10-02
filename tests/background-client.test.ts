@@ -1,6 +1,8 @@
 import "fake-indexeddb/auto";
 import { describe, it, expect, vi } from "vitest";
 import { BackgroundClient } from "../src/background-client";
+import { SupabaseAuth } from "../src/supabase-auth";
+import { supabaseOwner } from "../shared/supabase-auth";
 import {
   backgroundConnectSource,
   backgroundOrigin,
@@ -11,11 +13,20 @@ import {
   LocalDatabase,
 } from "../src/direct/storage";
 
-const token = "muse_device_" + "a".repeat(40);
+const authOrigin = "https://auth.example";
+const subject = "ea36b4c3-a456-4787-bf54-a6c735545072";
+const token = "test-account-access-token-123456789";
+const email = "person@example.com";
+const password = "never-saved-password";
+const owner = supabaseOwner(authOrigin, subject);
 const status = {
   connected: true,
-  owner: "private-owner",
+  owner,
   backgroundReady: true,
+  account: {
+    provider: "supabase",
+    credential: { configured: true, revision: 3, updatedAt: 1 },
+  },
   schedule: {
     enabled: false,
     timezone: "UTC",
@@ -73,16 +84,30 @@ function fixture() {
       });
     return Response.json({ ...status.schedule, revision: 1 });
   });
+  const auth = new SupabaseAuth(
+    authOrigin,
+    "sb_publishable_test_public_anon_key",
+    async () =>
+      Response.json({
+        access_token: token,
+        refresh_token: "short_refresh_token",
+        expires_in: 3600,
+        token_type: "bearer",
+        user: { id: subject, is_anonymous: false },
+      }),
+    () => 1000,
+  );
   const client = new BackgroundClient(
     "https://background.example",
     vault,
     db,
     fetcher,
+    auth,
   );
-  return { client, vault, db, fetcher, read: () => value };
+  return { client, auth, vault, db, fetcher, read: () => value };
 }
 describe("Optional native background client", () => {
-  it("syncs only after explicit export, using the device token and a revision, without caching the key", async () => {
+  it("syncs only workspace IDs after explicit export, with the key and connection revisions, without caching the key", async () => {
     const f = fixture();
     const config = {
       apiKey: "test-existing-app-api-key",
@@ -92,7 +117,10 @@ describe("Optional native background client", () => {
       environmentId: "env-one",
       memoryStoreId: "memory-one",
     };
-    const source = { backgroundConfiguration: vi.fn(async () => config) };
+    const source = {
+      backgroundConfiguration: vi.fn(async () => config),
+      accountCredentialRevision: () => 3,
+    };
     const fetcher: typeof fetch = vi.fn(async (input, init) => {
       if (String(input).endsWith("/v1/status"))
         return Response.json({
@@ -106,7 +134,13 @@ describe("Optional native background client", () => {
           `Bearer ${token}`,
         );
         expect(JSON.parse(String(init?.body))).toEqual({
-          config,
+          workspace: {
+            agentId: "agent-one",
+            agentVersion: 2,
+            environmentId: "env-one",
+            memoryStoreId: "memory-one",
+          },
+          credentialRevision: 3,
           revision: 4,
           confirm: true,
         });
@@ -119,8 +153,9 @@ describe("Optional native background client", () => {
       f.vault,
       f.db,
       fetcher,
+      f.auth,
     );
-    await client.connect(token);
+    await client.signInAccount(email, password);
     expect(source.backgroundConfiguration).not.toHaveBeenCalled();
     await client.syncConfiguration(source);
     expect(source.backgroundConfiguration).toHaveBeenCalledExactlyOnceWith(
@@ -133,7 +168,7 @@ describe("Optional native background client", () => {
   });
   it("does not export the Ark key to an unsupported service or changed owner", async () => {
     const f = fixture();
-    await f.client.connect(token);
+    await f.client.signInAccount(email, password);
     const source = { backgroundConfiguration: vi.fn() };
     await expect(f.client.syncConfiguration(source)).rejects.toThrow(
       "Encrypted credential storage",
@@ -170,17 +205,21 @@ describe("Optional native background client", () => {
       f.vault,
       f.db,
       fetcher,
+      f.auth,
     );
-    await client.connect(token);
+    await client.signInAccount(email, password);
     await expect(
-      client.syncConfiguration({ backgroundConfiguration: async () => config }),
+      client.syncConfiguration({
+        backgroundConfiguration: async () => config,
+        accountCredentialRevision: () => 3,
+      }),
     ).rejects.toThrow("no request was retried");
     expect(
       fetcher.mock.calls.filter(([, init]) => init?.method === "PUT"),
     ).toHaveLength(1);
     expect(f.read()).not.toContain(config.apiKey);
   });
-  it("removes remote access with revision/consent, retaining the local device token", async () => {
+  it("removes remote access with revision/consent, retaining the local session", async () => {
     const f = fixture();
     const fetcher = vi.fn<typeof fetch>(async (_input, init) => {
       if (init?.method === "DELETE") {
@@ -200,8 +239,9 @@ describe("Optional native background client", () => {
       f.vault,
       f.db,
       fetcher,
+      f.auth,
     );
-    await client.connect(token);
+    await client.signInAccount(email, password);
     await client.removeConfiguration();
     expect(client.connected()).toBe(true);
     expect(JSON.parse(f.read()).token).toBe(token);
@@ -233,37 +273,22 @@ describe("Optional native background client", () => {
       backgroundConnectSource("https://background.example/functions/v1/open-muse"),
     ).toBe("https://background.example");
   });
-  it("rejects Cloudflare and Ark keys before network access", async () => {
-    const f = fixture();
-    await expect(f.client.connect("cfat_not-a-device-token")).rejects.toThrow(
-      "not an Ark or Cloudflare",
-    );
-    expect(f.fetcher).not.toHaveBeenCalled();
-  });
-  it("verifies the owner before storing a device token", async () => {
-    const f = fixture();
-    await f.client.connect(token);
-    expect(JSON.parse(f.read())).toEqual({
-      origin: "https://background.example",
-      owner: "private-owner",
-      token,
-    });
-  });
   it("restores Keychain state but will not send credentials to another origin", async () => {
     const f = fixture();
-    await f.client.connect(token);
+    await f.client.signInAccount(email, password);
     const c = new BackgroundClient(
       "https://other.example",
       f.vault,
       f.db,
       f.fetcher,
+      f.auth,
     );
     await expect(c.restore()).rejects.toThrow("does not match");
     expect(f.fetcher).toHaveBeenCalledTimes(1);
   });
   it("does not upload keys into IndexedDB; caches only scoped Feed content", async () => {
     const f = fixture();
-    await f.client.connect(token);
+    await f.client.signInAccount(email, password);
     const result = await f.client.refresh();
     expect(result.items).toEqual([post]);
     expect(JSON.stringify(await f.client.cachedFeed())).not.toContain(token);
@@ -272,6 +297,7 @@ describe("Optional native background client", () => {
       f.vault,
       f.db,
       f.fetcher,
+      f.auth,
     );
     await c.restore();
     expect((await c.cachedFeed()).items).toEqual([post]);
@@ -279,7 +305,7 @@ describe("Optional native background client", () => {
   });
   it("persists an operation ID before POST and reuses it after a lost response and relaunch", async () => {
     const f = fixture();
-    await f.client.connect(token);
+    await f.client.signInAccount(email, password);
     const keys: string[] = [];
     const fetcher: typeof fetch = vi.fn(async (input, init) => {
       if (init?.method === "POST") {
@@ -295,6 +321,7 @@ describe("Optional native background client", () => {
       f.vault,
       f.db,
       fetcher,
+      f.auth,
     );
     await c.restore();
     await expect(c.generate()).rejects.toThrow(
@@ -305,6 +332,7 @@ describe("Optional native background client", () => {
       f.vault,
       f.db,
       fetcher,
+      f.auth,
     );
     await restarted.restore();
     await restarted.generate();
@@ -313,7 +341,7 @@ describe("Optional native background client", () => {
   });
   it("does not POST if saving the pending ID fails", async () => {
     const f = fixture();
-    await f.client.connect(token);
+    await f.client.signInAccount(email, password);
     f.vault.write.mockRejectedValue(new Error("Keychain locked"));
     await expect(f.client.generate()).rejects.toThrow("Keychain locked");
     expect(f.client.pending()).toBe(false);
@@ -325,7 +353,7 @@ describe("Optional native background client", () => {
   });
   it("fails closed when a deployment changes owners", async () => {
     const f = fixture();
-    await f.client.connect(token);
+    await f.client.signInAccount(email, password);
     vi.mocked(f.fetcher).mockResolvedValue(
       Response.json({ ...status, owner: "another-owner" }),
     );
@@ -333,15 +361,37 @@ describe("Optional native background client", () => {
   });
   it("disconnects locally without touching a schedule or MA", async () => {
     const f = fixture();
-    await f.client.connect(token);
+    await f.client.signInAccount(email, password);
     await f.client.disconnect();
     expect(f.read()).toBe("");
     expect(f.client.connected()).toBe(false);
     expect(f.fetcher).toHaveBeenCalledTimes(1);
   });
+  it("keeps an earlier device-token connection untouched and unused until removed", async () => {
+    const f = fixture();
+    const retired = JSON.stringify({
+      origin: "https://background.example",
+      token: "muse_device_" + "a".repeat(40),
+      owner: "private-owner",
+    });
+    await f.vault.write(retired);
+    await f.client.restore();
+    expect(f.client.retiredConnection()).toBe(true);
+    expect(f.client.connected()).toBe(false);
+    await expect(f.client.signInAccount(email, password)).rejects.toThrow(
+      "Disconnect the current background connection",
+    );
+    expect(f.read()).toBe(retired);
+    expect(f.fetcher).not.toHaveBeenCalled();
+    await f.client.disconnect();
+    expect(f.read()).toBe("");
+    expect(f.client.retiredConnection()).toBe(false);
+    await f.client.signInAccount(email, password);
+    expect(f.client.accountConnected()).toBe(true);
+  });
   it("keeps a schedule revision and never retries a failed write", async () => {
     const f = fixture();
-    await f.client.connect(token);
+    await f.client.signInAccount(email, password);
     await f.client.saveSchedule({ ...status.schedule, enabled: true });
     const write = vi
       .mocked(f.fetcher)

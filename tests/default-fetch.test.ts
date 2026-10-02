@@ -35,8 +35,28 @@ describe("default fetch in the native clients", () => {
 
   it("reaches the Open Muse service with the built-in fetch", async () => {
     vi.stubGlobal("fetch", vi.fn(browserFetch));
-    const client = new BackgroundClient("https://background.example");
-    await client.connect("muse_device_" + "a".repeat(40)).catch(() => {});
+    const client = new BackgroundClient(
+      "https://background.example",
+      undefined,
+      undefined,
+      undefined,
+      new SupabaseAuth(
+        "https://auth.example.com",
+        "sb_publishable_test_public_anon_key",
+        async () =>
+          Response.json({
+            access_token: "test-account-access-token-123456789",
+            refresh_token: "short_refresh_token",
+            expires_in: 3600,
+            token_type: "bearer",
+            user: {
+              id: "ea36b4c3-a456-4787-bf54-a6c735545072",
+              is_anonymous: false,
+            },
+          }),
+      ),
+    );
+    await client.signInAccount("user@example.com", "password1").catch(() => {});
     expect(fetch).toHaveBeenCalled();
     for (const receiver of vi.mocked(fetch).mock.contexts)
       expect([undefined, globalThis]).toContain(receiver);

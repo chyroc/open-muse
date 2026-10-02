@@ -88,18 +88,22 @@ const saved = z
         session: supabaseSessionSchema,
         refreshPending: z.boolean().optional(),
       })
-      .strict()
-      .optional(),
+      .strict(),
   })
   .strict()
-  .refine((value) =>
-    value.account
-      ? authToken.safeParse(value.token).success &&
-        value.token === value.account.session.accessToken &&
-        value.owner ===
-          supabaseOwner(value.account.origin, value.account.session.userId)
-      : /^muse_device_[A-Za-z0-9_-]{32,128}$/.test(value.token),
+  .refine(
+    (value) =>
+      authToken.safeParse(value.token).success &&
+      value.token === value.account.session.accessToken &&
+      value.owner ===
+        supabaseOwner(value.account.origin, value.account.session.userId),
   );
+// Earlier releases could also connect with a private device token. The service
+// no longer accepts them: such a record is kept untouched until the person
+// removes it, and its token is never sent.
+const retiredDeviceConnection = z
+  .object({ token: z.string().startsWith("muse_device_") })
+  .refine((value) => !("account" in value));
 const scheduleSchema = z.object({
   enabled: z.boolean(),
   timezone: z.string(),
@@ -160,6 +164,7 @@ type Cache = { items: BackgroundPost[]; cursor: number };
 export class BackgroundClient {
   readonly origin: string;
   private current?: Credentials;
+  private retired = false;
   private abort = new AbortController();
   private serial: Promise<unknown> = Promise.resolve();
   constructor(
@@ -173,8 +178,10 @@ export class BackgroundClient {
   ) {
     this.origin = backgroundOrigin(origin);
   }
+  // Background features need an Open Muse account, so a build without account
+  // login has no background connection.
   configured() {
-    return Boolean(this.origin);
+    return Boolean(this.origin) && this.accounts.configured();
   }
   connected() {
     return Boolean(this.current);
@@ -183,7 +190,11 @@ export class BackgroundClient {
     return Boolean(this.current?.pending);
   }
   accountConfigured() {
-    return this.configured() && this.accounts.configured();
+    return this.configured();
+  }
+  // A device-token connection saved by an earlier release, kept but unused.
+  retiredConnection() {
+    return this.retired;
   }
   accountConnected() {
     return Boolean(this.current?.account);
@@ -194,8 +205,9 @@ export class BackgroundClient {
     return result;
   }
   async restore() {
-    if (!this.origin) return;
+    if (!this.configured()) return;
     return this.exclusive(async () => {
+      this.retired = false;
       const raw = await this.vault.read();
       if (!raw) return;
       let value: unknown;
@@ -208,12 +220,15 @@ export class BackgroundClient {
           ),
         );
       }
+      if (retiredDeviceConnection.safeParse(value).success) {
+        this.retired = true;
+        return;
+      }
       const parsed = saved.safeParse(value);
       if (
         !parsed.success ||
         parsed.data.origin !== this.origin ||
-        (parsed.data.account &&
-          parsed.data.account.origin !== this.accounts.origin)
+        parsed.data.account.origin !== this.accounts.origin
       )
         throw new Error(
           t(
@@ -230,7 +245,7 @@ export class BackgroundClient {
     // Endpoint-specific wording for particular error statuses.
     messages: Partial<Record<number, string>> = {},
   ): Promise<unknown> {
-    if (!this.origin || !path.startsWith("/v1/"))
+    if (!this.configured() || !path.startsWith("/v1/"))
       throw new Error(t("Background service is not configured."));
     const bound = boundedSignal([this.abort.signal, init.signal], 30000);
     try {
@@ -247,8 +262,7 @@ export class BackgroundClient {
         },
       });
       if (!response.ok) {
-        if (response.status === 401 && !token.startsWith("muse_device_"))
-          await this.expire(token);
+        if (response.status === 401) await this.expire(token);
         // A machine-readable reason, when the service gives one; its wording
         // is never shown.
         const code = z
@@ -258,16 +272,12 @@ export class BackgroundClient {
           (code && reasons()[code]) ??
             messages[response.status] ??
             (response.status === 401
-              ? token.startsWith("muse_device_")
-                ? t("This device token was rejected or revoked.")
-                : t(
-                    "The account session was rejected or expired. Sign in again.",
-                  )
+              ? t("The account session was rejected or expired. Sign in again.")
               : response.status === 409
                 ? t(
                     "The action conflicts with current server state. Refresh and review the schedule or active run.",
                   )
-                : response.status === 403 && !token.startsWith("muse_device_")
+                : response.status === 403
                   ? t(
                       "This workspace belongs to another Open Muse account. Nothing was changed.",
                     )
@@ -298,22 +308,9 @@ export class BackgroundClient {
       bound.dispose();
     }
   }
-  connect(token: string) {
-    return this.exclusive(async () => {
-      if (!/^muse_device_[A-Za-z0-9_-]{32,128}$/.test(token))
-        throw new Error(
-          t("Enter an Open Muse device token, not an Ark or Cloudflare key."),
-        );
-      const status = statusSchema.parse(await this.call("/v1/status", token));
-      const value = { origin: this.origin, token, owner: status.owner };
-      await this.vault.write(JSON.stringify(value));
-      this.current = value;
-      return status;
-    });
-  }
   signInAccount(email: string, password: string) {
     return this.exclusive(async () => {
-      if (this.current)
+      if (this.current || this.retired)
         throw new Error(
           t(
             "Disconnect the current background connection before signing in to another Open Muse account.",
@@ -349,7 +346,7 @@ export class BackgroundClient {
   }
   signUpAccount(email: string, password: string) {
     return this.exclusive(async () => {
-      if (this.current)
+      if (this.current || this.retired)
         throw new Error(
           t(
             "Disconnect the current background connection before signing in to another Open Muse account.",
@@ -692,11 +689,14 @@ export class BackgroundClient {
       },
     );
   }
+  // Removes the saved connection from this device only, including a retired
+  // device-token connection. It does not revoke anything at the service.
   disconnect() {
     this.abort.abort();
     return this.exclusive(async () => {
       await this.vault.write("");
       this.current = undefined;
+      this.retired = false;
       this.abort = new AbortController();
     });
   }
@@ -775,31 +775,23 @@ export class BackgroundClient {
           ),
         );
       this.assertCurrent(c);
-      let body: object;
-      if (c.account) {
-        // The service already holds this account's key. Send only the
-        // workspace resource IDs prepared with that same key revision.
-        const revision = source.accountCredentialRevision?.();
-        if (!status.account || revision !== status.account.credential.revision)
-          throw new Error(
-            t(
-              "Your Ark API key changed on another device. Reload Settings before allowing background work.",
-            ),
-          );
-        const { agentId, agentVersion, environmentId, memoryStoreId } =
-          value.data;
-        body = {
-          workspace: { agentId, agentVersion, environmentId, memoryStoreId },
-          credentialRevision: revision,
-          revision: status.connection.revision,
-          confirm: true,
-        };
-      } else
-        body = {
-          config: value.data,
-          revision: status.connection.revision,
-          confirm: true,
-        };
+      // The service already holds this account's key. Send only the
+      // workspace resource IDs prepared with that same key revision.
+      const revision = source.accountCredentialRevision?.();
+      if (!status.account || revision !== status.account.credential.revision)
+        throw new Error(
+          t(
+            "Your Ark API key changed on another device. Reload Settings before allowing background work.",
+          ),
+        );
+      const { agentId, agentVersion, environmentId, memoryStoreId } =
+        value.data;
+      const body = {
+        workspace: { agentId, agentVersion, environmentId, memoryStoreId },
+        credentialRevision: revision,
+        revision: status.connection.revision,
+        confirm: true,
+      };
       const result = await this.call("/v1/connection", c.token, {
         method: "PUT",
         body: JSON.stringify(body),

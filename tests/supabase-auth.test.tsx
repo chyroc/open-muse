@@ -399,6 +399,34 @@ describe("Native Supabase Auth trial", () => {
       expect(f.authFetch).not.toHaveBeenCalled();
     },
   );
+  it.each([[["en"]], [["zh-Hans"]]])(
+    "offers to remove an earlier device token instead of signing in %j",
+    async (languages) => {
+      vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", languages);
+      const f = fixture();
+      await f.vault.write(
+        JSON.stringify({
+          origin: background,
+          token: "muse_device_" + "a".repeat(40),
+          owner: "private-owner",
+        }),
+      );
+      await f.client.restore();
+      const html = renderToStaticMarkup(
+        <AccountPanel
+          service={f.client}
+          client={{ accountChanged: async () => {} }}
+          onChanged={() => {}}
+        />,
+      );
+      const chinese = languages[0].startsWith("zh");
+      expect(html).toContain(
+        chinese ? "移除旧的设备令牌" : "Remove the old device token",
+      );
+      expect(html).not.toContain(chinese ? "账号邮箱" : "Account email");
+      expect(f.serviceFetch).not.toHaveBeenCalled();
+    },
+  );
 });
 describe("Upcoming delivery by the service", () => {
   it("reads and saves delivery for the signed-in account with confirmation", async () => {
