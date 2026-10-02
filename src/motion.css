@@ -1,0 +1,31 @@
+/* Shared motion specs. Touch- and focus-driven movement uses springs; short
+   non-interactive fades use ease-out. Reduce Motion swaps movement for a
+   quick crossfade (see the media query at the end). */
+:root {
+  /* A critically damped sheet spring (response ~0.5s), as system sheets. */
+  --motion-sheet-duration: 500ms;
+  --motion-sheet-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  /* Dismissal accelerates away with the same curve, a little faster. */
+  --motion-sheet-dismiss-duration: 340ms;
+  /* A gentle spring with slight overshoot for things released by a finger. */
+  --motion-release-duration: 420ms;
+  --motion-release-ease: cubic-bezier(0.34, 1.3, 0.64, 1);
+  /* Press feedback lands quickly and releases on touch-up. */
+  --motion-press-duration: 120ms;
+  --motion-press-scale: 0.96;
+  --motion-fade-duration: 200ms;
+  /* Pull distance or flick speed (px/ms) that dismisses a sheet. */
+  --motion-dismiss-distance: 120;
+  --motion-dismiss-velocity: 0.5;
+  /* Dimming behind a sheet, as measured against the system page sheet. */
+  --sheet-dim: rgb(0 0 0 / 20%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-sheet-duration: 220ms;
+    --motion-sheet-dismiss-duration: 180ms;
+    --motion-release-duration: 180ms;
+    --motion-release-ease: ease-out;
+  }
+}

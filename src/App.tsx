@@ -47,6 +47,7 @@ import { canAutoApprove } from "../shared/approval-policy";
 import { HealthRequestCard } from "./HealthRequestCard";
 import { isHealthRequest } from "../shared/health";
 import { SettingsHome } from "./SettingsHome";
+import { PageSheet } from "./PageSheet";
 import { Studio } from "./Studio";
 import { exportText } from "./platform";
 import { backgroundClient } from "./background-client";
@@ -156,19 +157,20 @@ function Workspace({
   client: Client;
   onConnection: () => void;
 }) {
-  const [route, setRoute] = useState(location.hash.slice(1) || "/");
+  const [hashRoute, setRoute] = useState(location.hash.slice(1) || "/");
+  // Settings is a sheet over the page that was open before it.
+  const settingsOpen = hashRoute === "/settings";
+  const [pageRoute, setPageRoute] = useState(settingsOpen ? "/" : hashRoute);
+  const route = settingsOpen ? pageRoute : hashRoute;
   const [index, setIndex] = useState<ConversationIndex>(emptyConversations);
   const isSideDraft = route === "/new";
   const taskRoute = route.startsWith("/task/") ? route.slice(6) : undefined;
   const tab =
     taskRoute || isSideDraft
       ? "home"
-      : route === "/settings"
-        ? "settings"
-        : route === "/studio"
-          ? "studio"
-          : (primaryNavigation.find((item) => item.path === route)?.id ??
-            "home");
+      : route === "/studio"
+        ? "studio"
+        : (primaryNavigation.find((item) => item.path === route)?.id ?? "home");
   const activeId =
     tab === "home"
       ? taskRoute
@@ -309,6 +311,7 @@ function Workspace({
     const onRoute = () => {
       const next = location.hash.slice(1) || "/";
       setRoute(next);
+      if (next !== "/settings") setPageRoute(next);
       if (next === "/tasks") setSidebarOpen(true);
       setActionError("");
       setSelectedMessage(undefined);
@@ -671,7 +674,7 @@ function Workspace({
       <main
         className={`companion-main ${isChat ? "chat-page" : "content-page"}`}
       >
-        {tab !== "settings" && tab !== "studio" ? (
+        {tab !== "studio" ? (
           <ChatHeader
             name={companion.name}
             onSidebar={() => setSidebarOpen(true)}
@@ -699,12 +702,12 @@ function Workspace({
             >
               <ArrowLeft size={22} />
             </a>
-            <strong>{tab === "settings" ? t("Settings") : "MA Studio"}</strong>
+            <strong>MA Studio</strong>
             <span />
           </header>
         )}
         <div className="connection-notices">
-          {config?.mode === "disconnected" && tab !== "settings" && (
+          {config?.mode === "disconnected" && (
             <a className="connect-notice" href="#/settings">
               <Unplug size={16} />
               <span>
@@ -1078,19 +1081,6 @@ function Workspace({
             )}
             {tab === "library" && <LibraryPage client={client} />}
             {tab === "studio" && <Studio client={client} config={config} />}
-            {tab === "settings" && (
-              <SettingsHome
-                client={client}
-                onConnection={onConnection}
-                onDraft={(text) => {
-                  setDrafts((current) => ({
-                    ...current,
-                    [index.mainId ?? "new-main"]: text,
-                  }));
-                  navigate("/");
-                }}
-              />
-            )}
           </div>
         )}
       </main>
@@ -1108,6 +1098,22 @@ function Workspace({
           </a>
         ))}
       </nav>
+      {settingsOpen && (
+        <PageSheet title={t("Settings")} onClose={() => navigate(pageRoute)}>
+          <SettingsHome
+            client={client}
+            onConnection={onConnection}
+            onDraft={(text) => {
+              setDrafts((current) => ({
+                ...current,
+                [index.mainId ?? "new-main"]: text,
+              }));
+              setSidebarOpen(false);
+              navigate("/");
+            }}
+          />
+        </PageSheet>
+      )}
       {sidebarOpen && (
         <ConversationSidebar
           name={companion.name}

@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { Capacitor } from "@capacitor/core";
+import "./motion.css";
 import "./styles.css";
 import "./muse.css";
 import "./chat.css";

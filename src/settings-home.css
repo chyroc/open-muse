@@ -1,46 +1,49 @@
+/* Settings rows and cards follow the system grouped list: 17pt rows of 57pt,
+   20pt card padding, 24pt between cards, separators inset 16pt. */
 .settings-home {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 24px;
 }
 .settings-status {
-  padding: 20px 22px 6px;
+  padding: 20px 20px 0;
   border-radius: 24px;
   background: #fff;
 }
 .settings-status > div {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 12px;
 }
 .settings-status strong {
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 17px;
+  line-height: 25px;
+  font-weight: 400;
 }
 .settings-status-badge {
   font-size: 15px;
-  color: #8e8e93;
+  color: #69696b;
 }
 .settings-status p {
-  margin: 6px 0 14px;
+  margin: 4px 0 20px;
   font-size: 15px;
-  line-height: 1.5;
-  color: #8e8e93;
+  line-height: 20px;
+  color: #69696b;
 }
 .settings-status button {
   display: block;
   width: 100%;
-  min-height: 50px;
+  min-height: 57px;
   padding: 0;
   border: 0;
-  border-top: 1px solid #e5e5ea;
+  border-top: 1px solid #e8e8e8;
   background: none;
   font: inherit;
   font-size: 17px;
-  color: #0a66d8;
+  color: #0064d0;
   text-align: left;
-  transition: opacity 120ms ease-out;
+  transition: opacity var(--motion-press-duration) ease-out;
 }
 .settings-status button:active {
   opacity: 0.55;
@@ -48,45 +51,55 @@
 .settings-list {
   list-style: none;
   margin: 0;
-  padding: 0 18px;
+  padding: 0;
   border-radius: 24px;
   background: #fff;
+  overflow: hidden;
 }
-.settings-list li + li {
-  border-top: 1px solid #e5e5ea;
+.settings-list li {
+  position: relative;
+}
+.settings-list li + li::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: #e8e8e8;
 }
 .settings-list-row {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   width: 100%;
-  min-height: 58px;
-  padding: 0;
+  min-height: 57px;
+  padding: 0 20px;
   border: 0;
   background: none;
   font: inherit;
   font-size: 17px;
-  color: #1c1c1e;
+  color: #000;
   text-align: left;
   text-decoration: none;
-  transition: opacity 120ms ease-out;
+  transition: background-color var(--motion-press-duration) ease-out;
 }
 .settings-list-row:active {
-  opacity: 0.55;
+  background: #ececee;
 }
 .settings-list-row > span:first-child,
 .settings-list-row > svg:first-child {
   display: grid;
-  flex: 0 0 auto;
+  flex: 0 0 24px;
   place-items: center;
-  color: #1c1c1e;
+  color: #000;
 }
 .settings-list-row > span:nth-child(2) {
   flex: 1;
 }
 .settings-list-row > svg:last-child {
   flex: 0 0 auto;
-  color: #c7c7cc;
+  color: #86868a;
 }
 /* Settings and its sheets sit on gray, with white grouped lists. */
 .companion-main:has(.settings-home),
@@ -206,12 +219,12 @@
 }
 .settings-list-row > .settings-row-value {
   flex: 0 0 auto;
-  font-size: 16px;
-  color: #8e8e93;
+  font-size: 17px;
+  color: #69696b;
 }
 .settings-list-row > .settings-check {
   flex: 0 0 auto;
-  color: #0a66d8;
+  color: #0064d0;
 }
 .settings-list[role="radiogroup"] .settings-list-row {
   justify-content: space-between;

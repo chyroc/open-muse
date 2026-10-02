@@ -453,7 +453,6 @@ export function ConversationSidebar({
           href="#/settings"
           className="glass-button"
           aria-label={t("Settings")}
-          onClick={onClose}
         >
           <Settings size={24} strokeWidth={1.5} />
         </a>

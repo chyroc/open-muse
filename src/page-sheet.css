@@ -1,0 +1,103 @@
+/* Page sheet geometry follows the system page sheet on iPhone: it starts at
+   the top safe area, has device-matched top corners, a gray grouped
+   background, a 36pt close button and a large title. */
+.page-sheet {
+  position: fixed;
+  inset: auto 0 auto;
+  bottom: calc(100dvh - var(--app-top, 0px) - var(--app-height, 100dvh));
+  width: 100%;
+  max-width: none;
+  height: calc(var(--app-height, 100dvh) - max(env(safe-area-inset-top), 12px));
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 38px 38px 0 0;
+  color: #000;
+  background: #f3f4f6;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  /* Backwards fill only, so a finger can move the sheet once it has landed. */
+  animation: page-sheet-in var(--motion-sheet-duration) var(--motion-sheet-ease)
+    backwards;
+}
+.page-sheet[open] {
+  display: flex;
+  flex-direction: column;
+}
+.page-sheet:focus {
+  outline: none;
+}
+.page-sheet::backdrop {
+  background: var(--sheet-dim);
+  animation: page-sheet-dim var(--motion-sheet-duration) ease-out both;
+}
+.page-sheet.closing::backdrop {
+  opacity: 0;
+  transition: opacity var(--motion-sheet-dismiss-duration) ease-in;
+}
+.page-sheet-header {
+  flex: 0 0 auto;
+  padding: 20px 20px 0 16px;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.page-sheet-close {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin-left: auto;
+  padding: 0;
+  border: 1px solid rgb(0 0 0 / 8%);
+  border-radius: 50%;
+  color: #000;
+  background: rgb(255 255 255 / 78%);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transition: transform var(--motion-press-duration) ease-out;
+}
+.page-sheet-close:active {
+  transform: scale(var(--motion-press-scale));
+}
+.page-sheet-close:focus-visible {
+  outline: none;
+}
+.page-sheet-header h1 {
+  margin: 20px 0 0;
+  font-size: 34px;
+  line-height: 39px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+.page-sheet-body {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 20px calc(30px + env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling: touch;
+}
+
+@keyframes page-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes page-sheet-dim {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-sheet {
+    animation-name: page-sheet-fade-in;
+  }
+  @keyframes page-sheet-fade-in {
+    from {
+      opacity: 0;
+      transform: scale(0.98);
+    }
+  }
+}

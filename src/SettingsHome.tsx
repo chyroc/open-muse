@@ -63,7 +63,7 @@ export function SettingsHome({
   const signedIn = client.signedIn();
   const close = () => setSection(undefined);
   return (
-    <div className="page-content settings-page settings-home">
+    <div className="settings-home">
       {signedIn ? (
         <section className="settings-status">
           <div>
@@ -84,19 +84,19 @@ export function SettingsHome({
       )}
       <ul className="settings-list">
         <Row
-          icon={<Plug size={21} />}
+          icon={<Plug size={22} strokeWidth={2} />}
           label={t("Connectors")}
           onClick={() => setSection("connectors")}
         />
         {signedIn && (
           <Row
-            icon={<MessageCircleHeart size={21} />}
+            icon={<MessageCircleHeart size={22} strokeWidth={2} />}
             label={t("Check-ins")}
             onClick={() => setSection("checkins")}
           />
         )}
         <Row
-          icon={<Languages size={21} />}
+          icon={<Languages size={22} strokeWidth={2} />}
           label={t("Language")}
           value={
             languageChoice() === "system"
@@ -107,20 +107,20 @@ export function SettingsHome({
         />
         {signedIn && (
           <Row
-            icon={<KeyRound size={21} />}
+            icon={<KeyRound size={22} strokeWidth={2} />}
             label={t("Account and workspace")}
             onClick={() => setSection("account")}
           />
         )}
         <li>
           <a className="settings-list-row" href="#/studio">
-            <SquareTerminal size={21} aria-hidden="true" />
+            <SquareTerminal size={22} strokeWidth={2} aria-hidden="true" />
             <span>MA Studio</span>
             <ExternalLink size={16} aria-hidden="true" />
           </a>
         </li>
         <Row
-          icon={<Info size={21} />}
+          icon={<Info size={22} strokeWidth={2} />}
           label={t("About")}
           onClick={() => setSection("about")}
         />
@@ -276,7 +276,7 @@ function Row({
         <span aria-hidden="true">{icon}</span>
         <span>{label}</span>
         {value && <span className="settings-row-value">{value}</span>}
-        <ChevronRight size={18} aria-hidden="true" />
+        <ChevronRight size={20} strokeWidth={2} aria-hidden="true" />
       </button>
     </li>
   );
