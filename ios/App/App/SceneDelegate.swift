@@ -179,6 +179,15 @@ class MuseBridgeViewController: CAPBridgeViewController {
                 injectionTime: .atDocumentStart, forMainFrameOnly: true
             ))
         }
+        // Floating sheets keep their corners concentric with the display's,
+        // which the web view cannot read.
+        let corner = (UIScreen.main.value(forKey: "_displayCornerRadius") as? CGFloat) ?? 0
+        if corner > 0 {
+            webView?.configuration.userContentController.addUserScript(WKUserScript(
+                source: "window.__OPEN_MUSE_DEVICE_CORNER__ = \(Int(corner.rounded()));",
+                injectionTime: .atDocumentStart, forMainFrameOnly: true
+            ))
+        }
         webView?.configuration.userContentController.addScriptMessageHandler(credentialsHandler, contentWorld: .page, name: "museCredentials")
         webView?.configuration.userContentController.addScriptMessageHandler(filesHandler, contentWorld: .page, name: "museFiles")
         webView?.configuration.userContentController.addScriptMessageHandler(healthHandler, contentWorld: .page, name: "museHealth")

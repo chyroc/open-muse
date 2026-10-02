@@ -12,10 +12,10 @@
   margin: 0 auto;
   padding: 0 0 12px;
   border: 0;
-  border-radius: 40px;
+  border-radius: var(--floating-sheet-radius);
   color: #000;
   background: #fcfcfc;
-  box-shadow: 0 10px 40px rgb(0 0 0 / 14%);
+  box-shadow: var(--floating-sheet-shadow);
   overflow-y: auto;
   overscroll-behavior: contain;
   animation: health-connect-in var(--motion-sheet-duration)

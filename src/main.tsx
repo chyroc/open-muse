@@ -18,6 +18,11 @@ const desktop = Boolean(
 );
 if (desktop) document.documentElement.classList.add("native-desktop");
 if (Capacitor.getPlatform() === "ios") followDynamicType();
+// The display's corner radius, from the iOS app, for concentric sheets.
+const corner = (window as unknown as { __OPEN_MUSE_DEVICE_CORNER__?: number })
+  .__OPEN_MUSE_DEVICE_CORNER__;
+if (typeof corner === "number" && corner > 0 && corner < 200)
+  document.documentElement.style.setProperty("--device-corner", `${corner}px`);
 
 // iOS does not include the software keyboard in dynamic viewport units. Size
 // the app to the visible viewport so focusing the composer cannot pan the

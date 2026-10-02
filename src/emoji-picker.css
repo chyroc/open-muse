@@ -14,10 +14,10 @@
   margin: 0 auto;
   padding: 0;
   border: 0;
-  border-radius: 38px;
+  border-radius: var(--floating-sheet-radius);
   color: #000;
   background: rgb(255 255 255 / 96%);
-  box-shadow: 0 10px 40px rgb(0 0 0 / 14%);
+  box-shadow: var(--floating-sheet-shadow);
   -webkit-backdrop-filter: blur(30px);
   backdrop-filter: blur(30px);
   overflow: hidden;
