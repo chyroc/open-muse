@@ -199,7 +199,8 @@ describe("Upcoming schedules", () => {
   it("tells the agent how to keep and honestly describe upcoming items", () => {
     expect(identityInstructions).toContain(upcomingInstructions);
     expect(upcomingInstructions).toContain("read the document back");
-    expect(upcomingInstructions).toContain("shows a notification");
+    expect(upcomingInstructions).toContain("schedules a notification");
+    expect(upcomingInstructions).toContain("within a week of the last time");
     expect(upcomingInstructions).toContain("Do not ask them to keep the app");
     const prompt = reminderPrompt("zh-CN", new Date(0), [
       { item: item(), at: 0 },
