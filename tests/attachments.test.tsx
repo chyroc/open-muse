@@ -68,7 +68,7 @@ describe("Attachment rules", () => {
     expect(documentAccept).not.toContain("image");
     expect(imageAccept).toContain("image/png");
   });
-  it("offers camera, photos, and documents in the attachment sheet", () => {
+  it("offers camera, photos, documents and a video in the attachment sheet", () => {
     const html = renderToStaticMarkup(
       <AttachmentSheet onClose={() => {}} onFiles={() => {}} />,
     );
@@ -77,6 +77,8 @@ describe("Attachment rules", () => {
     expect(html).toContain("Add file");
     expect(html).toContain('capture="environment"');
     expect(html).toContain(`accept="${documentAccept}"`);
+    expect(html).toContain("Add video");
+    expect(html).toContain('accept="video/*"');
   });
   it("limits count, size and empty files", () => {
     expect(() => checkAttachment("a.png", "image/png", 1, 4)).toThrow(

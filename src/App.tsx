@@ -65,7 +65,12 @@ import {
   imagePreview,
   type StagedAttachment,
 } from "./Attachments";
-import { checkAttachment, messageAttachments } from "../shared/attachments";
+import {
+  checkAttachment,
+  maxAttachments,
+  messageAttachments,
+} from "../shared/attachments";
+import { videoFrameCount, videoFrames } from "./videoFrames";
 import {
   ChatActions,
   ChatComposer,
@@ -241,9 +246,17 @@ function Workspace({
   const readyAttachments = staged.filter((item) => item.state === "ready");
   const stagedCount = useRef(0);
   stagedCount.current = staged.length;
-  const attachFiles = (files: File[]) => {
-    let count = stagedCount.current;
+  const attachFiles = (files: File[], replacing?: string) => {
+    // A video's placeholder gives its slot to the frames that replace it.
+    let count = stagedCount.current - (replacing ? 1 : 0);
+    if (replacing)
+      setStaged((current) => current.filter((item) => item.key !== replacing));
     for (const file of files) {
+      if (file.type.startsWith("video/")) {
+        attachVideo(file, count);
+        count = maxAttachments;
+        continue;
+      }
       const key = uuid();
       let kind: StagedAttachment["kind"];
       try {
@@ -288,6 +301,53 @@ function Workspace({
         (error: Error) => update({ state: "failed", error: error.message }),
       );
     }
+  };
+  // A video is attached as evenly spaced still frames, as many as the
+  // remaining attachment slots allow.
+  const attachVideo = (file: File, count: number) => {
+    const key = uuid();
+    const room = maxAttachments - count;
+    if (room <= 0) {
+      setStaged((current) => [
+        ...current,
+        {
+          key,
+          name: file.name,
+          kind: "image",
+          state: "failed",
+          error: t("Attach up to {count} files per message.", {
+            count: maxAttachments,
+          }),
+        },
+      ]);
+      return;
+    }
+    setStaged((current) => [
+      ...current,
+      {
+        key,
+        name: file.name,
+        kind: "image",
+        state: "uploading",
+        note: t("Preparing video…"),
+      },
+    ]);
+    videoFrames(file, Math.min(room, videoFrameCount)).then(
+      (frames) => attachFiles(frames, key),
+      () =>
+        setStaged((current) =>
+          current.map((item) =>
+            item.key === key
+              ? {
+                  ...item,
+                  state: "failed",
+                  note: undefined,
+                  error: t("This video could not be read."),
+                }
+              : item,
+          ),
+        ),
+    );
   };
   const task = useTask(client, activeId);
   const events = task.session?.id === activeId ? task.events : [];

@@ -15,6 +15,8 @@ export interface StagedAttachment {
   value?: Attachment;
   error?: string;
   preview?: string;
+  // Shown in place of the upload status while the item is being prepared.
+  note?: string;
 }
 
 // A small local preview for the staging chip; the original never leaves the
@@ -63,7 +65,7 @@ export function StagedAttachments({
               {item.state === "uploading" ? (
                 <>
                   <LoaderCircle size={12} className="spin" />
-                  {t("Uploading…")}
+                  {item.note ?? t("Uploading…")}
                 </>
               ) : item.state === "failed" ? (
                 <>

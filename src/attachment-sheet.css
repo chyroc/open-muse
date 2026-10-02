@@ -71,7 +71,16 @@
 .attach-rows button:active {
   background: #ececee;
 }
-.attach-rows button + button {
+/* Rows are divided by a hairline inset to the label, as in system lists. */
+.attach-rows button {
+  position: relative;
+}
+.attach-rows button + button::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50px;
+  right: 16px;
   border-top: 1px solid #e8e8e8;
 }
 

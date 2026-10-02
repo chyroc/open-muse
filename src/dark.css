@@ -553,8 +553,8 @@
   .attach-rows button:active {
     background: #3a3a3c;
   }
-  .attach-rows button + button {
-    border-top: 1px solid #38383a;
+  .attach-rows button + button::before {
+    border-top-color: #38383a;
   }
   /* connectors.css */
   .connector-search {

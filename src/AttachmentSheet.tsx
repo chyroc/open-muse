@@ -1,13 +1,18 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { Camera, Image as ImageIcon, Paperclip } from "lucide-react";
+import {
+  Camera,
+  CirclePlay,
+  Image as ImageIcon,
+  Paperclip,
+} from "lucide-react";
 import { t } from "../shared/i18n";
 import { documentAccept, imageAccept } from "../shared/attachments";
 import "./attachment-sheet.css";
 
-type Source = "camera" | "photos" | "files";
+type Source = "camera" | "photos" | "files" | "video";
 
-// A floating sheet for adding attachments: camera and photo tiles, then a
-// row for documents. It springs up from the composer and closes on choice,
+// A floating sheet for adding attachments: camera and photo tiles, then rows
+// for documents and for a video, which is attached as still frames. It springs up from the composer and closes on choice,
 // on a tap outside, or with Escape.
 export function AttachmentSheet({
   onClose,
@@ -21,6 +26,7 @@ export function AttachmentSheet({
     camera: useRef<HTMLInputElement>(null),
     photos: useRef<HTMLInputElement>(null),
     files: useRef<HTMLInputElement>(null),
+    video: useRef<HTMLInputElement>(null),
   };
   useEffect(() => {
     const element = dialog.current!;
@@ -38,7 +44,7 @@ export function AttachmentSheet({
       ref={inputs[source]}
       type="file"
       hidden
-      multiple={source !== "camera"}
+      multiple={source === "photos" || source === "files"}
       accept={accept}
       {...(capture ? { capture: "environment" } : {})}
       onChange={(event) => {
@@ -76,6 +82,7 @@ export function AttachmentSheet({
       {picker("camera", imageAccept, true)}
       {picker("photos", imageAccept)}
       {picker("files", documentAccept)}
+      {picker("video", "video/*")}
       <h2>{t("Library")}</h2>
       <div className="attach-tiles">
         {tile("camera", t("Camera"), <Camera size={26} strokeWidth={1.8} />)}
@@ -85,6 +92,10 @@ export function AttachmentSheet({
         <button type="button" onClick={() => inputs.files.current?.click()}>
           <Paperclip size={22} strokeWidth={1.8} aria-hidden="true" />
           {t("Add file")}
+        </button>
+        <button type="button" onClick={() => inputs.video.current?.click()}>
+          <CirclePlay size={22} strokeWidth={1.8} aria-hidden="true" />
+          {t("Add video")}
         </button>
       </div>
     </dialog>
