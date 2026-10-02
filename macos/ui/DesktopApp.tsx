@@ -94,6 +94,7 @@ import { canAutoApprove } from "../../shared/approval-policy";
 import { ArchiveToggle, Avatar, Empty, Modal, Rail } from "./Chrome";
 import { ShortcutsDialog } from "./Shortcuts";
 import { groupLinks } from "./messageGroups";
+import { droppedFiles, droppedFilesEvent } from "./dropped";
 import { postCompanion, type CompanionState } from "./presence";
 import {
   PanelEdgeHandle,
@@ -879,6 +880,34 @@ export function DesktopApp({ client }: { client: Client }) {
       );
     }
   }
+  // Files dropped on the floating pill wait until the main chat is in front.
+  const [dropped, setDropped] = useState<File[]>([]);
+  useEffect(() => {
+    const receive = (event: Event) => {
+      const files = droppedFiles((event as CustomEvent).detail);
+      if (!files.length) return;
+      setDropped(files);
+      setStatusOpen(true);
+      navigate("/");
+      setDrawer(false);
+    };
+    window.addEventListener(droppedFilesEvent, receive);
+    return () => window.removeEventListener(droppedFilesEvent, receive);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (
+      !dropped.length ||
+      route.page !== "chat" ||
+      route.newSide ||
+      route.conversation
+    )
+      return;
+    if (ready) attach(dropped);
+    else setError(t("Connect to Ark MA to start your conversation."));
+    setDropped([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dropped, route.page, route.newSide, route.conversation, ready]);
   async function send() {
     const text = draft.trim();
     const files = staged.flatMap((item) =>
@@ -972,10 +1001,7 @@ export function DesktopApp({ client }: { client: Client }) {
     : readAloud.speaking
       ? "speaking"
       : "";
-  useEffect(
-    () => postCompanion(name, companionState),
-    [name, companionState],
-  );
+  useEffect(() => postCompanion(name, companionState), [name, companionState]);
   // A voice conversation sends each spoken turn through the normal send, so
   // quotes, goals and connection checks apply exactly as when typing.
   const voice = useVoiceConversation({

@@ -89,6 +89,7 @@ nonisolated(unsafe) private var hotKeyAction: ((UInt32, Bool) -> Void)?
 private final class FloatingButtonView: NSView {
     var onOpen: (() -> Void)?
     var onResize: ((NSSize) -> Void)?
+    var onDrop: (([URL]) -> Void)?
     private let bubble = CALayer()
     private let icon = CALayer()
     private let title = CATextLayer()
@@ -99,6 +100,7 @@ private final class FloatingButtonView: NSView {
     private var hovering = false
     private var name = "Muse"
     private var state = ""
+    private var dropping = false
     static let height: CGFloat = 46
     static let portrait: CGFloat = 38
     static let margin: CGFloat = 10
@@ -140,6 +142,8 @@ private final class FloatingButtonView: NSView {
         setAccessibilityRole(.button)
         setAccessibilityLabel(localized("Show Open Muse"))
         addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self))
+        // Files dropped on the pill open the chat with them attached.
+        registerForDraggedTypes([.fileURL])
         layoutPill()
     }
     required init?(coder: NSCoder) { nil }
@@ -200,10 +204,38 @@ private final class FloatingButtonView: NSView {
         layoutPill()
     }
 
+    private func fileURLs(_ info: NSDraggingInfo) -> [URL] {
+        let options: [NSPasteboard.ReadingOptionKey: Any] = [.urlReadingFileURLsOnly: true]
+        return (info.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: options) as? [URL] ?? [])
+            .filter { !$0.hasDirectoryPath }
+    }
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        guard !fileURLs(sender).isEmpty else { return [] }
+        dropping = true
+        layoutPill()
+        settle(Motion.hoverScale)
+        return .copy
+    }
+    override func draggingExited(_ sender: NSDraggingInfo?) {
+        dropping = false
+        layoutPill()
+        settle(hovering ? Motion.hoverScale : 1)
+    }
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        let urls = fileURLs(sender)
+        dropping = false
+        layoutPill()
+        settle(1)
+        guard !urls.isEmpty else { return false }
+        onDrop?(urls)
+        return true
+    }
+
     static func size(name: String, state: String) -> NSSize {
         let width = max(
             (name as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 15, weight: .semibold)]).width,
-            (state as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 11)]).width)
+            (state as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 11)]).width,
+            (localized("Drop files") as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 11)]).width)
         let pill = 4 + portrait + 10 + min(ceil(width), 160) + 18
         return NSSize(width: pill + margin * 2, height: height + margin * 2)
     }
@@ -219,6 +251,7 @@ private final class FloatingButtonView: NSView {
         icon.position = CGPoint(x: 4 + Self.portrait / 2, y: Self.height / 2)
         let textX = 4 + Self.portrait + 10
         let textWidth = pill.width - textX - 14
+        let state = dropping ? localized("Drop files") : self.state
         title.string = name
         detail.string = state
         if state.isEmpty {
@@ -922,6 +955,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         panel.isReleasedWhenClosed = false
         let view = FloatingButtonView(frame: NSRect(origin: .zero, size: size))
         view.onOpen = { [weak self] in self?.showWorkspace() }
+        view.onDrop = { [weak self] urls in self?.openChat(with: urls) }
         // The pill grows and shrinks with its text and keeps its left edge.
         view.onResize = { [weak self, weak panel] size in
             guard let panel else { return }
@@ -938,6 +972,23 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         view.show(name: companionName, state: companionState)
         view.toolTip = quickShortcutTip()
         return panel
+    }
+    // Files dropped on the pill: the window opens on the main chat, which
+    // stages them under the same checks as a drop on the composer. Only small
+    // regular files are read; the page rejects anything else it is given.
+    private func openChat(with urls: [URL]) {
+        showWorkspace()
+        var files: [[String: String]] = []
+        for url in urls.prefix(4) {
+            guard let values = try? url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey, .typeIdentifierKey]),
+                  values.isRegularFile == true, (values.fileSize ?? .max) <= 10 * 1024 * 1024,
+                  let data = try? Data(contentsOf: url) else { continue }
+            let type = values.typeIdentifier.flatMap { UTType($0)?.preferredMIMEType } ?? ""
+            files.append(["name": url.lastPathComponent, "type": type, "data": data.base64EncodedString()])
+        }
+        guard !files.isEmpty, let json = try? JSONSerialization.data(withJSONObject: files),
+              let text = String(data: json, encoding: .utf8) else { return }
+        webView.evaluateJavaScript("window.dispatchEvent(new CustomEvent('muse-dropped-files', {detail:\(text)}))", completionHandler: nil)
     }
     // A restored or resized pill stays wholly on its screen.
     private func keepOnScreen(_ panel: NSPanel) {
