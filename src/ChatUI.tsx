@@ -376,7 +376,10 @@ export function ConversationSidebar({
   useEffect(() => {
     const element = dialog.current!;
     const focused = document.activeElement;
-    element.showModal();
+    // Shown without modality: the page beneath stays focusable, so starting
+    // a side chat can focus the composer within the tap and the keyboard
+    // comes up. The sidebar covers the page and is layered above it.
+    element.show();
     // Focus the panel, not its first button, so no focus ring flashes on open.
     element.focus({ preventScroll: true });
     root().classList.add("sidebar-stage", "sidebar-shown");
@@ -416,8 +419,9 @@ export function ConversationSidebar({
       className="conversation-sidebar"
       tabIndex={-1}
       aria-label={t("Conversations")}
-      onCancel={(e) => {
-        e.preventDefault();
+      onKeyDown={(event) => {
+        if (event.key !== "Escape") return;
+        event.preventDefault();
         dismiss();
       }}
     >
@@ -526,6 +530,11 @@ export function ConversationSidebar({
             aria-label={t("New side chat")}
             disabled={busy}
             onClick={() => {
+              // Focus now, within the tap, so the keyboard comes up for the
+              // new side chat's composer.
+              document
+                .querySelector<HTMLTextAreaElement>(".chat-composer textarea")
+                ?.focus({ preventScroll: true });
               onNew();
               dismiss();
             }}
