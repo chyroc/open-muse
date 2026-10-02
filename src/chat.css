@@ -602,6 +602,23 @@ html.sidebar-dragging .companion-shell {
   display: flex;
   padding: 8px;
 }
+/* A small capsule action inside a status line, such as skipping a step. */
+.approval-notice-action {
+  margin-left: 4px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #007aff;
+  background: rgb(0 122 255 / 10%);
+  transition: transform var(--motion-press-duration) ease-out;
+}
+.approval-notice-action:active {
+  transform: scale(var(--motion-press-scale));
+}
+.approval-notice-action:disabled {
+  opacity: 0.4;
+}
 .scroll-to-latest {
   position: absolute;
   left: 50%;

@@ -91,6 +91,10 @@
   .approval-notice {
     color: #aeaeb2;
   }
+  .approval-notice-action {
+    color: #0a84ff;
+    background: rgb(10 132 255 / 18%);
+  }
   .scroll-to-latest {
     background: #1c435f;
     box-shadow: 0 2px 7px rgb(0 0 0 / 20%);

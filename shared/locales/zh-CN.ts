@@ -38,6 +38,7 @@ export const zhCN: Record<string, string> = {
   "Waiting for your Mac": "等待你的 Mac",
   "Waiting for Open Muse on your Mac to finish this step":
     "等待你 Mac 上的 Open Muse 完成这一步",
+  Skip: "跳过",
   "Connection interrupted": "连接已中断",
   Connected: "已连接",
   "Goals options": "目标选项",

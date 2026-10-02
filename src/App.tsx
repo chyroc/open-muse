@@ -1177,6 +1177,34 @@ function Workspace({
                 <div className="approval-notice" role="status">
                   <Laptop size={15} />
                   {t("Waiting for Open Muse on your Mac to finish this step")}
+                  {appSurface() !== "mac" && activeId && (
+                    // Without the Mac app nothing answers; the person can
+                    // tell the companion to go on without it.
+                    <button
+                      type="button"
+                      className="approval-notice-action"
+                      disabled={busy}
+                      onClick={() =>
+                        void action(async () => {
+                          await client.answerCustomTools(
+                            activeId,
+                            macTools.map((event) => ({
+                              custom_tool_use_id: event.id,
+                              is_error: true,
+                              content: [
+                                {
+                                  type: "text",
+                                  text: "The person skipped this step from another device; the Open Muse Mac app did not run it. Continue without it, and ask them if you need what it would have provided.",
+                                },
+                              ],
+                            })),
+                          );
+                        })
+                      }
+                    >
+                      {t("Skip")}
+                    </button>
+                  )}
                 </div>
               )}
               <ChatComposer
