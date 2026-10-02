@@ -559,9 +559,44 @@ h3 {
 }
 .status-content {
   padding: 18px 0;
-  overflow: auto;
+  overflow: hidden auto;
   min-height: 0;
   flex: 1;
+}
+/* Tab content slides in on a slightly damped spring, faded at the start. */
+.status-tab-body[data-from="start"] {
+  animation: status-tab-from-start 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.status-tab-body[data-from="end"] {
+  animation: status-tab-from-end 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes status-tab-from-start {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  60% {
+    opacity: 1;
+  }
+}
+@keyframes status-tab-from-end {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  60% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .status-tab-body[data-from] {
+    animation: status-tab-fade 0.15s ease-out;
+  }
+}
+@keyframes status-tab-fade {
+  from {
+    opacity: 0;
+  }
 }
 .status-content h3 {
   font-size: 15px;

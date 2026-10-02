@@ -38,6 +38,7 @@ const UpcomingIcon = createLucideIcon("clock-half-dashed", [
 ]);
 
 export type StatusTab = "activity" | "approvals" | "upcoming" | "identity";
+const tabOrder: StatusTab[] = ["activity", "approvals", "upcoming", "identity"];
 export function fileDate(value?: string) {
   if (!value) return "";
   const date = new Date(value);
@@ -174,6 +175,15 @@ export function StatusPanel({
       window.removeEventListener("click", close);
     };
   }, [menu]);
+  // A newly chosen tab slides in from the side it sits on in the tab bar.
+  const shown = useRef(tab);
+  const slide = useRef(0);
+  if (shown.current !== tab) {
+    slide.current =
+      tabOrder.indexOf(tab) > tabOrder.indexOf(shown.current) ? 1 : -1;
+    shown.current = tab;
+  }
+  const from = slide.current;
   const tabs = [
     { id: "activity", label: statusTabLabel("activity"), Icon: List },
     { id: "approvals", label: statusTabLabel("approvals"), Icon: ShieldCheck },
@@ -279,66 +289,72 @@ export function StatusPanel({
         role="tabpanel"
         aria-labelledby={`status-${tab}`}
       >
-        {tab === "identity" && (
-          <IdentityCards
-            identity={identity}
-            disabled={busy}
-            onOpen={onDocument}
-          />
-        )}
-        {tab === "upcoming" && upcoming}
-        {tab === "upcoming" && !upcoming && (
-          <Empty title={t("Upcoming tasks")}>
-            <p>
-              {t(
-                "Background scheduling is not connected in this desktop build yet. Chat messages do not create reminders automatically.",
-              )}
-            </p>
-          </Empty>
-        )}
-        {tab === "approvals" &&
-          (approvals.length ? (
-            approvals.map((event) => (
-              <PermissionCard
-                key={event.id}
-                event={event}
-                busy={busy}
-                onConfirm={onConfirm}
-              />
-            ))
-          ) : (
-            <Empty title={t("No approvals needed")}>
-              <p>{t("Requests for permission appear here.")}</p>
+        <div
+          key={tab}
+          className="status-tab-body"
+          data-from={from === 0 ? undefined : from > 0 ? "end" : "start"}
+        >
+          {tab === "identity" && (
+            <IdentityCards
+              identity={identity}
+              disabled={busy}
+              onOpen={onDocument}
+            />
+          )}
+          {tab === "upcoming" && upcoming}
+          {tab === "upcoming" && !upcoming && (
+            <Empty title={t("Upcoming tasks")}>
+              <p>
+                {t(
+                  "Background scheduling is not connected in this desktop build yet. Chat messages do not create reminders automatically.",
+                )}
+              </p>
             </Empty>
-          ))}
-        {tab === "activity" && (
-          <>
-            <h3>{statusTabLabel("activity")}</h3>
-            {activityEvents(events)
-              .slice(-30)
-              .reverse()
-              .map((event) => (
-                <details className="activity-item" key={event.id}>
-                  <summary>
-                    <Check size={18} />
-                    <span>{event.name ?? t("Tool call")}</span>
-                  </summary>
-                  <pre>
-                    {JSON.stringify(
-                      event.input ?? event.content ?? {},
-                      null,
-                      2,
-                    )}
-                  </pre>
-                </details>
-              ))}
-            {!activityEvents(events).length && (
-              <Empty title={t("No activity yet")}>
-                <p>{t("Your assistant's work will appear here.")}</p>
+          )}
+          {tab === "approvals" &&
+            (approvals.length ? (
+              approvals.map((event) => (
+                <PermissionCard
+                  key={event.id}
+                  event={event}
+                  busy={busy}
+                  onConfirm={onConfirm}
+                />
+              ))
+            ) : (
+              <Empty title={t("No approvals needed")}>
+                <p>{t("Requests for permission appear here.")}</p>
               </Empty>
-            )}
-          </>
-        )}
+            ))}
+          {tab === "activity" && (
+            <>
+              <h3>{statusTabLabel("activity")}</h3>
+              {activityEvents(events)
+                .slice(-30)
+                .reverse()
+                .map((event) => (
+                  <details className="activity-item" key={event.id}>
+                    <summary>
+                      <Check size={18} />
+                      <span>{event.name ?? t("Tool call")}</span>
+                    </summary>
+                    <pre>
+                      {JSON.stringify(
+                        event.input ?? event.content ?? {},
+                        null,
+                        2,
+                      )}
+                    </pre>
+                  </details>
+                ))}
+              {!activityEvents(events).length && (
+                <Empty title={t("No activity yet")}>
+                  <p>{t("Your assistant's work will appear here.")}</p>
+                </Empty>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </aside>
   );
