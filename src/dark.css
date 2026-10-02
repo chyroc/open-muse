@@ -1005,7 +1005,7 @@
   .attach-rows {
     background: #2c2c2e;
   }
-  .chat-page > .companion-header::before {
+  .companion-main > .companion-header::before {
     background: linear-gradient(#000 55%, transparent);
   }
   .side-chat-row:active {

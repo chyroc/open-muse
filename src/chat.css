@@ -248,9 +248,9 @@ body {
   font-size: 14px;
   line-height: 1.5;
 }
-/* In a chat the messages scroll under the floating header; only the status
-   bar area fades to the page color. */
-.chat-page > .companion-header {
+/* Messages and page content scroll under the floating header; only the
+   status bar area fades to the page color. */
+.companion-main > .companion-header {
   position: absolute;
   top: 0;
   left: 0;
@@ -258,20 +258,24 @@ body {
   height: calc(132px + env(safe-area-inset-top));
   pointer-events: none;
 }
-.chat-page > .companion-header::before {
+.companion-main > .companion-header::before {
   content: "";
   position: absolute;
   inset: 0 0 auto;
   height: calc(env(safe-area-inset-top) + 8px);
   background: linear-gradient(var(--chat-paper) 55%, transparent);
 }
-.chat-page > .companion-header > * {
+.companion-main > .companion-header > * {
   pointer-events: auto;
 }
-.chat-page > .chat-timeline {
+.chat-page > .chat-timeline,
+.content-page > .companion-content {
   padding-top: calc(132px + env(safe-area-inset-top));
 }
-.chat-page > .connection-notices {
+.content-page > .companion-content .refresh-indicator {
+  top: calc(132px + env(safe-area-inset-top) + 12px);
+}
+.companion-main > .connection-notices {
   position: absolute;
   top: calc(132px + env(safe-area-inset-top));
   left: 0;
@@ -895,6 +899,16 @@ body {
   .companion-header {
     flex-basis: 174px;
     padding-top: 24px;
+  }
+  .companion-main > .companion-header {
+    height: 174px;
+  }
+  .chat-page > .chat-timeline,
+  .content-page > .companion-content {
+    padding-top: 174px;
+  }
+  .companion-main > .connection-notices {
+    top: 174px;
   }
   .companion-status {
     top: 24px;
