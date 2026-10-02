@@ -23,7 +23,6 @@ export function SecureStorage({ client }: { client: Client }) {
       .catch((failure: Error) => setError(failure.message));
   }, [client, signedIn]);
   useEffect(load, [load]);
-  if (!signedIn) return null;
   const run = (request: Promise<SecureCredential[]>, done: () => void) => {
     setBusy(true);
     setError("");
@@ -44,58 +43,60 @@ export function SecureStorage({ client }: { client: Client }) {
     .filter(Boolean);
   return (
     <>
-      <h2>{t("Secrets for your assistant")}</h2>
-      <div className="settings-group">
-        {items?.map((item) => (
-          <div className="settings-row settings-device-row" key={item.id}>
-            <KeyRound size={16} />
-            <div>
-              <strong>{item.name}</strong>
-              <p>
-                {item.hosts.length
-                  ? t("Only for {hosts}", { hosts: item.hosts.join(", ") })
-                  : t("For any website")}
-              </p>
-            </div>
-            {removing === item.id ? (
-              <button
-                className="settings-inline-button danger"
-                disabled={busy}
-                onClick={() =>
-                  run(client.removeSecureCredential(item.id), () =>
-                    setRemoving(undefined),
-                  )
-                }
-              >
-                {t("Confirm")}
-              </button>
-            ) : (
-              <button
-                className="settings-inline-button"
-                onClick={() => setRemoving(item.id)}
-              >
-                {t("Remove")}
-              </button>
-            )}
-          </div>
-        ))}
-        <div className="settings-row">
-          <div>
-            <p>
-              {t(
-                "Your assistant can use these in conversations started after you add them. A value is sent to your Ark project once and is never shown again.",
-              )}
-            </p>
-          </div>
-          <button
-            className="settings-inline-button"
-            disabled={!items}
-            onClick={() => setAdding(true)}
-          >
-            {t("Add")}
-          </button>
-        </div>
+      <div className="settings-intro-row">
+        <p>{t("Securely store passwords for your agent to use.")}</p>
+        <button
+          className="settings-accent-button"
+          disabled={!signedIn || !items}
+          onClick={() => setAdding(true)}
+        >
+          {t("Add")}
+        </button>
       </div>
+      {Boolean(items?.length) && (
+        <div className="settings-group">
+          {items!.map((item) => (
+            <div className="settings-row settings-device-row" key={item.id}>
+              <KeyRound size={16} />
+              <div>
+                <strong>{item.name}</strong>
+                <p>
+                  {item.hosts.length
+                    ? t("Only for {hosts}", { hosts: item.hosts.join(", ") })
+                    : t("For any website")}
+                </p>
+              </div>
+              {removing === item.id ? (
+                <button
+                  className="settings-inline-button danger"
+                  disabled={busy}
+                  onClick={() =>
+                    run(client.removeSecureCredential(item.id), () =>
+                      setRemoving(undefined),
+                    )
+                  }
+                >
+                  {t("Confirm")}
+                </button>
+              ) : (
+                <button
+                  className="settings-inline-button"
+                  onClick={() => setRemoving(item.id)}
+                >
+                  {t("Remove")}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="settings-footnote">
+        {signedIn
+          ? t(
+              "Your assistant can use these in conversations started after you add them. A value is sent to your Ark project once and is never shown again.",
+            )
+          : t("Connect to Ark MA to store secrets for your assistant.")}
+      </p>
       {error && (
         <p className="settings-error" role="alert">
           {error}

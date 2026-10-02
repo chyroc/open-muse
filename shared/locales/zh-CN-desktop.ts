@@ -264,4 +264,8 @@ export const zhDesktop: Record<string, string> = {
     "智能体请求批准的每个网页请求都等你处理",
   "This applies to requests your agent sends for approval; tools it is allowed to run directly are not asked about. Computer control has its own choice under Computer use.":
     "此设置只作用于智能体发来请求批准的操作；允许直接运行的工具不会询问。电脑控制在 Computer use 中单独设置。",
+  "Securely store passwords for your agent to use.":
+    "安全存储密码以供你的智能体使用。",
+  "Connect to Ark MA to store secrets for your assistant.":
+    "连接 Ark MA 后即可为助手存储机密。",
 };

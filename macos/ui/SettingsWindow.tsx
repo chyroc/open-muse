@@ -465,11 +465,8 @@ export function SettingsWindow({ client }: { client: Client }) {
         {active.id === "legal" && <LegalSettings />}
         {active.id === "secure-storage" && (
           <>
-            <p className="settings-lead">
-              {t(
-                "Credentials for this Mac live in the macOS Keychain and are read through the native bridge. They are never written into the page, a file, or a server.",
-              )}
-            </p>
+            <SecureStorage client={client} />
+            <h2>{t("On this Mac")}</h2>
             <div className="settings-group">
               <Row
                 title={t("Ark credentials")}
@@ -490,7 +487,11 @@ export function SettingsWindow({ client }: { client: Client }) {
                 )}
               />
             </div>
-            <SecureStorage client={client} />
+            <p className="settings-footnote">
+              {t(
+                "Credentials for this Mac live in the macOS Keychain and are read through the native bridge. They are never written into the page, a file, or a server.",
+              )}
+            </p>
           </>
         )}
         {active.id === "permissions" && (

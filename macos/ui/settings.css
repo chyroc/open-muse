@@ -678,3 +678,36 @@
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+/* A page's opening line with its main action at the end. */
+.settings-intro-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.settings-intro-row p {
+  flex: 1;
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+}
+.settings-accent-button {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 16px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 14px;
+  font-weight: 500;
+  transition: transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.settings-accent-button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.settings-accent-button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+.settings-accent-button:disabled {
+  opacity: 0.45;
+}
