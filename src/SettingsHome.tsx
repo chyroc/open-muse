@@ -199,6 +199,7 @@ export function SettingsHome({
       )}
       {section === "connectors" && (
         <ConnectorsSheet
+          client={client}
           onClose={close}
           onDraft={(text) => {
             close();

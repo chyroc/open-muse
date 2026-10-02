@@ -25,7 +25,9 @@ describe("Apple Health requests", () => {
     expect(healthToolSpec.input_schema.properties.metric.enum).toEqual([
       ...healthMetrics,
     ]);
-    expect(healthToolSpec.description).toContain("explicitly shares");
+    expect(healthToolSpec.description).toContain(
+      "once the person has connected Apple Health",
+    );
   });
 
   it("validates ranges and picks a sensible granularity", () => {

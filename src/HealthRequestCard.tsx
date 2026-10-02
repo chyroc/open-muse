@@ -10,16 +10,17 @@ import {
 } from "../shared/health";
 import type { AgentEvent } from "../shared/types";
 import type { Client } from "./api";
-import {
-  connectHealth,
-  healthAccess,
-  healthSupported,
-  readHealth,
-} from "./health";
+import { connectHealth, healthSupported, readHealth } from "./health";
 import { HealthConnectSheet } from "./HealthConnectSheet";
 
-// One card per pending health_read call. Data leaves the device only after
-// the person taps Share; declining answers the call without any data.
+// Requests answered automatically in this app session, so a card that mounts
+// again for the same call never reads or answers twice.
+const answering = new Set<string>();
+
+// One card per pending health_read call. Until the person connects Apple
+// Health, the request first explains connecting in a sheet, and data leaves
+// the device only after Continue or Share; declining answers without data.
+// Once connected, the read is answered at once and only a status shows.
 export function HealthRequestCard({
   client,
   session,
@@ -38,15 +39,25 @@ export function HealthRequestCard({
   const supported = healthSupported();
   const [busy, setBusy] = useState<"share" | "decline">();
   const [error, setError] = useState("");
-  // Until Health has been connected, the request first explains what
-  // connecting means, as a sheet over the conversation.
-  const [connecting, setConnecting] = useState(false);
+  const [mode, setMode] = useState<"checking" | "sheet" | "card" | "auto">(
+    supported && query ? "checking" : "card",
+  );
   useEffect(() => {
     if (!supported || !query) return;
     let active = true;
-    void healthAccess().then(
-      (access) => active && access === "not_requested" && setConnecting(true),
-      () => {},
+    void client.healthConnected().then(
+      (connected) => {
+        if (!active) return;
+        if (!connected) return setMode("sheet");
+        setMode("auto");
+        if (answering.has(event.id)) return;
+        answering.add(event.id);
+        void answer("share").then((ok) => {
+          if (!ok) answering.delete(event.id);
+          if (!ok && active) setMode("card");
+        });
+      },
+      () => active && setMode("card"),
     );
     return () => {
       active = false;
@@ -54,7 +65,7 @@ export function HealthRequestCard({
     // One check per request.
   }, [event.id]);
   async function answer(choice: "share" | "decline") {
-    if (busy) return;
+    if (busy) return false;
     setBusy(choice);
     setError("");
     try {
@@ -78,23 +89,49 @@ export function HealthRequestCard({
         },
       ]);
       onAnswered();
+      return true;
     } catch (reason) {
       setError((reason as Error).message);
+      return false;
     } finally {
       setBusy(undefined);
     }
   }
+  if (mode === "checking") return null;
+  if (mode === "auto")
+    return (
+      <p className="health-auto" role="status">
+        <HeartPulse size={15} aria-hidden="true" />
+        {t("Reading Apple Health…")}
+      </p>
+    );
   return (
     <>
-      {connecting && (
+      {mode === "sheet" && (
         <HealthConnectSheet
           name={name}
-          onClose={() => setConnecting(false)}
+          onClose={() =>
+            setMode((current) => (current === "sheet" ? "card" : current))
+          }
           onContinue={() =>
-            void connectHealth().then(
-              () => answer("share"),
-              (reason: Error) => setError(reason.message),
-            )
+            void connectHealth()
+              .then(() => client.setHealthConnected(true))
+              .then(
+                () => {
+                  setMode("auto");
+                  answering.add(event.id);
+                  return answer("share").then((ok) => {
+                    if (!ok) {
+                      answering.delete(event.id);
+                      setMode("card");
+                    }
+                  });
+                },
+                (reason: Error) => {
+                  setMode("card");
+                  setError(reason.message);
+                },
+              )
           }
         />
       )}

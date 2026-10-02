@@ -142,6 +142,17 @@
     transform: translateY(calc(100% + 8px));
   }
 }
+/* Once Health is connected, a request shows only that it is being read. */
+.health-auto {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 4px auto 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #8a8a8e;
+}
 @keyframes health-connect-dim {
   from {
     opacity: 0;

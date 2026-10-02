@@ -10,6 +10,7 @@ import {
   SquareTerminal,
 } from "lucide-react";
 import { t } from "../shared/i18n";
+import type { Client } from "./api";
 import { connectHealth, healthAccess } from "./health";
 import { Sheet } from "./MusePages";
 import "./connectors.css";
@@ -59,7 +60,7 @@ const health = (): Connector => ({
   id: "health",
   name: t("Apple Health"),
   detail: t(
-    "Your assistant asks in the chat before each read. Change what it can read in the Health app.",
+    "Your assistant reads it when you ask about activity, workouts, sleep, heart rate or weight. Change what it can read in the Health app.",
   ),
   Icon: HeartPulse,
 });
@@ -75,9 +76,12 @@ const larkSignIn =
   "Help me sign in to Lark with lark-cli so you can work in my Lark account.";
 
 export function ConnectorsSheet({
+  client,
   onClose,
   onDraft,
 }: {
+  // Whether this identity connected Apple Health on this device.
+  client: Pick<Client, "healthConnected" | "setHealthConnected">;
   onClose: () => void;
   // Puts text in the main chat composer for the person to review and send.
   onDraft: (text: string) => void;
@@ -88,8 +92,13 @@ export function ConnectorsSheet({
     useState<Awaited<ReturnType<typeof healthAccess>>>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [linked, setLinked] = useState(false);
   useEffect(() => {
     let active = true;
+    void client.healthConnected().then(
+      (value) => active && setLinked(value),
+      () => {},
+    );
     void healthAccess()
       .then((value) => {
         if (active) setAccess(value);
@@ -110,6 +119,8 @@ export function ConnectorsSheet({
     setBusy(true);
     try {
       await connectHealth();
+      await client.setHealthConnected(true);
+      setLinked(true);
       setAccess(await healthAccess());
     } catch (reason) {
       setError((reason as Error).message);
@@ -121,14 +132,10 @@ export function ConnectorsSheet({
   const matches = (item: Connector) =>
     !term || `${item.name} ${item.detail}`.toLocaleLowerCase().includes(term);
   const healthItem = access && access !== "unavailable" ? [health()] : [];
-  const connected = [
-    ...included(),
-    ...(access === "requested" ? healthItem : []),
-  ].filter(matches);
-  const available = [
-    ...(access === "not_requested" ? healthItem : []),
-    lark(),
-  ].filter(matches);
+  const connected = [...included(), ...(linked ? healthItem : [])].filter(
+    matches,
+  );
+  const available = [...(linked ? [] : healthItem), lark()].filter(matches);
   return (
     <Sheet title={t("Connectors")} onClose={onClose} grouped>
       <div className="connectors">
@@ -167,7 +174,28 @@ export function ConnectorsSheet({
                       aria-hidden="true"
                     />
                   </button>
-                  {open === id && <p className="connector-detail">{detail}</p>}
+                  {open === id && (
+                    <div className="connector-detail">
+                      <p>{detail}</p>
+                      {id === "health" && (
+                        <button
+                          type="button"
+                          className="connector-disconnect"
+                          onClick={() =>
+                            void client.setHealthConnected(false).then(
+                              () => {
+                                setLinked(false);
+                                setOpen(undefined);
+                              },
+                              (reason: Error) => setError(reason.message),
+                            )
+                          }
+                        >
+                          {t("Disconnect")}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

@@ -6,8 +6,8 @@ import "./health-connect.css";
 
 // The first time the companion asks for Health data, a floating sheet says
 // what connecting Health means before the system's own permission sheet.
-// Continue connects and shares this one request; Cancel leaves the request
-// in the conversation to answer later.
+// Continue connects, so this and later requests are read without asking;
+// Cancel leaves the request in the conversation to answer later.
 export function HealthConnectSheet({
   name,
   onContinue,
@@ -102,7 +102,8 @@ export function HealthConnectSheet({
           <ToggleRight size={22} strokeWidth={2} />,
           t("You choose what {name} can read", { name }),
           t(
-            "Each read asks you first. You can change or turn off access at any time in the Health app.",
+            "Once connected, {name} reads Health when you ask, without asking each time. Change or turn off access in the Health app, or disconnect in Connectors.",
+            { name },
           ),
         )}
         {row(

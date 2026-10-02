@@ -736,9 +736,10 @@ export const zhCN: Record<string, string> = {
   "When you ask about activity, workouts, sleep, heart rate or weight, {name} reads just that data from Health and shares a summary with your MA agent.":
     "当你询问运动、体能训练、睡眠、心率或体重时，{name} 只会从健康中读取相应数据，并把摘要共享给你的 MA 智能体。",
   "You choose what {name} can read": "你可以选择 {name} 能读取的内容",
-  "Each read asks you first. You can change or turn off access at any time in the Health app.":
-    "每次读取前都会先征求你的同意。你随时可以在“健康”App 中更改或关闭访问权限。",
+  "Once connected, {name} reads Health when you ask, without asking each time. Change or turn off access in the Health app, or disconnect in Connectors.":
+    "连接后，你询问时 {name} 会直接读取健康数据，不再逐次询问。你可以在“健康”App 中更改或关闭访问权限，或在连接器中断开。",
   "Keep an eye on it": "时刻保持关注",
+  "Reading Apple Health…": "正在读取 Apple 健康数据…",
   "{name} can make mistakes. Check anything about your health carefully.":
     "{name} 可能会出错。涉及健康的内容请务必仔细核对。",
   "Summaries you share become part of the conversation and are kept in your Ark account.":

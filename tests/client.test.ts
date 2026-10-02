@@ -1178,6 +1178,21 @@ describe("Direct MA client", () => {
     );
     expect((await f.client.session(own.id)).id).toBe(own.id);
   });
+  it("keeps the Apple Health connection per identity on this device", async () => {
+    const f = fixture();
+    expect(await f.client.healthConnected()).toBe(false);
+    await f.login();
+    expect(await f.client.healthConnected()).toBe(false);
+    await f.client.setHealthConnected(true);
+    expect(await f.client.healthConnected()).toBe(true);
+    await f.client.auth("logout", {});
+    await f.client.auth("api-key", {
+      apiKey: "test-other-account-key-123456789",
+      confirm: true,
+    });
+    // Another identity on this device has not connected Health.
+    expect(await f.client.healthConnected()).toBe(false);
+  });
   it("keeps reactions on this device for the signed-in identity only", async () => {
     const f = fixture();
     await f.login();

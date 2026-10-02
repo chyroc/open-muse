@@ -1983,6 +1983,21 @@ export class Client {
       )) ?? {}
     );
   }
+  // Whether this identity connected Apple Health on this device; while it is,
+  // the companion's Health reads are answered without asking each time.
+  async healthConnected() {
+    if (!this.signedIn()) return false;
+    return (
+      (await this.db.get<boolean>(`${this.context().key}:health-connected`)) ===
+      true
+    );
+  }
+  async setHealthConnected(connected: boolean) {
+    await this.db.set(
+      `${this.context().key}:health-connected`,
+      z.boolean().parse(connected),
+    );
+  }
   // Reactions are this device's own marks on messages, kept beside the
   // identity's other local records and never sent to Ark.
   async reactions(): Promise<Record<string, string>> {

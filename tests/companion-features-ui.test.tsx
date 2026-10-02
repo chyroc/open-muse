@@ -50,9 +50,9 @@ describe("Apple Health request card", () => {
     vi.stubGlobal("webkit", {
       messageHandlers: { museHealth: { postMessage: vi.fn() } },
     });
-    const phone = render(steps);
-    expect(phone).toContain("Only this summary is shared");
-    expect(phone).toContain(">Share<");
+    // On the iPhone nothing shows until it knows whether Health is
+    // connected: then a connect sheet, or an automatic read.
+    expect(render(steps)).toBe("");
   });
 
   it("lets an invalid request be dismissed without offering to share", () => {
@@ -100,7 +100,14 @@ describe("Signed-out companion settings", () => {
 describe("Connectors", () => {
   it("lists included tools as connected and Lark as available", () => {
     const html = renderToStaticMarkup(
-      <ConnectorsSheet onClose={() => {}} onDraft={() => {}} />,
+      <ConnectorsSheet
+        client={{
+          healthConnected: async () => false,
+          setHealthConnected: async () => {},
+        }}
+        onClose={() => {}}
+        onDraft={() => {}}
+      />,
     );
     expect(html).toContain("Search connectors");
     for (const name of [

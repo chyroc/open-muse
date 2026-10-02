@@ -23,7 +23,7 @@ export const healthToolName = "health_read";
 export const healthToolSpec = {
   name: healthToolName,
   description:
-    "Read the person's Apple Health data from their iPhone for one metric and time range. The Open Muse iPhone app answers after the person explicitly shares the request, so it may wait until the app is open. Use it when the person asks about their activity, workouts, sleep, heart rate, or weight; never guess these values. Cumulative metrics return sums, heart rate and weight return average/min/max, sleep returns minutes asleep and in bed, and workouts return a list. An empty result can mean no data or that Health access was not allowed.",
+    "Read the person's Apple Health data from their iPhone for one metric and time range. The Open Muse iPhone app answers on its own once the person has connected Apple Health in the app; before that it first asks them, so it may wait until the app is open. Use it when the person asks about their activity, workouts, sleep, heart rate, or weight; never guess these values. Cumulative metrics return sums, heart rate and weight return average/min/max, sleep returns minutes asleep and in bed, and workouts return a list. An empty result can mean no data or that Health access was not allowed.",
   input_schema: {
     type: "object",
     additionalProperties: false,

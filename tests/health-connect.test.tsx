@@ -16,8 +16,9 @@ describe("Health connect sheet", () => {
     expect(html).toContain(`>${t("Health")}</h2>`);
     expect(html.match(/<li>/g)).toHaveLength(3);
     expect(html).toContain("You choose what Kit can read");
-    // Each read still needs the person's approval.
-    expect(html).toContain("Each read asks you first.");
+    // Connecting covers later reads, and says how to undo it.
+    expect(html).toContain("without asking each time");
+    expect(html).toContain("disconnect in Connectors");
     expect(html).toContain(`>${t("Continue")}</button>`);
     expect(html).toContain(`>${t("Cancel")}</button>`);
   });
