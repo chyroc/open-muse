@@ -16,7 +16,7 @@ async function setup(language: string) {
   document.body.appendChild(host);
   root = createRoot(host);
   const onSignIn = vi.fn(async () => {}),
-    onSignUp = vi.fn(async () => {});
+    onSignUp = vi.fn(async () => true);
   await act(async () =>
     root!.render(
       <SupabaseLoginForm
