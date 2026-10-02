@@ -79,7 +79,6 @@ describe("Apple UI localization", () => {
             onIdentity={noop}
             onClose={noop}
             status="未连接"
-            sessions={[]}
             events={[]}
             permissions={[]}
             busy={false}
@@ -100,10 +99,10 @@ describe("Apple UI localization", () => {
       expect(host.textContent).toContain("这些是初始模板。");
       await act(async () =>
         host
-          .querySelector<HTMLButtonElement>('[role="tab"][aria-label="审批"]')!
+          .querySelector<HTMLButtonElement>('[role="tab"][aria-label="批准"]')!
           .click(),
       );
-      expect(host.textContent).toContain("此对话中没有等待批准的操作。");
+      expect(host.textContent).toContain("暂无批准记录");
     } finally {
       await act(async () => root.unmount());
       host.remove();
