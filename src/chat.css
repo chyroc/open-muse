@@ -16,6 +16,22 @@ body {
   min-height: 0;
   overflow: hidden;
   background: var(--chat-paper);
+  transition-property: transform, border-radius;
+  transition-duration: var(--motion-push-duration);
+  transition-timing-function: var(--motion-push-ease);
+}
+/* With the sidebar shown, the page is pushed off to the trailing edge as a
+   rounded card over black, and follows a drag that closes the sidebar. */
+html.sidebar-stage,
+html.sidebar-stage body {
+  background: #000;
+}
+html.sidebar-shown .companion-shell {
+  transform: translateX(calc(100% * (1 - var(--sidebar-progress, 0))));
+  border-radius: 44px;
+}
+html.sidebar-dragging .companion-shell {
+  transition: none;
 }
 .companion-main {
   height: 100%;
@@ -663,59 +679,42 @@ body {
   background: #f1f1f3;
   border-radius: 18px;
 }
+/* The sidebar dialog is a transparent full-screen layer; its panel carries
+   the surface and the motion, since WebKit does not move a top-layer dialog
+   by its own transform. */
 .conversation-sidebar {
   position: fixed;
-  inset: 0 auto 0 0;
+  inset: 0;
   width: 100%;
-  max-width: 440px;
+  max-width: none;
   height: var(--app-height, 100dvh);
   max-height: none;
   margin: 0;
+  padding: 0;
   border: 0;
+  background: transparent;
+  overflow: visible;
+}
+.conversation-sidebar[open] {
+  display: block;
+}
+.sidebar-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 440px;
+  height: 100%;
   background: #fcfcfc;
   color: #161618;
   padding: calc(16px + env(safe-area-inset-top)) 16px
     calc(8px + env(safe-area-inset-bottom));
-  box-shadow: 8px 0 45px #0002;
-}
-.conversation-sidebar[open] {
-  display: flex;
-  flex-direction: column;
-  /* Slides in from the leading edge on the sheet spring; backwards fill so a
-     finger can move it once it has landed. */
-  animation: sidebar-in var(--motion-sheet-duration) var(--motion-sheet-ease)
-    backwards;
+  border-radius: 44px;
   touch-action: pan-y;
 }
-.conversation-sidebar[open]::backdrop {
-  animation: sidebar-dim var(--motion-sheet-duration) ease-out both;
-}
-.conversation-sidebar.closing::backdrop {
-  opacity: 0;
-  transition: opacity var(--motion-sheet-dismiss-duration) ease-in;
-}
-@keyframes sidebar-in {
-  from {
-    transform: translateX(-100%);
-  }
-}
-@keyframes sidebar-dim {
-  from {
-    opacity: 0;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  @keyframes sidebar-in {
-    from {
-      opacity: 0;
-    }
-  }
-}
 .conversation-sidebar::backdrop {
-  background: #0003;
-  backdrop-filter: blur(3px);
+  background: transparent;
 }
-.conversation-sidebar > header {
+.sidebar-panel > header {
   display: flex;
   justify-content: flex-end;
   align-items: center;
@@ -724,7 +723,7 @@ body {
 }
 /* Sidebar text uses the 17pt body size (it grows with the system text
    size); the main chat row is a 52pt capsule at the larger sizes. */
-.conversation-sidebar > header strong {
+.sidebar-panel > header strong {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
@@ -831,7 +830,7 @@ body {
   color: #96969a;
   flex-shrink: 0;
 }
-.conversation-sidebar > footer {
+.sidebar-panel > footer {
   display: flex;
   gap: 7px;
   flex-shrink: 0;

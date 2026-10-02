@@ -111,13 +111,9 @@
   .settings-studio-link {
     background: #2c2c2e;
   }
-  .conversation-sidebar {
+  .sidebar-panel {
     background: #000000;
     color: #ffffff;
-    box-shadow: 8px 0 45px rgb(0 0 0 / 40%);
-  }
-  .conversation-sidebar::backdrop {
-    background: rgb(0 0 0 / 50%);
   }
   .main-chat-row:active {
     background: #3a3a3c;

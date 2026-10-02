@@ -1,5 +1,6 @@
 import { t } from "../shared/i18n";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import {
   Archive,
   ArrowDownToLine,
@@ -22,7 +23,7 @@ import {
 } from "lucide-react";
 import type { Session } from "../shared/types";
 import { AttachmentSheet } from "./AttachmentSheet";
-import { animateAway, useDragToDismiss } from "./gesture";
+import { animateAway, animateIn, useDragToDismiss } from "./gesture";
 import type { ConversationIndex } from "./direct/conversations";
 import { Sheet } from "./MusePages";
 
@@ -347,21 +348,30 @@ export function ConversationSidebar({
   name?: string;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
   const search = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [archived, setArchived] = useState(false);
   const closing = useRef(false);
-  // Slides away to the left, then reports closed; links navigate meanwhile.
+  // The sidebar and the page move as one: opening pushes the page off to the
+  // trailing edge, and closing slides both back; links navigate meanwhile.
+  const root = () => document.documentElement;
   const dismiss = () => {
     if (closing.current) return;
     closing.current = true;
-    animateAway(dialog.current, "x", -1, onClose);
+    root().classList.remove("sidebar-shown", "sidebar-dragging");
+    root().style.removeProperty("--sidebar-progress");
+    animateAway(panel.current, "x", -1, onClose, "push");
   };
   const drag = useDragToDismiss({
-    target: dialog,
+    target: panel,
     axis: "x",
     direction: -1,
     onDismiss: dismiss,
+    onProgress: (progress, dragging) => {
+      root().style.setProperty("--sidebar-progress", String(progress));
+      root().classList.toggle("sidebar-dragging", dragging);
+    },
   });
   useEffect(() => {
     const element = dialog.current!;
@@ -369,7 +379,15 @@ export function ConversationSidebar({
     element.showModal();
     // Focus the panel, not its first button, so no focus ring flashes on open.
     element.focus({ preventScroll: true });
+    root().classList.add("sidebar-stage", "sidebar-shown");
+    animateIn(panel.current, "x", -1, "push");
     return () => {
+      root().classList.remove(
+        "sidebar-stage",
+        "sidebar-shown",
+        "sidebar-dragging",
+      );
+      root().style.removeProperty("--sidebar-progress");
       element.close();
       // Leave focus where typing has already started.
       if (
@@ -390,129 +408,137 @@ export function ConversationSidebar({
         .toLocaleLowerCase()
         .includes(query.toLocaleLowerCase()),
     );
-  return (
+  // Rendered at the document root: the page it slides past is transformed,
+  // and WebKit mis-places a modal dialog whose ancestor is transformed.
+  const layer = (
     <dialog
       ref={dialog}
       className="conversation-sidebar"
       tabIndex={-1}
-      {...drag}
       aria-label={t("Conversations")}
       onCancel={(e) => {
         e.preventDefault();
         dismiss();
       }}
     >
-      <header>
-        <strong>{name}</strong>
-        <button
-          className="glass-button"
-          aria-label={t("Close sidebar")}
+      <div ref={panel} className="sidebar-panel" {...drag}>
+        <header>
+          <strong>{name}</strong>
+          <button
+            className="glass-button"
+            aria-label={t("Close sidebar")}
+            onClick={dismiss}
+          >
+            <ArrowRight size={24} strokeWidth={1.5} />
+          </button>
+        </header>
+        <a
+          className={`main-chat-row ${!activeId || activeId === index.mainId ? "selected" : ""}`}
+          href="#/"
           onClick={dismiss}
         >
-          <ArrowRight size={24} strokeWidth={1.5} />
-        </button>
-      </header>
-      <a
-        className={`main-chat-row ${!activeId || activeId === index.mainId ? "selected" : ""}`}
-        href="#/"
-        onClick={dismiss}
-      >
-        {t("Main chat")}
-      </a>
-      <div className="side-chat-section">
-        <h2>{archived ? t("Archived side chats") : t("Side chats")}</h2>
-        <button
-          aria-label={
-            archived ? t("Show side chats") : t("Show archived chats")
-          }
-          aria-pressed={archived}
-          onClick={() => setArchived(!archived)}
-        >
-          <Archive size={20} />
-        </button>
-      </div>
-      {error && (
-        <p className="inline-error" role="alert">
-          {error}
-        </p>
-      )}
-      <div className="side-chat-list">
-        {rows.length ? (
-          rows.map((session) => (
-            <div
-              key={session.id}
-              className={`side-chat-row ${activeId === session.id ? "selected" : ""}`}
-            >
-              <a href={`#/task/${session.id}`} onClick={dismiss}>
-                <MessageCircle size={19} />
-                <span>{index.entries[session.id]?.title ?? session.title}</span>
-                {["running", "rescheduling"].includes(session.status) && (
-                  <i aria-label={t("Running")} />
-                )}
-              </a>
-              <button
-                disabled={busy}
-                aria-label={`${archived ? t("Restore") : t("Archive")} ${index.entries[session.id]?.title ?? session.title}`}
-                onClick={() => onArchive(session.id, !archived)}
-              >
-                {archived ? <ArrowLeft size={17} /> : <Archive size={17} />}
-              </button>
-            </div>
-          ))
-        ) : (
-          <div className="side-chat-empty">
-            <MessagesSquare size={29} strokeWidth={1.6} />
-            <h2>
-              {query
-                ? t("No matching chats")
-                : archived
-                  ? t("No archived chats")
-                  : t("Start a side chat")}
-            </h2>
-            <p>
-              {query
-                ? t("Try another search.")
-                : archived
-                  ? t("Archived chats stay available here.")
-                  : t(
-                      "Side chats are an optional way to organize conversations by topic.",
-                    )}
-            </p>
-          </div>
-        )}
-      </div>
-      <footer>
-        <a
-          href="#/settings"
-          className="glass-button"
-          aria-label={t("Settings")}
-        >
-          <Settings size={24} strokeWidth={1.5} />
+          {t("Main chat")}
         </a>
-        <label className="sidebar-search">
-          <Search size={20} />
-          <input
-            ref={search}
-            aria-label={t("Search conversations")}
-            placeholder={t("Search")}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </label>
-        <button
-          className="glass-button"
-          aria-label={t("New side chat")}
-          disabled={busy}
-          onClick={() => {
-            onNew();
-            dismiss();
-          }}
-        >
-          <SquarePen size={24} strokeWidth={1.5} />
-        </button>
-      </footer>
+        <div className="side-chat-section">
+          <h2>{archived ? t("Archived side chats") : t("Side chats")}</h2>
+          <button
+            aria-label={
+              archived ? t("Show side chats") : t("Show archived chats")
+            }
+            aria-pressed={archived}
+            onClick={() => setArchived(!archived)}
+          >
+            <Archive size={20} />
+          </button>
+        </div>
+        {error && (
+          <p className="inline-error" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="side-chat-list">
+          {rows.length ? (
+            rows.map((session) => (
+              <div
+                key={session.id}
+                className={`side-chat-row ${activeId === session.id ? "selected" : ""}`}
+              >
+                <a href={`#/task/${session.id}`} onClick={dismiss}>
+                  <MessageCircle size={19} />
+                  <span>
+                    {index.entries[session.id]?.title ?? session.title}
+                  </span>
+                  {["running", "rescheduling"].includes(session.status) && (
+                    <i aria-label={t("Running")} />
+                  )}
+                </a>
+                <button
+                  disabled={busy}
+                  aria-label={`${archived ? t("Restore") : t("Archive")} ${index.entries[session.id]?.title ?? session.title}`}
+                  onClick={() => onArchive(session.id, !archived)}
+                >
+                  {archived ? <ArrowLeft size={17} /> : <Archive size={17} />}
+                </button>
+              </div>
+            ))
+          ) : (
+            <div className="side-chat-empty">
+              <MessagesSquare size={29} strokeWidth={1.6} />
+              <h2>
+                {query
+                  ? t("No matching chats")
+                  : archived
+                    ? t("No archived chats")
+                    : t("Start a side chat")}
+              </h2>
+              <p>
+                {query
+                  ? t("Try another search.")
+                  : archived
+                    ? t("Archived chats stay available here.")
+                    : t(
+                        "Side chats are an optional way to organize conversations by topic.",
+                      )}
+              </p>
+            </div>
+          )}
+        </div>
+        <footer>
+          <a
+            href="#/settings"
+            className="glass-button"
+            aria-label={t("Settings")}
+          >
+            <Settings size={24} strokeWidth={1.5} />
+          </a>
+          <label className="sidebar-search">
+            <Search size={20} />
+            <input
+              ref={search}
+              aria-label={t("Search conversations")}
+              placeholder={t("Search")}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>
+          <button
+            className="glass-button"
+            aria-label={t("New side chat")}
+            disabled={busy}
+            onClick={() => {
+              onNew();
+              dismiss();
+            }}
+          >
+            <SquarePen size={24} strokeWidth={1.5} />
+          </button>
+        </footer>
+      </div>
     </dialog>
   );
+  return typeof document === "undefined"
+    ? layer
+    : createPortal(layer, document.body);
 }
 
 export function ChatActions({
