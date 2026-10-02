@@ -91,6 +91,15 @@ describe("Mac workspace navigation", () => {
       "archived",
     ]);
   });
+  it("keeps Feed and Ideas generation sessions out of the drawer", () => {
+    const sessions = [
+      { id: "side", title: "Trip" },
+      { id: "feed", title: "Feed generation", generation: "feed" },
+      { id: "ideas", title: "Ideas generation", generation: "ideas" },
+    ] as Session[];
+    const index = { mainId: "main", entries: {} };
+    expect(sideChats(sessions, index, "").map((s) => s.id)).toEqual(["side"]);
+  });
   it("exposes the observed six-item rail and native menu shortcuts", () => {
     const noop = () => {};
     const html = renderToStaticMarkup(

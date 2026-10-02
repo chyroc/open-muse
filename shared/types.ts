@@ -9,6 +9,9 @@ export interface Session {
   updated_at: string;
   category: Category;
   preview?: string;
+  // Set on the sessions that produce Feed or Ideas. They open from those
+  // pages and are kept out of the side-chat list.
+  generation?: "feed" | "ideas";
 }
 export interface AgentEvent {
   id: string;

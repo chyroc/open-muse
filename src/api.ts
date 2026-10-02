@@ -778,6 +778,9 @@ export class Client {
               title: generation
                 ? `${generation[1] === "feed" ? "Feed" : "Ideas"} generation`
                 : row.title || "Untitled task",
+              ...(generation
+                ? { generation: generation[1] as "feed" | "ideas" }
+                : {}),
               category: row.category ?? result[row.id]?.category ?? "general",
             };
         }

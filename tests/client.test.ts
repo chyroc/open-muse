@@ -403,6 +403,7 @@ describe("Direct MA client", () => {
     expect((await f.client.session(run.session_id!)).title).toBe(
       "Feed generation",
     );
+    expect((await f.client.session(run.session_id!)).generation).toBe("feed");
     expect((await f.client.conversationIndex()).mainId).toBe(main.id);
     const request = f.events.find((e) => e.id === run.event_id)!;
     expect(request.content?.[0].text).toContain("urban nature walks");

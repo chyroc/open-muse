@@ -110,6 +110,7 @@ export function sideChats(
     const entry = index.entries[session.id];
     return (
       session.id !== index.mainId &&
+      !session.generation &&
       !entry?.continuedBy &&
       Boolean(entry?.archived) === archived &&
       (entry?.title ?? session.title).toLocaleLowerCase().includes(term)

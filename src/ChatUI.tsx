@@ -433,7 +433,7 @@ export function ConversationSidebar({
     };
   }, []);
   const rows = sessions
-    .filter((session) => session.id !== index.mainId)
+    .filter((session) => session.id !== index.mainId && !session.generation)
     .filter((session) => !index.entries[session.id]?.continuedBy)
     .filter(
       (session) => Boolean(index.entries[session.id]?.archived) === archived,
