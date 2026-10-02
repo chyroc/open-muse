@@ -249,4 +249,7 @@ export const zhDesktop: Record<string, string> = {
   "Menus and dialogs switch the next time Open Muse opens.":
     "菜单和对话框会在下次打开 Open Muse 时切换。",
   "Open the full chat with {name}": "打开与{name}的完整聊天",
+  "Input device": "输入设备",
+  "Dictation enables Open Muse to turn speech to text.":
+    "听写让 Open Muse 可以把语音转换为文字。",
 };

@@ -221,24 +221,43 @@ describe("Mac dictation", () => {
     );
     expect(host!.textContent).toContain("Allow the microphone");
   });
-  it("shows permissions and where speech is recognized", async () => {
-    shell({
+  it("leads with its permissions and waits for both", async () => {
+    const post = shell({
       microphone: "allowed",
       speech: "not-asked",
       onDevice: false,
       running: false,
     });
     await mount(<DictationSettings />);
-    expect(host!.textContent).toContain("Allowed");
-    expect(host!.textContent).toContain("By Apple's speech service");
+    expect(host!.textContent).toContain("Microphone granted");
     expect(
-      [...host!.querySelectorAll("button")].map((item) => item.textContent),
-    ).toEqual(["Allow"]);
-    const switches = [
+      [...host!.querySelectorAll(".settings-link")].map(
+        (item) => item.textContent,
+      ),
+    ).toEqual(["Turn off in System Settings", "Open System Settings"]);
+    // Speech recognition has not been asked yet, so the controls wait.
+    expect(
+      host!
+        .querySelector(".permission-settings-controls")!
+        .getAttribute("data-disabled"),
+    ).toBe("true");
+    const switches = () => [
       ...host!.querySelectorAll<HTMLInputElement>("input[role=switch]"),
     ];
-    expect(switches.map((item) => item.checked)).toEqual([false, true]);
-    await act(async () => switches[0].click());
+    expect(switches().every((item) => item.disabled)).toBe(true);
+    expect(host!.textContent).toContain("macOS sends dictated audio to Apple");
+    // The first press asks macOS instead of opening System Settings.
+    await act(async () =>
+      [
+        ...host!.querySelectorAll<HTMLButtonElement>(".settings-link"),
+      ][1].click(),
+    );
+    expect(post).toHaveBeenCalledWith(
+      expect.objectContaining({ operation: "request" }),
+    );
+    expect(switches().map((item) => item.checked)).toEqual([false, true]);
+    expect(switches().every((item) => !item.disabled)).toBe(true);
+    await act(async () => switches()[0].click());
     expect(JSON.parse(localStorage.getItem("muse.dictation")!)).toEqual({
       autoSend: true,
       cues: true,
