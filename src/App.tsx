@@ -192,6 +192,7 @@ function Workspace({
   const [goalDraft, setGoalDraft] = useState<Goal>();
   const [goalInitiation, setGoalInitiation] = useState(false);
   const [goalOptions, setGoalOptions] = useState(false);
+  const [libraryOptions, setLibraryOptions] = useState(false);
   const [inspirationDraft, setInspirationDraft] = useState<InspirationItem>();
   const [feedEditor, setFeedEditor] = useState(false);
   const [config, setConfig] = useState<AppConfig>();
@@ -324,6 +325,7 @@ function Workspace({
       setSelectedMessage(undefined);
       setPanel(undefined);
       setGoalOptions(false);
+      setLibraryOptions(false);
     };
     window.addEventListener("hashchange", onRoute);
     return () => window.removeEventListener("hashchange", onRoute);
@@ -769,9 +771,17 @@ function Workspace({
                 ? setFeedEditor(true)
                 : tab === "goals"
                   ? setGoalOptions(true)
-                  : setPanel("actions")
+                  : tab === "library"
+                    ? setLibraryOptions(true)
+                    : setPanel("actions")
             }
-            moreLabel={tab === "goals" ? t("Goals options") : undefined}
+            moreLabel={
+              tab === "goals"
+                ? t("Goals options")
+                : tab === "library"
+                  ? t("Library options")
+                  : undefined
+            }
             feed={tab === "feed"}
             showSidebar={isChat}
             showMore={tab !== "discover"}
@@ -1171,7 +1181,13 @@ function Workspace({
                 }}
               />
             )}
-            {tab === "library" && <LibraryPage client={client} />}
+            {tab === "library" && (
+              <LibraryPage
+                client={client}
+                optionsOpen={libraryOptions}
+                onOptionsClose={() => setLibraryOptions(false)}
+              />
+            )}
             {tab === "studio" && <Studio client={client} config={config} />}
           </PullToRefresh>
         )}

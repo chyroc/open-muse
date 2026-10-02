@@ -1011,4 +1011,7 @@
   .side-chat-row:active {
     background: #2c2c2e;
   }
+  .library-grid.list .library-card {
+    border-color: #38383a;
+  }
 }

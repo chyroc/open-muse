@@ -160,3 +160,50 @@
     animation: none;
   }
 }
+/* The list layout: one 72pt row per item with a 52pt cover, the name, and
+   the date beside it. */
+.library-grid.list {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+.library-grid.list .library-card {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 14px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #e8e8eb;
+}
+.library-grid.list :is(.library-file-cover, .document-preview) {
+  grid-row: 1 / span 2;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  gap: 0;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+}
+.library-grid.list :is(.library-file-cover > span, .document-preview p),
+.library-grid.list .document-preview::after {
+  display: none;
+}
+.library-grid.list .library-file-cover svg {
+  width: 24px;
+  height: 24px;
+}
+.library-grid.list .library-card > strong {
+  align-self: end;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 500;
+}
+.library-grid.list .library-card > small {
+  align-self: start;
+  margin: 2px 0 0;
+  font-size: 13px;
+}
+.library-grid.list .library-card > .file-state {
+  grid-column: 2;
+}

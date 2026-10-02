@@ -10,13 +10,14 @@ import {
   Shapes,
   Video,
 } from "lucide-react";
-import { t } from "../shared/i18n";
+import { formatLocale, t } from "../shared/i18n";
 import { fileSizeLabel, type LibraryFile } from "../shared/library";
 import type { LibraryItem } from "../shared/types";
 import type { Client } from "./api";
 import { Markdown, dateLabel } from "./components";
 import { Sheet } from "./MusePages";
 import { useRefreshHandler } from "./PullToRefresh";
+import { PopoverMenu } from "./PopoverMenu";
 import { exportText } from "./platform";
 import {
   canRenderThumbnails,
@@ -173,7 +174,20 @@ export function LibraryEmpty({ section }: { section: Section }) {
   );
 }
 
-export function LibraryPage({ client }: { client: Client }) {
+type Layout = "grid" | "list";
+type Order = "modified" | "title";
+
+export function LibraryPage({
+  client,
+  optionsOpen = false,
+  onOptionsClose = () => {},
+}: {
+  client: Client;
+  optionsOpen?: boolean;
+  onOptionsClose?: () => void;
+}) {
+  const [layout, setLayout] = useState<Layout>("list");
+  const [order, setOrder] = useState<Order>("modified");
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [files, setFiles] = useState<LibraryFile[]>([]);
   const [section, setSection] = useState<Section>("artifacts");
@@ -218,10 +232,25 @@ export function LibraryPage({ client }: { client: Client }) {
       generation.current++;
     };
   }, [reload]);
-  const visible = files.filter((item) =>
-    section === "artifacts"
-      ? item.kind === "artifact"
-      : item.kind !== "artifact",
+  // Newest first, or alphabetical by name in the interface language.
+  const sorted = <T,>(
+    list: T[],
+    name: (item: T) => string,
+    at: (item: T) => string,
+  ) =>
+    [...list].sort((a, b) =>
+      order === "title"
+        ? name(a).localeCompare(name(b), formatLocale())
+        : at(b).localeCompare(at(a)),
+    );
+  const visible = sorted(
+    files.filter((item) =>
+      section === "artifacts"
+        ? item.kind === "artifact"
+        : item.kind !== "artifact",
+    ),
+    (item) => item.name,
+    (item) => item.created_at,
   );
   // Thumbnails live only in this page's memory; signed URLs are never kept.
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
@@ -253,7 +282,11 @@ export function LibraryPage({ client }: { client: Client }) {
       for (const id of ids) if (!settled.has(id)) requested.current.delete(id);
     };
   }, [section, files, client]);
-  const savedVisible = section === "artifacts" ? items : [];
+  const savedVisible = sorted(
+    section === "artifacts" ? items : [],
+    (item) => item.title,
+    (item) => item.created_at,
+  );
   const select = (item: LibraryItem | LibraryFile) => {
     setDetailError("");
     setSelected(item);
@@ -304,7 +337,7 @@ export function LibraryPage({ client }: { client: Client }) {
           <LibraryEmpty section={section} />
         )}
         {!!visible.length && (
-          <div className="library-grid">
+          <div className={`library-grid ${layout}`}>
             {visible.map((item) => (
               <LibraryFileCard
                 key={item.id}
@@ -322,7 +355,7 @@ export function LibraryPage({ client }: { client: Client }) {
               <strong>{t("Saved replies")}</strong>
               <span>{savedVisible.length}</span>
             </div>
-            <div className="library-grid">
+            <div className={`library-grid ${layout}`}>
               {savedVisible.map((item) => (
                 <button
                   className="library-card"
@@ -341,6 +374,39 @@ export function LibraryPage({ client }: { client: Client }) {
           </>
         )}
       </div>
+      {optionsOpen && (
+        <PopoverMenu
+          label={t("Library options")}
+          onClose={onOptionsClose}
+          items={[
+            {
+              kind: "item",
+              label: t("Show as list"),
+              checked: layout === "list",
+              onSelect: () => setLayout("list"),
+            },
+            {
+              kind: "item",
+              label: t("Show as grid"),
+              checked: layout === "grid",
+              onSelect: () => setLayout("grid"),
+            },
+            { kind: "separator" },
+            {
+              kind: "item",
+              label: t("Last modified"),
+              checked: order === "modified",
+              onSelect: () => setOrder("modified"),
+            },
+            {
+              kind: "item",
+              label: t("Title"),
+              checked: order === "title",
+              onSelect: () => setOrder("title"),
+            },
+          ]}
+        />
+      )}
       {selected && (
         <Sheet
           title={"kind" in selected ? selected.name : selected.title}
