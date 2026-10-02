@@ -91,11 +91,16 @@ export function MessageMenu({
   );
   const below = top + Math.min(rect.height, height) + gap;
   const menuBelow = below + menuHeight <= height - margin;
+  // A message too tall for the menu on either side keeps it at the bottom of
+  // the screen, and the lifted copy is cut off above it.
+  const menuAbove = !menuBelow && top - gap - menuHeight >= ceiling;
   const menuTop = menuBelow
     ? below
-    : Math.max(ceiling, top - gap - menuHeight);
+    : menuAbove
+      ? top - gap - menuHeight
+      : height - margin - menuHeight;
   // With the menu above, the reactions go above the menu.
-  const barTop = (menuBelow ? top : menuTop) - barGap - barHeight;
+  const barTop = (menuAbove ? menuTop : top) - barGap - barHeight;
   const barWidth = Math.min(barMaxWidth, width - margin * 2);
   const barLeft = fromUser
     ? Math.min(width - margin, rect.right) - barWidth
