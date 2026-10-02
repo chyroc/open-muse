@@ -1,5 +1,6 @@
 import { formatLocale, t } from "../../shared/i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouteHeader } from "./routeHeader";
 import {
   BriefcaseBusiness,
   Check,
@@ -438,6 +439,7 @@ export function GoalsPage({
   split: boolean;
   onToggleChat: () => void;
 }) {
+  const routeScroller = useRouteHeader<HTMLElement>();
   const service = useMemo(() => new MacGoals(client), [client]);
   const [data, setData] = useState<MacGoalsSnapshot>();
   const [error, setError] = useState("");
@@ -594,7 +596,11 @@ export function GoalsPage({
     fn();
   };
   return (
-    <section className="desktop-goals" aria-label={t("Goals")}>
+    <section
+      className="desktop-goals route-scroller"
+      aria-label={t("Goals")}
+      ref={routeScroller}
+    >
       <button
         className="goals-split-toggle icon-button"
         aria-label={
@@ -606,7 +612,7 @@ export function GoalsPage({
         <PanelRight size={22} />
       </button>
       <div className="goals-column">
-        <header className="goals-heading">
+        <header className="goals-heading route-heading">
           <h1>{t("Goals")}</h1>
           {goals.length > 0 && (
             <details className="goals-header-options" ref={menu}>
@@ -659,7 +665,7 @@ export function GoalsPage({
           )}
         </header>
         {!roots.length && !loading && !error && (
-          <p className="goals-description">
+          <p className="goals-description route-description">
             {t(
               "Pick a category and tell me what you're after, and I'll build a personalized plan that evolves with you.",
             )}

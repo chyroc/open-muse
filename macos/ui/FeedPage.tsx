@@ -1,5 +1,6 @@
 import { t } from "../../shared/i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouteHeader } from "./routeHeader";
 import {
   ArrowDown,
   ArrowUp,
@@ -187,6 +188,7 @@ export function FeedPage({
   split: boolean;
   onToggleChat: () => void;
 }) {
+  const routeScroller = useRouteHeader<HTMLElement>();
   const [data, setData] = useState<InspirationSnapshot>();
   const [presentation, setPresentation] = useState(emptyFeedPresentation);
   const [loading, setLoading] = useState(true);
@@ -283,7 +285,11 @@ export function FeedPage({
   const editions = feedEditions(data?.items ?? [], presentation);
   const hasPosts = Boolean(editions.length);
   return (
-    <section className="desktop-feed" aria-label={t("Feed")}>
+    <section
+      className="desktop-feed route-scroller"
+      aria-label={t("Feed")}
+      ref={routeScroller}
+    >
       <button
         className="feed-split-toggle icon-button"
         aria-label={
@@ -295,7 +301,7 @@ export function FeedPage({
         <PanelRight size={22} />
       </button>
       <div className="feed-column">
-        <header className="feed-heading">
+        <header className="feed-heading route-heading">
           <h1>{t("Feed")}</h1>
           <button
             className="feed-settings"

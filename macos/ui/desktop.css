@@ -1766,3 +1766,50 @@ h3 {
     transition: width 0.12s ease-out;
   }
 }
+/* Large page titles. Over the first stretch of scrolling the title shrinks
+   toward its leading edge, the header's background and hairline fade in,
+   and the description fades out; routeHeader.ts writes the progress. */
+.route-scroller.route-scroller {
+  padding-top: 32px;
+}
+.route-scroller .route-heading {
+  position: sticky;
+  top: -32px;
+  z-index: 12;
+  height: 60px;
+  margin-bottom: 0;
+  background: transparent;
+}
+.route-scroller .route-heading::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--bg);
+  box-shadow:
+    0 0 0 100vmax var(--bg),
+    0 1px 0 100vmax var(--line);
+  clip-path: inset(0 -100vmax -1px);
+  opacity: var(--route-collapse, 0);
+}
+.route-scroller .route-heading h1 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 40px;
+  font-weight: 600;
+  letter-spacing: normal;
+  transform-origin: left center;
+  transform: scale(calc(1 - var(--route-collapse, 0) * (1 - 24 / 34)));
+  will-change: transform;
+}
+.route-scroller .route-description {
+  margin: 0 0 24px;
+  padding-bottom: 0;
+  font-size: 18px;
+  line-height: 26px;
+  opacity: calc(1 - var(--route-collapse, 0));
+}
+.desktop-feed .route-heading {
+  margin-bottom: 24px;
+}

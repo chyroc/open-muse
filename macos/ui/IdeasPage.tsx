@@ -1,5 +1,6 @@
 import { t } from "../../shared/i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouteHeader } from "./routeHeader";
 import {
   ArrowLeft,
   Check,
@@ -424,6 +425,7 @@ export function IdeasPage({
   split: boolean;
   onToggleChat: () => void;
 }) {
+  const routeScroller = useRouteHeader<HTMLElement>();
   const service = useMemo(() => new MacIdeas(client), [client]);
   const [data, setData] = useState<MacIdeasSnapshot>();
   const [loading, setLoading] = useState(true);
@@ -531,7 +533,11 @@ export function IdeasPage({
     </div>
   );
   return (
-    <section className="desktop-ideas" aria-label={navLabel("ideas")}>
+    <section
+      className="desktop-ideas route-scroller"
+      aria-label={navLabel("ideas")}
+      ref={routeScroller}
+    >
       <button
         className="ideas-split-toggle icon-button"
         aria-label={
@@ -543,10 +549,10 @@ export function IdeasPage({
         <PanelRight size={22} />
       </button>
       <div className="ideas-column">
-        <header className="ideas-heading">
+        <header className="ideas-heading route-heading">
           <h1>{navLabel("ideas")}</h1>
         </header>
-        <p className="ideas-description">
+        <p className="ideas-description route-description">
           {t(
             "I'm always thinking about new and different ways to help you. I'll surface my favorite ideas here.",
           )}
