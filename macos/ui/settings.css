@@ -603,3 +603,74 @@
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+/* A row that opens a page within the section, and that page's header with
+   its round back button. */
+.settings-nav-row {
+  width: 100%;
+  text-align: left;
+}
+.settings-row.settings-radio-row > span,
+.settings-row.settings-nav-row > span {
+  margin-left: 0;
+  font-size: 14px;
+  color: var(--text);
+}
+.settings-group + .settings-group {
+  margin-top: 24px;
+}
+.settings-nav-row svg {
+  margin-left: auto;
+  color: var(--text-2);
+}
+.settings-nav-row:hover {
+  background-color: var(--fill-hover);
+}
+.settings-child-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 60px;
+}
+.settings-child-header h1 {
+  height: auto;
+}
+.settings-back {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: 0 1px 4px #0000001f;
+  transition: transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.settings-back:active {
+  transform: scale(0.9);
+}
+.settings-intro {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 20px;
+}
+.settings-radio-row {
+  cursor: pointer;
+}
+.settings-radio {
+  appearance: none;
+  margin: 0 0 0 auto;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--line-strong);
+  transition: box-shadow 0.15s ease-out;
+}
+.settings-radio:checked {
+  box-shadow:
+    inset 0 0 0 6px var(--accent),
+    inset 0 0 0 20px var(--accent-text);
+}
+.settings-radio:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

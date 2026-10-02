@@ -8,6 +8,8 @@ import {
 } from "react";
 import {
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   CircleHelp,
   File,
   Hand,
@@ -135,6 +137,9 @@ export function SettingsWindow({ client }: { client: Client }) {
   const [signOut, setSignOut] = useState<{ resolve?: (ok: boolean) => void }>();
   const [connection, setConnection] = useState<ConnectionStatus>();
   const [manage, setManage] = useState(false);
+  // General > Language opens its own page within the section.
+  const [languagePage, setLanguagePage] = useState(false);
+  useEffect(() => setLanguagePage(false), [section]);
   const [appearance, setAppearance] = useState<Appearance>(storedAppearance);
   const [theme, setTheme] = useState<ThemeColor>(storedTheme);
   // The workspace and Quick Chat can change these too; the picker follows them.
@@ -153,7 +158,7 @@ export function SettingsWindow({ client }: { client: Client }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const alive = useRef(true);
-  const language = useMemo(activeLanguage, []);
+  const [language, setLanguage] = useState(activeLanguage);
   const version = useMemo(appVersion, []);
   const active = settingsSection(section);
   const summary = connectionSummary(connection);
@@ -257,7 +262,20 @@ export function SettingsWindow({ client }: { client: Client }) {
         </button>
       </nav>
       <main className="settings-main" ref={main}>
-        <h1>{t(active.label)}</h1>
+        {active.id === "general" && languagePage ? (
+          <header className="settings-child-header">
+            <button
+              className="settings-back"
+              aria-label={t("Go back")}
+              onClick={() => setLanguagePage(false)}
+            >
+              <ChevronLeft size={18} strokeWidth={2} />
+            </button>
+            <h1>{t("Language preference")}</h1>
+          </header>
+        ) : (
+          <h1>{t(active.label)}</h1>
+        )}
         {error && (
           <p className="settings-error" role="alert">
             <span>{error}</span>
@@ -266,7 +284,50 @@ export function SettingsWindow({ client }: { client: Client }) {
             </button>
           </p>
         )}
-        {active.id === "general" && (
+        {active.id === "general" && languagePage && (
+          <>
+            <p className="settings-intro">
+              {t(
+                "See buttons, titles and other text in Open Muse in your preferred language.",
+              )}
+            </p>
+            <div
+              className="settings-group"
+              role="radiogroup"
+              aria-label={t("Language preference")}
+            >
+              {(
+                [
+                  [
+                    "system",
+                    `${t("Follow system")} (${language.device === "zh-CN" ? "简体中文" : "English"})`,
+                  ],
+                  ["en", "English"],
+                  ["zh-CN", "简体中文"],
+                ] as [LanguageChoice, string][]
+              ).map(([choice, label]) => (
+                <label className="settings-row settings-radio-row" key={choice}>
+                  <span>{label}</span>
+                  <input
+                    type="radio"
+                    name="open-muse-language"
+                    value={choice}
+                    className="settings-radio"
+                    checked={language.choice === choice}
+                    onChange={() => {
+                      chooseLanguage(choice);
+                      setLanguage(activeLanguage());
+                    }}
+                  />
+                </label>
+              ))}
+            </div>
+            <p className="settings-footnote">
+              {t("Menus and dialogs switch the next time Open Muse opens.")}
+            </p>
+          </>
+        )}
+        {active.id === "general" && !languagePage && (
           <>
             <h2>{t("Connection")}</h2>
             <div className="settings-group">
@@ -298,32 +359,14 @@ export function SettingsWindow({ client }: { client: Client }) {
                 />
               </div>
             )}
-            <h2>{t("Language")}</h2>
             <div className="settings-group">
-              <div className="settings-row">
-                <div>
-                  <strong>{t("Interface language")}</strong>
-                  <p>
-                    {t(
-                      "Open Muse follows your system language list unless you pick a language here. Menus and dialogs switch the next time Open Muse opens.",
-                    )}
-                  </p>
-                </div>
-                <select
-                  className="settings-select"
-                  aria-label={t("Interface language")}
-                  value={language.choice}
-                  onChange={(event) =>
-                    chooseLanguage(event.target.value as LanguageChoice)
-                  }
-                >
-                  <option value="system">
-                    {`${t("Follow system")} (${language.device === "zh-CN" ? "简体中文" : "English"})`}
-                  </option>
-                  <option value="en">English</option>
-                  <option value="zh-CN">简体中文</option>
-                </select>
-              </div>
+              <button
+                className="settings-row settings-nav-row"
+                onClick={() => setLanguagePage(true)}
+              >
+                <span>{t("Language")}</span>
+                <ChevronRight size={18} aria-hidden="true" />
+              </button>
             </div>
             <h2>{t("Appearance")}</h2>
             <div className="settings-group">

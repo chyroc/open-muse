@@ -242,4 +242,10 @@ export const zhDesktop: Record<string, string> = {
     "此 App 未连接其他服务。可以在对话中问助手，它通常能改用该服务的网站或命令行工具。",
   "Click or drag to open the status panel": "点按或拖动以打开状态面板",
   "Click or drag to close the status panel": "点按或拖动以关闭状态面板",
+  "Go back": "返回",
+  "Language preference": "语言偏好",
+  "See buttons, titles and other text in Open Muse in your preferred language.":
+    "以你偏好的语言查看 Open Muse 中的按钮、标题和其他文字。",
+  "Menus and dialogs switch the next time Open Muse opens.":
+    "菜单和对话框会在下次打开 Open Muse 时切换。",
 };

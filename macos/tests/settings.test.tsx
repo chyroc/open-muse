@@ -203,19 +203,25 @@ describe("Mac settings window", () => {
     });
     localStorage.removeItem("open-muse.language");
     await mount(<SettingsWindow client={await fixture()} />);
-    const select = host!.querySelector<HTMLSelectElement>(
-      'select[aria-label="界面语言"]',
-    )!;
-    expect(select.value).toBe("system");
-    expect([...select.options].map((option) => option.textContent)).toEqual([
+    // The language lives on its own page behind General > Language.
+    await act(async () =>
+      [...host!.querySelectorAll<HTMLButtonElement>(".settings-nav-row")]
+        .find((item) => item.textContent === "语言")!
+        .click(),
+    );
+    expect(host!.querySelector("h1")!.textContent).toBe("语言偏好");
+    const options = () => [
+      ...host!.querySelectorAll<HTMLLabelElement>(".settings-radio-row"),
+    ];
+    const radio = (value: string) =>
+      host!.querySelector<HTMLInputElement>(`input[value="${value}"]`)!;
+    expect(options().map((item) => item.textContent)).toEqual([
       "跟随系统 (简体中文)",
       "English",
       "简体中文",
     ]);
-    await act(async () => {
-      select.value = "en";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    expect(radio("system").checked).toBe(true);
+    await act(async () => radio("en").click());
     expect(localStorage.getItem("open-muse.language")).toBe("en");
     expect(postMessage).toHaveBeenCalledWith({ name: "language", value: "en" });
     expect(activeLanguage()).toMatchObject({
@@ -223,10 +229,7 @@ describe("Mac settings window", () => {
       choice: "en",
       device: "zh-CN",
     });
-    await act(async () => {
-      select.value = "system";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    await act(async () => radio("system").click());
     expect(localStorage.getItem("open-muse.language")).toBeNull();
     const swift = readFileSync("macos/OpenMuse.swift", "utf8");
     expect(swift).toContain(
@@ -289,7 +292,7 @@ describe("Mac settings window", () => {
     expect(host!.querySelector(".settings-auth")).toBeNull();
     expect(host!.textContent).toContain("Connected");
     expect(host!.textContent).toContain("API Key");
-    expect(host!.textContent).toContain("Interface language");
+    expect(host!.textContent).toContain("Language");
     expect(host!.textContent).toContain("Version");
     // Outside the Mac app the desktop group explains who controls it.
     expect(host!.textContent).toContain("Desktop presence");
