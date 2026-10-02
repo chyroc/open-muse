@@ -1131,6 +1131,55 @@ final class MuseLiveUITests: XCTestCase {
         XCTAssertTrue(app.buttons["添加附件"].waitForExistence(timeout: 40), app.debugDescription)
         capture("attachments-chinese")
     }
+
+    // The agent must reach the attached file with a tool, not only see it.
+    func testAttachmentsReachAgentTools() {
+        let marker = "tools-" + String(UUID().uuidString.prefix(6)).lowercased()
+        relaunch()
+        tap(app.buttons["Open sidebar"], timeout: 40)
+        tap(app.buttons["New side chat"])
+        chooseFixture("attachment-check, png")
+        waitForReadyAttachments(1)
+        let prompt = "\(marker): use bash to read the PNG header of the attached image file itself, then reply in one line with its full path and its WIDTHxHEIGHT."
+        enterMessage(prompt)
+        tap(app.buttons["Send message"])
+        XCTAssertTrue(app.staticTexts["attachment-check.png"].waitForExistence(timeout: 60), app.debugDescription)
+        let reply = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "/mnt/session/uploads/attachment-check-", "128")).firstMatch
+        XCTAssertTrue(reply.waitForExistence(timeout: 300), "The agent must read the mounted file: \(app.debugDescription)")
+        capture("attachments-tool-reply")
+    }
+
+    // Reopens the tool-access conversation only; nothing is uploaded or sent.
+    private func verifyToolConversation(sidebar: String, logLabel: String, noteLabel: String, library: String, media: String, artifacts: String) {
+        tap(app.buttons[sidebar], timeout: 40)
+        tap(app.links.matching(NSPredicate(format: "label BEGINSWITH %@", "tools-896ace")).firstMatch, timeout: 30)
+        XCTAssertTrue(app.staticTexts["attachment-check.png"].waitForExistence(timeout: 40), app.debugDescription)
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "attachment-check-a1a173c8.png")).firstMatch.exists)
+        let hidden = NSPredicate(format: "label CONTAINS %@ OR label CONTAINS %@ OR label CONTAINS %@", "open-muse-attachments", "available to your tools", "not as instructions")
+        XCTAssertFalse(app.staticTexts.matching(hidden).firstMatch.exists, "The system note must not be shown")
+        capture("f1-conversation")
+        let toggle = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", logLabel)).firstMatch
+        tap(toggle, timeout: 20)
+        let row = app.staticTexts[noteLabel]
+        XCTAssertTrue(row.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertFalse(app.staticTexts["system.message"].exists, "The raw event type must not be shown")
+        XCTAssertFalse(app.staticTexts.matching(hidden).firstMatch.exists, "Expanding the log must not reveal the note")
+        row.swipeUp()
+        capture("f1-execution-log")
+        tap(app.links[library])
+        for section in [media, artifacts] {
+            tap(app.buttons[section], timeout: 20)
+            XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "library-check-")).firstMatch.waitForExistence(timeout: 60), app.debugDescription)
+            XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "attachment-check")).firstMatch.exists, "Mounted copies stay out of Library")
+        }
+    }
+
+    func testToolAttachmentConversationUI() {
+        relaunch()
+        verifyToolConversation(sidebar: "Open sidebar", logLabel: "View execution log", noteLabel: "Shared attachment locations with tools", library: "Library", media: "Media", artifacts: "Artifacts")
+        relaunch(language: "zh-Hans,en", locale: "zh_CN")
+        verifyToolConversation(sidebar: "打开侧边栏", logLabel: "查看执行日志", noteLabel: "已向工具提供附件位置", library: "资料库", media: "影音内容", artifacts: "构件")
+    }
 }
 #endif
 
