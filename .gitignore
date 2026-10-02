@@ -5,9 +5,11 @@ dist/
 .data/
 coverage/
 .build/
+/.claude/worktrees/
 /resources/
 /resource/
 /references/
+/agent-bus/
 /资料/
 *.ipa
 *.dmg
@@ -32,3 +34,7 @@ android/.gradle/
 android/local.properties
 android/app/build/
 macos/.build/
+
+# Local agent instructions
+/AGENTS.local.md
+/CLAUDE.local.md
