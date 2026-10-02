@@ -554,9 +554,9 @@ html.sidebar-dragging .companion-shell {
   padding: 4px 5px;
   resize: none;
   font: inherit;
-  /* Form controls ignore text-size-adjust; scale with the system text size. */
-  font-size: calc(17px * var(--type-scale, 1));
-  line-height: calc(24px * var(--type-scale, 1));
+  /* Text size adjustment scales form controls as well. */
+  font-size: 17px;
+  line-height: 24px;
   height: 32px;
   max-height: 126px;
   outline: none;
@@ -897,7 +897,7 @@ html.sidebar-dragging .companion-shell {
   background: transparent;
   border: 0;
   outline: none;
-  font-size: calc(17px * var(--type-scale, 1));
+  font-size: 17px;
 }
 .chat-action-list {
   display: flex;
