@@ -156,6 +156,11 @@ CORS responses, so neither sign-in nor workspace preparation depends on it.
 - Signing out of a Muse account ends that session and drops the in-memory key
   and runtime; nothing is deleted. In local builds, signing out removes the
   device's key. Neither revokes the key at Ark; do that in the Ark console.
+- **Reset this device** (iOS Settings, macOS Settings > Data controls) asks for
+  confirmation, then removes the saved API key and every sign-in from
+  Keychain, deletes all local databases and preferences, and restarts the app
+  as if newly installed. Agents, conversations, memory, and the Muse account in
+  the cloud are not deleted, and the key is not revoked at Ark.
 - Only fixed public Volcano API origins, plus the configured Open Muse service
   and Auth origins, are allowed. Redirects carrying credentials are rejected.
   Production assets include a restrictive CSP; CORS remains enforced rather
@@ -177,6 +182,12 @@ identity and provisioning profile; keep team/device identifiers untracked.
 **macOS:** the AppKit/WKWebView shell loads bundled assets through `muse://app/`.
 The package contains no Node executable or server bundle and opens no listening
 port. The build targets macOS 14+ and is not notarized.
+
+**Language:** the apps follow the device's preferred languages, using the
+first English or Chinese entry and English otherwise. iOS Settings > Language
+can pin English or 简体中文 on this device; Follow system removes the choice.
+The choice restarts the app, is not synced, and is cleared by a device reset.
+Native system sheets, such as permission prompts, follow the system language.
 
 **Android:** the Capacitor app uses the same direct client and includes a native
 credential-storage plugin. Open with `npm run android`; build the Gradle project
