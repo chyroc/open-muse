@@ -957,6 +957,22 @@ h3 {
   line-height: 1.6;
   color: var(--muted);
 }
+/* Account ID, sign-out button and its note stack in the narrow settings card. */
+.logout-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.logout-row small {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.account-id {
+  overflow-wrap: anywhere;
+}
 .button {
   display: inline-flex;
   align-items: center;
