@@ -56,3 +56,17 @@ export async function exportText(
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   return t("Markdown download started");
 }
+
+// Shares plain text through the system share sheet, or copies it where no
+// share sheet is available.
+export async function shareText(text: string) {
+  if (nativeMobile()) {
+    await Share.share({ text });
+    return;
+  }
+  if (navigator.share) {
+    await navigator.share({ text });
+    return;
+  }
+  await navigator.clipboard.writeText(text);
+}

@@ -104,7 +104,7 @@ export function AssistantMessage({
 }: Parameters<typeof ChoiceMessage>[0] & {
   welcome?: boolean;
   label: string;
-  onOptions: () => void;
+  onOptions: (bubble?: HTMLElement) => void;
 }) {
   const message = parseChoiceMessage(props.text);
   const split = welcome && message.choice && Boolean(message.before);

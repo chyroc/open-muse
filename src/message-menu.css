@@ -1,0 +1,132 @@
+/* The message menu: a blurred, dimmed backdrop, the lifted message in place,
+   and a 250pt glass menu of 44pt rows that springs open from its corner. */
+.message-menu {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: hidden;
+}
+.message-menu:focus {
+  outline: none;
+}
+.message-menu::backdrop {
+  background: rgb(0 0 0 / 18%);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  animation: message-menu-fade var(--motion-sheet-duration) ease-out both;
+}
+.message-menu.closing::backdrop {
+  opacity: 0;
+  transition: opacity 160ms ease-in;
+}
+.message-menu-bubble {
+  position: fixed;
+  overflow: hidden;
+  animation: message-menu-lift var(--motion-release-duration)
+    var(--motion-release-ease) both;
+}
+.message-menu-bubble > .chat-bubble {
+  max-width: none;
+  width: 100%;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 12%);
+}
+.message-menu-actions {
+  position: fixed;
+  overflow: hidden;
+  border-radius: 26px;
+  background: rgb(250 250 250 / 86%);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 70%),
+    0 12px 40px rgb(0 0 0 / 16%);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  backdrop-filter: blur(24px) saturate(1.6);
+  animation: message-menu-open var(--motion-release-duration)
+    var(--motion-release-ease) both;
+}
+.message-menu-actions button {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  height: 44px;
+  padding: 0 20px;
+  font-size: 17px;
+  color: #000;
+  text-align: left;
+  transition: background-color var(--motion-press-duration) ease-out;
+}
+.message-menu-actions button:active {
+  background: rgb(0 0 0 / 6%);
+}
+.message-menu-actions button:disabled {
+  opacity: 0.4;
+}
+.message-menu.closing .message-menu-actions,
+.message-menu.closing .message-menu-bubble {
+  opacity: 0;
+  transform: scale(0.96);
+  transition:
+    opacity 160ms ease-in,
+    transform 160ms ease-in;
+}
+@keyframes message-menu-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes message-menu-lift {
+  to {
+    transform: scale(1.02);
+  }
+}
+@keyframes message-menu-open {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes message-menu-lift {
+    to {
+      transform: none;
+    }
+  }
+  @keyframes message-menu-open {
+    from {
+      opacity: 0;
+    }
+  }
+}
+@media (prefers-color-scheme: dark) {
+  .message-menu::backdrop {
+    background: rgb(0 0 0 / 40%);
+  }
+  .message-menu-actions {
+    background: rgb(44 44 46 / 86%);
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 8%),
+      0 12px 40px rgb(0 0 0 / 50%);
+  }
+  .message-menu-actions button {
+    color: #fff;
+  }
+  .message-menu-actions button:active {
+    background: rgb(255 255 255 / 8%);
+  }
+}
+/* Text chosen for selection can be dragged across freely. */
+.selectable-text {
+  font-size: 17px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  -webkit-user-select: text;
+  user-select: text;
+}

@@ -46,8 +46,11 @@ export function MessageBubble({
 }: {
   children: ReactNode;
   label: string;
-  onOptions: () => void;
+  // Receives the bubble so a menu can lift a copy of it.
+  onOptions: (bubble?: HTMLElement) => void;
 }) {
+  const bubble = useRef<HTMLElement>(null);
+  const open = () => onOptions(bubble.current ?? undefined);
   const press = useRef<
     { timer: ReturnType<typeof setTimeout>; x: number; y: number } | undefined
   >(undefined);
@@ -58,11 +61,12 @@ export function MessageBubble({
   useEffect(() => cancel, []);
   return (
     <article
+      ref={bubble}
       className="chat-bubble"
       onContextMenu={(event) => {
         event.preventDefault();
         cancel();
-        onOptions();
+        open();
       }}
       onTouchStart={(event) => {
         cancel();
@@ -77,7 +81,7 @@ export function MessageBubble({
           y,
           timer: setTimeout(() => {
             press.current = undefined;
-            onOptions();
+            open();
           }, 500),
         };
       }}
@@ -97,7 +101,7 @@ export function MessageBubble({
       onTouchCancel={cancel}
     >
       {children}
-      <button className="bubble-options" aria-label={label} onClick={onOptions}>
+      <button className="bubble-options" aria-label={label} onClick={open}>
         •••
       </button>
     </article>

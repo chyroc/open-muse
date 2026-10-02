@@ -10,8 +10,11 @@ import {
   Laptop,
   LoaderCircle,
   RefreshCw,
+  Reply,
   Settings2,
+  Share as ShareIcon,
   ShieldCheck,
+  TextSelect,
   Unplug,
   X,
 } from "lucide-react";
@@ -49,8 +52,9 @@ import { isHealthRequest } from "../shared/health";
 import { SettingsHome } from "./SettingsHome";
 import { PageSheet } from "./PageSheet";
 import { PullToRefresh } from "./PullToRefresh";
+import { MessageMenu, type MessageMenuAction } from "./MessageMenu";
 import { Studio } from "./Studio";
-import { exportText } from "./platform";
+import { exportText, shareText } from "./platform";
 import { backgroundClient } from "./background-client";
 import { Sheet, primaryNavigation } from "./MusePages";
 import { LibraryPage } from "./LibraryPage";
@@ -183,6 +187,8 @@ function Workspace({
   const [sidebarOpen, setSidebarOpen] = useState(route === "/tasks");
   const [panel, setPanel] = useState<"actions" | "status">();
   const [selectedMessage, setSelectedMessage] = useState<AgentEvent>();
+  const [selectedBubble, setSelectedBubble] = useState<HTMLElement>();
+  const [selectingText, setSelectingText] = useState<string>();
   const [goalDraft, setGoalDraft] = useState<Goal>();
   const [goalInitiation, setGoalInitiation] = useState(false);
   const [goalOptions, setGoalOptions] = useState(false);
@@ -670,6 +676,66 @@ function Workspace({
       (eventText(event) || messageAttachments(event).length),
   );
   const isChat = tab === "home";
+  // The long-press menu for a message: reply, copy, select, share, and for
+  // the assistant's replies, saving to the Library.
+  function messageActions(message: AgentEvent): MessageMenuAction[] {
+    const text = eventText(message);
+    const actions: MessageMenuAction[] = [
+      {
+        label: t("Reply"),
+        icon: <Reply size={20} />,
+        onSelect: () => {
+          const quote = text
+            .split("\n")
+            .filter((line) => line.trim())
+            .slice(0, 3)
+            .map((line) => `> ${line}`)
+            .join("\n");
+          setDrafts((current) => ({
+            ...current,
+            [draftKey]: `${quote}\n\n${current[draftKey] ?? ""}`,
+          }));
+        },
+      },
+      {
+        label: t("Copy"),
+        icon: <Copy size={20} />,
+        onSelect: () =>
+          void action(async () => {
+            await navigator.clipboard.writeText(text);
+            setToast(t("Copied"));
+          }),
+      },
+      {
+        label: t("Select"),
+        icon: <TextSelect size={20} />,
+        onSelect: () => setSelectingText(text),
+      },
+      {
+        label: t("Share…"),
+        icon: <ShareIcon size={20} />,
+        onSelect: () =>
+          void action(async () => {
+            await shareText(text);
+          }),
+      },
+    ];
+    if (message.type === "agent.message" && activeId)
+      actions.push({
+        label: t("Save to Library"),
+        icon: <Bookmark size={20} />,
+        disabled: busy,
+        onSelect: () =>
+          void action(async () => {
+            await client.saveReply(
+              message.source_session_id ?? activeId,
+              message.source_event_id ?? message.id,
+            );
+            setToast(t("Saved to Library"));
+          }),
+      });
+    return actions;
+  }
   // Messages that arrive while a conversation is open rise into place; a
   // batch of several at once is history loading and appears without motion.
   const seenMessages = useRef<{ conversation?: string; ids: Set<string> }>({
@@ -842,7 +908,10 @@ function Workspace({
                         label={t("Reply options {number}", {
                           number: position + 1,
                         })}
-                        onOptions={() => setSelectedMessage(event)}
+                        onOptions={(bubble) => {
+                          setSelectedBubble(bubble);
+                          setSelectedMessage(event);
+                        }}
                         text={eventText(event)}
                         reply={event.choice_reply}
                         active={
@@ -873,7 +942,10 @@ function Workspace({
                         label={t("Message options {number}", {
                           number: position + 1,
                         })}
-                        onOptions={() => setSelectedMessage(event)}
+                        onOptions={(bubble) => {
+                          setSelectedBubble(bubble);
+                          setSelectedMessage(event);
+                        }}
                       >
                         <MessageAttachments
                           items={messageAttachments(event, attachmentNames)}
@@ -1212,7 +1284,26 @@ function Workspace({
           onNew={newSideChat}
         />
       )}
-      {selectedMessage && (
+      {selectedMessage && selectedBubble && (
+        <MessageMenu
+          source={selectedBubble}
+          fromUser={selectedMessage.type === "user.message"}
+          onClose={() => {
+            setSelectedMessage(undefined);
+            setSelectedBubble(undefined);
+          }}
+          actions={messageActions(selectedMessage)}
+        />
+      )}
+      {selectingText !== undefined && (
+        <Sheet
+          title={t("Select text")}
+          onClose={() => setSelectingText(undefined)}
+        >
+          <div className="selectable-text">{selectingText}</div>
+        </Sheet>
+      )}
+      {selectedMessage && !selectedBubble && (
         <Sheet
           title={t("Message")}
           onClose={() => setSelectedMessage(undefined)}
