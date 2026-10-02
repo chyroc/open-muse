@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Bug } from "lucide-react";
 import { t } from "../../shared/i18n";
 import { shortcuts } from "./Shortcuts";
 import { readShortcut, shortcutAvailable, shortcutLabel } from "./shortcut";
@@ -38,6 +39,22 @@ export function HelpSettings({ signedIn = false }: { signedIn?: boolean }) {
   ];
   return (
     <>
+      <div className="settings-group">
+        <button
+          className="settings-row settings-nav-row"
+          aria-label={t("Report a problem: copy diagnostics")}
+          onClick={copyDiagnostics}
+        >
+          <span>{t("Report a problem")}</span>
+          <Bug size={18} strokeWidth={1.7} aria-hidden="true" />
+        </button>
+      </div>
+      <p className="settings-footnote" role="status">
+        {copied ||
+          t(
+            "Copies the app and macOS versions, language and the state of each permission and switch, without keys, messages or files, for you to paste into a report.",
+          )}
+      </p>
       <h2>{t("Getting around")}</h2>
       <div className="settings-group">
         {tips.map(([title, detail]) => (
@@ -60,28 +77,7 @@ export function HelpSettings({ signedIn = false }: { signedIn?: boolean }) {
           </div>
         ))}
       </div>
-      <h2>{t("Report a problem")}</h2>
-      <div className="settings-group">
-        <div className="settings-row">
-          <div>
-            <strong>{t("Copy diagnostics")}</strong>
-            <p>
-              {t(
-                "Copies the app and macOS versions, language and the state of each permission and switch, without keys, messages or files, for you to paste into a report.",
-              )}
-            </p>
-          </div>
-          <button className="settings-inline-button" onClick={copyDiagnostics}>
-            {t("Copy")}
-          </button>
-        </div>
-      </div>
-      {copied && (
-        <p className="settings-lead settings-after" role="status">
-          {copied}
-        </p>
-      )}
-      <p className="settings-lead settings-after">
+      <p className="settings-footnote">
         {t(
           "Open Muse is a personal client without a support channel. The project's README describes how each part works.",
         )}

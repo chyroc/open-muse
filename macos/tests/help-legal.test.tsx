@@ -99,7 +99,7 @@ describe("Mac help and legal settings", () => {
     await mount(<HelpSettings signedIn />);
     await act(async () => {
       [...host!.querySelectorAll("button")]
-        .find((item) => item.textContent === "Copy")!
+        .find((item) => item.textContent === "Report a problem")!
         .click();
       await new Promise((resolve) => setTimeout(resolve, 0));
     });

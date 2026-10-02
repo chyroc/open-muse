@@ -275,4 +275,5 @@ export const zhDesktop: Record<string, string> = {
     "导入会带来另一个助手对你的了解；在伙伴保存任何内容之前，你会先审阅这条消息。下载会把记忆、目标、即将到来的事项和所有对话保存为一个 Markdown 文件，只会读取你的 Ark 项目。",
   "We care about your privacy": "我们重视你的隐私",
   "Where your data lives": "你的数据存放在哪里",
+  "Report a problem: copy diagnostics": "报告问题：复制诊断信息",
 };
