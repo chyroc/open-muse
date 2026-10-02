@@ -187,7 +187,8 @@
   .muse-sheet.grouped {
     background: #2c2c2e;
   }
-  .muse-sheet.grouped .settings-card {
+  .muse-sheet.grouped .settings-card,
+  .pushed-page .settings-card {
     background: #1c1c1e;
   }
   .settings-switch-row {
@@ -205,10 +206,12 @@
   .ios-switch:checked {
     background: #62d67f;
   }
-  .muse-sheet.grouped .privacy-grid {
+  .muse-sheet.grouped .privacy-grid,
+  .pushed-page .privacy-grid {
     background: #1c1c1e;
   }
-  .muse-sheet.grouped .about-line {
+  .muse-sheet.grouped .about-line,
+  .pushed-page .about-line {
     background: #1c1c1e;
   }
   .settings-reset-copy {
@@ -657,16 +660,19 @@
     background: rgb(28 28 30 / 60%);
   }
   .muse-shell .button.primary,
-  .muse-sheet .button.primary {
+  .muse-sheet .button.primary,
+  .pushed-page .button.primary {
     color: #000000;
     background: #1282ff;
   }
   .muse-shell .button.primary:hover,
-  .muse-sheet .button.primary:hover {
+  .muse-sheet .button.primary:hover,
+  .pushed-page .button.primary:hover {
     background: #006ff1;
   }
   .muse-shell .button.secondary,
-  .muse-sheet .button.secondary {
+  .muse-sheet .button.secondary,
+  .pushed-page .button.secondary {
     color: #0379ff;
     background: #2c2c2e;
   }
@@ -765,7 +771,9 @@
     background: rgb(0 0 0 / 83%);
   }
   .muse-sheet .field input,
-  .muse-sheet .field textarea {
+  .muse-sheet .field textarea,
+  .pushed-page .field input,
+  .pushed-page .field textarea {
     background: #2c2c2e;
     border-color: #38383a;
   }
@@ -822,30 +830,36 @@
   .muse-shell .permission-details pre,
   .muse-shell .activity pre,
   .muse-shell .markdown pre,
-  .muse-sheet .markdown pre {
+  .muse-sheet .markdown pre,
+  .pushed-page .markdown pre {
     background: #2c2c2e;
     color: #aeaeb2;
   }
   .muse-shell .markdown :not(pre) > code,
-  .muse-sheet .markdown :not(pre) > code {
+  .muse-sheet .markdown :not(pre) > code,
+  .pushed-page .markdown :not(pre) > code {
     background: #3a3a3c;
   }
   .muse-shell .markdown blockquote,
-  .muse-sheet .markdown blockquote {
+  .muse-sheet .markdown blockquote,
+  .pushed-page .markdown blockquote {
     border-color: #38383a;
     color: #aeaeb2;
   }
   .muse-shell .markdown th,
-  .muse-sheet .markdown th {
+  .muse-sheet .markdown th,
+  .pushed-page .markdown th {
     background: #2c2c2e;
   }
   .muse-shell .button.subtle,
-  .muse-sheet .button.subtle {
+  .muse-sheet .button.subtle,
+  .pushed-page .button.subtle {
     background: #2c2c2e;
     color: #aeaeb2;
   }
   .muse-shell .icon-button:hover,
-  .muse-sheet .icon-button:hover {
+  .muse-sheet .icon-button:hover,
+  .pushed-page .icon-button:hover {
     background: #3a3a3c;
   }
   .muse-shell .working-note,
@@ -862,7 +876,8 @@
     color: #aeaeb2;
   }
   .muse-shell .field input::placeholder,
-  .muse-sheet .field input::placeholder {
+  .muse-sheet .field input::placeholder,
+  .pushed-page .field input::placeholder {
     color: #8e8e93;
   }
   .muse-shell .small-badge,

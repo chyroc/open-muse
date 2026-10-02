@@ -84,7 +84,8 @@
   display: none;
 }
 .muse-shell .button.primary,
-.muse-sheet .button.primary {
+.muse-sheet .button.primary,
+.pushed-page .button.primary {
   color: #fff;
   background: #0064d4;
   border-color: transparent;
@@ -93,11 +94,13 @@
   font-size: 14px;
 }
 .muse-shell .button.primary:hover,
-.muse-sheet .button.primary:hover {
+.muse-sheet .button.primary:hover,
+.pushed-page .button.primary:hover {
   background: #0053b4;
 }
 .muse-shell .button.secondary,
-.muse-sheet .button.secondary {
+.muse-sheet .button.secondary,
+.pushed-page .button.secondary {
   color: #005cc5;
   background: #eaf2ff;
   border-color: transparent;
@@ -520,7 +523,8 @@
   background: #0005;
   backdrop-filter: blur(3px);
 }
-.muse-sheet:focus {
+.muse-sheet:focus,
+.pushed-page:focus {
   outline: none;
 }
 .sheet-body {
@@ -543,11 +547,14 @@
   font-weight: 650;
   overflow-wrap: anywhere;
 }
-.muse-sheet .field {
+.muse-sheet .field,
+.pushed-page .field {
   font-size: 14px;
 }
 .muse-sheet .field input,
-.muse-sheet .field textarea {
+.muse-sheet .field textarea,
+.pushed-page .field input,
+.pushed-page .field textarea {
   background: #f5f5f7;
   border-color: #dedee2;
   color: var(--ink);
@@ -690,22 +697,26 @@
 .muse-shell .permission-details pre,
 .muse-shell .activity pre,
 .muse-shell .markdown pre,
-.muse-sheet .markdown pre {
+.muse-sheet .markdown pre,
+.pushed-page .markdown pre {
   background: #f0f0f3;
   border-color: var(--line);
   color: #50505a;
 }
 .muse-shell .markdown :not(pre) > code,
-.muse-sheet .markdown :not(pre) > code {
+.muse-sheet .markdown :not(pre) > code,
+.pushed-page .markdown :not(pre) > code {
   background: #eaeaee;
 }
 .muse-shell .markdown blockquote,
-.muse-sheet .markdown blockquote {
+.muse-sheet .markdown blockquote,
+.pushed-page .markdown blockquote {
   border-color: #cdd4df;
   color: #72727c;
 }
 .muse-shell .markdown th,
-.muse-sheet .markdown th {
+.muse-sheet .markdown th,
+.pushed-page .markdown th {
   background: #eeeef2;
 }
 .muse-shell .markdown td,
@@ -715,12 +726,14 @@
   border-color: var(--line);
 }
 .muse-shell .button.subtle,
-.muse-sheet .button.subtle {
+.muse-sheet .button.subtle,
+.pushed-page .button.subtle {
   background: #f0f0f3;
   color: #50505a;
 }
 .muse-shell .icon-button:hover,
-.muse-sheet .icon-button:hover {
+.muse-sheet .icon-button:hover,
+.pushed-page .icon-button:hover {
   background: #e9e9ee;
 }
 .muse-shell .working-note,
@@ -738,7 +751,8 @@
   font-size: 11px;
 }
 .muse-shell .field input::placeholder,
-.muse-sheet .field input::placeholder {
+.muse-sheet .field input::placeholder,
+.pushed-page .field input::placeholder {
   color: #8c8c94;
   font-size: inherit;
 }

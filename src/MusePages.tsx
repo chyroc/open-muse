@@ -20,6 +20,7 @@ import type { Goal, Session } from "../shared/types";
 import { categories, templates } from "./content";
 import { CategoryIcon } from "./components";
 import { animateAway, useDragToDismiss } from "./gesture";
+import { PushedPage, usePageSheetHost } from "./PageSheet";
 
 export const primaryNavigation = [
   { id: "home", path: "/", label: t("Chat"), icon: ChatGlyph },
@@ -29,18 +30,33 @@ export const primaryNavigation = [
   { id: "library", path: "/library", label: t("Library"), icon: LibraryGlyph },
 ] as const;
 
-export function Sheet({
-  title,
-  children,
-  onClose,
-  grouped = false,
-}: {
+type SheetProps = {
   title: string;
   children: ReactNode;
   onClose: () => void;
   // A gray sheet for white grouped lists, as in system settings.
   grouped?: boolean;
-}) {
+};
+
+// A sheet opened inside a page sheet is pushed as a page within it; anywhere
+// else it floats up from the bottom.
+export function Sheet(props: SheetProps) {
+  const host = usePageSheetHost();
+  return host ? (
+    <PushedPage host={host} title={props.title} onClose={props.onClose}>
+      {props.children}
+    </PushedPage>
+  ) : (
+    <BottomSheet {...props} />
+  );
+}
+
+function BottomSheet({
+  title,
+  children,
+  onClose,
+  grouped = false,
+}: SheetProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const closing = useRef(false);
   // Slides down and away, then reports closed.

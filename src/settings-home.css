@@ -114,7 +114,8 @@
 .muse-sheet.grouped {
   background: #f2f2f7;
 }
-.muse-sheet.grouped .settings-card {
+.muse-sheet.grouped .settings-card,
+.pushed-page .settings-card {
   background: #fff;
 }
 .settings-switch-row {
@@ -169,13 +170,15 @@
 .ios-switch:disabled {
   opacity: 0.5;
 }
-.muse-sheet.grouped .privacy-grid {
+.muse-sheet.grouped .privacy-grid,
+.pushed-page .privacy-grid {
   margin: 0;
   padding: 20px 18px;
   border-radius: 20px;
   background: #fff;
 }
-.muse-sheet.grouped .about-line {
+.muse-sheet.grouped .about-line,
+.pushed-page .about-line {
   margin-top: 14px;
   padding: 14px 18px;
   border: 0;
