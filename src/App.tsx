@@ -1085,7 +1085,21 @@ function Workspace({
           </div>
         )}
       </main>
-      <nav className="glass-tab-bar" aria-label={t("Main navigation")}>
+      <nav
+        className="glass-tab-bar"
+        aria-label={t("Main navigation")}
+        style={
+          {
+            "--tab-index": Math.max(
+              0,
+              primaryNavigation.findIndex((item) => item.id === tab),
+            ),
+          } as React.CSSProperties
+        }
+      >
+        {primaryNavigation.some((item) => item.id === tab) && (
+          <span className="tab-selection" aria-hidden="true" />
+        )}
         {primaryNavigation.map((item) => (
           <a
             key={item.id}

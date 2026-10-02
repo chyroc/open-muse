@@ -542,8 +542,21 @@ body {
     background-color var(--motion-fade-duration) ease-out,
     transform var(--motion-press-duration) ease-out;
 }
-.glass-tab-bar a.selected {
+/* One selection capsule slides between items on a spring, so switching tabs
+   carries the highlight instead of swapping it. */
+.tab-selection {
+  position: absolute;
+  top: 4px;
+  left: calc(4px + var(--tab-index, 0) * (100% - 16.25px) / 5);
+  width: calc((100% + 25px) / 5);
+  height: 54px;
+  border-radius: 27px;
   background: #e8e8e8;
+  transition: left var(--motion-release-duration) var(--motion-release-ease);
+  pointer-events: none;
+}
+.glass-tab-bar a {
+  position: relative;
 }
 .glass-tab-bar a:active {
   transform: scale(var(--motion-press-scale));
