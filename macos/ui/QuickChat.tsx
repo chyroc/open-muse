@@ -13,6 +13,7 @@ import { Markdown } from "../../src/components";
 import { useTask } from "../../src/useTask";
 import { Avatar } from "./Chrome";
 import { chatMessages, shouldSendOnKey } from "./model";
+import { AssistantContent } from "./ChoiceContent";
 import { connectionReady } from "./startup";
 import { dictationAvailable } from "./dictation";
 import { useDictation } from "./useDictation";
@@ -202,7 +203,20 @@ export function QuickChat({ client }: { client: Client }) {
               key={event.id}
               className={`quick-message ${event.type === "user.message" ? "from-user" : "from-assistant"}`}
             >
-              <Markdown text={eventText(event)} />
+              {event.type === "user.message" ? (
+                <Markdown text={eventText(event)} />
+              ) : (
+                // Questions are answered in the workspace; here they read as
+                // the question with its options, never as raw JSON.
+                <AssistantContent
+                  text={eventText(event)}
+                  part="all"
+                  active={false}
+                  busy={false}
+                  streaming={false}
+                  onChoose={() => {}}
+                />
+              )}
             </article>
           ))}
           {running && (
