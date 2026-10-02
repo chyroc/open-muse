@@ -25,11 +25,17 @@ describe("Mac workspace navigation", () => {
         content: [{ type: "text", text: "Hi" }],
       },
       { id: "t", type: "agent.tool_use", name: "memory_read" },
+      { id: "m", type: "agent.custom_tool_use", name: "mac_screenshot" },
+      { id: "p", type: "agent.mcp_tool_use", name: "lookup" },
       { id: "s", type: "session.status_idle" },
       { id: "empty", type: "agent.message", content: [] },
     ];
     expect(chatMessages(events).map((event) => event.id)).toEqual(["u", "a"]);
-    expect(activityEvents(events).map((event) => event.id)).toEqual(["t"]);
+    expect(activityEvents(events).map((event) => event.id)).toEqual([
+      "t",
+      "m",
+      "p",
+    ]);
   });
   it("keeps desktop routes independent from mobile routes", () => {
     expect(parseRoute("#/new")).toEqual({ page: "chat", newSide: true });

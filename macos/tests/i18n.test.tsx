@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Rail } from "../ui/Chrome";
 import { StatusPanel } from "../ui/StatusPanel";
+import { activityLabel } from "../ui/model";
 import { CompanionSheet } from "../../src/CompanionSheet";
 import { defaultIdentity } from "../../src/direct/identity";
 import { initializeLanguage } from "../../shared/i18n";
@@ -13,6 +14,27 @@ afterEach(() => vi.unstubAllGlobals());
 const noop = () => {};
 
 describe("Apple UI localization", () => {
+  it.each(["en", "zh-CN"])(
+    "names known tools plainly in the Mac activity list in %s",
+    (language) => {
+      vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", [language]);
+      initializeLanguage();
+      const zh = language === "zh-CN";
+      expect(activityLabel("memory_read")).toBe(
+        zh ? "读取个人记忆" : "Read personal memory",
+      );
+      expect(activityLabel("memory_edit")).toBe(
+        zh ? "更新个人记忆" : "Update personal memory",
+      );
+      expect(activityLabel("mac_screenshot")).toBe(
+        zh ? "查看屏幕" : "Look at the screen",
+      );
+      expect(activityLabel("web_search")).toBe(zh ? "搜索网页" : "Search the web");
+      // A person's own tools keep their protocol name.
+      expect(activityLabel("crm_lookup")).toBe("crm_lookup");
+      expect(activityLabel(undefined)).toBe(zh ? "工具调用" : "Tool call");
+    },
+  );
   it.each(["en", "zh-CN"])(
     "renders Mac navigation and status in %s without changing routes",
     (language) => {

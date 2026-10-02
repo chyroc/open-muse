@@ -1,4 +1,5 @@
 import { eventText, type AgentEvent, type Session } from "../../shared/types";
+import { t } from "../../shared/i18n";
 import { messageAttachments } from "../../shared/attachments";
 import type { ConversationIndex } from "../../src/direct/conversations";
 import type { LibraryView } from "./library";
@@ -23,8 +24,46 @@ export function chatMessages(events: AgentEvent[]) {
   );
 }
 
+// Built-in, MCP and this device's own tools (Mac control, Apple Health) all
+// count as work the assistant did.
+const toolUseTypes = new Set([
+  "agent.tool_use",
+  "agent.mcp_tool_use",
+  "agent.custom_tool_use",
+]);
+
 export function activityEvents(events: AgentEvent[]) {
-  return events.filter((event) => event.type === "agent.tool_use");
+  return events.filter((event) => toolUseTypes.has(event.type));
+}
+
+// Plain-language names for the tools the activity list shows. Unknown tools,
+// such as a person's own MCP or custom tools, keep their protocol name.
+const activityLabels: Record<string, string> = {
+  memory_ls: "Read personal memory",
+  memory_read: "Read personal memory",
+  memory_edit: "Update personal memory",
+  memory_write: "Update personal memory",
+  web_search: "Search the web",
+  web_fetch: "Read a web page",
+  bash: "Run a command",
+  read: "Read a file",
+  write: "Write a file",
+  edit: "Write a file",
+  glob: "Search files",
+  grep: "Search files",
+  mac_screenshot: "Look at the screen",
+  mac_action: "Use your Mac",
+  mac_open: "Open on your Mac",
+  mac_apps: "Check open apps",
+  mac_calendar: "Read your calendar",
+  mac_location: "Check your location",
+  health_read: "Read Apple Health",
+};
+
+export function activityLabel(name: string | undefined) {
+  if (!name) return t("Tool call");
+  const label = activityLabels[name];
+  return label ? t(label) : name;
 }
 
 export function parseRoute(hash: string): Route {

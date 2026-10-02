@@ -26,7 +26,7 @@ import type { AgentEvent } from "../../shared/types";
 import { PermissionCard } from "../../src/PermissionCard";
 import { Avatar, Empty } from "./Chrome";
 import { statusTabLabel } from "./labels";
-import { activityEvents } from "./model";
+import { activityEvents, activityLabel } from "./model";
 
 // Upcoming: a clock whose earlier half is still dashed.
 const UpcomingIcon = createLucideIcon("clock-half-dashed", [
@@ -339,7 +339,9 @@ export function StatusPanel({
                   <details className="activity-item" key={event.id}>
                     <summary>
                       <Check size={18} />
-                      <span>{event.name ?? t("Tool call")}</span>
+                      <span title={event.name}>
+                        {activityLabel(event.name)}
+                      </span>
                     </summary>
                     <pre>
                       {JSON.stringify(
