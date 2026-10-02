@@ -457,10 +457,16 @@
   background: var(--text-3, var(--text-2));
   opacity: 0.6;
 }
+/* Connected reads as a small green disc carrying a bolt. */
 .status-line.is-online .status-dot {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 8px;
   background: #2f9e44;
+  color: var(--accent-text);
   opacity: 1;
-  box-shadow: 0 0 0 3px #2f9e4426;
 }
 .status-line.is-busy .status-dot {
   background: #e8a90c;

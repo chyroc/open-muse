@@ -484,6 +484,7 @@ h3 {
   padding: 0 15px;
 }
 .status-close {
+  color: var(--text-2);
   position: absolute;
   right: 12px;
   top: 12px;
@@ -498,7 +499,9 @@ h3 {
 }
 .status-profile h2 {
   margin: 20px 0 4px;
-  line-height: 24px;
+  font-size: 24px;
+  line-height: 28px;
+  font-weight: 500;
 }
 .status-profile p {
   font-size: 14px;

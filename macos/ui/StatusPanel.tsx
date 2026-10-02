@@ -15,6 +15,7 @@ import {
   Pencil,
   ShieldCheck,
   X,
+  Zap,
   createLucideIcon,
 } from "lucide-react";
 import type {
@@ -249,7 +250,9 @@ export function StatusPanel({
         </div>
         <h2>{identity.name}</h2>
         <p className={`status-line is-${tone}`}>
-          <span className="status-dot" aria-hidden="true" />
+          <span className="status-dot" aria-hidden="true">
+            {tone === "online" && <Zap size={9} fill="currentColor" />}
+          </span>
           {status}
         </p>
       </div>
