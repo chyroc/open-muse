@@ -1011,7 +1011,7 @@
     border-radius: 38px;
     /* Rises on the sheet spring; backwards fill lets a finger move it after. */
     animation: muse-sheet-up var(--motion-sheet-duration)
-      var(--motion-sheet-ease) backwards;
+      var(--motion-sheet-spring) backwards;
   }
   .muse-sheet::backdrop {
     animation: muse-sheet-dim var(--motion-sheet-duration) ease-out both;

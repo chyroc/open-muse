@@ -1,12 +1,21 @@
 import { useRef, type PointerEvent, type RefObject } from "react";
 
+// A token's number, with times in milliseconds. CSS minification rewrites
+// `320ms` as `.32s`, so seconds are converted rather than read as a bare
+// number.
+export function tokenNumber(value: string, fallback: number) {
+  const number = Number.parseFloat(value);
+  if (!Number.isFinite(number)) return fallback;
+  const unit = value.trim().replace(/^[-+.\d]+/, "");
+  return unit === "s" ? number * 1000 : number;
+}
+
 // Reads a numeric token from motion.css.
 export function motionToken(name: string, fallback: number) {
-  const value = getComputedStyle(document.documentElement)
-    .getPropertyValue(name)
-    .trim();
-  const number = Number.parseFloat(value);
-  return Number.isFinite(number) ? number : fallback;
+  return tokenNumber(
+    getComputedStyle(document.documentElement).getPropertyValue(name),
+    fallback,
+  );
 }
 
 export function reducedMotion() {
@@ -28,21 +37,67 @@ export function animateAway(
   axis: Axis,
   direction: 1 | -1,
   done: () => void,
+  // Sheets leave on the sheet spring; the sidebar on the quicker push spring.
+  motion: "sheet" | "push" = "sheet",
 ) {
   if (!element) return done();
-  const duration = motionToken("--motion-sheet-dismiss-duration", 340);
+  const duration =
+    motion === "push"
+      ? motionToken("--motion-push-duration", 320)
+      : motionToken("--motion-sheet-dismiss-duration", 300);
+  const easing = getComputedStyle(document.documentElement)
+    .getPropertyValue(
+      motion === "push" ? "--motion-push-ease" : "--motion-sheet-ease",
+    )
+    .trim();
   element.classList.add("closing");
-  if (reducedMotion()) {
-    element.style.transition = `opacity ${duration}ms ease-out`;
-    element.style.opacity = "0";
-  } else {
-    element.style.transition = `transform ${duration}ms var(--motion-sheet-ease)`;
-    element.style.transform =
-      axis === "x"
-        ? `translateX(${direction * 100}%)`
-        : `translateY(${direction * 100}%)`;
-  }
-  window.setTimeout(done, duration);
+  // An explicit animation from where the panel is now (including a finger's
+  // offset); a CSS transition set in the same frame may not start in WebKit.
+  const from = getComputedStyle(element).transform;
+  const to =
+    axis === "x"
+      ? `translateX(${direction * 100}%)`
+      : `translateY(${direction * 100}%)`;
+  element.style.transition = "none";
+  const animation = element.animate(
+    reducedMotion()
+      ? [{ opacity: 1 }, { opacity: 0 }]
+      : [{ transform: from === "none" ? "none" : from }, { transform: to }],
+    { duration, easing: easing || "ease-out", fill: "forwards" },
+  );
+  animation.onfinish = done;
+  animation.oncancel = done;
+}
+
+// Brings a panel in from off screen along `axis` from `direction` (1 or -1),
+// or fades it in under Reduce Motion. Scripted rather than a CSS animation,
+// so a later transform from a finger or a dismissal still takes effect.
+export function animateIn(
+  element: HTMLElement | null,
+  axis: Axis,
+  direction: 1 | -1,
+  motion: "sheet" | "push" = "sheet",
+) {
+  if (!element) return;
+  const duration =
+    motion === "push"
+      ? motionToken("--motion-push-duration", 320)
+      : motionToken("--motion-sheet-duration", 450);
+  const easing = getComputedStyle(document.documentElement)
+    .getPropertyValue(
+      motion === "push" ? "--motion-push-ease" : "--motion-sheet-ease",
+    )
+    .trim();
+  const from =
+    axis === "x"
+      ? `translateX(${direction * 100}%)`
+      : `translateY(${direction * 100}%)`;
+  element.animate(
+    reducedMotion()
+      ? [{ opacity: 0 }, { opacity: 1 }]
+      : [{ transform: from }, { transform: "none" }],
+    { duration, easing: easing || "ease-out" },
+  );
 }
 
 // Lets a finger pull a panel along `axis` toward `direction`. The panel tracks

@@ -22,7 +22,7 @@
 }
 .companion-sheet[open] {
   animation: companion-sheet-up var(--motion-sheet-duration)
-    var(--motion-sheet-ease) backwards;
+    var(--motion-sheet-spring) backwards;
 }
 .companion-sheet::backdrop {
   background: #0007;

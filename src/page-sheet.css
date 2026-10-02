@@ -18,8 +18,8 @@
   overflow: hidden;
   overscroll-behavior: contain;
   /* Backwards fill only, so a finger can move the sheet once it has landed. */
-  animation: page-sheet-in var(--motion-sheet-duration) var(--motion-sheet-ease)
-    backwards;
+  animation: page-sheet-in var(--motion-sheet-duration)
+    var(--motion-sheet-spring) backwards;
 }
 .page-sheet[open] {
   display: flex;
@@ -126,7 +126,7 @@
   box-shadow: -10px 0 30px rgb(0 0 0 / 8%);
   touch-action: pan-y;
   animation: pushed-page-in var(--motion-sheet-duration)
-    var(--motion-sheet-ease) backwards;
+    var(--motion-sheet-spring) backwards;
 }
 .pushed-page-header {
   position: relative;
