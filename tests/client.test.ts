@@ -651,6 +651,30 @@ describe("Direct MA client", () => {
       f.fetcher.mock.calls.some(([, init]) => init?.method === "DELETE"),
     ).toBe(false);
   });
+  it("continues a main chat that has attachment mounts, refusing other mounts", async () => {
+    const f = fixture();
+    await f.login();
+    const original = await f.client.openConversation("main");
+    // Files this app mounted for attachments may stay behind.
+    f.resources.sessions[0].resources = [
+      {
+        type: "file",
+        file_id: "file-1",
+        mount_path: "/mnt/session/uploads/clip-frame-00s-1a2b3c4d.jpg",
+      },
+    ];
+    const next = await f.client.openConversation("main");
+    expect(next.id).not.toBe(original.id);
+    expect(f.resources.sessions).toHaveLength(2);
+    // Anything else is not migrated silently.
+    f.resources.sessions[1].resources = [
+      { type: "file", file_id: "file-2", mount_path: "/workspace/data.csv" },
+    ];
+    await expect(f.client.openConversation("main")).rejects.toThrow(
+      "cannot be safely updated",
+    );
+    expect(f.resources.sessions).toHaveLength(2);
+  });
   it("keeps a changed source history intact and resumes with a fresh archive", async () => {
     const f = fixture();
     await f.login();

@@ -970,16 +970,28 @@ export class Client {
           const sourceResources = await this.collect<{
             type: string;
             memory_store_id?: string;
+            mount_path?: string;
           }>(r.ark, `/sessions/${validId(previous.id)}/resources?limit=100`);
           // A text-context rollover cannot safely migrate arbitrary mounts or
           // bound account credentials. Refuse it rather than dropping them.
+          // Files this app mounted for a message's attachments are the
+          // exception: they belonged to that message, stay named in the
+          // archived history, and are not mounted into the next chapter.
           const vaults = (previous as Session & { vault_ids?: unknown })
             .vault_ids;
           if (
             sourceResources.some(
               (resource) =>
-                resource.type !== "memory_store" ||
-                resource.memory_store_id !== memory_store_id,
+                !(
+                  resource.type === "memory_store" &&
+                  resource.memory_store_id === memory_store_id
+                ) &&
+                !(
+                  resource.type === "file" &&
+                  /^\/mnt\/session\/uploads\/[^/\0]+$/.test(
+                    resource.mount_path ?? "",
+                  )
+                ),
             ) ||
             (vaults != null && (!Array.isArray(vaults) || vaults.length > 0))
           )
