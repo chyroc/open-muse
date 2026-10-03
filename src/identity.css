@@ -467,8 +467,9 @@
   }
 }
 
-/* Activity: requests grouped by day, each with a 44pt task symbol, a 17pt
-   title, then its outcome and time in 15pt gray, 20pt between entries. */
+/* Activity: requests grouped by day, each with a 44pt task symbol level with
+   a one-line 17pt title, then a one-line outcome and the time in 15pt gray,
+   20pt between entries. */
 .activity-list section + section {
   margin-top: 20px;
 }
@@ -483,7 +484,7 @@
 }
 .activity-turn > button {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   width: 100%;
   padding: 0;
@@ -511,7 +512,7 @@
   overflow: hidden;
   font-size: 17px;
   line-height: 1.33;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -524,9 +525,6 @@
 .activity-turn-text > span {
   display: -webkit-box;
   overflow: hidden;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
-}
-.activity-turn .activity {
-  margin: 10px 0 0 54px;
 }

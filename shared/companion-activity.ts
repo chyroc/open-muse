@@ -13,7 +13,7 @@ export type CompanionActivity = {
 
 const browserCommand = /muse_browser|chrome|chromium|cdp|playwright|puppeteer/i;
 
-function toolLabel(event: AgentEvent): string {
+export function toolLabel(event: AgentEvent): string {
   const name = event.name ?? "";
   const input = (event as { input?: Record<string, unknown> }).input ?? {};
   if (name === "web_search") return "Searching the web";

@@ -755,6 +755,7 @@ export const zhCN: Record<string, string> = {
   "Updating memory": "更新记忆",
   "Working on it": "工作过程",
   Done: "已完成",
+  Failed: "出错",
   "{count} step": "{count} 步",
   "{count} steps": "{count} 步",
   Model: "模型",

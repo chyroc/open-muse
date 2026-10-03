@@ -1,0 +1,268 @@
+/* A request in detail, floating 8pt from the screen edges like the other
+   sheets: a state chip and close button, a 17pt title, the answer, then the
+   steps as a checked list that opens to their input and result. */
+.activity-detail {
+  position: fixed;
+  inset: auto 8px auto;
+  bottom: calc(100dvh - var(--app-top, 0px) - var(--app-height, 100dvh) + 8px);
+  display: flex;
+  flex-direction: column;
+  width: auto;
+  max-width: 520px;
+  height: min(54dvh, 500px);
+  max-height: none;
+  margin: 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--floating-sheet-radius);
+  --surface-fill: #fcfcfc;
+  color: #000;
+  background: transparent;
+  box-shadow: var(--floating-sheet-shadow);
+  overflow: visible;
+  animation: activity-detail-in var(--motion-sheet-duration)
+    var(--motion-sheet-spring) backwards;
+}
+.activity-detail:focus {
+  outline: none;
+}
+.activity-detail::backdrop {
+  background: var(--sheet-dim);
+  animation: activity-detail-dim var(--motion-sheet-duration) ease-out both;
+}
+.activity-detail.closing::backdrop {
+  opacity: 0;
+  transition: opacity var(--motion-sheet-dismiss-duration) ease-in;
+}
+.activity-detail-content {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 20px calc(20px + env(safe-area-inset-bottom));
+}
+.activity-detail-head {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 -20px;
+  padding: 16px 16px 6px 20px;
+  background: linear-gradient(var(--surface-fill) 70%, transparent);
+  touch-action: none;
+}
+.activity-detail-state {
+  padding: 3px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.activity-detail-state.done {
+  color: #1f8f4e;
+  background: #e5f6ec;
+}
+.activity-detail-state.running {
+  color: #1a62d6;
+  background: #e6efff;
+}
+.activity-detail-state.failed {
+  color: #c4291c;
+  background: #fde8e6;
+}
+.activity-detail-close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: #000;
+  background: #fff;
+  box-shadow:
+    inset 0 0 0 0.5px rgb(0 0 0 / 12%),
+    0 2px 8px rgb(0 0 0 / 8%);
+  transition: transform var(--motion-press-duration) ease-out;
+}
+.activity-detail-close:active {
+  transform: scale(var(--motion-press-scale));
+}
+.activity-detail .activity-detail-title,
+.activity-detail .activity-detail-line,
+.activity-detail .activity-detail-answer p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.activity-detail .activity-detail-title {
+  margin: 8px 0 0;
+  font-size: 17px;
+  line-height: 23px;
+  font-weight: 600;
+}
+.activity-detail .activity-detail-line {
+  margin: 8px 0 0;
+  font-size: 16px;
+  line-height: 22px;
+}
+.activity-detail time {
+  display: block;
+  margin-top: 6px;
+  font-size: 14px;
+  color: #8a8a8e;
+}
+.activity-detail-answer {
+  margin: 16px -20px 0;
+  padding: 16px 20px;
+  border-block: 0.5px solid rgb(0 0 0 / 10%);
+  font-size: 15px;
+  line-height: 22px;
+  color: #6e6e73;
+}
+.activity-detail .activity-detail-answer p {
+  margin: 0;
+  -webkit-line-clamp: 6;
+}
+.activity-detail .activity-detail-group {
+  margin: 18px 0 8px;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #6e6e73;
+}
+.activity-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.activity-steps li + li {
+  margin-top: 4px;
+}
+.activity-steps button {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 0;
+  text-align: left;
+  color: inherit;
+  transition: opacity var(--motion-press-duration) ease-out;
+}
+.activity-steps button:active {
+  opacity: 0.6;
+}
+.activity-step-icon {
+  flex: 0 0 18px;
+  margin-top: 2px;
+  color: #1f8f4e;
+}
+.activity-steps .failed .activity-step-icon {
+  color: #c4291c;
+}
+.activity-steps .running .activity-step-icon {
+  color: #1a62d6;
+}
+.activity-step-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.activity-step-text strong {
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  line-height: 21px;
+  font-weight: 600;
+}
+.activity-step-text small {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 20px;
+  color: #6e6e73;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+}
+.activity-step-chevron {
+  flex: 0 0 16px;
+  margin-top: 3px;
+  color: #aeaeb2;
+  transition: transform var(--motion-release-duration)
+    var(--motion-release-ease);
+}
+.activity-steps button[aria-expanded="true"] .activity-step-chevron {
+  transform: rotate(90deg);
+}
+.activity-step-io {
+  margin: 0 0 8px 28px;
+  animation: activity-step-io-in var(--motion-fade-duration) ease-out;
+}
+.activity-step-io pre {
+  max-height: 200px;
+  margin: 0 0 6px;
+  padding: 10px 12px;
+  overflow: auto;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 17px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: #f1f1f3;
+}
+@keyframes activity-detail-in {
+  from {
+    transform: translateY(calc(100% + 8px));
+  }
+}
+@keyframes activity-detail-dim {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes activity-step-io-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes activity-detail-in {
+    from {
+      opacity: 0;
+    }
+  }
+}
+@media (prefers-color-scheme: dark) {
+  .activity-detail {
+    --surface-fill: #1c1c1e;
+    color: #fff;
+  }
+  .activity-detail-close {
+    color: #fff;
+    background: #2c2c2e;
+  }
+  .activity-detail-answer {
+    color: #aeaeb2;
+    border-color: rgb(255 255 255 / 10%);
+  }
+  .activity-detail .activity-detail-group,
+  .activity-step-text small {
+    color: #aeaeb2;
+  }
+  .activity-step-io pre {
+    background: #2c2c2e;
+  }
+  .activity-detail-state.done {
+    color: #4cd38a;
+    background: rgb(76 211 138 / 14%);
+  }
+  .activity-detail-state.running {
+    color: #4a90ff;
+    background: rgb(74 144 255 / 16%);
+  }
+  .activity-detail-state.failed {
+    color: #ff6b5e;
+    background: rgb(255 107 94 / 14%);
+  }
+}

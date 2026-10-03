@@ -95,3 +95,64 @@ describe("Activity", () => {
     expect(html).toContain("Tool failed");
   });
 });
+
+describe("Activity detail", () => {
+  it("lists each tool call as a step with its target, narration and outcome", async () => {
+    const { activityTurns, activitySteps, clockTime, plainText } =
+      await import("../shared/activity");
+    const events = [
+      {
+        id: "u",
+        type: "user.message",
+        created_at: "2026-10-03T00:12:00",
+        content: [{ type: "text", text: "Compare earbuds" }],
+      },
+      {
+        id: "m1",
+        type: "agent.message",
+        content: [{ type: "text", text: "Opening **Apple**." }],
+      },
+      { id: "mem", type: "agent.tool_use", name: "memory_read", input: {} },
+      {
+        id: "t1",
+        type: "agent.tool_use",
+        name: "web_fetch",
+        input: { url: "https://www.apple.com.cn/airpods-pro/" },
+      },
+      { id: "r1", type: "agent.tool_result", tool_use_id: "t1", content: [] },
+      {
+        id: "t2",
+        type: "agent.tool_use",
+        name: "bash",
+        input: { command: "ls /mnt/session/outputs" },
+      },
+      {
+        id: "r2",
+        type: "agent.tool_result",
+        tool_use_id: "t2",
+        is_error: true,
+        content: [{ type: "text", text: "denied" }],
+      },
+      {
+        id: "a",
+        type: "agent.message",
+        content: [{ type: "text", text: "Saved the **table**." }],
+      },
+    ] as never[];
+    const [turn] = activityTurns(events);
+    expect(turn.reply).toBe("Saved the table.");
+    const steps = activitySteps(turn, false);
+    expect(steps.map((step) => [step.label, step.target, step.state])).toEqual([
+      ["Reading the web", "www.apple.com.cn", "done"],
+      ["Running commands", "ls /mnt/session/outputs", "failed"],
+    ]);
+    expect(steps[0].note).toBe("Opening Apple.");
+    expect(steps[1].note).toBe("");
+    expect(steps[1].result).toBe("denied");
+    expect(clockTime("2026-10-03T00:12:00")).toBe("12:12am");
+    expect(clockTime("2026-10-03T13:47:00")).toBe("1:47pm");
+    expect(plainText("## A [link](https://x) and `code`")).toBe(
+      "A link and code",
+    );
+  });
+});

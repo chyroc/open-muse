@@ -3,10 +3,11 @@ import { formatLocale, t } from "../shared/i18n";
 import {
   activityDay,
   activityTurns,
+  clockTime,
   type ActivityTurn,
 } from "../shared/activity";
 import type { AgentEvent } from "../shared/types";
-import { Activity, formatTime } from "./components";
+import { ActivityDetail } from "./ActivityDetail";
 
 function dayLabel(at: string) {
   const day = activityDay(at);
@@ -41,7 +42,7 @@ function TaskGlyph() {
 }
 
 // Requests the companion acted on, newest first and grouped by day. Each row
-// opens to the execution log of that request.
+// opens that request's detail over the list.
 export function ActivityList({
   events,
   running,
@@ -68,31 +69,30 @@ export function ActivityList({
               turn.error ??
               (turn.reply ||
                 (latest && running ? t("In progress") : t("No reply yet")));
+            const title = turn.initiation
+              ? t(initiationLabels[turn.initiation])
+              : turn.request || t("Request {n}", { n: index + 1 });
             return (
               <div key={turn.id} className="activity-turn">
-                <button
-                  aria-expanded={open === turn.id}
-                  onClick={() =>
-                    setOpen(open === turn.id ? undefined : turn.id)
-                  }
-                >
+                <button aria-haspopup="dialog" onClick={() => setOpen(turn.id)}>
                   <span className="activity-turn-icon">
                     <TaskGlyph />
                   </span>
                   <span className="activity-turn-text">
-                    <strong>
-                      {turn.initiation
-                        ? t(initiationLabels[turn.initiation])
-                        : turn.request || t("Request {n}", { n: index + 1 })}
-                    </strong>
+                    <strong>{title}</strong>
                     <span className={turn.error ? "error-text" : undefined}>
                       {summary}
                     </span>
-                    <time dateTime={turn.at}>{formatTime(turn.at)}</time>
+                    <time dateTime={turn.at}>{clockTime(turn.at)}</time>
                   </span>
                 </button>
                 {open === turn.id && (
-                  <Activity events={turn.events} running={latest && running} />
+                  <ActivityDetail
+                    turn={turn}
+                    title={title}
+                    running={latest && running}
+                    onClose={() => setOpen(undefined)}
+                  />
                 )}
               </div>
             );
