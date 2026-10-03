@@ -229,6 +229,10 @@ describe("Managed environment toolbox", () => {
     );
     expect(toolingInstructions).toContain("never silently append --yes");
     expect(toolingInstructions).toContain("Installation is not authentication");
+    // Creating an app waits for the person; a foreground run ends with the turn.
+    expect(toolingInstructions).toContain(
+      "start lark-cli config init --new in the background with nohup",
+    );
   });
   it("generates valid Bash and Python without installing anything locally", () => {
     const bash = spawnSync("bash", ["-n"], {
