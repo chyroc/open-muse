@@ -9,7 +9,9 @@ import { zhCN } from "../../shared/locales/zh-CN";
 import {
   activeLanguage,
   appVersion,
+  connectionRoute,
   connectionSummary,
+  isConnectionRoute,
   isSettingsRoute,
   openNativeSettings,
   settingsPath,
@@ -136,6 +138,14 @@ describe("Mac settings model", () => {
     });
     expect(openNativeSettings()).toBe(true);
     expect(postMessage).toHaveBeenCalledWith({ name: "settings" });
+    expect(openNativeSettings(connectionRoute)).toBe(true);
+    expect(postMessage).toHaveBeenLastCalledWith({
+      name: "settings",
+      value: "connection",
+    });
+    expect(isConnectionRoute("#/settings/connection")).toBe(true);
+    expect(isConnectionRoute("#/settings/general")).toBe(false);
+    expect(settingsRouteSection("#/settings/connection")).toBe("general");
     Object.defineProperty(window, "webkit", {
       configurable: true,
       value: {
@@ -153,16 +163,25 @@ describe("Mac settings model", () => {
   it("separates a signed-in account without an Ark key from a signed-out one", () => {
     expect(connectionSummary(undefined).state).toBe("Not signed in");
     expect(
-      connectionSummary({ loggedIn: false, ready: false, account: { signedIn: false } })
-        .state,
+      connectionSummary({
+        loggedIn: false,
+        ready: false,
+        account: { signedIn: false },
+      }).state,
     ).toBe("Not signed in");
     expect(
-      connectionSummary({ loggedIn: false, ready: false, account: { signedIn: true } })
-        .state,
+      connectionSummary({
+        loggedIn: false,
+        ready: false,
+        account: { signedIn: true },
+      }).state,
     ).toBe("Not connected");
     expect(
-      connectionSummary({ loggedIn: true, ready: true, account: { signedIn: true } })
-        .state,
+      connectionSummary({
+        loggedIn: true,
+        ready: true,
+        account: { signedIn: true },
+      }).state,
     ).toBe("Connected");
   });
   it("provides every section translation", () => {
@@ -329,6 +348,35 @@ describe("Mac settings window", () => {
     await click("Manage connection");
     expect(host!.querySelector(".settings-auth")).toBeNull();
   });
+  it("opens a connect request on the expanded, focused connection controls", async () => {
+    const client = await fixture(false);
+    location.hash = "#/settings/connection";
+    await mount(<SettingsWindow client={client} />);
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+    const auth = host!.querySelector(".settings-auth");
+    expect(auth).toBeTruthy();
+    expect(auth!.contains(document.activeElement)).toBe(true);
+    expect(location.hash).toBe("#/settings/general");
+    // From another section, a second request comes back to the same place.
+    await click("Connect to Ark MA");
+    expect(host!.querySelector(".settings-auth")).toBeNull();
+    await click("Dictation");
+    await act(async () => {
+      location.hash = "#/settings/connection";
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+    expect(host!.querySelector(".settings-main h1")?.textContent).toBe(
+      "General",
+    );
+    expect(host!.querySelector(".settings-auth")).toBeTruthy();
+    expect(location.hash).toBe("#/settings/general");
+  });
   it("reads the connection again when the window returns to view", async () => {
     const client = await fixture();
     const auth = vi.spyOn(client, "auth");
@@ -472,7 +520,10 @@ describe("Mac settings window", () => {
     expect(swift).toContain(
       "styleMask: [.titled, .closable, .fullSizeContentView]",
     );
-    expect(swift).toContain('URL(string: "muse://app/#/settings")');
+    expect(swift).toContain('?? "#/settings"');
+    expect(swift).toContain('URL(string: "muse://app/\\(route)")');
+    // A new window loads straight into a requested section.
+    expect(swift).toContain("showSettings(section: section)");
     // Callbacks answer the web view that asked, not always the workspace.
     expect(swift).toContain("guard let sender = message.webView");
     expect(swift).toContain("guard sender === window else { return true }");

@@ -490,7 +490,14 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     }
     // The settings window is its own fixed-size window, and it keeps its web view
     // so reopening it does not repeat the Keychain authorization prompt.
-    @objc private func openSettings() {
+    @objc private func openSettings() { showSettings(section: nil) }
+    // A section is a route name already checked by the caller. A window made
+    // now loads straight into it; an existing one switches to it.
+    private func showSettings(section: String?) {
+        let route = section.map { "#/settings/\($0)" } ?? "#/settings"
+        if let view = settingsWebView, section != nil {
+            view.evaluateJavaScript("location.hash = '\(route)'", completionHandler: nil)
+        }
         if settingsWindow == nil {
             let panel = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 800, height: 600), styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
             panel.title = localized("Settings")
@@ -501,7 +508,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             panel.center()
             let view = makeWebView(panel.contentView!.bounds)
             panel.contentView = view
-            view.load(URLRequest(url: URL(string: "muse://app/#/settings")!))
+            view.load(URLRequest(url: URL(string: "muse://app/\(route)")!))
             settingsWebView = view
             settingsWindow = panel
         }
@@ -1359,11 +1366,9 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
                 return
             }
             if body?["name"] == "settings" {
-                openSettings()
                 // Open a named section; the settings route ignores anything else.
-                if let section = body?["value"], section.range(of: "^[a-z-]{1,40}$", options: .regularExpression) != nil {
-                    settingsWebView?.evaluateJavaScript("location.hash = '#/settings/\(section)'", completionHandler: nil)
-                }
+                let section = body?["value"].flatMap { $0.range(of: "^[a-z-]{1,40}$", options: .regularExpression) != nil ? $0 : nil }
+                showSettings(section: section)
             }
             if body?["name"] == "appearance" { applyAppearance(body?["value"], from: message.webView) }
             // Settings picked the app language: menus and dialogs follow it from

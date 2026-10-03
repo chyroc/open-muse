@@ -71,6 +71,7 @@ import {
   appVersion,
   clientWithConfirmedSignOut,
   connectionSummary,
+  isConnectionRoute,
   settingsPath,
   settingsRouteSection,
   settingsSection,
@@ -154,7 +155,13 @@ export function SettingsWindow({ client }: { client: Client }) {
   );
   const [signOut, setSignOut] = useState<{ resolve?: (ok: boolean) => void }>();
   const [connection, setConnection] = useState<ConnectionStatus>();
-  const [manage, setManage] = useState(false);
+  // A "Connect to Ark MA" button elsewhere opens the connection controls
+  // expanded; each such request moves focus to them again.
+  const [manage, setManage] = useState(() => isConnectionRoute(location.hash));
+  const [connectRequest, setConnectRequest] = useState(() =>
+    isConnectionRoute(location.hash) ? 1 : 0,
+  );
+  const auth = useRef<HTMLDivElement>(null);
   // General > Language opens its own page within the section.
   const [languagePage, setLanguagePage] = useState(false);
   const [webAccess, setWebAccess] = useState(webAccessDefault);
@@ -205,7 +212,16 @@ export function SettingsWindow({ client }: { client: Client }) {
   );
   useEffect(() => {
     alive.current = true;
-    const route = () => setSection(settingsRouteSection(location.hash));
+    const route = () => {
+      const hash = location.hash;
+      setSection(settingsRouteSection(hash));
+      if (!isConnectionRoute(hash)) return;
+      setLanguagePage(false);
+      setManage(true);
+      setConnectRequest((value) => value + 1);
+      // Settle on General so the next request changes the route again.
+      history.replaceState(null, "", settingsPath("general"));
+    };
     window.addEventListener("hashchange", route);
     // The window renders before the Keychain login is restored, so it refreshes
     // when the restore settles and reports a denied read instead of hanging.
@@ -252,6 +268,16 @@ export function SettingsWindow({ client }: { client: Client }) {
     if (location.hash !== settingsPath(section))
       history.replaceState(null, "", settingsPath(section));
   }, [section]);
+  useEffect(() => {
+    if (!connectRequest) return;
+    const frame = requestAnimationFrame(() => {
+      auth.current?.scrollIntoView?.({ block: "nearest" });
+      auth.current
+        ?.querySelector<HTMLElement>("input, select, button")
+        ?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [connectRequest]);
   function resolveSignOut(confirmed: boolean) {
     signOut?.resolve?.(confirmed);
     setSignOut(undefined);
@@ -375,7 +401,7 @@ export function SettingsWindow({ client }: { client: Client }) {
               </button>
             </div>
             {manage && (
-              <div className="settings-group settings-auth">
+              <div className="settings-group settings-auth" ref={auth}>
                 <AuthPanel
                   client={guarded}
                   onChanged={() => void readStatus()}

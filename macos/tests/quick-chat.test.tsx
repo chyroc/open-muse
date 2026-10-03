@@ -157,7 +157,11 @@ describe("Mac quick chat", () => {
       (item) => item.textContent === "Connect to Ark MA",
     )!;
     await act(async () => connect.click());
-    expect(post).toHaveBeenCalledWith({ name: "settings" });
+    // Connecting lands on the connection controls in Settings.
+    expect(post).toHaveBeenCalledWith({
+      name: "settings",
+      value: "connection",
+    });
     await act(async () =>
       host!
         .querySelector<HTMLButtonElement>(

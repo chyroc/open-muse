@@ -75,6 +75,14 @@ export function settingsRouteSection(hash: string) {
   return settingsSection(match?.[1]).id;
 }
 
+// "Connect to Ark MA" buttons open this route: General, with the connection
+// controls expanded and focused, instead of whichever section was last open.
+export const connectionRoute = "connection";
+
+export function isConnectionRoute(hash: string) {
+  return /^#?\/settings\/connection$/.test(hash.trim());
+}
+
 export function settingsPath(id: SettingsSectionId) {
   return `#/settings/${id}`;
 }
@@ -125,7 +133,9 @@ export function chooseLanguage(choice: LanguageChoice) {
 
 // The native shell owns the separate settings window. Without it, the caller
 // falls back to the in-workspace panel instead of losing the entry point.
-export function openNativeSettings(section?: SettingsSectionId) {
+export function openNativeSettings(
+  section?: SettingsSectionId | typeof connectionRoute,
+) {
   const bridge = (
     window as unknown as {
       webkit?: {

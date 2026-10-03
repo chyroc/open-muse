@@ -17,6 +17,7 @@ import { AssistantContent } from "./ChoiceContent";
 import { connectionReady } from "./startup";
 import { dictationAvailable } from "./dictation";
 import { useDictation } from "./useDictation";
+import { connectionRoute } from "./settings";
 
 // How much of the main chat the card shows above its composer.
 export const QUICK_HISTORY = 6;
@@ -155,7 +156,7 @@ export function QuickChat({ client }: { client: Client }) {
   async function send() {
     const text = draft.trim();
     if (!text || busy || running) return;
-    if (!ready) return post("settings");
+    if (!ready) return post("settings", connectionRoute);
     setBusy(true);
     setError("");
     try {
@@ -227,7 +228,10 @@ export function QuickChat({ client }: { client: Client }) {
         </div>
       )}
       {!ready && (
-        <button className="quick-connect" onClick={() => post("settings")}>
+        <button
+          className="quick-connect"
+          onClick={() => post("settings", connectionRoute)}
+        >
           {t("Connect to Ark MA")}
         </button>
       )}

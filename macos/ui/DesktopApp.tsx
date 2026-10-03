@@ -43,7 +43,7 @@ const LibraryPage = lazy(() =>
 );
 import { MacGoals } from "./goals";
 import { libraryPath } from "./library";
-import { openNativeSettings } from "./settings";
+import { connectionRoute, openNativeSettings } from "./settings";
 import { navLabel } from "./labels";
 import { connectionError, connectionReady } from "./startup";
 import { WorkspaceBoundary } from "./WorkspaceBoundary";
@@ -355,6 +355,10 @@ export function DesktopApp({ client }: { client: Client }) {
   // The Mac app answers with its own settings window; the panel is the fallback.
   function openSettings() {
     if (!openNativeSettings()) setSettings(true);
+  }
+  // Connect buttons land on the connection controls themselves.
+  function openConnection() {
+    if (!openNativeSettings(connectionRoute)) setSettings(true);
   }
   // The avatar menu seeds the main composer and leaves the sending to the user.
   // Attachments and any open document are untouched, and nothing is created.
@@ -936,7 +940,7 @@ export function DesktopApp({ client }: { client: Client }) {
       return;
     }
     if (!ready) {
-      openSettings();
+      openConnection();
       return;
     }
     const quote =
@@ -1191,7 +1195,7 @@ export function DesktopApp({ client }: { client: Client }) {
             split={splitChat}
             onToggleChat={() => setSplitChat((value) => !value)}
             onEditorChange={onFeedEditorChange}
-            onConnect={() => openSettings()}
+            onConnect={openConnection}
             onOpenChat={(id) => navigate(`/chat/${id}`)}
             onDiscuss={(item) => {
               setQuotedPost(item);
@@ -1209,7 +1213,7 @@ export function DesktopApp({ client }: { client: Client }) {
               split={splitChat}
               onToggleChat={() => setSplitChat((value) => !value)}
               onEditorChange={onFeedEditorChange}
-              onConnect={() => openSettings()}
+              onConnect={openConnection}
               onOpenChat={(id) => navigate(`/chat/${id}`)}
               onMainChat={async (id) => {
                 const conversations = await client.conversationIndex();
@@ -1244,7 +1248,7 @@ export function DesktopApp({ client }: { client: Client }) {
                 split={splitChat}
                 onToggleChat={() => setSplitChat((value) => !value)}
                 onEditorChange={onFeedEditorChange}
-                onConnect={() => openSettings()}
+                onConnect={openConnection}
                 onOpenChat={(id) => navigate(`/chat/${id}`)}
                 onConversation={async (id) => {
                   const [conversations, labels] = await Promise.all([
@@ -1296,7 +1300,7 @@ export function DesktopApp({ client }: { client: Client }) {
                 view={route.libraryView ?? "all"}
                 split={splitChat}
                 onView={(view) => navigate(libraryPath(view))}
-                onConnect={() => openSettings()}
+                onConnect={openConnection}
                 onToggleChat={() => setSplitChat((value) => !value)}
                 onOpenChat={(id) => navigate(`/chat/${id}`)}
                 onDocument={openDocument}
@@ -1465,10 +1469,7 @@ export function DesktopApp({ client }: { client: Client }) {
                       : t("Connect to Ark MA to start your conversation.")}
                   </p>
                   {!ready && (
-                    <button
-                      className="pill-button"
-                      onClick={() => openSettings()}
-                    >
+                    <button className="pill-button" onClick={openConnection}>
                       {t("Connect to Ark MA")}
                     </button>
                   )}
