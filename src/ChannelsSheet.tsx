@@ -148,7 +148,7 @@ export function ChannelsSheet({
       {data && !ready && (
         <p className="settings-footnote">
           {t(
-            "Messages arrive once your workspace is set up and background work is on in Account and workspace.",
+            "Messages arrive once background work has started for your account and Deliver even when Open Muse is closed is on in Upcoming.",
           )}
         </p>
       )}

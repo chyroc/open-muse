@@ -249,8 +249,8 @@ export function AccountSheet({
       </p>
       {status?.ready && (
         <>
-          <h3 className="settings-group-title">{t("Personal workspace")}</h3>
-          <WorkspacePanel client={client} />
+          <h3 className="settings-group-title">{t("Workspace")}</h3>
+          <WorkspacePanel client={client} compact />
         </>
       )}
       <WebhooksSettings service={service} />

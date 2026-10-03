@@ -26,9 +26,12 @@
   word-break: break-all;
 }
 .account-hero p {
+  max-width: 100%;
   margin: 0;
-  font-size: 13px;
+  padding: 0 24px;
+  font-size: 12px;
   color: #6e6e73;
+  overflow-wrap: anywhere;
 }
 .account-link-row .settings-row-text {
   color: #0064d0;

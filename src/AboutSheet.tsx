@@ -41,9 +41,7 @@ export function AboutSheet({ onClose }: { onClose: () => void }) {
         <li>
           <div className="settings-list-row">
             <span className="settings-row-text">{t("Runs on")}</span>
-            <span className="settings-row-value">
-              Volcano Ark Managed Agents
-            </span>
+            <span className="settings-row-value">Volcano Ark MA</span>
           </div>
         </li>
         <li>

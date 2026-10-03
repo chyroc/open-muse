@@ -1,6 +1,7 @@
 // About, Devices, and Message channels in iPhone Settings.
 export const zhSettingsPages: Record<string, string> = {
   "Development build": "开发版本",
+  Workspace: "工作区",
   "Version {version}": "版本 {version}",
   "Runs on": "运行于",
   "Volcano Ark website": "火山方舟官网",
@@ -16,8 +17,8 @@ export const zhSettingsPages: Record<string, string> = {
   "Needs an Open Muse account": "需要 Open Muse 账号",
   "Connected · last message {time}": "已连接 · 最近一条消息 {time}",
   "Connected · waiting for the first message": "已连接 · 等待第一条消息",
-  "Messages arrive once your workspace is set up and background work is on in Account and workspace.":
-    "工作区准备好、并在“账号与工作区”中开启后台工作后，消息才会送达。",
+  "Messages arrive once background work has started for your account and Deliver even when Open Muse is closed is on in Upcoming.":
+    "你的账号开始后台工作、并在“即将到来”中打开“Open Muse 关闭时也送达”后，消息才会送达。",
   "Finish in Lark": "在飞书中完成设置",
   "This address is shown only now. Copy it, or let your assistant set Lark up with it.":
     "这个地址只显示这一次。复制它，或让你的助手用它来设置飞书。",

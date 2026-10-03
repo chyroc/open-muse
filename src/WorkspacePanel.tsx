@@ -75,7 +75,15 @@ function Comparison({ value }: { value: AccountWorkspaceComparison }) {
   );
 }
 
-export function WorkspacePanel({ client }: { client: Client }) {
+export function WorkspacePanel({
+  client,
+  compact = false,
+}: {
+  client: Client;
+  // As one settings row while the workspace is ready and nothing needs
+  // review; the full card otherwise.
+  compact?: boolean;
+}) {
   const [status, setStatus] = useState<WorkspaceStatus>();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -163,6 +171,24 @@ export function WorkspacePanel({ client }: { client: Client }) {
   }
   const adoptable =
     comparison && !comparison.unusable.length && !comparison.tooLarge;
+  if (compact && status?.state === "ready" && !status.review && !error)
+    return (
+      <ul className="settings-list" aria-label={t("Personal workspace")}>
+        <li>
+          <div className="settings-list-row">
+            <span className="settings-row-text">
+              {t("Personal workspace")}
+              <small>
+                {t(
+                  "The assistant and runtime are managed automatically by Muse, no manual setup needed.",
+                )}
+              </small>
+            </span>
+            <span className="settings-row-value">{t("Ready")}</span>
+          </div>
+        </li>
+      </ul>
+    );
   return (
     <section className="workspace-card" aria-label={t("Personal workspace")}>
       <div className="workspace-heading">
