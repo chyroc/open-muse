@@ -54,6 +54,7 @@ import {
   type Attachment,
 } from "../shared/attachments";
 import { MediaStore, type KeptMedia } from "./direct/media";
+import { eventsToKeep } from "../shared/event-cache";
 import {
   parseSummary,
   summaryRequest,
@@ -1556,7 +1557,7 @@ export class Client {
     if (!this.signedIn()) return;
     validId(id);
     const r = this.context();
-    await this.db.set(`${r.key}:events:${id}`, events.slice(-300));
+    await this.db.set(`${r.key}:events:${id}`, eventsToKeep(events));
     let evicted: string[] = [];
     await this.db.update<string[]>(`${r.key}:events-index`, (current = []) => {
       const next = [id, ...current.filter((item) => item !== id)];
