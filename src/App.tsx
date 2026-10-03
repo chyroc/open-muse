@@ -465,6 +465,17 @@ function Workspace({
     return () => window.removeEventListener("hashchange", onRoute);
   }, []);
   const reload = useCallback(async () => {
+    // Signed in on this device: the chat can open from the local index while
+    // the workspace check below goes to the cloud.
+    if (client.signedIn())
+      void client
+        .conversationIndex()
+        .then((conversations) => {
+          if (!alive.current) return;
+          setIndex(conversations);
+          setLoading(false);
+        })
+        .catch(() => {});
     try {
       const conf = await client.config();
       if (!alive.current) return;
