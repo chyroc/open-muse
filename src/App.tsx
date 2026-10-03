@@ -641,9 +641,19 @@ function Workspace({
   }, [client, config?.mode, lastStatusId]);
   useEffect(() => {
     let active = true;
+    let read = false;
+    // The name and look as last read show at once; the cloud read follows.
+    void client
+      .cachedCompanion()
+      .then((look) => {
+        if (active && look && !read)
+          setCompanion((current) => ({ ...current, ...look }));
+      })
+      .catch(() => {});
     void client
       .companionIdentity()
       .then((value) => {
+        read = true;
         if (active) setCompanion(value);
       })
       .catch(() => {

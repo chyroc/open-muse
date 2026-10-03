@@ -82,7 +82,10 @@ import {
   type AgentSnapshot,
 } from "../shared/session-refresh";
 import { goalCategoryInput, type GoalCategory } from "../shared/goals";
-import type { IdentityDocumentName } from "../shared/identity";
+import type {
+  CompanionIdentity,
+  IdentityDocumentName,
+} from "../shared/identity";
 import { DirectInspiration } from "./direct/inspiration";
 import {
   defaultFeedInstructions,
@@ -621,9 +624,24 @@ export class Client {
     return result;
   }
   async companionIdentity() {
-    return this.signedIn()
-      ? this.context().companion.read()
-      : defaultIdentity();
+    if (!this.signedIn()) return defaultIdentity();
+    const r = this.context();
+    const identity = await r.companion.read();
+    await this.db
+      .set(`${r.key}:companion-look`, {
+        name: identity.name,
+        ...(identity.avatar ? { avatar: identity.avatar } : {}),
+      })
+      .catch(() => {});
+    return identity;
+  }
+  // The companion's name and look as last read on this device, so the header
+  // shows them at once; undefined before the first read.
+  async cachedCompanion(): Promise<
+    Pick<CompanionIdentity, "name" | "avatar"> | undefined
+  > {
+    if (!this.signedIn()) return undefined;
+    return this.db.get(`${this.context().key}:companion-look`);
   }
   saveIdentityDocument(
     name: IdentityDocumentName,
