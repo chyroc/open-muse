@@ -16,6 +16,7 @@ npm run check         # Type checks and regression tests
 npm run build         # Static site in dist/
 npm start             # Preview the static site on port 4310
 npm run macos:build   # .build/macos/Open Muse.app
+npm run macos:build:account  # The same Mac app as a Muse-account build
 npm run ios:build     # iOS Simulator app
 npm run ios:install   # Muse-account build, signed and installed on a paired iPhone
 npm run native:sync   # Build and sync the iOS and Android bundles
@@ -43,6 +44,12 @@ CLI from the Supabase workspace named `open-muse` (override with
 `OPEN_MUSE_SUPABASE_WORKSPACE`), checks the service's `/health`, signs with the
 Apple Development team, installs, and launches the app. `OPEN_MUSE_DEVICE`
 selects a device when several are paired.
+
+`npm run macos:build:account` builds the Mac app the same way: it resolves the
+three values like `ios:install`, checks the service's `/health`, and writes
+`.build/macos/Open Muse.app` with email and password sign-in. A plain
+`npm run macos:build` without the three values gives the single-user local
+mode, which only accepts an Ark API key.
 
 The Open Muse service itself is documented in [server/README](../server/README.md).
 
