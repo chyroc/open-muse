@@ -22,6 +22,8 @@ export const remoteViewDriver =
   String.raw`"""Relays a headless Chrome viewport to the Open Muse app and replays its input."""
 import hashlib
 import json
+import os
+import shutil
 import sys
 import time
 import urllib.request
@@ -66,6 +68,60 @@ def apply(browser, event):
         browser.call("Runtime.evaluate", {"expression": "history.back()"})
 
 
+LIVE = "/tmp/open-muse-live"
+# Lets the agent act in the tab the person is watching. It attaches to the
+# open tab and leaves Chrome running when it closes.
+LIVE_MODULE = """
+import json
+import urllib.request
+from collections import deque
+
+import websocket
+from muse_browser import Browser
+
+
+class LiveBrowser(Browser):
+    \"\"\"The browser the person is watching in the app; what you do here appears on their screen.\"\"\"
+
+    def __init__(self, timeout=30):
+        self.timeout = timeout
+        self.sequence = 0
+        self.events = deque(maxlen=256)
+        self.process = None
+        with open("/tmp/open-muse-live/endpoint.json") as state_file:
+            state = json.load(state_file)
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        with opener.open(state["endpoint"] + "/json/list", timeout=5) as response:
+            targets = json.load(response)
+        page = next(target for target in targets if target["id"] == state["target"])
+        self.endpoint = state["endpoint"]
+        self.socket = websocket.create_connection(page["webSocketDebuggerUrl"], timeout=timeout,
+            suppress_origin=True, http_no_proxy=["127.0.0.1", "localhost"])
+        self.call("Page.enable")
+        self.call("Runtime.enable")
+        self.call("Page.setLifecycleEventsEnabled", {"enabled": True})
+
+    def close(self):
+        if self.socket:
+            try:
+                self.socket.close()
+            except OSError:
+                pass
+            self.socket = None
+"""
+
+
+def share(browser):
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    with opener.open(browser.endpoint + "/json/list", timeout=5) as response:
+        page = next(target for target in json.load(response) if target["type"] == "page")
+    os.makedirs(LIVE, exist_ok=True)
+    with open(LIVE + "/live_browser.py", "w") as module:
+        module.write(LIVE_MODULE)
+    with open(LIVE + "/endpoint.json", "w") as state:
+        json.dump({"endpoint": browser.endpoint, "target": page["id"]}, state)
+
+
 def toolbox_ready():
     try:
         with open("/opt/open-muse/status.json") as status:
@@ -83,53 +139,61 @@ def main():
             break
         time.sleep(1)
     from muse_browser import Browser
-    with Browser() as browser:
-        browser.call("Emulation.setDeviceMetricsOverride",
-            {"width": WIDTH, "height": HEIGHT, "deviceScaleFactor": 1, "mobile": False})
-        if start != "about:blank":
-            browser.call("Page.navigate", {"url": start})
-        after, shown, failures, blank = 0, None, 0, 0
-        deadline = time.monotonic() + 35 * 60
-        while time.monotonic() < deadline:
-            try:
-                image = browser.call("Page.captureScreenshot",
-                    {"format": "jpeg", "quality": 60})["data"]
-                blank = 0
-            except RuntimeError:
-                # A page between documents cannot be captured for a moment.
-                blank += 1
-                if blank >= 60:
-                    return
-                time.sleep(0.5)
-                continue
-            digest = hashlib.sha1(image.encode()).hexdigest()
-            body = {"after": after}
-            if digest != shown:
-                try:
-                    page = browser.evaluate("({url: location.href, title: document.title})") or {}
-                except RuntimeError:
-                    page = {}
-                body.update(image=image, width=WIDTH, height=HEIGHT,
-                            url=page.get("url", ""), title=page.get("title", ""))
-            try:
-                reply = post(relay, token, body)
-                failures = 0
-            except Exception:
-                failures += 1
-                if failures >= 10:
-                    return
-                time.sleep(1)
-                continue
-            shown = digest
-            if not reply.get("open"):
+    try:
+        with Browser() as browser:
+            share(browser)
+            relay_view(browser, relay, token, start)
+    finally:
+        shutil.rmtree(LIVE, ignore_errors=True)
+
+
+def relay_view(browser, relay, token, start):
+    browser.call("Emulation.setDeviceMetricsOverride",
+        {"width": WIDTH, "height": HEIGHT, "deviceScaleFactor": 1, "mobile": False})
+    if start != "about:blank":
+        browser.call("Page.navigate", {"url": start})
+    after, shown, failures, blank = 0, None, 0, 0
+    deadline = time.monotonic() + 35 * 60
+    while time.monotonic() < deadline:
+        try:
+            image = browser.call("Page.captureScreenshot",
+                {"format": "jpeg", "quality": 60})["data"]
+            blank = 0
+        except RuntimeError:
+            # A page between documents cannot be captured for a moment.
+            blank += 1
+            if blank >= 60:
                 return
-            for item in reply.get("events", []):
-                try:
-                    apply(browser, item["event"])
-                except Exception:
-                    pass
-                after = item["seq"]
-            time.sleep(0.15 if reply.get("events") else 0.5)
+            time.sleep(0.5)
+            continue
+        digest = hashlib.sha1(image.encode()).hexdigest()
+        body = {"after": after}
+        if digest != shown:
+            try:
+                page = browser.evaluate("({url: location.href, title: document.title})") or {}
+            except RuntimeError:
+                page = {}
+            body.update(image=image, width=WIDTH, height=HEIGHT,
+                        url=page.get("url", ""), title=page.get("title", ""))
+        try:
+            reply = post(relay, token, body)
+            failures = 0
+        except Exception:
+            failures += 1
+            if failures >= 10:
+                return
+            time.sleep(1)
+            continue
+        shown = digest
+        if not reply.get("open"):
+            return
+        for item in reply.get("events", []):
+            try:
+                apply(browser, item["event"])
+            except Exception:
+                pass
+            after = item["seq"]
+        time.sleep(0.15 if reply.get("events") else 0.5)
 
 
 if __name__ == "__main__":
