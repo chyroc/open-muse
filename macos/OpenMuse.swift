@@ -48,6 +48,38 @@ private final class BundleAssets: NSObject, WKURLSchemeHandler {
     func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {}
 }
 
+// The pages draw under a transparent title bar, so the web view covers it. The
+// page asks to move the window when an empty part of its top strip is pressed;
+// the view keeps that press so the window can follow the pointer from it.
+final class WindowWebView: WKWebView {
+    private(set) var lastMouseDown: NSEvent?
+    override func mouseDown(with event: NSEvent) {
+        lastMouseDown = event
+        super.mouseDown(with: event)
+    }
+    // Moves the window with the pointer while the press that began it is held.
+    func dragWindow() {
+        guard let event = lastMouseDown, let window, event.window === window,
+              NSEvent.pressedMouseButtons & 1 != 0 else { return }
+        // The page answers a moment after the press, so first catch the window
+        // up with any distance the pointer has already travelled.
+        let pressed = window.convertPoint(toScreen: event.locationInWindow)
+        let now = NSEvent.mouseLocation
+        let origin = window.frame.origin
+        window.setFrameOrigin(NSPoint(x: origin.x + now.x - pressed.x, y: origin.y + now.y - pressed.y))
+        window.performDrag(with: event)
+    }
+    // A double click on the strip does what the system's title-bar setting asks.
+    func titleBarDoubleClick() {
+        guard let window else { return }
+        switch UserDefaults.standard.string(forKey: "AppleActionOnDoubleClick") {
+        case "Minimize": window.miniaturize(nil)
+        case "None": break
+        default: if window.styleMask.contains(.resizable) { window.zoom(nil) }
+        }
+    }
+}
+
 // Motion for the desktop presence surfaces, kept in one place.
 private enum Motion {
     static let pressScale: CGFloat = 0.9
@@ -436,7 +468,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         #endif
     }
     private func makeWebView(_ frame: NSRect) -> WKWebView {
-        let view = WKWebView(frame: frame, configuration: configuration)
+        let view = WindowWebView(frame: frame, configuration: configuration)
         view.autoresizingMask = [.width, .height]
         view.navigationDelegate = self
         view.uiDelegate = self
@@ -1284,6 +1316,11 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         guard trusted(message) else { return }
         if message.name == "museWindow" {
             let body = message.body as? [String: String]
+            // Any window's page may move or zoom its own window, never another.
+            if let view = message.webView as? WindowWebView {
+                if body?["name"] == "window-drag" { view.dragWindow(); return }
+                if body?["name"] == "window-zoom" { view.titleBarDoubleClick(); return }
+            }
             if message.webView === quickWebView {
                 switch body?["name"] {
                 case "quick-size": resizeQuickChat(body?["value"]); return

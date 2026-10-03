@@ -9,6 +9,7 @@ import { isSettingsRoute } from "./settings";
 import { initializeAppearance } from "./appearance";
 import { restoreInBackground } from "./startup";
 import { nativeCredentials } from "./credentials";
+import { installWindowDrag } from "./windowDrag";
 import "./theme.css";
 import "./desktop.css";
 import "./documents.css";
@@ -19,6 +20,7 @@ import "./quick.css";
 
 initializeLanguage();
 initializeAppearance();
+installWindowDrag();
 const client = new Client({
   vault: nativeCredentials,
   account: backgroundClient,
