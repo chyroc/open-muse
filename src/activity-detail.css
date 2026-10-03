@@ -266,3 +266,104 @@
     background: rgb(255 107 94 / 14%);
   }
 }
+
+/* The requests the person answered: an icon, what was asked, and how and
+   when they answered. */
+.approval-history h3 {
+  margin: 0 0 10px;
+  font-size: 17px;
+  line-height: 26px;
+  font-weight: 600;
+}
+.approval-history ul {
+  margin: 0 -16px;
+  padding: 0;
+  list-style: none;
+}
+.approval-history li button {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 16px 14px 20px;
+  text-align: left;
+  color: inherit;
+  transition: background-color var(--motion-press-duration) ease-out;
+}
+.approval-history li button:active {
+  background: rgb(0 0 0 / 5%);
+}
+.approval-history li svg {
+  flex: 0 0 auto;
+  margin-top: 3px;
+}
+.approval-history li button > span {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+.approval-history strong {
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: 600;
+}
+.approval-history li button > span > span,
+.approval-history small {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 15px;
+  line-height: 21px;
+  color: #6e6e73;
+}
+.approval-history small {
+  color: #a1a1a6;
+}
+.approval-history + .permission-card,
+.permission-card + .approval-history {
+  margin-top: 24px;
+}
+.approval-outcome {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.approval-outcome::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.approval-outcome.allow {
+  color: #1f8f4e;
+  background: #e5f6ec;
+}
+.approval-outcome.deny {
+  color: #c4291c;
+  background: #fde8e6;
+}
+.approval-detail {
+  height: auto;
+  max-height: min(70dvh, 560px);
+}
+.approval-detail .approval-detail-label {
+  margin: 22px 0 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #3a3a3c;
+}
+.approval-detail-input {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 15px;
+  line-height: 21px;
+  color: #000;
+}

@@ -59,14 +59,14 @@
   flex-shrink: 0;
 }
 .identity-dismiss,
-.identity-refresh {
+.identity-share {
   position: absolute;
   top: calc(env(safe-area-inset-top) + 4px);
 }
 .identity-dismiss {
   left: 16px;
 }
-.identity-refresh {
+.identity-share {
   right: 16px;
 }
 .identity-avatar {
@@ -90,8 +90,8 @@
 }
 .identity-header h1 {
   font-size: 22px;
-  line-height: 32px;
-  margin: 0 0 4px;
+  line-height: 1.17;
+  margin: 0;
   font-weight: 700;
   letter-spacing: -0.3px;
 }
@@ -101,7 +101,7 @@
   align-items: center;
   justify-content: center;
   font-size: 17px;
-  line-height: 25px;
+  line-height: 1.58;
 }
 .identity-connection svg {
   color: #20b65a;
@@ -114,7 +114,7 @@
   border: 1px solid #e2e2e5;
   border-radius: 30px;
   background: #fff;
-  margin: 4px 16px 0;
+  margin: 0 16px;
 }
 .companion-tabs button {
   display: flex;
@@ -186,62 +186,121 @@
   grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
+.companion-tab-content .identity-overview h2 {
+  margin: 2px 0 20px;
+  font-weight: 500;
+  line-height: 1.16;
+  letter-spacing: 0;
+}
+/* The cards keep their size at every text size, like printed cards. */
 .identity-card {
+  -webkit-text-size-adjust: 100%;
   min-width: 0;
   text-align: left;
   height: 150px;
-  padding: 16px;
+  padding: 16px 16px 20px;
   border-radius: 24px;
   color: #fff;
   position: relative;
   overflow: hidden;
+  /* Filters escape overflow clipping in WebKit; clip the drifting color to
+     the rounded card explicitly. */
+  clip-path: inset(0 round 24px);
   isolation: isolate;
   display: flex;
   flex-direction: column;
+}
+/* Color drifts slowly under a fine grain, so each card looks alive. */
+.identity-card::before {
+  content: "";
+  position: absolute;
+  inset: -45%;
+  z-index: -2;
+  animation: identity-card-drift 16s ease-in-out infinite alternate;
+  pointer-events: none;
 }
 .identity-card::after {
   content: "";
   position: absolute;
   inset: 0;
-  opacity: 0.14;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23fff' filter='url(%23n)' d='M0 0h140v140H0z'/%3E%3C/svg%3E");
+  opacity: 0.22;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23fff' filter='url(%23n)' d='M0 0h140v140H0z'/%3E%3C/svg%3E");
   mix-blend-mode: soft-light;
   pointer-events: none;
   z-index: -1;
 }
-/* Soul is a misty slate blue, memory a deep olive. */
+/* Soul is a warm taupe that slowly turns to slate and back; memory is a deep
+   red with brown shadows and an ember glow. */
 .identity-card.soul {
+  background: #85776a;
+  animation: identity-card-hue 36s ease-in-out infinite alternate;
+}
+.identity-card.soul::before {
   background:
-    radial-gradient(ellipse at 0% 0%, #94b2b9, transparent 60%),
-    radial-gradient(ellipse at 100% 100%, #4c7187, transparent 70%), #56768a;
+    radial-gradient(circle at 22% 24%, #6b4c45, transparent 26%),
+    radial-gradient(circle at 74% 26%, #a69c7e, transparent 30%),
+    radial-gradient(ellipse 30% 18% at 52% 52%, #b4a291, transparent 100%),
+    radial-gradient(circle at 60% 78%, #6c6457, transparent 32%);
 }
 .identity-card.memory {
+  background: #6e2416;
+}
+.identity-card.memory::before {
   background:
-    radial-gradient(ellipse at 15% 100%, #7c772b, transparent 65%),
-    radial-gradient(ellipse at 100% 0%, #6c5e22, transparent 70%), #615419;
+    radial-gradient(circle at 30% 64%, #b8101c, transparent 30%),
+    radial-gradient(circle at 70% 30%, #a3201f, transparent 24%),
+    radial-gradient(circle at 76% 52%, #43231a, transparent 24%),
+    radial-gradient(circle at 74% 76%, #cf5317, transparent 20%),
+    radial-gradient(circle at 26% 26%, #7a3420, transparent 26%);
+  animation-duration: 13s;
+  animation-direction: alternate-reverse;
+}
+@keyframes identity-card-drift {
+  from {
+    transform: translate(-6%, -4%) rotate(-8deg) scale(1);
+  }
+  to {
+    transform: translate(6%, 5%) rotate(10deg) scale(1.12);
+  }
+}
+@keyframes identity-card-hue {
+  from {
+    filter: hue-rotate(0deg);
+  }
+  to {
+    filter: hue-rotate(170deg) saturate(0.8);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .identity-card,
+  .identity-card::before {
+    animation: none;
+  }
 }
 .identity-card strong {
-  font-size: 22px;
-  line-height: 28px;
-  letter-spacing: -0.3px;
-  font-weight: 750;
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 700;
 }
 .identity-card > span {
   font-size: 9px;
-  letter-spacing: 0.4px;
+  line-height: 11px;
+  letter-spacing: 1.2px;
   color: #fff9;
-  margin-top: 3px;
+  margin-top: 4px;
 }
 .identity-card footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-top: auto;
-  color: #fff8;
+  padding-right: 3px;
+  color: #fff9;
 }
 .identity-card time {
   font-family: ui-monospace, monospace;
   font-size: 13px;
+  line-height: 16px;
 }
 .identity-note {
   color: #78787e;
@@ -527,4 +586,87 @@
   overflow: hidden;
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
+}
+/* The desktop tab shows the companion's cloud workspace as a small desktop:
+   a blue backdrop with a blank browser window, and a pill to open it. */
+.companion-desktop {
+  position: relative;
+  margin: -6px 4px 0;
+}
+.desktop-card {
+  position: relative;
+  display: block;
+  aspect-ratio: 362 / 236;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #b8dafd;
+}
+.desktop-menubar {
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  font-size: 4px;
+  -webkit-text-size-adjust: 100%;
+  color: #1c1c1e;
+}
+.desktop-window {
+  position: absolute;
+  left: 20.4%;
+  top: 19.5%;
+  width: 59.2%;
+  height: 55%;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  background: #fff;
+  color: #c7c7cc;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 6%);
+}
+/* The tab strip with its three window buttons. */
+.desktop-window i {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 8px;
+  border-radius: 4px 4px 0 0;
+  background:
+    radial-gradient(circle at 5px 4px, #ff5f57 1.6px, transparent 2px),
+    radial-gradient(circle at 10px 4px, #febc2e 1.6px, transparent 2px),
+    radial-gradient(circle at 15px 4px, #28c840 1.6px, transparent 2px),
+    linear-gradient(90deg, #fff 70px, #f2f2f4 70px);
+}
+.desktop-window svg {
+  margin-top: 2px;
+}
+.desktop-window b {
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  top: 60%;
+  height: 7px;
+  border-radius: 4px;
+  background: #f0f0f2;
+}
+.desktop-open {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgb(255 255 255 / 70%);
+  border-radius: 16px;
+  background: rgb(214 236 255 / 82%);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  -webkit-text-size-adjust: 100%;
+  font-size: 16px;
+  color: #000;
+  text-decoration: none;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 6%);
+  transition: transform var(--motion-press-duration) ease-out;
+}
+.desktop-open:active {
+  transform: scale(var(--motion-press-scale));
 }

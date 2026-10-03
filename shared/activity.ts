@@ -110,7 +110,7 @@ export interface ActivityStep {
   result: string;
 }
 
-function stepTarget(event: AgentEvent) {
+export function stepTarget(event: AgentEvent) {
   const input = (event as { input?: Record<string, unknown> }).input ?? {};
   const text = (value: unknown) => (typeof value === "string" ? value : "");
   const url = text(input.url);

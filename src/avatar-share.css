@@ -1,0 +1,201 @@
+/* A tall sheet from the bottom: a title and close button, cards that page
+   sideways with dots under them, and a row of ways to share. */
+.avatar-share {
+  position: fixed;
+  inset: auto 0 0;
+  top: calc(var(--app-top, 0px) + env(safe-area-inset-top));
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 780px);
+  max-width: none;
+  height: auto;
+  max-height: none;
+  margin: 0 auto;
+  padding: 0;
+  border: 0;
+  /* The bottom corners follow the screen's own. */
+  border-radius: var(--floating-sheet-radius) var(--floating-sheet-radius)
+    var(--device-corner, 0px) var(--device-corner, 0px);
+  color: #000;
+  background: #fff;
+  overflow: hidden;
+  animation: companion-sheet-up var(--motion-sheet-duration)
+    var(--motion-sheet-spring) backwards;
+}
+.avatar-share:focus {
+  outline: none;
+}
+.avatar-share::backdrop {
+  background: var(--sheet-dim);
+  animation: companion-sheet-dim var(--motion-sheet-duration) ease-out both;
+}
+.avatar-share.closing::backdrop {
+  opacity: 0;
+  transition: opacity var(--motion-sheet-dismiss-duration) ease-in;
+}
+.avatar-share header {
+  position: relative;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  height: 76px;
+  touch-action: none;
+}
+.avatar-share h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+.avatar-share header .activity-detail-close {
+  position: absolute;
+  top: 18px;
+  right: 24px;
+}
+.avatar-share-cards {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.avatar-share-cards::-webkit-scrollbar {
+  display: none;
+}
+.avatar-share-card {
+  position: relative;
+  flex: 0 0 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  padding: 0 43px;
+  scroll-snap-align: center;
+  -webkit-text-size-adjust: 100%;
+}
+.avatar-share-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 43px;
+  z-index: -1;
+  border-radius: 28px;
+  background: var(--card-tone);
+}
+.avatar-share-card.rose {
+  --card-tone: linear-gradient(#f3c3df, #f4d3e5);
+  --card-ink: #a3326f;
+}
+.avatar-share-card.peach {
+  --card-tone: linear-gradient(#f6d2c0, #f4ddd0);
+  --card-ink: #a05a33;
+}
+.avatar-share-card.butter {
+  --card-tone: linear-gradient(#f3ecc5, #f4efd3);
+  --card-ink: #8c6a24;
+}
+.avatar-share-card.mint {
+  --card-tone: linear-gradient(#c6efdb, #d4f3e5);
+  --card-ink: #2c8a52;
+}
+.avatar-share-photo {
+  position: relative;
+  width: 271px;
+  height: 269px;
+  margin-top: 110px;
+  overflow: hidden;
+  border-radius: 28px;
+  background: radial-gradient(circle at 50% 40%, #fff, #f1f0ee);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 8%);
+}
+.avatar-share-photo .companion-avatar {
+  position: absolute;
+  left: 50%;
+  top: 22px;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  overflow: visible;
+  transform: translateX(-50%) scale(3.5);
+  transform-origin: top center;
+}
+.avatar-share-card figcaption {
+  position: relative;
+  width: 188px;
+  margin-top: 30px;
+  padding: 12px 14px 14px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 4px 18px rgb(0 0 0 / 8%);
+  font-size: 15px;
+  line-height: 19px;
+  color: var(--card-ink);
+  transform: rotate(3deg);
+}
+/* A thought-bubble tail: two dots rising to the photo. */
+.avatar-share-tail,
+.avatar-share-tail::before {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+}
+.avatar-share-tail {
+  top: -14px;
+  left: 50%;
+  width: 26px;
+  height: 18px;
+}
+.avatar-share-tail::before {
+  content: "";
+  top: -14px;
+  left: -14px;
+  width: 12px;
+  height: 12px;
+}
+.avatar-share-dots {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 14px 0 19px;
+}
+.avatar-share-dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #c7c7cc;
+  transition: background-color var(--motion-fade-duration) ease-out;
+}
+.avatar-share-dots i.on {
+  background: #000;
+}
+.avatar-share-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 16px;
+  padding: 10px 20px calc(32px + env(safe-area-inset-bottom));
+  border-top: 0.5px solid rgb(0 0 0 / 10%);
+  -webkit-text-size-adjust: 100%;
+}
+.avatar-share-actions > * {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 76px;
+  font-size: 15px;
+  color: #000;
+  text-decoration: none;
+}
+.avatar-share-actions span {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #f2f2f4;
+  transition: transform var(--motion-press-duration) ease-out;
+}
+.avatar-share-actions > :active span {
+  transform: scale(var(--motion-press-scale));
+}

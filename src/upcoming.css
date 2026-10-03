@@ -3,36 +3,44 @@
   margin-top: 20px;
 }
 .upcoming-group h3 {
-  margin: 0 0 4px;
+  margin: 0 0 20px;
   font-size: 17px;
-  font-weight: 700;
+  line-height: 25px;
+  font-weight: 600;
 }
 .upcoming-list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
-.upcoming-list li {
+.upcoming-list li + li {
+  margin-top: 16px;
+}
+.upcoming-list button {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 0;
-  border-bottom: 1px solid #eee;
-  transition: opacity 180ms ease-out;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  transition: opacity var(--motion-press-duration) ease-out;
 }
-.upcoming-list li > svg {
+.upcoming-list button:active {
+  opacity: 0.55;
+}
+.schedule-tile {
   flex-shrink: 0;
-  color: #8e8e93;
 }
-.upcoming-list li > div {
+.upcoming-list li > button > div {
   display: flex;
   flex: 1;
   min-width: 0;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
 }
 .upcoming-list strong {
   font-size: 17px;
+  line-height: 25px;
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -41,20 +49,97 @@
 .upcoming-list span,
 .upcoming-list small {
   font-size: 15px;
-  color: #77777c;
+  line-height: 22px;
+  color: #6e6e73;
 }
-.upcoming-list li.paused > div {
+.upcoming-list small {
+  color: #a1a1a6;
+}
+.upcoming-list li.paused > button > div {
   opacity: 0.55;
 }
-.upcoming-list button {
-  flex-shrink: 0;
-  transition:
-    transform 120ms ease-out,
-    opacity 120ms ease-out;
+/* A reminder in detail: a state chip, the title and how it repeats, its next
+   run in a grouped card, and a full-width delete button. */
+.upcoming-detail {
+  height: auto;
 }
-.upcoming-list button:not(:disabled):active {
-  transform: scale(0.9);
+.upcoming-state {
+  padding: 3px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #48484a;
+  background: #ececee;
+}
+.upcoming-detail .upcoming-detail-schedule {
+  margin: 4px 0 0;
+  font-size: 15px;
+  color: #6e6e73;
+}
+.upcoming-detail-runs {
+  margin: 22px 0 0;
+  padding: 0 16px;
+  list-style: none;
+  border-radius: 20px;
+  background: #f1f1f3;
+}
+.upcoming-detail-runs li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 70px;
+}
+.upcoming-detail-runs li + li {
+  min-height: 56px;
+  border-top: 0.5px solid rgb(0 0 0 / 12%);
+}
+.upcoming-detail-runs li > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.upcoming-detail-runs strong {
+  font-size: 17px;
+  font-weight: 400;
+}
+.upcoming-detail-runs small {
+  font-size: 15px;
+  color: #6e6e73;
+}
+.upcoming-detail-runs em {
+  font-style: normal;
+  font-size: 16px;
+  color: #6e6e73;
+}
+.upcoming-detail-runs button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 56px;
+  font-size: 17px;
+  color: #000;
+  text-align: left;
+  transition: opacity var(--motion-press-duration) ease-out;
+}
+.upcoming-detail-runs button:active,
+.upcoming-detail-delete:active {
   opacity: 0.6;
+}
+.upcoming-detail-delete {
+  display: block;
+  width: 100%;
+  height: 46px;
+  margin-top: 22px;
+  border-radius: 23px;
+  font-size: 17px;
+  font-weight: 500;
+  color: #fff;
+  background: #c41e3a;
+  transition: opacity var(--motion-press-duration) ease-out;
+}
+.upcoming-detail-delete:disabled {
+  opacity: 0.5;
 }
 .upcoming-note {
   margin: 18px 0 0;

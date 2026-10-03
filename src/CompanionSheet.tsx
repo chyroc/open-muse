@@ -3,13 +3,15 @@ import { useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   Fingerprint,
+  Globe,
   Heart,
   List,
   LoaderCircle,
-  MessageCircle,
+  Maximize2,
+  MessageSquare,
   Monitor,
   Pencil,
-  RefreshCw,
+  Share,
   ShieldCheck,
   SquarePen,
   X,
@@ -27,6 +29,9 @@ import { ActivityList } from "./ActivityList";
 import { animateAway, useDragToDismiss } from "./gesture";
 import { activityTurns } from "../shared/activity";
 import { UpcomingPanel } from "./UpcomingPanel";
+import { ApprovalHistory } from "./ApprovalHistory";
+import { AvatarShareSheet } from "./AvatarShareSheet";
+import { approvalHistory } from "../shared/approvals";
 import "./identity.css";
 
 // Scheduled work: a clock whose face is drawn as dashes.
@@ -125,9 +130,13 @@ export function IdentityCards({
                       : t("Not saved yet")}
                 </time>
                 {name === "SOUL.md" ? (
-                  <Heart fill="currentColor" size={25} />
+                  <Heart fill="currentColor" strokeWidth={0} size={26} />
                 ) : (
-                  <MessageCircle fill="currentColor" size={25} />
+                  <MessageSquare
+                    fill="currentColor"
+                    strokeWidth={0}
+                    size={28}
+                  />
                 )}
               </footer>
             </button>
@@ -171,7 +180,7 @@ export function CompanionSheet({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [mounted, setMounted] = useState<boolean>();
-  const [refresh, setRefresh] = useState(0);
+  const [sharing, setSharing] = useState(false);
   const closing = useRef(false);
   // Slides down and away, then reports closed.
   const dismiss = () => {
@@ -221,7 +230,7 @@ export function CompanionSheet({
     return () => {
       active = false;
     };
-  }, [client, sessionId, refresh, onIdentity]);
+  }, [client, sessionId, onIdentity]);
   return (
     <dialog
       ref={dialog}
@@ -273,12 +282,11 @@ export function CompanionSheet({
           {status}
         </span>
         <button
-          className="glass-button identity-refresh"
-          aria-label={t("Refresh companion details")}
-          disabled={loading}
-          onClick={() => setRefresh((v) => v + 1)}
+          className="glass-button identity-share"
+          aria-label={t("Share avatar")}
+          onClick={() => setSharing(true)}
         >
-          <RefreshCw size={21} className={loading ? "spin" : undefined} />
+          <Share size={21} />
         </button>
       </header>
       <nav
@@ -347,11 +355,6 @@ export function CompanionSheet({
                 )}
               </aside>
             )}
-            {mounted === true && (
-              <p className="identity-note">
-                {t("Personal memory is attached to this conversation.")}
-              </p>
-            )}
           </>
         )}
         {tab === "Activity" && (
@@ -376,16 +379,16 @@ export function CompanionSheet({
         )}
         {tab === "Approvals" && (
           <section className="companion-approvals">
-            {permissions.length ? (
-              permissions.map((event) => (
-                <PermissionCard
-                  key={event.id}
-                  event={event}
-                  busy={busy}
-                  onConfirm={onConfirm}
-                />
-              ))
-            ) : (
+            {permissions.map((event) => (
+              <PermissionCard
+                key={event.id}
+                event={event}
+                busy={busy}
+                onConfirm={onConfirm}
+              />
+            ))}
+            <ApprovalHistory events={events} />
+            {!permissions.length && !approvalHistory(events).length && (
               <div className="companion-empty centered">
                 <h3>{tabLabel("Approvals")}</h3>
                 <p>{t("No approvals yet")}</p>
@@ -397,20 +400,33 @@ export function CompanionSheet({
           <UpcomingPanel client={client} name={identity.name} />
         )}
         {tab === "Desktop" && (
-          <section className="companion-empty">
-            <Monitor size={32} />
-            <h2>{t("Cloud workspace")}</h2>
-            <p>
-              {t(
-                "Your assistant’s tools run in its MA environment, not on this device. An interactive remote desktop is not connected.",
-              )}
-            </p>
-            <a href="#/studio" onClick={onClose}>
-              {t("View workspace in MA Studio")}
+          <section className="companion-desktop">
+            <div className="desktop-card" aria-hidden="true">
+              <span className="desktop-menubar">{identity.name}</span>
+              <span className="desktop-window">
+                <i />
+                <Globe size={20} strokeWidth={1.4} />
+                <b />
+              </span>
+            </div>
+            <a
+              className="desktop-open"
+              href="#/studio"
+              aria-label={t("View workspace in MA Studio")}
+              onClick={onClose}
+            >
+              {t("Open workspace")}
+              <Maximize2 size={13} strokeWidth={2} />
             </a>
           </section>
         )}
       </div>
+      {sharing && (
+        <AvatarShareSheet
+          name={identity.name}
+          onClose={() => setSharing(false)}
+        />
+      )}
       {selected && (
         <IdentityEditor
           key={selected}
