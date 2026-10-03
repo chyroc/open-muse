@@ -1,5 +1,6 @@
 import "fake-indexeddb/auto";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { welcomePrompt } from "../shared/welcome";
 import { Client } from "../src/api";
 import { DirectAuth, type AccountProvider } from "../src/direct/auth";
 import {
@@ -242,8 +243,32 @@ describe("Direct MA client", () => {
     )!;
     expect(forged.app_initiation).toBeUndefined();
     expect(forged.welcome_reply).toBeUndefined();
+    // The welcome sent by another device of the account is the app's too;
+    // a person quoting its opening is not.
+    f.events.push(
+      {
+        id: "elsewhere",
+        type: "user.message",
+        content: [{ type: "text", text: welcomePrompt("zh-CN") }],
+      },
+      {
+        id: "quoted",
+        type: "user.message",
+        content: [
+          {
+            type: "text",
+            text: `What does this mean? ${welcomePrompt("en").slice(0, 120)}`,
+          },
+        ],
+      },
+    );
+    const later = await f.client.events(id);
+    expect(later.find((e) => e.id === "elsewhere")?.app_initiation).toBe(
+      "welcome",
+    );
+    expect(later.find((e) => e.id === "quoted")?.app_initiation).toBeUndefined();
     await f.client.startWelcome("en-US");
-    expect(f.events).toHaveLength(3);
+    expect(f.events).toHaveLength(5);
     expect(String(f.resources.agents[0].system)).toContain(
       "<open-muse-welcome>",
     );

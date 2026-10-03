@@ -64,6 +64,7 @@ import {
   isBrowserLaunch,
   type BrowserEvent,
 } from "../shared/remote-view";
+import { isWelcomePrompt } from "../shared/welcome";
 import {
   modelChoiceInput,
   modelOverride,
@@ -1562,6 +1563,11 @@ export class Client {
       isWebhookPrompt(eventText(original))
     )
       return { ...original, app_initiation: "webhook" };
+    if (
+      original.type === "user.message" &&
+      isWelcomePrompt(eventText(original))
+    )
+      return { ...original, app_initiation: "welcome" };
     const annotated = await this.upcomingService(r).annotate(
       id,
       await this.checkInService(r).annotate(
