@@ -65,6 +65,7 @@ import {
   type BrowserEvent,
 } from "../shared/remote-view";
 import { isWelcomePrompt } from "../shared/welcome";
+import { larkSignedIn } from "../shared/lark-status";
 import {
   modelChoiceInput,
   modelOverride,
@@ -2358,6 +2359,23 @@ export class Client {
       );
     }
     return summary;
+  }
+  // Whether the assistant is signed in to Lark in the main chat's current
+  // cloud environment, as its lark-cli output last showed. The sign-in lives
+  // in that environment, so a new chapter of the main chat starts signed out.
+  // `cached` reads only what this device kept, for an immediate answer.
+  async larkConnected(cached = false) {
+    if (!this.signedIn()) return false;
+    const r = this.context();
+    const main = (await this.conversations(r).index()).mainId;
+    if (!main) return false;
+    const events = cached
+      ? await this.cachedEvents(main)
+      : await this.collect<AgentEvent>(
+          r.ark,
+          `/sessions/${validId(main)}/events?order=asc&limit=200`,
+        );
+    return larkSignedIn(events) ?? false;
   }
   // Whether this identity connected Apple Health on this device; while it is,
   // the companion's Health reads are answered without asking each time.

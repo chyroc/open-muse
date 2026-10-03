@@ -72,8 +72,15 @@ const lark = (): Connector => ({
   ),
   Icon: MessagesSquare,
 });
+const larkSignedIn = (): Connector => ({
+  ...lark(),
+  detail: t(
+    "Signed in to your Lark account in your assistant's cloud environment. When the main chat continues into a new chapter, sign in again.",
+  ),
+});
 const larkSignIn =
   "Help me sign in to Lark with lark-cli so you can work in my Lark account.";
+const larkSignOut = "Sign me out of Lark with lark-cli.";
 
 export function ConnectorsSheet({
   client,
@@ -81,7 +88,11 @@ export function ConnectorsSheet({
   onDraft,
 }: {
   // Whether this identity connected Apple Health on this device.
-  client: Pick<Client, "healthConnected" | "setHealthConnected">;
+  // and whether the assistant is signed in to Lark in the main chat.
+  client: Pick<
+    Client,
+    "healthConnected" | "setHealthConnected" | "larkConnected"
+  >;
   onClose: () => void;
   // Puts text in the main chat composer for the person to review and send.
   onDraft: (text: string) => void;
@@ -93,8 +104,21 @@ export function ConnectorsSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [linked, setLinked] = useState(false);
+  const [larkLinked, setLarkLinked] = useState(false);
   useEffect(() => {
     let active = true;
+    // What this device kept answers at once; the conversation's history
+    // then has the final say.
+    void client
+      .larkConnected(true)
+      .then((value) => {
+        if (active) setLarkLinked(value);
+        return client.larkConnected();
+      })
+      .then(
+        (value) => active && setLarkLinked(value),
+        () => {},
+      );
     void client.healthConnected().then(
       (value) => active && setLinked(value),
       () => {},
@@ -132,10 +156,15 @@ export function ConnectorsSheet({
   const matches = (item: Connector) =>
     !term || `${item.name} ${item.detail}`.toLocaleLowerCase().includes(term);
   const healthItem = access && access !== "unavailable" ? [health()] : [];
-  const connected = [...included(), ...(linked ? healthItem : [])].filter(
-    matches,
-  );
-  const available = [...(linked ? [] : healthItem), lark()].filter(matches);
+  const connected = [
+    ...included(),
+    ...(linked ? healthItem : []),
+    ...(larkLinked ? [larkSignedIn()] : []),
+  ].filter(matches);
+  const available = [
+    ...(linked ? [] : healthItem),
+    ...(larkLinked ? [] : [lark()]),
+  ].filter(matches);
   return (
     <Sheet title={t("Connectors")} onClose={onClose} grouped>
       <div className="connectors">
@@ -177,6 +206,15 @@ export function ConnectorsSheet({
                   {open === id && (
                     <div className="connector-detail">
                       <p>{detail}</p>
+                      {id === "lark" && (
+                        <button
+                          type="button"
+                          className="connector-disconnect"
+                          onClick={() => onDraft(t(larkSignOut))}
+                        >
+                          {t("Disconnect")}
+                        </button>
+                      )}
                       {id === "health" && (
                         <button
                           type="button"

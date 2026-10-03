@@ -104,6 +104,7 @@ describe("Connectors", () => {
         client={{
           healthConnected: async () => false,
           setHealthConnected: async () => {},
+          larkConnected: async () => false,
         }}
         onClose={() => {}}
         onDraft={() => {}}
