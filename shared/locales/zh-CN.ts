@@ -768,7 +768,7 @@ export const zhCN: Record<string, string> = {
   "Summaries you share become part of the conversation and are kept in your Ark account.":
     "你共享的摘要会成为对话的一部分，保存在你的 Ark 账号中。",
   Relationships: "人际关系",
-  Finance: "金融",
+  Finance: "财务",
   Career: "职业",
   Interests: "兴趣",
   Productivity: "效率提升",
@@ -845,7 +845,7 @@ export const zhCN: Record<string, string> = {
   "{count} endpoints": "{count} 个接口",
   health: "健康",
   relationships: "人际关系",
-  finance: "金融",
+  finance: "财务",
   career: "职业",
   interests: "兴趣",
   "personal interest": "兴趣",
