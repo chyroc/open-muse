@@ -9,6 +9,7 @@ import { zhUpcoming } from "./zh-CN-upcoming";
 import { zhHealth } from "./zh-CN-health";
 import { zhConnectors } from "./zh-CN-connectors";
 import { zhSettingsHome } from "./zh-CN-settings-home";
+import { zhSettingsPages } from "./zh-CN-settings-pages";
 import { zhReactions } from "./zh-CN-reactions";
 import { zhWebhooks } from "./zh-CN-webhooks";
 import { zhProactive } from "./zh-CN-proactive";
@@ -29,6 +30,7 @@ export const zhCN: Record<string, string> = {
   ...zhUpcoming,
   ...zhHealth,
   ...zhConnectors,
+  ...zhSettingsPages,
   ...zhSettingsHome,
   ...zhReactions,
   ...zhWebhooks,

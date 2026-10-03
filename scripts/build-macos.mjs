@@ -14,6 +14,7 @@ import { editorLicenseNotices } from "../macos/tools/licenses.mjs";
 import path from "node:path";
 import sharp from "sharp";
 import { accountConfig } from "./account-config.mjs";
+import { buildCommit } from "./build-commit.mjs";
 const root = path.resolve(import.meta.dirname, "..");
 // The Mac app is always an Open Muse account build: people sign in with their
 // account's email and password, as on the iPhone. The three public values come
@@ -110,6 +111,14 @@ await copyFile(
   path.join(root, "macos/Info.plist"),
   path.join(contents, "Info.plist"),
 );
+// The About window names the commit the app was built from.
+const commit = buildCommit(root);
+if (commit)
+  execFileSync("/usr/libexec/PlistBuddy", [
+    "-c",
+    `Add :OpenMuseCommit string ${commit}`,
+    path.join(contents, "Info.plist"),
+  ]);
 for (const language of ["en", "zh-Hans"]) {
   await cp(
     path.join(root, "macos", `${language}.lproj`),

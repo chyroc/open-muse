@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react";
 import { KeyRound, LoaderCircle, LogOut } from "lucide-react";
 import type { Client } from "./api";
 import { WorkspacePanel } from "./WorkspacePanel";
-import { BackgroundSettings } from "./BackgroundSettings";
 import { AccountPanel } from "./AccountPanel";
 import { WebhooksSettings } from "./WebhooksSettings";
 import type { BackgroundClient } from "./background-client";
@@ -26,7 +25,6 @@ function ArkAuthPanel({
   const [status, setStatus] = useState<Status>();
   const [apiKey, setAPIKey] = useState("");
   const [replacing, setReplacing] = useState(false);
-  const [removeConsent, setRemoveConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [error, setError] = useState("");
@@ -168,28 +166,24 @@ function ArkAuthPanel({
               {t("Replace API key")}
             </button>
           )}
-          <label className="background-consent background-remove-consent">
-            <input
-              type="checkbox"
-              checked={removeConsent}
-              disabled={busy}
-              onChange={(event) => setRemoveConsent(event.target.checked)}
-            />
-            {t(
-              "Remove the key from my Open Muse account on all devices and stop background work that uses it. The key stays valid at Ark until you revoke it there.",
-            )}
-          </label>
           <button
-            className="button secondary"
-            disabled={busy || !removeConsent}
-            onClick={() =>
+            className="button danger"
+            disabled={busy}
+            onClick={() => {
+              if (
+                !confirm(
+                  t(
+                    "Remove the key from my Open Muse account on all devices and stop background work that uses it. The key stays valid at Ark until you revoke it there.",
+                  ),
+                )
+              )
+                return;
               void run(async () => {
                 await client.auth("logout", { confirm: true });
-                setRemoveConsent(false);
                 await refresh();
                 onChanged();
-              })
-            }
+              });
+            }}
           >
             <LogOut size={15} />
             {t("Remove API key from my account")}
@@ -256,11 +250,6 @@ export function AuthPanel({
         key={`ark-${account}`}
         client={client}
         onChanged={onChanged}
-      />
-      <BackgroundSettings
-        key={`background-${account}`}
-        service={service}
-        client={client}
       />
       <WebhooksSettings key={`webhooks-${account}`} service={service} />
     </>

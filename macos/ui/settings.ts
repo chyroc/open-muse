@@ -1,3 +1,4 @@
+import { buildCommit } from "../../src/build-info";
 import {
   deviceLanguage,
   formatLocale,
@@ -103,7 +104,10 @@ export function activeLanguage() {
   };
 }
 
+// The version shown and reported: the commit the app was built from, or the
+// shell's own version in a build without one.
 export function appVersion() {
+  if (buildCommit) return buildCommit;
   const version = (window as unknown as { __OPEN_MUSE_VERSION__?: unknown })
     .__OPEN_MUSE_VERSION__;
   return typeof version === "string" && /^[\w.\- ()]{1,40}$/.test(version)

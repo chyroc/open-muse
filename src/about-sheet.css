@@ -1,0 +1,73 @@
+/* About in Settings, as iOS shows an app's About: icon, name and version,
+   then grouped rows. */
+.about-hero {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  margin: 8px 0 22px;
+  text-align: center;
+}
+.about-icon {
+  display: grid;
+  width: 76px;
+  height: 76px;
+  margin-bottom: 8px;
+  place-items: center;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
+}
+.about-icon svg {
+  width: 44px;
+  height: 44px;
+}
+.about-hero h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+}
+.about-hero p {
+  margin: 0;
+  font-size: 15px;
+  color: #6e6e73;
+}
+.about-version {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 15px;
+}
+.settings-list.about-notes {
+  margin-top: 22px;
+}
+.about-notes li {
+  display: flex;
+  gap: 12px;
+  padding: 14px 20px;
+}
+.about-notes li > svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+  color: #0064d0;
+}
+.about-notes strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+.about-notes p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #6e6e73;
+}
+@media (prefers-color-scheme: dark) {
+  .about-icon {
+    background: #2c2c2e;
+    box-shadow: none;
+  }
+  .about-hero p,
+  .about-notes p {
+    color: #98989d;
+  }
+  .about-notes li > svg {
+    color: #4a9cff;
+  }
+}

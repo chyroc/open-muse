@@ -36,6 +36,7 @@ import {
 import type { Client } from "../../src/api";
 import { backgroundClient } from "../../src/background-client";
 import { AuthPanel } from "../../src/AuthPanel";
+import { MuseMark } from "../../src/components";
 import { Modal } from "./Chrome";
 import { PresenceSettings } from "./PresenceSettings";
 import { CheckInSwitch } from "./CheckInSwitch";
@@ -481,11 +482,19 @@ export function SettingsWindow({ client }: { client: Client }) {
             {client.signedIn() && <h2>{t("Check-ins")}</h2>}
             <CheckInSwitch client={client} />
             <h2>{t("About")}</h2>
+            <div className="settings-about">
+              <span className="settings-about-icon" aria-hidden="true">
+                <MuseMark />
+              </span>
+              <strong>Open Muse</strong>
+              <span>
+                {t("Version {version}", {
+                  version: version || t("Development build"),
+                })}
+              </span>
+              <small>Volcano Ark Managed Agents</small>
+            </div>
             <div className="settings-group">
-              <Row
-                title={t("Version")}
-                value={version || t("Unknown outside the Mac app")}
-              />
               <Row
                 title={t("Updates")}
                 detail={t(

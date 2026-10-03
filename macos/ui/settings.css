@@ -795,3 +795,33 @@
 .settings-nav-row:disabled {
   opacity: 0.45;
 }
+
+/* About, as macOS shows an app's About window: icon, name, version. */
+.settings-about {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  margin: 4px 0 16px;
+  padding: 20px 12px;
+  border-radius: 16px;
+  background: var(--fill);
+  text-align: center;
+}
+.settings-about-icon svg {
+  width: 64px;
+  height: 64px;
+}
+.settings-about strong {
+  margin-top: 6px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.settings-about span {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.settings-about small {
+  font-size: 12px;
+  color: var(--text-2);
+}

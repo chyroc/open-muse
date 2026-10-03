@@ -493,6 +493,16 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     // The settings window is its own fixed-size window, and it keeps its web view
     // so reopening it does not repeat the Keychain authorization prompt.
     @objc private func openSettings() { showSettings(section: nil) }
+    // The standard About window, naming the commit the app was built from.
+    @objc private func showAbout() {
+        var options: [NSApplication.AboutPanelOptionKey: Any] = [:]
+        if let commit = Bundle.main.object(forInfoDictionaryKey: "OpenMuseCommit") as? String, !commit.isEmpty {
+            options[.applicationVersion] = commit
+            options[.version] = ""
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.orderFrontStandardAboutPanel(options: options)
+    }
     // A section is a route name already checked by the caller. A window made
     // now loads straight into it; an existing one switches to it.
     private func showSettings(section: String?) {
@@ -1432,7 +1442,8 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         let menu = NSMenu()
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: localized("About Open Muse"), action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        let about = appMenu.addItem(withTitle: localized("About Open Muse"), action: #selector(showAbout), keyEquivalent: "")
+        about.target = self
         appMenu.addItem(.separator())
         let settings = appMenu.addItem(withTitle: localized("Settings…"), action: #selector(openSettings), keyEquivalent: ",")
         settings.target = self

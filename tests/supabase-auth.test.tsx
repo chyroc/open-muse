@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { SupabaseAuth } from "../src/supabase-auth";
 import { BackgroundClient } from "../src/background-client";
-import { BackgroundSettings } from "../src/BackgroundSettings";
 import { AccountPanel } from "../src/AccountPanel";
 import {
   supabaseOrigin,
@@ -383,17 +382,11 @@ describe("Native Supabase Auth trial", () => {
             client={{ accountChanged: async () => {} }}
             onChanged={() => {}}
           />
-          <BackgroundSettings service={f.client} />
         </>,
       );
       const chinese = languages[0].startsWith("zh");
       expect(html).toContain(chinese ? "账号邮箱" : "Account email");
       expect(html).toContain(chinese ? "未登录" : "Not signed in");
-      expect(html).toContain(
-        chinese
-          ? "请先在上方登录 Open Muse 账号，再使用后台功能。"
-          : "Sign in to your Open Muse account above to use background features.",
-      );
       expect(html).not.toContain("muse_device_…");
       expect(html).not.toMatch(/trial|试用/);
       expect(f.authFetch).not.toHaveBeenCalled();

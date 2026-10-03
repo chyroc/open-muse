@@ -261,3 +261,39 @@
   font-size: 13px;
   color: #8e8e93;
 }
+
+/* A list's explanatory line, and a trailing action inside a row. */
+.settings-list-note {
+  margin: 0;
+  padding: 14px 20px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #6e6e73;
+}
+.settings-row-action {
+  flex: 0 0 auto;
+  padding: 6px 4px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 17px;
+  color: #0064d0;
+  transition: opacity var(--motion-press-duration) ease-out;
+}
+.settings-row-action:active {
+  opacity: 0.5;
+}
+.settings-row-action.danger {
+  color: #ff3b30;
+}
+@media (prefers-color-scheme: dark) {
+  .settings-list-note {
+    color: #98989d;
+  }
+  .settings-row-action {
+    color: #4a9cff;
+  }
+  .settings-row-action.danger {
+    color: #ff453a;
+  }
+}

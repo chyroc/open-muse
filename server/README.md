@@ -12,10 +12,11 @@ binaries are hosted here. Clients call Ark directly with the account's key.
 
 The service supports explicit one-off Feed generation, a daily local-time
 schedule, durable MA submission/reconciliation, and cursor-based Feed retrieval.
-Background generation is disabled by default. Both native apps include the
-controls in Settings, under **While you're away**. Background results appear in
-that card and in the Feed tab of account builds, next to the posts the device
-generated. Push notifications are not implemented.
+The service only runs background work when `BACKGROUND_ENABLED` allows it.
+The iPhone and Mac account builds then turn it on for each account once its
+Ark key and workspace are ready, with a daily Feed schedule; there is no
+separate setting. Background results appear in the Feed tab of account builds,
+next to the posts the device generated. Push notifications are not implemented.
 
 A clock ticks every five minutes: a signed external trigger from a Volcengine
 veFaaS timer when `SCHEDULER_SOURCE=external`, or Workers Cron on Cloudflare. Each tick

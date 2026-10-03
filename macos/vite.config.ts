@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import { buildCommit } from "../scripts/build-commit.mjs";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
 import {
@@ -24,6 +25,7 @@ export default defineConfig({
     "import.meta.env.VITE_MUSE_SUPABASE_URL": JSON.stringify(auth),
     "import.meta.env.VITE_MUSE_SUPABASE_ANON_KEY": JSON.stringify(authKey),
     "import.meta.env.VITE_MUSE_MA_PROVIDER": JSON.stringify(ma.id),
+    "import.meta.env.VITE_OPEN_MUSE_COMMIT": JSON.stringify(buildCommit()),
   },
   root: path.join(import.meta.dirname, "ui"),
   base: "./",

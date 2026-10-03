@@ -77,6 +77,7 @@ import {
 } from "./reminderNotifications";
 import { backgroundClient } from "./background-client";
 import { registerThisIPhone } from "./iphone-device";
+import { ensureBackgroundWork } from "./background-default";
 import { Sheet, primaryNavigation } from "./MusePages";
 import { LibraryPage } from "./LibraryPage";
 import {
@@ -164,14 +165,17 @@ export default function App() {
     return () => document.removeEventListener("visibilitychange", foreground);
   }, [client, restored]);
   // The iPhone app reports itself to the signed-in account's device list at
-  // start, after signing in, and on returning to the foreground; it is
-  // throttled and silent, and does nothing in other builds.
+  // start, after signing in, and on returning to the foreground, and keeps
+  // background work on for the account; both are throttled and silent.
   useEffect(() => {
     if (!restored) return;
     const report = () => {
       if (document.hidden) return;
       void Promise.resolve()
         .then(() => registerThisIPhone())
+        .catch(() => {});
+      void Promise.resolve()
+        .then(() => ensureBackgroundWork(client))
         .catch(() => {});
     };
     report();

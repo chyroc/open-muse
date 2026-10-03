@@ -121,7 +121,8 @@ describe("Workspace settings review", () => {
     );
     expect(buttons()).toEqual([]);
     expect(badge()).toBe("Ready");
-    expect(host.querySelector('a[href="#/"]')).not.toBeNull();
+    // A ready workspace needs no separate start button.
+    expect(host.querySelector('a[href="#/"]')).toBeNull();
   });
 
   it("does not offer to save values an account cannot use", async () => {

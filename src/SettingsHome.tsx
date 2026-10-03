@@ -1,16 +1,14 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
   Cpu,
-  ExternalLink,
   Info,
   Check,
   KeyRound,
   Languages,
+  MessageCircle,
   MessageCircleHeart,
+  MonitorSmartphone,
   Plug,
-  ShieldCheck,
-  SquareTerminal,
-  Unplug,
 } from "lucide-react";
 import {
   deviceLanguage,
@@ -23,7 +21,11 @@ import type { Client } from "./api";
 import { AuthPanel } from "./AuthPanel";
 import { CheckInSettings } from "./CheckInSettings";
 import { ConnectorsSheet } from "./ConnectorsSheet";
-import { MuseMark } from "./components";
+import { AboutSheet } from "./AboutSheet";
+import { AccountSheet } from "./AccountSheet";
+import { backgroundClient } from "./background-client";
+import { ChannelsSheet } from "./ChannelsSheet";
+import { DevicesSheet } from "./DevicesSheet";
 import { Sheet } from "./MusePages";
 import { effortLabels, ModelSheet } from "./ModelSheet";
 import { modelOption, type ModelChoice } from "../shared/models";
@@ -32,6 +34,8 @@ import "./settings-home.css";
 
 type Section =
   | "connectors"
+  | "devices"
+  | "channels"
   | "checkins"
   | "model"
   | "language"
@@ -105,6 +109,20 @@ export function SettingsHome({
         />
         {signedIn && (
           <Row
+            icon={<MonitorSmartphone size={22} strokeWidth={2} />}
+            label={t("Devices")}
+            onClick={() => setSection("devices")}
+          />
+        )}
+        {signedIn && (
+          <Row
+            icon={<MessageCircle size={22} strokeWidth={2} />}
+            label={t("Message channels")}
+            onClick={() => setSection("channels")}
+          />
+        )}
+        {signedIn && (
+          <Row
             icon={<MessageCircleHeart size={22} strokeWidth={2} />}
             label={t("Check-ins")}
             onClick={() => setSection("checkins")}
@@ -135,13 +153,6 @@ export function SettingsHome({
             onClick={() => setSection("account")}
           />
         )}
-        <li>
-          <a className="settings-list-row" href="#/studio">
-            <SquareTerminal size={22} strokeWidth={2} aria-hidden="true" />
-            <span>MA Studio</span>
-            <ExternalLink size={16} aria-hidden="true" />
-          </a>
-        </li>
         <Row
           icon={<Info size={22} strokeWidth={2} />}
           label={t("About")}
@@ -239,48 +250,29 @@ export function SettingsHome({
           <CheckInSettings client={client} bare />
         </Sheet>
       )}
-      {section === "account" && (
-        <Sheet title={t("Account and workspace")} onClose={close} grouped>
-          <AuthPanel client={client} onChanged={onConnection} />
-        </Sheet>
-      )}
-      {section === "about" && (
-        <Sheet title={t("About")} onClose={close} grouped>
-          <section className="privacy-grid">
-            <div>
-              <ShieldCheck size={22} />
-              <h3>{t("Every step is visible")}</h3>
-              <p>
-                {t(
-                  "Tools run directly by default and may send data to external services, change files, or incur charges. Upstream denials still apply. Execution records stay in the conversation.",
-                )}
-              </p>
-            </div>
-            <div>
-              <Unplug size={22} />
-              <h3>{t("A real connection")}</h3>
-              <p>
-                {t(
-                  "If sign-in expires or a request fails, Muse reports the error instead of generating simulated replies.",
-                )}
-              </p>
-            </div>
-          </section>
-          <div className="about-line">
-            <span>
-              <MuseMark />
-              Open Muse <small>v0.2.0</small>
-            </span>
-            <a
-              href="https://www.volcengine.com/product/ark"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Volcano Ark
-              <ExternalLink size={13} />
-            </a>
-          </div>
-        </Sheet>
+      {section === "account" &&
+        (backgroundClient.accountOwner() ? (
+          <AccountSheet
+            client={client}
+            onClose={close}
+            onChanged={onConnection}
+          />
+        ) : (
+          <Sheet title={t("Account and workspace")} onClose={close} grouped>
+            <AuthPanel client={client} onChanged={onConnection} />
+          </Sheet>
+        ))}
+      {section === "about" && <AboutSheet onClose={close} />}
+      {section === "devices" && <DevicesSheet onClose={close} />}
+      {section === "channels" && (
+        <ChannelsSheet
+          client={client}
+          onClose={close}
+          onDraft={(text) => {
+            close();
+            onDraft(text);
+          }}
+        />
       )}
     </div>
   );

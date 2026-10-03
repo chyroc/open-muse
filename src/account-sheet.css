@@ -1,0 +1,75 @@
+/* Account and workspace for a signed-in account: who it is, then grouped
+   rows in the system settings style. */
+.account-hero {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  margin: 8px 0 18px;
+  text-align: center;
+}
+.account-avatar {
+  display: grid;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 8px;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #a4a9b4, #868b96);
+  font-size: 30px;
+  font-weight: 600;
+  color: #fff;
+}
+.account-hero h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  word-break: break-all;
+}
+.account-hero p {
+  margin: 0;
+  font-size: 13px;
+  color: #6e6e73;
+}
+.account-link-row .settings-row-text {
+  color: #0064d0;
+}
+.account-link-row .settings-row-text small {
+  color: #8e8e93;
+}
+.settings-list.account-actions {
+  margin-top: 22px;
+}
+.account-key-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 20px;
+}
+.account-key-form input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 17px;
+  outline: none;
+}
+.account-key-form > div {
+  display: flex;
+  gap: 4px;
+}
+.muse-sheet .workspace-card {
+  border-radius: 24px;
+}
+@media (prefers-color-scheme: dark) {
+  .account-hero p {
+    color: #98989d;
+  }
+  .account-link-row .settings-row-text {
+    color: #4a9cff;
+  }
+  .account-key-form input {
+    color: #fff;
+  }
+}

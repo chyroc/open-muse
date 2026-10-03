@@ -489,6 +489,22 @@ export class BackgroundClient {
       ? this.current.owner
       : undefined;
   }
+  // The signed-in account's email, as its session token states it; for
+  // display only, never for identity.
+  accountEmail() {
+    const token = this.accountOwner() ? this.current?.token : undefined;
+    try {
+      const payload = token?.split(".")[1];
+      if (!payload) return undefined;
+      const json = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+      const email = (JSON.parse(json) as { email?: unknown }).email;
+      return typeof email === "string" && email.length <= 320
+        ? email
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  }
   accountSessionUnconfirmed() {
     return Boolean(this.current?.account?.refreshPending);
   }

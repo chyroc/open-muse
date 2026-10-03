@@ -6,6 +6,7 @@ import {
   thisDeviceName,
 } from "./devices";
 import { appSurface } from "./platform";
+import { buildCommit } from "./build-info";
 
 // In account builds the iPhone app shows up in the account's device list, so
 // the Mac's Settings can list it. It reports at most hourly per account; the
@@ -23,7 +24,7 @@ export async function registerThisIPhone(now = Date.now()) {
     return await registerThisDevice(
       "ios",
       thisDeviceName("iPhone"),
-      shellVersion(),
+      buildCommit || shellVersion(),
     );
   } catch {
     // Best-effort: a failure never interrupts the app; the next launch or

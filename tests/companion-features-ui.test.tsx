@@ -156,12 +156,15 @@ describe("Settings home", () => {
     expect(html).toContain("Volcano Ark MA");
     for (const label of [
       "Connectors",
+      "Devices",
+      "Message channels",
       "Check-ins",
       "Account and workspace",
-      "MA Studio",
       "About",
     ])
       expect(html).toContain(label);
+    // Studio is not listed in Settings.
+    expect(html).not.toContain("MA Studio");
     expect(html).toContain("Reset this device");
     expect(html).toContain("Language");
     expect(html).toContain("Follow system");

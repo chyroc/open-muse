@@ -1,0 +1,96 @@
+/* Message channels in Settings. */
+.channels-intro {
+  margin: 0 16px 16px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #3a3a3c;
+}
+.channel-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 8px;
+  background: #3370ff;
+  color: #fff;
+}
+.settings-list-row > span.channel-icon:first-child {
+  flex: 0 0 30px;
+  color: #fff;
+}
+.channel-setup {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
+  padding: 18px;
+  border-radius: 24px;
+  background: #fff;
+}
+.channel-setup h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+.channel-setup p,
+.channel-setup ol {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
+  color: #3a3a3c;
+}
+.channel-setup ol {
+  display: grid;
+  gap: 8px;
+  padding-left: 20px;
+}
+.channel-address {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 0;
+  border-radius: 14px;
+  background: #f2f2f7;
+  font: inherit;
+  text-align: left;
+  transition: opacity var(--motion-press-duration, 120ms) ease-out;
+}
+.channel-address:active {
+  opacity: 0.7;
+}
+.channel-address code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #1c1c1e;
+  word-break: break-all;
+}
+.channel-address span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #0064d0;
+}
+.settings-list.channel-actions {
+  margin-top: 22px;
+}
+@media (prefers-color-scheme: dark) {
+  .channels-intro,
+  .channel-setup p,
+  .channel-setup ol {
+    color: #c7c7cc;
+  }
+  .channel-setup {
+    background: #1c1c1e;
+  }
+  .channel-address {
+    background: #2c2c2e;
+  }
+  .channel-address code {
+    color: #fff;
+  }
+  .channel-address span {
+    color: #4a9cff;
+  }
+}

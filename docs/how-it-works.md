@@ -418,13 +418,41 @@ actions. Creating a hook shows its address and secret once, plus the address
 with the secret as a `token` parameter for services that cannot set headers;
 the list shows each hook's last event, and revoking one (after confirming)
 stops it at once. Events are accepted only while background work is allowed
-under **While you're away** and **Deliver even when Open Muse is closed** is
+(on by default) and **Deliver even when Open Muse is closed** is
 on in Upcoming; a busy chat refuses an event so the sender can retry. Event
 contents are treated as untrusted third-party data, never as your request.
 Anyone with a hook's address and secret can post into your main chat, so
 revoke a hook whose address leaked. See
 [the service README](../server/README.md#incoming-webhooks) for limits and the
 security details.
+
+### Lark message channel
+
+Settings > **Message channels** on iPhone connects Lark (Feishu), so the
+person can message their assistant from Lark. Connecting creates an incoming
+webhook named "Lark message channel" and shows its address once, with the
+steps for the Lark developer console: turn on the bot of the app the
+assistant uses with lark-cli, send its receive-message events
+(`im.message.receive_v1`) to the address without an encrypt key, and publish
+it; **Ask my assistant to set it up** drafts that request in the main chat.
+A message to the bot reaches the main chat as a hidden app-generated message
+with its sender, chat, and text. The companion first confirms with lark-cli
+that the sender is the person's own Lark account; only then does it treat the
+text as the person's request and answer in Lark as the bot, replying to that
+message, and here. A message from anyone else is never followed or answered
+in Lark; the companion only mentions it in the app. The assistant reads only
+messages sent to the bot. **Get a new address** replaces the address, and
+**Disconnect Lark** revokes the hook at once. The same delivery conditions
+and limits as other webhooks apply.
+
+### Devices and About
+
+Settings > **Devices** on iPhone lists this iPhone and the account's other
+devices with when each was last seen and the build it runs; removing one only
+takes it off the list. **About** shows the commit the app was built from as
+its version (with "-modified" when the build had uncommitted changes); tap it
+to copy. The Mac shows the same version in Settings > General and in the
+About Open Muse window.
 
 ## Personal identity and memory
 
@@ -527,8 +555,13 @@ automatically repeated. Invalid output leaves existing content unchanged and
 links to the generation conversation. Generation on the device is
 user-triggered; push notifications are not enabled.
 
-In account builds, posts the Open Muse service prepared on the schedule set
-under **While you're away** also appear in the Feed, on iPhone and Mac. They
+In account builds, background work is on by default: once the account's Ark
+key and workspace are ready, the iPhone and Mac apps let the Open Muse service
+use them and keep a daily Feed scheduled (08:00 in the device's time zone
+unless one was already set). They check at launch, on returning to the
+foreground, and at most hourly; each write is sent once and a failure waits
+for the next check. Removing the Ark key from the account stops it. Posts the
+service prepares also appear in the Feed, on iPhone and Mac. They
 are merged with the device's posts newest first; a post the device already
 shows from the same MA reply appears once. The device's cached copy shows at
 once and offline, and the page never waits for the service. These posts have

@@ -111,6 +111,7 @@ import { CommandPalette, paletteItems } from "./Palette";
 import { FindBar, findMatches, partKey } from "./FindBar";
 import { MessageActions } from "./MessageActions";
 import { registerThisMac } from "./devices";
+import { ensureBackgroundWork } from "../../src/background-default";
 import { useUnreadBadge } from "./unread";
 import { speechAvailable, useReadAloud } from "./speech";
 import { useVoiceConversation, type VoiceState } from "./voice";
@@ -685,14 +686,19 @@ export function DesktopApp({ client }: { client: Client }) {
       active = false;
     };
   }, [client, ready, connectionEpoch]);
-  // In account builds this Mac shows up in the account's device list. It
-  // reports itself at start and hourly; a failure never interrupts the app.
+  // In account builds this Mac shows up in the account's device list and
+  // keeps background work on for the account. Both run at start and hourly;
+  // a failure never interrupts the app.
   useEffect(() => {
     if (!ready) return;
-    const report = () =>
+    const report = () => {
       void Promise.resolve()
         .then(registerThisMac)
         .catch(() => {});
+      void Promise.resolve()
+        .then(() => ensureBackgroundWork(client))
+        .catch(() => {});
+    };
     report();
     const timer = setInterval(report, 60 * 60 * 1000);
     return () => clearInterval(timer);

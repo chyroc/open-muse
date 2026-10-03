@@ -202,33 +202,26 @@ export function WorkspacePanel({ client }: { client: Client }) {
           status?.message ||
           t("Reading workspace status…")}
       </p>
-      {status?.state === "ready"
-        ? // Starting work is offered once no decision is pending.
-          !status.review && (
-            <a className="button primary" href="#/">
-              {t("Start something new")}
-            </a>
-          )
-        : status?.state !== "disconnected" && (
-            <button
-              className="button secondary"
-              disabled={busy || (preparing && !error)}
-              onClick={() => void prepare()}
-            >
-              {preparing ? (
-                <LoaderCircle className="spin" size={16} />
-              ) : (
-                <RefreshCw size={16} />
-              )}
-              {error
-                ? t("Read status again")
-                : preparing
-                  ? t("Setting up automatically…")
-                  : status?.state === "error"
-                    ? t("Continue setup")
-                    : t("Set up workspace")}
-            </button>
+      {status?.state !== "ready" && status?.state !== "disconnected" && (
+        <button
+          className="button secondary"
+          disabled={busy || (preparing && !error)}
+          onClick={() => void prepare()}
+        >
+          {preparing ? (
+            <LoaderCircle className="spin" size={16} />
+          ) : (
+            <RefreshCw size={16} />
           )}
+          {error
+            ? t("Read status again")
+            : preparing
+              ? t("Setting up automatically…")
+              : status?.state === "error"
+                ? t("Continue setup")
+                : t("Set up workspace")}
+        </button>
+      )}
       {notice && (
         <p className="background-note" role="status">
           {notice}
