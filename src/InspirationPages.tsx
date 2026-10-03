@@ -267,7 +267,7 @@ export function InspirationPage({
           {error}
         </p>
       )}
-      {loading && !starters && !items.length && (
+      {loading && !starters && !data && (
         <p className="inspiration-status" role="status">
           <LoaderCircle size={19} className="spin" />
           {t("Loading…")}
