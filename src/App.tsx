@@ -1,4 +1,5 @@
 import { formatLocale, systemLanguage, t } from "../shared/i18n";
+import { flushSync } from "react-dom";
 import {
   Fragment,
   useCallback,
@@ -1530,6 +1531,17 @@ function Workspace({
           busy={busy || automaticCount > 0}
           onConfirm={confirm}
           onNew={newSideChat}
+          onRename={() => {
+            // The draft must be in place before the keyboard rises.
+            const prompt = t("Change your name to");
+            const text = systemLanguage() === "zh-CN" ? prompt : `${prompt} `;
+            flushSync(() => setDraft(text));
+            const input = document.querySelector<HTMLTextAreaElement>(
+              ".chat-composer textarea",
+            );
+            input?.focus({ preventScroll: true });
+            input?.setSelectionRange(text.length, text.length);
+          }}
         />
       )}
       {selectedMessage && selectedBubble && (

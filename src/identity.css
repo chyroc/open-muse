@@ -670,3 +670,57 @@
 .desktop-open:active {
   transform: scale(var(--motion-press-scale));
 }
+/* The pencil's menu: a frosted panel that grows out of the pencil like a
+   system context menu. */
+.identity-menu-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+}
+.identity-menu {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 78px);
+  left: 8px;
+  z-index: 4;
+  width: 250px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 26px;
+  background: rgb(250 250 250 / 72%);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  backdrop-filter: blur(24px) saturate(1.6);
+  box-shadow:
+    inset 0 0 0 0.5px rgb(255 255 255 / 70%),
+    0 10px 40px rgb(0 0 0 / 14%);
+  transform-origin: 227px 0;
+  animation: identity-menu-in var(--motion-release-duration)
+    var(--motion-release-ease) both;
+}
+.identity-menu button {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 50px;
+  padding: 0 20px;
+  font-size: 17px;
+  color: #000;
+  text-align: left;
+  transition: background-color var(--motion-press-duration) ease-out;
+}
+.identity-menu button:active {
+  background: rgb(0 0 0 / 8%);
+}
+@keyframes identity-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes identity-menu-in {
+    from {
+      opacity: 0;
+    }
+  }
+}

@@ -159,6 +159,7 @@ export function CompanionSheet({
   busy,
   onConfirm,
   onNew,
+  onRename,
   isMain = false,
 }: {
   client: Client;
@@ -172,6 +173,8 @@ export function CompanionSheet({
   busy: boolean;
   onConfirm: (result: "allow" | "deny", event: AgentEvent) => void;
   onNew: () => void;
+  // Starts a message asking the companion to take a new name.
+  onRename?: () => void;
   isMain?: boolean;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -181,6 +184,7 @@ export function CompanionSheet({
   const [error, setError] = useState("");
   const [mounted, setMounted] = useState<boolean>();
   const [sharing, setSharing] = useState(false);
+  const [menu, setMenu] = useState(false);
   const closing = useRef(false);
   // Slides down and away, then reports closed.
   const dismiss = () => {
@@ -256,11 +260,43 @@ export function CompanionSheet({
             className="glass-button"
             aria-label={t("Edit companion name")}
             disabled={loading || Boolean(error) || !client.signedIn()}
-            onClick={() => setSelected("IDENTITY.md")}
+            aria-haspopup="menu"
+            aria-expanded={menu}
+            onClick={() => setMenu(true)}
           >
             <Pencil size={20} />
           </button>
         </div>
+        {menu && (
+          <>
+            <div
+              className="identity-menu-scrim"
+              onClick={() => setMenu(false)}
+            />
+            <div className="identity-menu" role="menu">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenu(false);
+                  // Ask in the chat, as with any other change. The composer
+                  // takes focus within this tap so the keyboard can rise, so
+                  // the sheet stops being modal before it slides away.
+                  const element = dialog.current;
+                  if (onRename && element) {
+                    element.close();
+                    element.show();
+                    onRename();
+                    dismiss();
+                  } else setSelected("IDENTITY.md");
+                }}
+              >
+                <Pencil size={21} />
+                {t("Edit name")}
+              </button>
+            </div>
+          </>
+        )}
         <h1>{identity.name}</h1>
         <span className="identity-connection">
           <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
