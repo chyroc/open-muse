@@ -1,5 +1,6 @@
 import { formatLocale, systemLanguage, t } from "../shared/i18n";
 import { flushSync } from "react-dom";
+import { isNetworkFailure } from "../shared/network-error";
 import { starterIdeaPrefix } from "../shared/starter-ideas";
 import { isBackgroundPost } from "./background-feed";
 import {
@@ -467,6 +468,7 @@ function Workspace({
     window.addEventListener("hashchange", onRoute);
     return () => window.removeEventListener("hashchange", onRoute);
   }, []);
+  const loadFailures = useRef(0);
   const reload = useCallback(async () => {
     // Signed in on this device: the chat can open from the local index while
     // the workspace check below goes to the cloud.
@@ -501,8 +503,15 @@ function Workspace({
       if (!alive.current) return;
       setSessions(result.data);
       setLoadError("");
+      loadFailures.current = 0;
     } catch (error) {
-      if (alive.current) setLoadError((error as Error).message);
+      if (!alive.current) return;
+      // A network hiccup is retried on the next reload; it is shown, in the
+      // person's language, only when it happens twice in a row.
+      if (isNetworkFailure(error)) {
+        if (++loadFailures.current >= 2)
+          setLoadError(t("Can’t reach the network right now. Retrying…"));
+      } else setLoadError((error as Error).message);
     } finally {
       if (alive.current) setLoading(false);
     }

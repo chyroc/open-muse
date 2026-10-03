@@ -1253,4 +1253,5 @@ export const zhCN: Record<string, string> = {
   "I’ll share something long to read; give me a one-page brief with the main points and next steps.":
     "我会分享一篇很长的内容，请给我一页摘要，包括要点和下一步。",
   Connecting: "正在连接",
+  "Can’t reach the network right now. Retrying…": "网络暂时连不上，正在重试…",
 };
