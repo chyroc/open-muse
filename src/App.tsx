@@ -1,5 +1,6 @@
 import { formatLocale, systemLanguage, t } from "../shared/i18n";
 import { flushSync } from "react-dom";
+import { starterIdeaPrefix } from "../shared/starter-ideas";
 import {
   Fragment,
   useCallback,
@@ -748,10 +749,12 @@ function Workspace({
           setGoalDraft(undefined);
         }
         if (inspirationDraft) {
-          await client.linkInspirationDiscussion(
-            inspirationDraft.id,
-            session.id,
-          );
+          // Starter ideas are not saved items, so there is nothing to link.
+          if (!inspirationDraft.id.startsWith(starterIdeaPrefix))
+            await client.linkInspirationDiscussion(
+              inspirationDraft.id,
+              session.id,
+            );
           setInspirationDraft(undefined);
         }
       }

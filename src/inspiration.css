@@ -349,3 +349,33 @@
 .feed-instructions-editor .inline-error {
   margin: 0 16px;
 }
+/* After the first visit, the feed's instructions stay at the top as one
+   line that opens them for editing. */
+.feed-instructions-pill {
+  display: block;
+  width: 100%;
+  height: 50px;
+  margin: 0 0 20px;
+  padding: 0 18px;
+  overflow: hidden;
+  border: 1px solid #e3e3e6;
+  border-radius: 25px;
+  background: #fff;
+  font-size: 17px;
+  line-height: 48px;
+  color: #6e6e73;
+  text-align: left;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transition: transform var(--motion-press-duration) ease-out;
+}
+.feed-instructions-pill:active {
+  transform: scale(var(--motion-press-scale));
+}
+@media (prefers-color-scheme: dark) {
+  .feed-instructions-pill {
+    border-color: #38383a;
+    background: #1c1c1e;
+    color: #aeaeb2;
+  }
+}

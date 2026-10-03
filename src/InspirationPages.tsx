@@ -20,6 +20,8 @@ import { useRefreshHandler } from "./PullToRefresh";
 import { Markdown, dateLabel } from "./components";
 import { PageHeader, Sheet } from "./MusePages";
 import { useTask } from "./useTask";
+import { defaultFeedInstructions } from "../shared/inspiration";
+import { starterIdeas } from "../shared/starter-ideas";
 import "./inspiration.css";
 
 export function InspirationPost({
@@ -216,7 +218,15 @@ export function InspirationPage({
       }
     }
   }
-  const items = data?.items.filter((item) => item.kind === kind) ?? [];
+  const found = data?.items.filter((item) => item.kind === kind) ?? [];
+  // Until personal ideas are found, show what the companion can already do.
+  const starters = kind === "ideas" && !found.length;
+  const items = starters ? starterIdeas(t) : found;
+  // The default instructions are shown in the person's language.
+  const instructions =
+    data?.instructions.content === defaultFeedInstructions
+      ? t(defaultFeedInstructions)
+      : (data?.instructions.content ?? "");
   const title = kind === "feed" ? t("Feed") : t("Ideas");
   return (
     <section className={`muse-page inspiration-page ${kind}`}>
@@ -226,7 +236,7 @@ export function InspirationPage({
           {error}
         </p>
       )}
-      {loading && (
+      {loading && !starters && (
         <p className="inspiration-status" role="status">
           <LoaderCircle size={19} className="spin" />
           {t("Loading…")}
@@ -240,7 +250,7 @@ export function InspirationPage({
               "Your feed is shaped by these instructions. Changes apply to future posts.",
             )}
           </p>
-          <div>{data.instructions.content}</div>
+          <div>{instructions}</div>
           <footer>
             <button
               disabled={!client.signedIn()}
@@ -258,6 +268,17 @@ export function InspirationPage({
             </button>
           </footer>
         </aside>
+      )}
+      {kind === "feed" && data?.instructionsDismissed && (
+        <button
+          type="button"
+          className="feed-instructions-pill"
+          aria-label={t("Edit feed instructions")}
+          disabled={!client.signedIn()}
+          onClick={() => setEditing(true)}
+        >
+          {instructions}
+        </button>
       )}
       {items.length ? (
         kind === "feed" ? (
