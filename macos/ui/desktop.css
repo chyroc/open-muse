@@ -92,7 +92,7 @@ h3 {
   isolation: isolate;
 }
 .rail {
-  width: 74px;
+  width: 78px;
   flex-shrink: 0;
   border-right: 1px solid var(--line);
   display: flex;
@@ -125,8 +125,8 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 43px;
-  height: 43px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
 }
 .rail-items button,

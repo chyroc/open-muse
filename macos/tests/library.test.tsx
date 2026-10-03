@@ -369,13 +369,13 @@ describe("Mac Library desktop UI", () => {
     expect(create?.querySelector("span")?.textContent).toBe(
       "Create a document",
     );
-    // A full-width 1152-point window leaves 838 points of workspace after the
-    // 74-point rail and the 240-point sidebar. The label must survive there,
+    // A full-width 1152-point window leaves 834 points of workspace after the
+    // 78-point rail and the 240-point sidebar. The label must survive there,
     // and the title truncates first, so the threshold stays well below it.
     const css = readFileSync("macos/ui/library.css", "utf8");
     const compact =
       /@container \(max-width: (\d+)px\)[^{]*\{\s*\.library-create/.exec(css);
-    expect(Number(compact?.[1])).toBeLessThan(838 - 240);
+    expect(Number(compact?.[1])).toBeLessThan(834 - 240);
     expect(css).toContain(".library-title-text");
   });
   it.each(["en", "zh-CN", "fr-FR"])(
