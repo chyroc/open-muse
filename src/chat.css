@@ -534,10 +534,25 @@ html.sidebar-dragging .companion-shell {
   font-size: 13px;
   overflow-x: auto;
 }
+/* A wide table scrolls sideways inside the bubble; its columns keep a
+   readable width instead of wrapping every few characters. */
 .chat-bubble .markdown table {
   display: block;
+  width: max-content;
   max-width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.chat-bubble .markdown th,
+.chat-bubble .markdown td {
+  min-width: 7.5em;
+  max-width: 15em;
+  line-height: 1.45;
+  vertical-align: top;
+}
+.chat-bubble .markdown th:first-child,
+.chat-bubble .markdown td:first-child {
+  min-width: 5.5em;
 }
 /* A reaction sits on the bubble's lower trailing corner (leading for the
    person's own messages), ringed in the page color, and the bubble makes
