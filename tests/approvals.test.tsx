@@ -2,6 +2,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { approvalHistory } from "../shared/approvals";
+import { healthDeclined } from "../shared/health";
 import { t } from "../shared/i18n";
 import type { AgentEvent } from "../shared/types";
 import { ApprovalHistory, timeAgo } from "../src/ApprovalHistory";
@@ -53,6 +54,55 @@ describe("approval history", () => {
     ]);
     expect(records[0].tool).toBe("bash");
     expect(records[0].input).toContain('"command"');
+  });
+
+  it("includes the person's answers to Health and Mac requests", () => {
+    const device = [
+      {
+        id: "h1",
+        type: "agent.custom_tool_use",
+        name: "health_read",
+        input: { metric: "sleep" },
+      },
+      {
+        id: "r1",
+        type: "user.custom_tool_result",
+        custom_tool_use_id: "h1",
+        content: [{ type: "text", text: healthDeclined }],
+        created_at: at(5),
+      },
+      {
+        id: "m1",
+        type: "agent.custom_tool_use",
+        name: "mac_screenshot",
+        input: {},
+      },
+      {
+        id: "r2",
+        type: "user.custom_tool_result",
+        custom_tool_use_id: "m1",
+        content: [{ type: "text", text: "captured" }],
+        created_at: at(6),
+      },
+      {
+        id: "o1",
+        type: "agent.custom_tool_use",
+        name: "other_tool",
+        input: {},
+      },
+      {
+        id: "r3",
+        type: "user.custom_tool_result",
+        custom_tool_use_id: "o1",
+        content: [{ type: "text", text: "done" }],
+      },
+    ] as AgentEvent[];
+    expect(
+      approvalHistory(device).map((record) => [record.kind, record.result]),
+    ).toEqual([
+      ["mac", "allow"],
+      ["health", "deny"],
+    ]);
   });
 
   it("renders each record with its outcome and nothing when none were answered", () => {

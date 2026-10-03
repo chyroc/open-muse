@@ -1,5 +1,11 @@
 import { stepTarget } from "./activity";
-import type { AgentEvent } from "./types";
+import {
+  healthDeclined,
+  healthMetricLabel,
+  healthRangeLabel,
+  parseHealthRequest,
+} from "./health";
+import { eventText, type AgentEvent } from "./types";
 
 // A tool call the person answered: what it asked to do, how they answered,
 // and when. These titles are UI labels; t() translates them where shown.
@@ -34,12 +40,17 @@ function summary(event: AgentEvent) {
       title: "Open this web page",
       detail: typeof input.url === "string" ? input.url : "",
     };
-  if (name === "health_read")
+  if (name === "health_read") {
+    // Which data and over which days, as the request card names them.
+    const query = parseHealthRequest(event);
     return {
       kind: "health" as const,
       title: "Read Health data",
-      detail: stepTarget(event),
+      detail: query
+        ? `${healthMetricLabel(query.metric)} · ${healthRangeLabel(query)}`
+        : stepTarget(event),
     };
+  }
   if (name.startsWith("mac_"))
     return {
       kind: "mac" as const,
@@ -53,11 +64,35 @@ function summary(event: AgentEvent) {
   };
 }
 
-// Every answered request in a conversation, newest first.
+// Device requests the person answers themselves: Apple Health reads on the
+// iPhone and Mac actions on the Mac. A decline is reported to the agent with
+// one of these openings.
+const declined = [healthDeclined, "The user declined"];
+const reviewed = (name = "") =>
+  name === "health_read" || name.startsWith("mac_");
+
+// Every answered request in a conversation, newest first: tool confirmations
+// and the person's answers to device requests.
 export function approvalHistory(events: readonly AgentEvent[]) {
   const calls = new Map(events.map((event) => [event.id, event]));
   const records: ApprovalRecord[] = [];
   for (const event of events) {
+    if (event.type === "user.custom_tool_result") {
+      const call = calls.get(String(event.custom_tool_use_id));
+      if (!call || !reviewed(call.name)) continue;
+      const text = eventText(event);
+      records.push({
+        id: event.id,
+        ...summary(call),
+        tool: call.name ?? "",
+        result: declined.some((opening) => text.startsWith(opening))
+          ? "deny"
+          : "allow",
+        at: event.created_at ?? event.processed_at ?? call.created_at ?? "",
+        input: JSON.stringify((call as { input?: unknown }).input ?? {}),
+      });
+      continue;
+    }
     if (event.type !== "user.tool_confirmation") continue;
     const call = calls.get(String(event.tool_use_id));
     if (!call) continue;

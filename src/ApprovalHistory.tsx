@@ -29,6 +29,19 @@ export function timeAgo(at: string, now = Date.now()) {
   return format.format(0, "second");
 }
 
+// "Today 00:09", or the date and time for earlier days.
+function answeredAt(at: string) {
+  const date = new Date(at);
+  return date.toDateString() === new Date().toDateString()
+    ? dateLabel(at)
+    : date.toLocaleString(formatLocale(), {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+}
+
 const title = (record: ApprovalRecord) =>
   t(record.title, { tool: record.tool });
 const outcome = (record: ApprovalRecord) =>
@@ -130,7 +143,7 @@ function ApprovalDetail({
         {record.detail && (
           <p className="activity-detail-line">{record.detail}</p>
         )}
-        {record.at && <time dateTime={record.at}>{dateLabel(record.at)}</time>}
+        {record.at && <time dateTime={record.at}>{answeredAt(record.at)}</time>}
         <h3 className="approval-detail-label">{t("Details")}</h3>
         <pre className="approval-detail-input">{record.input}</pre>
       </div>
