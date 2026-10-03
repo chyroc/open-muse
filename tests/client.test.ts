@@ -1203,6 +1203,47 @@ describe("Direct MA client", () => {
     );
     expect((await f.client.session(own.id)).id).toBe(own.id);
   });
+  it("creates conversations on the chosen model and moves the main chat to it", async () => {
+    const f = fixture();
+    await f.login();
+    await f.client.prepareWorkspace();
+    expect(await f.client.modelChoice()).toBeUndefined();
+    const main = await f.client.openConversation("main");
+    await f.client.setModelChoice({
+      model: "doubao-seed-2-1-lite-260915",
+      effort: "low",
+    });
+    const side = await f.client.create("Side", "general");
+    const created = f.resources.sessions.find((row) => row.id === side.id)!;
+    expect((created.agent as { model?: unknown }).model).toEqual({
+      id: "doubao-seed-2-1-lite-260915",
+      reasoning_effort: "low",
+    });
+    // The main chat continues into a chapter on the chosen model.
+    const next = await f.client.openConversation("main");
+    expect(next.id).not.toBe(main.id);
+    const chapter = f.resources.sessions.find((row) => row.id === next.id)!;
+    expect((chapter.agent as { model?: unknown }).model).toEqual({
+      id: "doubao-seed-2-1-lite-260915",
+      reasoning_effort: "low",
+    });
+    expect((await f.client.openConversation("main")).id).toBe(next.id);
+    // A level the model does not accept is refused.
+    await expect(
+      f.client.setModelChoice({
+        model: "deepseek-v4-1-flash-260910",
+        effort: "minimal",
+      }),
+    ).rejects.toThrow();
+    await f.client.setModelChoice(null);
+    expect(await f.client.modelChoice()).toBeUndefined();
+    const plain = await f.client.create("Plain", "general");
+    const row = f.resources.sessions.find((item) => item.id === plain.id)!;
+    expect((row.agent as { model?: unknown }).model).not.toEqual({
+      id: "doubao-seed-2-1-lite-260915",
+      reasoning_effort: "low",
+    });
+  });
   it("keeps the Apple Health connection per identity on this device", async () => {
     const f = fixture();
     expect(await f.client.healthConnected()).toBe(false);

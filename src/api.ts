@@ -51,6 +51,12 @@ import {
   type Attachment,
 } from "../shared/attachments";
 import { MediaStore, type KeptMedia } from "./direct/media";
+import {
+  modelChoiceInput,
+  modelOverride,
+  sessionUsesModel,
+  type ModelChoice,
+} from "../shared/models";
 import { turnContext, type Surface } from "../shared/turn-context";
 import { identityDefaults } from "../shared/identity";
 import {
@@ -858,8 +864,10 @@ export class Client {
     const selection = await r.workspace.selection();
     await r.workspace.syncPolicy();
     const memory_store_id = await r.companion.ensure();
+    const choice = await this.chosenModel(r);
     const row = await r.ark.create(input.title, input.category, {
       ...selection,
+      ...(choice ? { model: modelOverride(choice) } : {}),
       memory_store_id,
       vault_ids: await this.vaultIds(r),
     });
@@ -898,6 +906,9 @@ export class Client {
           )
         )
           return true;
+        // A newly chosen model or thinking level starts a new chapter.
+        const choice = await this.chosenModel(r);
+        if (choice && !sessionUsesModel(session, choice)) return true;
         const selected = await r.workspace.selection();
         try {
           return needsPromptRefresh(session, r.key, selected.agent);
@@ -1074,7 +1085,11 @@ export class Client {
               "Conversation preparation did not finish. No session was created.",
             ),
           );
-        return r.ark.create(title, category, selection);
+        const choice = await this.chosenModel(r);
+        return r.ark.create(title, category, {
+          ...selection,
+          ...(choice ? { model: modelOverride(choice) } : {}),
+        });
       },
       rename: (id, title) =>
         r.ark.request(`/sessions/${validId(id)}`, {
@@ -1996,6 +2011,24 @@ export class Client {
       (await this.db.get<Record<string, string>>(
         `${this.context().key}:attachment-names`,
       )) ?? {}
+    );
+  }
+  // The model and thinking level this identity chose for new conversations;
+  // undefined keeps the workspace agent's own model.
+  private async chosenModel(r: Runtime) {
+    const stored = await this.db.get<unknown>(`${r.key}:model`);
+    const parsed = modelChoiceInput.safeParse(stored);
+    return parsed.success ? parsed.data : undefined;
+  }
+  async modelChoice() {
+    if (!this.signedIn()) return undefined;
+    return this.chosenModel(this.context());
+  }
+  async setModelChoice(choice: ModelChoice | null) {
+    const r = this.context();
+    await this.db.set(
+      `${r.key}:model`,
+      choice === null ? null : modelChoiceInput.parse(choice),
     );
   }
   // Whether this identity connected Apple Health on this device; while it is,

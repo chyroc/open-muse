@@ -68,6 +68,8 @@ export class ArkClient {
       agent_version?: number;
       // Secure storage this conversation may use; attached only at creation.
       vault_ids?: string[];
+      // The person's chosen model and thinking level for this conversation.
+      model?: { id: string; reasoning_effort: string };
     },
   ): Promise<Session> {
     if (
@@ -82,11 +84,14 @@ export class ArkClient {
       method: "POST",
       body: JSON.stringify({
         agent:
-          selection?.system !== undefined
+          selection?.system !== undefined || selection?.model
             ? {
                 type: "agent_with_overrides",
                 id: selection.agent,
-                system: selection.system,
+                ...(selection.system !== undefined
+                  ? { system: selection.system }
+                  : {}),
+                ...(selection.model ? { model: selection.model } : {}),
                 ...(selection.agent_version !== undefined
                   ? { version: selection.agent_version }
                   : {}),

@@ -213,6 +213,14 @@ open full screen, from copies kept on the sending device (up to 300 MB, oldest
 dropped first; videos over 100 MB keep only their frames), because Ark offers
 no way to download uploads back. Other devices show a placeholder.
 
+**Model:** Settings > Model chooses the model and thinking depth for new
+conversations, per account: Doubao Seed 2.1 Pro (the default), Lite and
+Turbo, DeepSeek V4 Pro and V4.1 Flash, or GLM-5.3 Flash, each with the
+thinking levels it accepts. The Doubao models and DeepSeek V4.1 Flash read
+images; the others are text only. A conversation keeps the model it was
+created with, so the main chat moves to a new chapter, with its history kept,
+the next time it is opened after a change. Feed and Ideas keep the default.
+
 **Android:** the Capacitor app uses the same direct client and includes a native
 credential-storage plugin. Open with `npm run android`; build the Gradle project
 with JDK 21 and SDK 36. See verification notes for platform coverage.

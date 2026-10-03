@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
+  Cpu,
   ExternalLink,
   Info,
   Check,
@@ -24,10 +25,19 @@ import { CheckInSettings } from "./CheckInSettings";
 import { ConnectorsSheet } from "./ConnectorsSheet";
 import { MuseMark } from "./components";
 import { Sheet } from "./MusePages";
+import { effortLabels, ModelSheet } from "./ModelSheet";
+import { modelOption, type ModelChoice } from "../shared/models";
+import { DEFAULT_MODEL } from "../shared/workspace-spec";
 import "./settings-home.css";
 
 type Section =
-  "connectors" | "checkins" | "language" | "account" | "about" | "reset";
+  | "connectors"
+  | "checkins"
+  | "model"
+  | "language"
+  | "account"
+  | "about"
+  | "reset";
 
 // Each language is named in itself, as system language pickers do.
 const languageNames = { en: "English", "zh-CN": "简体中文" } as const;
@@ -61,6 +71,12 @@ export function SettingsHome({
   }
   const signedIn = client.signedIn();
   const close = () => setSection(undefined);
+  // The chosen model and thinking level, named on the Model row.
+  const [model, setModel] = useState<ModelChoice>();
+  useEffect(() => {
+    if (signedIn) void client.modelChoice().then(setModel, () => {});
+  }, [client, signedIn]);
+  const shownModel = modelOption(model?.model ?? DEFAULT_MODEL)!;
   return (
     <div className="settings-home">
       {signedIn ? (
@@ -92,6 +108,14 @@ export function SettingsHome({
             icon={<MessageCircleHeart size={22} strokeWidth={2} />}
             label={t("Check-ins")}
             onClick={() => setSection("checkins")}
+          />
+        )}
+        {signedIn && (
+          <Row
+            icon={<Cpu size={22} strokeWidth={2} />}
+            label={t("Model")}
+            value={`${shownModel.name} · ${t(effortLabels[model?.effort ?? shownModel.defaultEffort])}`}
+            onClick={() => setSection("model")}
           />
         )}
         <Row
@@ -135,6 +159,9 @@ export function SettingsHome({
           </button>
         </li>
       </ul>
+      {section === "model" && (
+        <ModelSheet client={client} onClose={close} onChanged={setModel} />
+      )}
       {section === "language" && (
         <Sheet title={t("Language")} onClose={close} grouped>
           <ul className="settings-list" role="radiogroup">

@@ -240,3 +240,24 @@
 .settings-list[role="radiogroup"] .settings-list-row {
   justify-content: space-between;
 }
+
+/* A titled group of rows, and a row with a second line of detail. */
+.settings-group-title {
+  margin: 22px 16px 8px;
+  font-size: 13px;
+  font-weight: 400;
+  color: #6e6e73;
+}
+.settings-list-row > span.settings-row-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 0;
+  color: inherit;
+}
+.settings-row-text small {
+  font-size: 13px;
+  color: #8e8e93;
+}

@@ -757,6 +757,16 @@ export const zhCN: Record<string, string> = {
   Done: "已完成",
   "{count} step": "{count} 步",
   "{count} steps": "{count} 步",
+  Model: "模型",
+  "Thinking depth": "思考深度",
+  Minimal: "最少",
+  Low: "低",
+  Medium: "中",
+  High: "高",
+  "Reads images": "可以看图片",
+  "Text only": "仅文本",
+  "Lighter thinking and faster models answer sooner. New conversations use your choice at once; the main chat moves to a new chapter the next time you open it, and its history is kept.":
+    "思考越轻、模型越快，回答就越快。新的对话会立即使用你的选择；主要聊天会在你下次打开时续接到新的一章，历史记录会保留。",
   "{name} can make mistakes. Check anything about your health carefully.":
     "{name} 可能会出错。涉及健康的内容请务必仔细核对。",
   "Summaries you share become part of the conversation and are kept in your Ark account.":
