@@ -2,6 +2,7 @@ import { t } from "../shared/i18n";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowUpRight,
+  Check,
   Heart,
   Lightbulb,
   LoaderCircle,
@@ -18,10 +19,21 @@ import type {
 } from "../shared/inspiration";
 import { useRefreshHandler } from "./PullToRefresh";
 import { Markdown, dateLabel } from "./components";
-import { PageHeader, Sheet } from "./MusePages";
+import { PageHeader } from "./MusePages";
 import { useTask } from "./useTask";
 import { defaultFeedInstructions } from "../shared/inspiration";
-import { starterIdeas } from "../shared/starter-ideas";
+import {
+  emptyIdeaCatalogState,
+  type IdeaCatalogState,
+} from "../shared/idea-catalog";
+import {
+  catalogSections,
+  IdeaRow,
+  IdeaSheet,
+  ideaStartMessage,
+  shownGeneratedIdea,
+  type ShownIdea,
+} from "./IdeaCatalog";
 import { backgroundClient, type BackgroundClient } from "./background-client";
 import {
   isBackgroundPost,
@@ -97,6 +109,7 @@ export function InspirationPost({
   );
 }
 
+// An idea generated for this person, in the same row as the catalog's.
 export function InspirationIdea({
   item,
   onOpen,
@@ -104,19 +117,7 @@ export function InspirationIdea({
   item: InspirationItem;
   onOpen: () => void;
 }) {
-  return (
-    <button
-      className="personal-idea"
-      aria-label={t("View idea: {title}", { title: item.title })}
-      onClick={onOpen}
-    >
-      <span className="idea-glyph" aria-hidden="true">
-        {item.emoji || "💡"}
-      </span>
-      <strong>{item.title}</strong>
-      <span>{item.body}</span>
-    </button>
-  );
+  return <IdeaRow idea={shownGeneratedIdea(item)} onOpen={onOpen} />;
 }
 
 // A post's pictures in a row that scrolls sideways; one that fails to load
@@ -161,6 +162,7 @@ export function InspirationPage({
   client,
   kind,
   onDiscuss,
+  onStart,
   editInstructions,
   onEditorClose,
   background = backgroundClient,
@@ -168,6 +170,8 @@ export function InspirationPage({
   client: Client;
   kind: InspirationKind;
   onDiscuss: (item: InspirationItem) => void;
+  // Sends a catalog idea to the main chat as a message from the person.
+  onStart?: (text: string) => void;
   editInstructions?: boolean;
   onEditorClose?: () => void;
   // The Open Muse service, whose scheduled posts join the Feed.
@@ -178,7 +182,13 @@ export function InspirationPage({
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [detail, setDetail] = useState<InspirationItem>();
+  const [idea, setIdea] = useState<ShownIdea>();
+  const [catalogState, setCatalogState] = useState<IdeaCatalogState>(
+    emptyIdeaCatalogState,
+  );
+  // Ideas folding away after "Not interested", before they are hidden.
+  const [leaving, setLeaving] = useState<string[]>([]);
+  const [notice, setNotice] = useState("");
   const alive = useRef(true);
   const lock = useRef(false);
   const refreshing = useRef(false);
@@ -242,6 +252,24 @@ export function InspirationPage({
     };
   }, [refresh]);
   useEffect(() => {
+    if (kind !== "ideas") return;
+    let active = true;
+    void client
+      .ideaCatalogState()
+      .then((state) => {
+        if (active) setCatalogState(state);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [client, kind]);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(""), 3000);
+    return () => clearTimeout(timer);
+  }, [notice]);
+  useEffect(() => {
     if (!pending) return;
     const timer = setInterval(() => {
       if (!document.hidden) void refresh();
@@ -275,9 +303,49 @@ export function InspirationPage({
   const found = mergeBackgroundFeed(data?.items ?? [], away.posts).filter(
     (item) => item.kind === kind,
   );
-  // Until personal ideas are found, show what the companion can already do.
-  const starters = kind === "ideas" && !found.length;
-  const items = starters ? starterIdeas(t) : found;
+  const ideas = kind === "ideas";
+  const items = ideas
+    ? found.filter((item) => !catalogState.hidden.includes(item.id))
+    : found;
+  const sections = ideas ? catalogSections(catalogState.hidden) : [];
+  function remember(id: string, reaction: "liked" | "hidden") {
+    void client
+      .reactToCatalogIdea(id, reaction)
+      .then((state) => alive.current && setCatalogState(state))
+      .catch((e) => alive.current && setError((e as Error).message));
+  }
+  function startIdea(shown: ShownIdea) {
+    if (shown.generated) onDiscuss(shown.generated);
+    else onStart?.(ideaStartMessage(shown));
+  }
+  function likeIdea(shown: ShownIdea) {
+    if (shown.generated)
+      void action(() => client.likeInspiration(shown.id, true));
+    else remember(shown.id, "liked");
+    setNotice(t("Got it. You’ll see more ideas like this."));
+  }
+  function hideIdea(shown: ShownIdea) {
+    setLeaving((current) => [...current, shown.id]);
+    setNotice(t("Hidden. You won’t see this idea here again."));
+  }
+  // Once its row has folded away, the idea stays hidden on this device.
+  function gone(id: string) {
+    setLeaving((current) => current.filter((value) => value !== id));
+    setCatalogState((current) => ({
+      ...current,
+      hidden: [...current.hidden, id],
+    }));
+    remember(id, "hidden");
+  }
+  const row = (shown: ShownIdea) => (
+    <IdeaRow
+      key={shown.id}
+      idea={shown}
+      leaving={leaving.includes(shown.id)}
+      onGone={() => gone(shown.id)}
+      onOpen={() => setIdea(shown)}
+    />
+  );
   // The default instructions are shown in the person's language.
   const instructions =
     data?.instructions.content === defaultFeedInstructions
@@ -287,12 +355,33 @@ export function InspirationPage({
   return (
     <section className={`muse-page inspiration-page ${kind}`}>
       <PageHeader title={title} />
-      {error && (
+      {ideas && (
+        <div className="idea-catalog">
+          {sections.map((section, index) => (
+            <section
+              key={section.title ?? index}
+              aria-label={section.title || undefined}
+            >
+              {section.title && (
+                <h2 className="idea-section-title">{section.title}</h2>
+              )}
+              {section.ideas.map(row)}
+            </section>
+          ))}
+          {items.length > 0 && (
+            <section aria-label={t("Made for you")}>
+              <h2 className="idea-section-title">{t("Made for you")}</h2>
+              {items.map((item) => row(shownGeneratedIdea(item)))}
+            </section>
+          )}
+        </div>
+      )}
+      {!ideas && error && (
         <p className="inline-error" role="alert">
           {error}
         </p>
       )}
-      {loading && !starters && !data && (
+      {loading && !ideas && !data && (
         <p className="inspiration-status" role="status">
           <LoaderCircle size={19} className="spin" />
           {t("Loading…")}
@@ -336,51 +425,35 @@ export function InspirationPage({
           {instructions}
         </button>
       )}
-      {items.length ? (
-        kind === "feed" ? (
-          <div className="personal-feed">
-            {items.map((item) => (
-              <InspirationPost
-                key={item.id}
-                item={item}
-                busy={busy}
-                onLike={() =>
-                  void action(() =>
-                    client.likeInspiration(item.id, !item.liked),
-                  )
-                }
-                onDiscuss={() => onDiscuss(item)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="personal-ideas">
-            {items.map((item) => (
-              <InspirationIdea
-                key={item.id}
-                item={item}
-                onOpen={() => setDetail(item)}
-              />
-            ))}
-          </div>
+      {ideas ? (
+        error && (
+          <p className="inline-error" role="alert">
+            {error}
+          </p>
         )
+      ) : items.length ? (
+        <div className="personal-feed">
+          {items.map((item) => (
+            <InspirationPost
+              key={item.id}
+              item={item}
+              busy={busy}
+              onLike={() =>
+                void action(() => client.likeInspiration(item.id, !item.liked))
+              }
+              onDiscuss={() => onDiscuss(item)}
+            />
+          ))}
+        </div>
       ) : (
         !loading && (
           <div className="inspiration-empty">
             <Lightbulb size={28} strokeWidth={1.5} />
-            <h2>
-              {kind === "feed"
-                ? t("A feed that gets to know you")
-                : t("A little inspiration, just for you")}
-            </h2>
+            <h2>{t("A feed that gets to know you")}</h2>
             <p>
-              {kind === "feed"
-                ? t(
-                    "Discover useful things shaped by your conversations, interests, and goals.",
-                  )
-                : t(
-                    "Explore things Muse can help with, shaped by what matters to you.",
-                  )}
+              {t(
+                "Discover useful things shaped by your conversations, interests, and goals.",
+              )}
             </p>
             {!client.signedIn() && (
               <a href="#/settings">{t("Connect to MA to get started")}</a>
@@ -453,26 +526,21 @@ export function InspirationPage({
           }}
         />
       )}
-      {detail && (
-        <Sheet title={t("Idea")} onClose={() => setDetail(undefined)}>
-          <div className="idea-detail">
-            <small>{detail.category}</small>
-            <h2>{detail.title}</h2>
-            <Markdown text={detail.body} />
-            <Sources item={detail} />
-            <p className="idea-reason">{detail.reason}</p>
-            <button
-              className="idea-start"
-              onClick={() => {
-                setDetail(undefined);
-                onDiscuss(detail);
-              }}
-            >
-              <MessageCircle size={20} />
-              {t("Talk about this")}
-            </button>
-          </div>
-        </Sheet>
+      {idea && (
+        <IdeaSheet
+          key={idea.id}
+          idea={idea}
+          onClose={() => setIdea(undefined)}
+          onStart={() => startIdea(idea)}
+          onLike={() => likeIdea(idea)}
+          onHide={() => hideIdea(idea)}
+        />
+      )}
+      {notice && (
+        <div className="toast" role="status">
+          <Check size={16} />
+          {notice}
+        </div>
       )}
     </section>
   );

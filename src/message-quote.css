@@ -1,0 +1,24 @@
+/* What a message quotes: a gray card above its bubble, aligned with it and
+   tucked under its top edge. */
+.message-quote {
+  position: relative;
+  max-width: 70%;
+  margin: 0 0 -12px;
+  padding: 11px 16px 22px;
+  border-radius: 20px;
+  background: #ebebed;
+  color: #6e6e73;
+  font-size: 16.5px;
+  line-height: 23px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.message-quote + .chat-bubble {
+  z-index: 1;
+}
+@media (prefers-color-scheme: dark) {
+  .message-quote {
+    background: #2c2c2e;
+    color: #98989f;
+  }
+}

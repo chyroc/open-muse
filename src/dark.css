@@ -356,12 +356,6 @@
   .post-information a {
     color: #1787ff;
   }
-  .personal-idea {
-    border-bottom: 1px solid #38383a;
-  }
-  .personal-idea > span:not(.idea-glyph) {
-    color: #aeaeb2;
-  }
   .inspiration-empty {
     color: #aeaeb2;
   }
@@ -388,16 +382,6 @@
   }
   .inspiration-bottom p {
     color: #8e8e93;
-  }
-  .idea-detail > small {
-    color: #aeaeb2;
-  }
-  .idea-reason {
-    color: #aeaeb2;
-  }
-  .idea-start {
-    background: #1d88ff;
-    color: #000000;
   }
   .feed-instructions-editor::backdrop {
     background: rgb(0 0 0 / 83%);

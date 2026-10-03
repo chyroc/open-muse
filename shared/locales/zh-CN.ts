@@ -15,6 +15,7 @@ import { zhProactive } from "./zh-CN-proactive";
 import { zhExport } from "./zh-CN-export";
 import { zhIdeas } from "./zh-CN-ideas";
 import { zhGoalPlanning } from "./zh-CN-goal-planning";
+import { zhIdeaCatalog } from "./zh-CN-idea-catalog";
 
 // English source messages are stable keys. Keep protocol names and user data out.
 export const zhCN: Record<string, string> = {
@@ -35,6 +36,7 @@ export const zhCN: Record<string, string> = {
   ...zhExport,
   ...zhIdeas,
   ...zhGoalPlanning,
+  ...zhIdeaCatalog,
   "Restoring connection…": "正在恢复连接…",
   Retry: "重试",
   "If submission is unconfirmed, refresh history before trying again.":
@@ -1207,55 +1209,6 @@ export const zhCN: Record<string, string> = {
   "Resume browsing": "继续浏览",
   "Build a feed around my interests. Keep it concise, direct, and easy to scan. Avoid clickbait. Include useful sources when available.":
     "为我打造一个关于我兴趣的动态版面。内容简洁直接、便于浏览，不要标题党，有可靠来源时附上来源。",
-  "Something Muse can already do for you.": "这是 Muse 现在就能帮你做的事。",
-  "Getting started": "入门",
-  "Waiting for a price drop? I’ll tell you when it fits your budget.":
-    "等降价？价格符合你的预算时我会立刻告诉你。",
-  "Tell me what you want to buy and the most you want to pay. I’ll check the official price on a schedule and let you know as soon as it falls within your budget, with a link to buy.":
-    "告诉我你想买什么、最多愿意花多少。我会定时查看官方价格，一旦落到预算内就马上通知你，并附上购买链接。",
-  "Help me watch a price: ask what I want and my budget, then set up a recurring check and tell me when it drops below it.":
-    "帮我盯一个价格：先问我想买什么和预算，然后设置定期检查，降到预算以下时告诉我。",
-  "Name the occasion and I’ll plan the whole thing.": "说个场合，我来安排一切。",
-  "Tell me what it is, how many people and your budget. I’ll put together the plan: a theme, the guest list, the invitation text, a timeline and a shopping list, and remind you of each step.":
-    "告诉我是什么场合、多少人和预算。我会拟好整个方案：主题、宾客名单、邀请文案、时间安排和采购清单，并按步骤提醒你。",
-  "Help me plan an event: ask about the occasion, guests and budget, then draft the plan, invitation and timeline, and set reminders.":
-    "帮我策划一个活动：先问清场合、宾客和预算，再拟定方案、邀请和时间安排，并设置提醒。",
-  "Let me sort your Lark messages and keep only what matters.":
-    "让我帮你整理飞书消息，只留下要紧的。",
-  "Connect your Lark account and I’ll read through unread chats and mail, set aside announcements and routine notices, and give you a short list of what needs your reply.":
-    "连接你的飞书账号后，我会看一遍未读的会话和邮件，把公告和例行通知放到一边，列出需要你回复的事项。",
-  "Help me triage my Lark messages: connect to Lark with minimal access, then summarize what needs my reply.":
-    "帮我整理飞书消息：用最小权限连接飞书，然后汇总需要我回复的内容。",
-  "Comparing products? I’ll check the official sites side by side.":
-    "在比较商品？我帮你把官网放在一起对比。",
-  "Name two or three products. I’ll open their official pages in the cloud browser, compare prices and specs, save a screenshot of each as evidence, and put the comparison table in your Library.":
-    "说出两三款商品。我会用云端浏览器打开它们的官网，对比价格和参数，每页截图留证，并把对比表存进资源库。",
-  "Help me compare products: ask which ones and what matters to me, then compare them from official pages and save a table to my Library.":
-    "帮我比较商品：先问我比较哪些、看重什么，再根据官网对比，并把对比表存进资源库。",
-  "Sleeping badly? I’ll look at your nights and suggest one change.":
-    "睡得不好？我看看你最近的睡眠，给你一个小建议。",
-  "With Apple Health connected, I’ll read your recent sleep, spot patterns like late nights or frequent waking, and suggest one small change to try this week.":
-    "连接 Apple 健康后，我会读取你最近的睡眠，找出晚睡、频繁醒来之类的规律，并建议一个本周可以尝试的小改变。",
-  "Look at my recent sleep in Apple Health and suggest one small change to try this week.":
-    "看看我在 Apple 健康里最近的睡眠，建议一个本周可以尝试的小改变。",
-  "A weekly recap of your workouts, every Sunday evening.":
-    "每周日晚上，给你一份运动周报。",
-  "I’ll read your workouts and activity from Apple Health each week, tell you how the week went compared with the last, and keep you on track toward your goal.":
-    "我每周从 Apple 健康读取你的运动和活动数据，告诉你这周和上周相比如何，帮你朝目标稳步前进。",
-  "Set up a weekly workout recap from Apple Health every Sunday evening.":
-    "每周日晚上，根据 Apple 健康给我做一份运动周报。",
-  "Plan a weekend away that fits your time and budget.":
-    "规划一次合你时间和预算的周末出行。",
-  "Tell me where you might go, when and how much you want to spend. I’ll suggest a route, places to stay and eat, and a packing list, and remind you before you leave.":
-    "告诉我想去哪里、什么时候和预算多少。我会推荐路线、住处和餐厅，列好行李清单，并在出发前提醒你。",
-  "Help me plan a weekend trip: ask about destination, dates and budget, then suggest a plan and packing list.":
-    "帮我规划一次周末出行：先问目的地、日期和预算，再给出方案和行李清单。",
-  "Too much to read? Send it to me for a one-page brief.":
-    "要读的太多？发给我，给你一页摘要。",
-  "Share a long article, report or PDF. I’ll pull out the main points, what they mean for you and what to do next, in a page you can read in two minutes.":
-    "分享一篇长文、报告或 PDF。我会提炼要点、说明对你意味着什么、下一步该做什么，两分钟就能读完。",
-  "I’ll share something long to read; give me a one-page brief with the main points and next steps.":
-    "我会分享一篇很长的内容，请给我一页摘要，包括要点和下一步。",
   Connecting: "正在连接",
   "Can’t reach the network right now. Retrying…": "网络暂时连不上，正在重试…",
 };

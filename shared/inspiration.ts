@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { eventText, type AgentEvent } from "./types";
 import { t, type Language } from "./i18n";
-import { starterIdeaPrefix } from "./starter-ideas";
 
 export type InspirationKind = "feed" | "ideas";
 export const defaultFeedInstructions =
@@ -221,10 +220,9 @@ export function recentInspirationContext(events: AgentEvent[]) {
     .slice(-6500);
 }
 
-// The draft a post or idea opens with, in the app's language. An app-authored
-// starter idea is its own prompt; anything generated is quoted as context.
+// The draft a post or idea opens with, in the app's language. Generated
+// content is quoted as context.
 export function discussionPrompt(item: InspirationItem) {
-  if (item.id.startsWith(starterIdeaPrefix)) return item.prompt;
   const lead =
     item.kind === "feed"
       ? t(

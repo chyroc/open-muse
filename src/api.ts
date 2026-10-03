@@ -39,10 +39,7 @@ import { DirectCheckIn } from "./direct/checkin";
 import type { Claim } from "./direct/initiations";
 import { validTimeZone } from "../shared/proactive";
 import { DirectUpcoming } from "./direct/upcoming";
-import {
-  DirectVault,
-  type SecureCredentialInput,
-} from "./direct/vault";
+import { DirectVault, type SecureCredentialInput } from "./direct/vault";
 import type { UpcomingDelivery } from "../shared/upcoming";
 import { DirectLibrary } from "./direct/library";
 import { DirectAttachments } from "./direct/attachments";
@@ -91,6 +88,12 @@ import type {
   IdentityDocumentName,
 } from "../shared/identity";
 import { DirectInspiration } from "./direct/inspiration";
+import {
+  catalogIdea,
+  emptyIdeaCatalogState,
+  ideaCatalogKey,
+  type IdeaCatalogState,
+} from "../shared/idea-catalog";
 import { AccountSync, syncAdapters } from "./direct/account-sync";
 import {
   defaultFeedInstructions,
@@ -678,6 +681,14 @@ export class Client {
         const events = index.mainId ? await this.events(index.mainId) : [];
         const goals = (await this.goalService(r).snapshot()).data;
         const instructions = await r.companion.feedInstructions();
+        // Catalog ideas the person asked for more of, as shown to them.
+        const catalog = await this.db.get<IdeaCatalogState>(
+          ideaCatalogKey(r.key),
+        );
+        const likedCatalog = (catalog?.liked ?? []).flatMap((id) => {
+          const idea = catalogIdea(id);
+          return idea ? [t(idea.title)] : [];
+        });
         r.abort.signal.throwIfAborted();
         return r.redact(
           inspirationPrompt(kind, {
@@ -693,10 +704,10 @@ export class Client {
                   description: g.description.slice(0, 400),
                 })),
             ).slice(0, 2000),
-            liked: state.items
-              .filter((i) => i.liked)
-              .slice(0, 6)
-              .map((i) => i.title),
+            liked: [
+              ...state.items.filter((i) => i.liked).map((i) => i.title),
+              ...likedCatalog,
+            ].slice(0, 6),
             previous: state.items
               .filter((i) => i.kind === kind)
               .slice(0, 12)
@@ -768,6 +779,29 @@ export class Client {
       z.boolean().parse(liked),
     );
     this.accountSync()?.changed();
+  }
+  // What this device remembers about the Ideas catalog. Signed out, it is
+  // kept apart from every workspace and never carried into one.
+  private ideaCatalogStorage() {
+    return ideaCatalogKey(this.signedIn() ? this.context().key : "device");
+  }
+  async ideaCatalogState(): Promise<IdeaCatalogState> {
+    const saved = await this.db.get<IdeaCatalogState>(
+      this.ideaCatalogStorage(),
+    );
+    return { ...emptyIdeaCatalogState(), ...saved };
+  }
+  async reactToCatalogIdea(id: string, reaction: "liked" | "hidden") {
+    const key = z.string().max(200).parse(id);
+    const field = z.enum(["liked", "hidden"]).parse(reaction);
+    return this.db.update<IdeaCatalogState>(
+      this.ideaCatalogStorage(),
+      (old) => {
+        const state = { ...emptyIdeaCatalogState(), ...old };
+        if (!state[field].includes(key)) state[field] = [...state[field], key];
+        return state;
+      },
+    );
   }
   async linkInspirationDiscussion(id: string, session: string) {
     const r = this.context();
@@ -1356,10 +1390,7 @@ export class Client {
       current?.session_id ??
       undefined;
     if (!target)
-      throw new ApiError(
-        409,
-        t("Start the main chat before turning this on."),
-      );
+      throw new ApiError(409, t("Start the main chat before turning this on."));
     validId(target);
     // The person's time zone, for check-ins and goal follow-ups.
     const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -1573,7 +1604,8 @@ export class Client {
       evicted = next.slice(12);
       return next.slice(0, 12);
     });
-    for (const old of evicted) await this.db.set(`${r.key}:events:${old}`, null);
+    for (const old of evicted)
+      await this.db.set(`${r.key}:events:${old}`, null);
   }
   async events(id: string, signal?: AbortSignal) {
     const r = this.context();
@@ -2143,9 +2175,7 @@ export class Client {
   }
   async sentMedia(fileId: string): Promise<KeptMedia | undefined> {
     if (!this.signedIn()) return undefined;
-    return this.media
-      .media(this.context().key, fileId)
-      .catch(() => undefined);
+    return this.media.media(this.context().key, fileId).catch(() => undefined);
   }
   async attachmentNames(): Promise<Record<string, string>> {
     if (!this.signedIn()) return {};

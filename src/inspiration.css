@@ -142,45 +142,6 @@
   align-items: center;
   gap: 4px;
 }
-/* An idea row: a 40pt symbol, then title and summary 16pt to its right. */
-.personal-idea {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  text-align: left;
-  width: 100%;
-  border-bottom: 1px solid #e8e8eb;
-  padding: 24px 0 24px 56px;
-  transition: opacity var(--motion-press-duration) ease-out;
-}
-.personal-idea:active {
-  opacity: 0.6;
-}
-.personal-idea > .idea-glyph {
-  position: absolute;
-  top: 24px;
-  left: 0;
-  width: 40px;
-  font-size: 32px;
-  line-height: 40px;
-  text-align: center;
-  color: initial;
-}
-.personal-idea strong {
-  font-size: 17px;
-  line-height: 1.4;
-  font-weight: 700;
-  margin-bottom: 4px;
-}
-.personal-idea > span:not(.idea-glyph) {
-  font-size: 17px;
-  line-height: 1.4;
-  color: #75757a;
-  display: -webkit-box;
-  -webkit-line-clamp: 5;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
 .inspiration-empty {
   max-width: 330px;
   margin: 56px auto 40px;
@@ -249,40 +210,6 @@
   line-height: 1.5;
   max-width: 380px;
   margin: 14px auto 0;
-}
-.idea-detail {
-  padding: 8px 4px 16px;
-}
-.idea-detail > small {
-  color: #77777d;
-  font-size: 14px;
-}
-.idea-detail h2 {
-  margin: 12px 0 16px;
-  font-size: 25px;
-  line-height: 1.3;
-  letter-spacing: -0.4px;
-}
-.idea-detail .markdown {
-  font-size: 17px;
-}
-.idea-reason {
-  color: #77777d;
-  font-size: 15px;
-  line-height: 1.5;
-  margin: 24px 0;
-}
-.idea-start {
-  background: #0069df;
-  color: white;
-  width: 100%;
-  border-radius: 25px;
-  min-height: 48px;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  justify-content: center;
-  font-size: 17px;
 }
 .feed-instructions-editor[open] {
   position: fixed;

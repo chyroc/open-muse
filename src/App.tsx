@@ -1,7 +1,6 @@
 import { formatLocale, systemLanguage, t } from "../shared/i18n";
 import { flushSync } from "react-dom";
 import { isNetworkFailure } from "../shared/network-error";
-import { starterIdeaPrefix } from "../shared/starter-ideas";
 import { isBackgroundPost } from "./background-feed";
 import {
   Fragment,
@@ -105,8 +104,10 @@ import {
   CompanionAvatar,
   ConversationSidebar,
   MessageBubble,
+  MessageQuote,
   ScrollToLatest,
 } from "./ChatUI";
+import { splitQuote } from "../shared/message-quote";
 import {
   emptyConversations,
   currentConversation,
@@ -821,12 +822,9 @@ function Workspace({
           setGoalDraft(undefined);
         }
         if (inspirationDraft) {
-          // Starter ideas are not saved items, so there is nothing to link.
-          // Neither are starter ideas or the service's scheduled posts.
-          if (
-            !inspirationDraft.id.startsWith(starterIdeaPrefix) &&
-            !isBackgroundPost(inspirationDraft)
-          )
+          // The service's scheduled posts are not saved items, so there is
+          // nothing to link.
+          if (!isBackgroundPost(inspirationDraft))
             await client.linkInspirationDiscussion(
               inspirationDraft.id,
               session.id,
@@ -1221,6 +1219,11 @@ function Workspace({
                   Number.isFinite(timestamp) &&
                   (!previousDate ||
                     timestamp - Date.parse(previousDate) > 5 * 60 * 1000);
+                // A message that quotes something shows the quote above it.
+                const sent =
+                  event.type === "user.message"
+                    ? splitQuote(eventText(event))
+                    : { text: eventText(event) };
                 return (
                   <Fragment key={event.id}>
                     {card && <WorkCard work={card} />}
@@ -1277,24 +1280,25 @@ function Workspace({
                           }
                         />
                       ) : (
-                        <MessageBubble
-                          label={t("Message options {number}", {
-                            number: position + 1,
-                          })}
-                          onOptions={(bubble) => {
-                            setSelectedBubble(bubble);
-                            setSelectedMessage(event);
-                          }}
-                          reaction={reactions[reactionKey(event)]}
-                        >
-                          <MessageAttachments
-                            items={messageAttachments(event, attachmentNames)}
-                            load={sentMedia}
-                          />
-                          {eventText(event) && (
-                            <Markdown text={eventText(event)} />
-                          )}
-                        </MessageBubble>
+                        <>
+                          {sent.quote && <MessageQuote text={sent.quote} />}
+                          <MessageBubble
+                            label={t("Message options {number}", {
+                              number: position + 1,
+                            })}
+                            onOptions={(bubble) => {
+                              setSelectedBubble(bubble);
+                              setSelectedMessage(event);
+                            }}
+                            reaction={reactions[reactionKey(event)]}
+                          >
+                            <MessageAttachments
+                              items={messageAttachments(event, attachmentNames)}
+                              load={sentMedia}
+                            />
+                            {sent.text && <Markdown text={sent.text} />}
+                          </MessageBubble>
+                        </>
                       )}
                       {outputs.get(event.id) && (
                         <TurnOutputs
@@ -1518,6 +1522,7 @@ function Workspace({
                 client={client}
                 kind="ideas"
                 onDiscuss={discussInspiration}
+                onStart={(text) => void sendToMain(text)}
               />
             )}
             {tab === "goals" && (

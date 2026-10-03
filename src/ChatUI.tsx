@@ -27,6 +27,7 @@ import { AttachmentSheet } from "./AttachmentSheet";
 import { animateAway, animateIn, useDragToDismiss } from "./gesture";
 import type { ConversationIndex } from "./direct/conversations";
 import { Sheet } from "./MusePages";
+import "./message-quote.css";
 
 // The companion, drawn in CSS. While it works it puts on headphones and
 // types on a laptop.
@@ -46,6 +47,11 @@ export function CompanionAvatar({ working = false }: { working?: boolean }) {
       <span className="companion-laptop" />
     </span>
   );
+}
+
+// The text a message quotes, in a gray card above its bubble.
+export function MessageQuote({ text }: { text: string }) {
+  return <blockquote className="message-quote">{text}</blockquote>;
 }
 
 export function MessageBubble({

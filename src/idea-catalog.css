@@ -1,0 +1,308 @@
+/* The Ideas catalog: rows with a 44pt illustration, a 20pt title and an 18pt
+   summary clamped at five lines, grouped under 25pt section titles. */
+.idea-catalog {
+  margin-top: -2px;
+}
+.idea-section-title {
+  margin: 0;
+  padding: 19.4px 0 4.3px;
+  font-size: 25.5px;
+  line-height: 32px;
+  font-weight: 600;
+  color: #111112;
+}
+/* A section ends on a rule that runs edge to edge. */
+.idea-catalog > section:not(:last-child) > .catalog-idea:last-child {
+  border-bottom-color: transparent;
+}
+.idea-catalog > section + section::before {
+  content: "";
+  display: block;
+  height: 1px;
+  margin: -1px -16px 0;
+  background: #e9eaeb;
+}
+.catalog-idea {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: start;
+  width: 100%;
+  padding: 20px 0 18.67px;
+  border-bottom: 1px solid #e9eaeb;
+  text-align: left;
+  color: inherit;
+  overflow: hidden;
+  transition: opacity var(--motion-press-duration) ease-out;
+}
+.catalog-idea:active {
+  opacity: 0.55;
+  transition: none;
+}
+.catalog-idea:disabled {
+  opacity: 1;
+}
+.catalog-idea-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  font-size: 34px;
+  line-height: 1;
+}
+.catalog-idea-icon img {
+  display: block;
+  max-width: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.catalog-idea-text {
+  display: block;
+  min-width: 0;
+}
+.catalog-idea-text strong {
+  display: block;
+  font-size: 20.2px;
+  line-height: 26px;
+  font-weight: 600;
+  color: #111112;
+}
+.catalog-idea-body {
+  display: -webkit-box;
+  margin-top: 4px;
+  font-size: 18.2px;
+  line-height: 24px;
+  color: #65676a;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* The idea sheet floats 8pt from the screen edges over a light dim, with no
+   title bar: the idea, a "What's included" list, and a bottom bar with a
+   round "…" button and a wide "Get started" button. */
+.muse-sheet.idea-sheet {
+  padding: 0;
+  border-radius: 42px;
+  background: #fcfcfc;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgb(0 0 0 / 10%);
+}
+.muse-sheet.idea-sheet[open] {
+  display: flex;
+  flex-direction: column;
+}
+.muse-sheet.idea-sheet::backdrop {
+  background: var(--sheet-dim);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.idea-sheet-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.idea-sheet-head {
+  padding: 19px 12px 19.3px 19px;
+  touch-action: none;
+}
+.idea-sheet-head h2 {
+  margin: 0;
+  font-size: 23.5px;
+  line-height: 30px;
+  font-weight: 600;
+  color: #000;
+  overflow-wrap: anywhere;
+}
+.idea-sheet-head p {
+  margin: 9.3px 0 0;
+  font-size: 19.4px;
+  line-height: 25px;
+  color: #000;
+  overflow-wrap: anywhere;
+}
+.idea-included {
+  padding: 18.9px 20px 40.6px 19px;
+  border-top: 1px solid #eaeaea;
+}
+.idea-included-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.idea-included-head h3 {
+  margin: 0;
+  font-size: 19.5px;
+  line-height: 25px;
+  font-weight: 600;
+  color: #000;
+}
+.idea-included-glyph {
+  flex: none;
+  color: #9e9ea0;
+}
+.idea-included ul {
+  margin: 21.4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.idea-included li {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.idea-included li + li {
+  margin-top: 18px;
+}
+.idea-included li > div {
+  flex: 1;
+  min-width: 0;
+}
+.idea-included strong {
+  display: block;
+  font-size: 18px;
+  line-height: 23px;
+  font-weight: 600;
+  color: #000;
+}
+.idea-included li span {
+  display: block;
+  margin-top: 4.3px;
+  font-size: 17.5px;
+  line-height: 22px;
+  color: #636366;
+}
+.idea-included-check {
+  flex: none;
+  color: #0064d4;
+  transition: color var(--motion-fade-duration) ease-out;
+}
+.idea-sheet-actions {
+  flex: none;
+  display: flex;
+  gap: 10px;
+  padding: 24px 16px 16px;
+  touch-action: none;
+}
+.idea-sheet-more,
+.idea-sheet-start {
+  height: 46px;
+  border-radius: 23px;
+  transition:
+    transform var(--motion-press-duration) ease-out,
+    opacity var(--motion-fade-duration) ease-out;
+}
+.idea-sheet-start:disabled {
+  opacity: 0.5;
+}
+.idea-sheet-scroll.starting .idea-included-check {
+  color: #636366;
+}
+.idea-sheet-more:active,
+.idea-sheet-start:not(:disabled):active {
+  transform: scale(var(--motion-press-scale));
+  transition: none;
+}
+.idea-sheet-more {
+  display: grid;
+  place-items: center;
+  flex: 0 0 46px;
+  background: #e5e5e5;
+  color: #1f1f1f;
+}
+.idea-sheet-start {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #0064d4;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+/* Its "…" menu grows up and out of the button it covers. */
+.idea-menu .popover-menu-card {
+  width: max-content;
+  min-width: 250px;
+  max-width: calc(100vw - 48px);
+  padding: 10px 0 9px;
+  border-radius: 26px;
+  background: rgb(250 250 252 / 78%);
+  transform-origin: 0 100%;
+}
+.idea-menu .popover-menu-card button {
+  gap: 17px;
+  min-height: 50px;
+  padding: 0 20px 0 32px;
+  white-space: nowrap;
+  font-size: 20px;
+}
+.idea-menu .popover-menu-card button > svg {
+  flex: none;
+}
+.idea-menu .popover-menu-card hr {
+  margin: 10px 22px 11.5px 26px;
+}
+.idea-menu::backdrop {
+  background: transparent;
+}
+
+@media (prefers-color-scheme: dark) {
+  .idea-section-title,
+  .catalog-idea-text strong {
+    color: #fff;
+  }
+  .catalog-idea {
+    border-bottom-color: #38383a;
+  }
+  .idea-catalog > section + section::before {
+    background: #38383a;
+  }
+  .catalog-idea-body {
+    color: #aeaeb2;
+  }
+  .muse-sheet.idea-sheet {
+    background: #1c1c1e;
+    box-shadow: 0 10px 40px rgb(0 0 0 / 40%);
+  }
+  .muse-sheet.idea-sheet::backdrop {
+    background: rgb(0 0 0 / 48%);
+  }
+  .idea-sheet-head h2,
+  .idea-sheet-head p,
+  .idea-included-head h3,
+  .idea-included strong {
+    color: #fff;
+  }
+  .idea-included {
+    border-top-color: #38383a;
+  }
+  .idea-included-glyph {
+    color: #8e8e93;
+  }
+  .idea-included li span {
+    color: #aeaeb2;
+  }
+  .idea-included-check {
+    color: #1d88ff;
+  }
+  .idea-sheet-scroll.starting .idea-included-check {
+    color: #8e8e93;
+  }
+  .idea-menu .popover-menu-card {
+    background: rgb(44 44 46 / 80%);
+  }
+  .idea-sheet-more {
+    background: #3a3a3c;
+    color: #fff;
+  }
+  .idea-sheet-start {
+    background: #1d88ff;
+    color: #000;
+  }
+}

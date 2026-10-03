@@ -12,8 +12,6 @@ import {
   recentInspirationContext,
 } from "../shared/inspiration";
 import type { AgentEvent, Session } from "../shared/types";
-import { starterIdeas } from "../shared/starter-ideas";
-import { t } from "../shared/i18n";
 
 const content = {
   title: "A weekend on foot",
@@ -419,17 +417,11 @@ describe("idea and post drafts in the app's language", () => {
     liked: false,
   };
   it.each([
-    ["en", "Help me watch a price", "Let's discuss this idea."],
-    ["zh-Hans", "帮我", "我们来聊聊这个点子。"],
-  ])("drafts in %s", (language, starterStart, lead) => {
+    ["en", "Let's discuss this idea."],
+    ["zh-Hans", "我们来聊聊这个点子。"],
+  ])("drafts in %s", (language, lead) => {
     vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", [language]);
     try {
-      // A starter idea is its own prompt, translated, with nothing quoted.
-      const [starter] = starterIdeas(t);
-      const draft = discussionPrompt(starter);
-      expect(draft).toBe(starter.prompt);
-      expect(draft.startsWith(starterStart)).toBe(true);
-      expect(draft).not.toContain("{");
       // A generated idea keeps its quoted content behind a translated lead.
       const quoted = discussionPrompt(generated);
       expect(quoted.startsWith(lead)).toBe(true);

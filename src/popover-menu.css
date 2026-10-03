@@ -47,6 +47,9 @@
   text-align: left;
   transition: background-color var(--motion-press-duration) ease-out;
 }
+.popover-menu-card button.destructive {
+  color: #e5333f;
+}
 .popover-menu-card button.with-check {
   padding-left: 12px;
 }
@@ -105,5 +108,8 @@
   }
   .popover-menu-card hr {
     background: rgb(255 255 255 / 12%);
+  }
+  .popover-menu-card button.destructive {
+    color: #ff453a;
   }
 }

@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { Check } from "lucide-react";
 import "./popover-menu.css";
 
@@ -8,6 +14,8 @@ export type PopoverItem =
       label: string;
       icon?: ReactNode;
       checked?: boolean;
+      // Shown in red, for an action that removes or turns something away.
+      destructive?: boolean;
       onSelect: () => void;
     }
   | { kind: "header"; label: string }
@@ -20,10 +28,15 @@ export function PopoverMenu({
   label,
   items,
   onClose,
+  className,
+  placement,
 }: {
   label: string;
   items: PopoverItem[];
   onClose: () => void;
+  // Another anchor: a class for the dialog and where its card sits.
+  className?: string;
+  placement?: CSSProperties;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [closing, setClosing] = useState(false);
@@ -52,7 +65,7 @@ export function PopoverMenu({
   return (
     <dialog
       ref={dialog}
-      className={`popover-menu${closing ? " closing" : ""}`}
+      className={`popover-menu${className ? ` ${className}` : ""}${closing ? " closing" : ""}`}
       tabIndex={-1}
       aria-label={label}
       onCancel={(event) => {
@@ -63,7 +76,12 @@ export function PopoverMenu({
         if (event.target === dialog.current) dismiss();
       }}
     >
-      <div className="popover-menu-card" role="menu" aria-label={label}>
+      <div
+        className="popover-menu-card"
+        role="menu"
+        aria-label={label}
+        style={placement}
+      >
         {items.map((item, index) =>
           item.kind === "separator" ? (
             <hr key={index} />
@@ -76,7 +94,11 @@ export function PopoverMenu({
               key={index}
               role={item.checked === undefined ? "menuitem" : "menuitemradio"}
               aria-checked={item.checked}
-              className={checks ? "with-check" : undefined}
+              className={
+                [checks && "with-check", item.destructive && "destructive"]
+                  .filter(Boolean)
+                  .join(" ") || undefined
+              }
               onClick={() => dismiss(item.onSelect)}
             >
               {checks && (
