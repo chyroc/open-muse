@@ -346,11 +346,7 @@ export function InspirationPage({
       onOpen={() => setIdea(shown)}
     />
   );
-  // The default instructions are shown in the person's language.
-  const instructions =
-    data?.instructions.content === defaultFeedInstructions
-      ? t(defaultFeedInstructions)
-      : (data?.instructions.content ?? "");
+  const instructions = shownInstructions(data?.instructions.content ?? "");
   const title = kind === "feed" ? t("Feed") : t("Ideas");
   return (
     <section className={`muse-page inspiration-page ${kind}`}>
@@ -546,6 +542,13 @@ export function InspirationPage({
   );
 }
 
+// The default instructions are shown, and edited, in the person's language.
+function shownInstructions(content: string) {
+  return content === defaultFeedInstructions
+    ? t(defaultFeedInstructions)
+    : content;
+}
+
 function FeedInstructionsEditor({
   client,
   initial,
@@ -559,7 +562,7 @@ function FeedInstructionsEditor({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const guard = useRef(false);
-  const [draft, setDraft] = useState(initial.content);
+  const [draft, setDraft] = useState(shownInstructions(initial.content));
   const [revision, setRevision] = useState(initial.revision);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -589,7 +592,7 @@ function FeedInstructionsEditor({
     setBusy(true);
     try {
       const { instructions } = await client.inspiration();
-      setDraft(instructions.content);
+      setDraft(shownInstructions(instructions.content));
       setRevision(instructions.revision);
       setError("");
     } catch (e) {
