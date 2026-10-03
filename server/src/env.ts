@@ -1,10 +1,14 @@
 import type { Database } from "./database";
+import { maProvider } from "../../shared/ma-provider";
 
 export interface Env {
   DB: Database;
   // Open Muse account Auth: a fixed provider origin and a public anon key,
   // never a service-role key. Without them every request is refused.
   SUPABASE_AUTH_URL?: string;
+  // The Managed Agents backend accounts' keys belong to: "ark" (default) or
+  // "claude". It must match the apps' VITE_MUSE_MA_PROVIDER.
+  MA_PROVIDER?: string;
   SUPABASE_ANON_KEY?: string;
   ALLOWED_ORIGINS?: string;
   BACKGROUND_ENABLED?: string;
@@ -66,3 +70,9 @@ export const json = (body: unknown, status = 200) =>
       "X-Content-Type-Options": "nosniff",
     },
   });
+
+// Where this deployment sends MA requests, for an ArkClient configuration.
+export function maEndpoint(env: Env) {
+  const provider = maProvider(env.MA_PROVIDER);
+  return { arkBaseUrl: provider.baseUrl, provider };
+}

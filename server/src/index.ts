@@ -1,7 +1,7 @@
 import { edgeFetch } from "./fetch";
 import { checkOrigin, verifiedAccount } from "./auth";
 import { deleteAccount } from "./account-deletion";
-import { backgroundReady, HttpError, json, type Env } from "./env";
+import { backgroundReady, HttpError, json, maEndpoint, type Env } from "./env";
 import { Repository } from "./repository";
 import { validateTime } from "./schedule";
 import { tick } from "./jobs";
@@ -421,6 +421,7 @@ export async function handle(
                 stored.credential.apiKey,
                 stored.credential.project,
                 owner,
+                maEndpoint(env).provider,
               ),
             },
             Date.now(),

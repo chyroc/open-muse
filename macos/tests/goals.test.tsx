@@ -6,7 +6,7 @@ import type { Client } from "../../src/api";
 import { LocalDatabase } from "../../src/direct/storage";
 import { defaultIdentity, DirectIdentity } from "../../src/direct/identity";
 import { DirectGoals } from "../../src/direct/goals";
-import { ARK_BASE_URL } from "../../src/direct/transport";
+import { MA_BASE_URL } from "../../src/direct/transport";
 import { ApiError, ArkClient } from "../../shared/ark";
 import { parseGoals, serializeGoals } from "../../shared/goals";
 import {
@@ -98,7 +98,7 @@ function fixture(initial: Goal[] = []) {
     owner,
     new ArkClient(
       {
-        arkBaseUrl: ARK_BASE_URL,
+        arkBaseUrl: MA_BASE_URL,
         arkKey: identity.value.apiKey,
         project: "test",
       },

@@ -38,6 +38,10 @@ Builds without these values run in single-user local mode: the API key is kept
 on the device and no account or service request is made. See [Open Muse accounts](how-it-works.md#open-muse-accounts)
 for what an account does.
 
+`VITE_MUSE_MA_PROVIDER` selects the Managed Agents backend: `ark` (default) or
+`claude`. It sets the API the apps call and the origin their connection policy
+allows; an account build's service needs the same `MA_PROVIDER`.
+
 `npm run ios:install` produces such a build for a paired iPhone in one step. It
 takes the three values from the environment, or reads them with the Volcengine
 CLI from the Supabase workspace named `open-muse` (override with

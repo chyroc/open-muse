@@ -7,6 +7,7 @@ import {
 } from "../../shared/tooling";
 import type { WorkspaceStatus } from "../../shared/types";
 import { LocalDatabase } from "./storage";
+import { MA } from "./transport";
 import { systemWithIdentity } from "../../shared/identity";
 import { canonicalJson } from "../../shared/session-refresh";
 import {
@@ -350,9 +351,9 @@ export class DirectWorkspace {
         modelRow.model_id === legacyDefaultModel)
     )
       await this.update((r) => {
-        r.model_id = DEFAULT_MODEL;
+        r.model_id = MA.defaultModel;
       });
-    await this.ensure("agent", agentSpec((await this.row())!.model_id));
+    await this.ensure("agent", agentSpec((await this.row())!.model_id, MA));
     await this.syncPolicy();
     await this.update((r) => {
       r.state = "ready";

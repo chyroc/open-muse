@@ -11,7 +11,7 @@ import type {
 } from "../../shared/account-workspace";
 import type { UpcomingDelivery } from "../../shared/upcoming";
 import { credentials as defaultVault, type CredentialStore } from "./storage";
-import { ARK_BASE_URL, directFetch } from "./transport";
+import { MA, MA_BASE_URL, directFetch } from "./transport";
 
 const projectName = z
   .string()
@@ -207,7 +207,8 @@ export class DirectAuth {
   private async verify(credential: AccountCredential) {
     await new ArkClient(
       {
-        arkBaseUrl: ARK_BASE_URL,
+        arkBaseUrl: MA_BASE_URL,
+        provider: MA,
         arkKey: credential.apiKey,
         project: credential.project,
       },

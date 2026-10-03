@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { digest } from "../../shared/crypto";
 import { accountWorkspaceKey } from "../../shared/workspace-key";
 import type { Client } from "../../src/api";
-import { ARK_BASE_URL } from "../../src/direct/transport";
+import { MA_BASE_URL } from "../../src/direct/transport";
 import { macOwner } from "../ui/owner";
 
 const client = (account?: string) =>
@@ -16,7 +16,7 @@ const client = (account?: string) =>
 describe("Mac local record scope", () => {
   it("keeps the device scope when no account is signed in", () => {
     expect(macOwner(client())).toBe(
-      digest(JSON.stringify([ARK_BASE_URL, "shared-key", "p"])),
+      digest(JSON.stringify([MA_BASE_URL, "shared-key", "p"])),
     );
   });
   it("separates accounts that share one Ark key", () => {

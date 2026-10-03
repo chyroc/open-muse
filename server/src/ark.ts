@@ -4,7 +4,7 @@ import { parseGoals } from "../../shared/goals";
 import { defaultFeedInstructions } from "../../shared/inspiration";
 import type { AgentEvent, Page, Session } from "../../shared/types";
 import { tokenHash } from "./auth";
-import { HttpError, type Env } from "./env";
+import { HttpError, maEndpoint, type Env } from "./env";
 
 export interface Remote {
   readonly owner: string;
@@ -21,7 +21,6 @@ const validId = (value: unknown) => {
     throw new HttpError(502, "The upstream resource ID is invalid.");
   return value;
 };
-const base = "https://ark.cn-beijing.volces.com/api/v3";
 export const BACKGROUND_SYSTEM =
   "Generate personalized Feed ideas from the provided context. You have no tools, skills, MCP servers, child agents, or mounted memory. Return only the requested JSON. Never claim to have researched news or performed actions.";
 // A session snapshot shows the effective lists: Ark omits an overridden empty
@@ -39,7 +38,7 @@ export class ArkRemote implements Remote {
     this.owner = env.OWNER_ID ?? "";
     this.ark = new ArkClient(
       {
-        arkBaseUrl: base,
+        ...maEndpoint(env),
         arkKey: env.ARK_API_KEY!,
         project: env.ARK_PROJECT ?? "",
       },

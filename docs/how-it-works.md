@@ -6,9 +6,11 @@ building and running the apps, see [Development](development.md).
 
 ## Overview
 
-A personal AI task assistant built on Volcano Ark Managed Agents (MA). The web,
-iOS, Android, and macOS apps connect directly to Volcano APIs. No Open Muse
-backend, local API service, app access token, or server URL is required.
+A personal AI task assistant built on a Managed Agents (MA) service, Volcano Ark
+by default. The web, iOS, Android, and macOS apps connect directly to the MA
+API. No Open Muse backend, local API service, app access token, or server URL
+is required. Claude Managed Agents can replace Ark at build time; see
+[Built on Managed Agents](../README.md#built-on-managed-agents).
 
 Conversations use real MA responses. Without an Ark connection the app stays
 signed out; network failures never produce simulated replies. Cloud calls and

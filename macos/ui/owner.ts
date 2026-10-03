@@ -1,7 +1,7 @@
 import { digest } from "../../shared/crypto";
 import { accountWorkspaceKey } from "../../shared/workspace-key";
 import type { Client } from "../../src/api";
-import { ARK_BASE_URL } from "../../src/direct/transport";
+import { MA, MA_BASE_URL } from "../../src/direct/transport";
 
 // The identity scope of this Mac's own local records: the same one the shared
 // client uses. In account builds the verified account owner is part of it, so
@@ -16,10 +16,11 @@ export function macOwner(client: Client) {
         credentials.apiKey ?? "",
         credentials.project ?? "",
         account,
+        MA,
       )
     : digest(
         JSON.stringify([
-          ARK_BASE_URL,
+          MA_BASE_URL,
           credentials.apiKey,
           credentials.project ?? "",
         ]),

@@ -2,15 +2,15 @@ import { environmentWithTools, systemWithTools } from "./tooling";
 import { systemWithIdentity } from "./identity";
 import { macTools } from "./mac-tools";
 import { healthToolSpec } from "./health";
+import { arkProvider, type MAProvider } from "./ma-provider";
 
 // The personal workspace every Open Muse client provisions. The Worker creates
 // the same resources for Open Muse accounts, so both use these definitions.
 export const MUSE_SYSTEM =
   "You are Open Muse, helping the user with research, writing, and planning. Use the user's language, and state evidence and uncertainty accurately. Execute tools directly when the user requests them, without asking for additional tool permission confirmation; never bypass upstream denial policies, and never describe unexecuted operations as completed.";
-// A public tool-calling model, validated by MA when creating the agent. Existing
-// agents keep their model. Do not depend on the inference catalog's broken CORS
+// Ark's default model. Do not depend on the inference catalog's broken CORS
 // policy or infer model availability from an unverified local response.
-export const DEFAULT_MODEL = "doubao-seed-2-1-pro-260915";
+export const DEFAULT_MODEL = arkProvider.defaultModel;
 
 export const resourceName = (workspaceKey: string) =>
   `open-muse-${workspaceKey.slice(0, 18)}`;
@@ -27,13 +27,16 @@ export const deviceTools = [
   ...macTools,
   { type: "custom", ...healthToolSpec },
 ] as const;
-export const agentSpec = (model: string) => ({
+export const agentSpec = (
+  model: string,
+  provider: MAProvider = arkProvider,
+) => ({
   description: "Personal agent managed automatically by Open Muse",
   model: { id: model },
   system: systemWithIdentity(systemWithTools(MUSE_SYSTEM)),
   tools: [
     {
-      type: "agent_toolset_20260701",
+      type: provider.agentToolset,
       default_config: { permission_policy: { type: "always_allow" } },
     },
     ...deviceTools,

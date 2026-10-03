@@ -3,7 +3,6 @@ import { z } from "zod";
 import { ApiError, ArkClient } from "../../shared/ark";
 import { accountWorkspaceKey } from "../../shared/workspace-key";
 import {
-  DEFAULT_MODEL,
   agentSpec,
   environmentSpec,
   memoryStoreName,
@@ -20,7 +19,7 @@ import { digest } from "../../shared/crypto";
 import { canonicalJson } from "../../shared/session-refresh";
 import { AccountCredentials } from "./account";
 import { ConnectionStore, revokeBackground, seal, unseal } from "./connection";
-import { HttpError, type Env } from "./env";
+import { HttpError, maEndpoint, type Env } from "./env";
 
 type Kind = "environment" | "memory_store" | "agent";
 const kinds: Record<
@@ -119,7 +118,6 @@ type Row = {
   pending: string | null;
 };
 const purpose = "open-muse-account-workspace";
-const base = "https://ark.cn-beijing.volces.com/api/v3";
 const CREATE_WINDOW = 3_600_000,
   CREATE_LIMIT = 20,
   UPDATE_LIMIT = 60,
@@ -153,9 +151,14 @@ export class AccountWorkspaces {
       );
     const { apiKey, project } = stored.credential;
     return {
-      workspaceKey: accountWorkspaceKey(apiKey, project, this.owner),
+      workspaceKey: accountWorkspaceKey(
+        apiKey,
+        project,
+        this.owner,
+        maEndpoint(this.env).provider,
+      ),
       ark: new ArkClient(
-        { arkBaseUrl: base, arkKey: apiKey, project },
+        { ...maEndpoint(this.env), arkKey: apiKey, project },
         this.fetcher,
       ),
     };
@@ -168,7 +171,10 @@ export class AccountWorkspaces {
       .first<Row>();
   }
   private async decode(workspaceKey: string, row: Row | null) {
-    if (!row?.encrypted) return { model: DEFAULT_MODEL } as AccountWorkspace;
+    if (!row?.encrypted)
+      return {
+        model: maEndpoint(this.env).provider.defaultModel,
+      } as AccountWorkspace;
     let value: unknown;
     try {
       value = await unseal(
@@ -414,7 +420,7 @@ export class AccountWorkspaces {
         kind === "memory_store"
           ? { name: memoryStoreName }
           : kind === "agent"
-            ? agentSpec(workspace.model)
+            ? agentSpec(workspace.model, maEndpoint(this.env).provider)
             : environmentSpec();
       const next = { ...workspace };
       delete next[field];

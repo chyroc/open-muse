@@ -7,7 +7,10 @@ import {
   LocalDatabase,
   type CredentialStore,
 } from "../src/direct/storage";
-import { ARK_BASE_URL, directFetch } from "../src/direct/transport";
+import {
+  MA_BASE_URL as ARK_BASE_URL,
+  directFetch,
+} from "../src/direct/transport";
 import { digest, uuid } from "../shared/crypto";
 import { operations } from "../shared/ma";
 import { buildRequest } from "../shared/ma-request";

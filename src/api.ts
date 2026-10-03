@@ -27,7 +27,7 @@ import {
   type CredentialStore,
 } from "./direct/storage";
 import { resetDevice } from "./direct/reset";
-import { ARK_BASE_URL, directFetch } from "./direct/transport";
+import { MA, MA_BASE_URL, directFetch } from "./direct/transport";
 import { DirectWorkspace } from "./direct/workspace";
 import { exportBackgroundConfiguration } from "./direct/background-export";
 import { DirectIdentity, defaultIdentity } from "./direct/identity";
@@ -395,7 +395,7 @@ export class Client {
     // Account workspaces include the verified owner, so accounts sharing one
     // Ark key never adopt each other's agent, memory, or local records.
     const base = owner
-      ? accountWorkspaceKey(c.apiKey, c.project ?? "", owner)
+      ? accountWorkspaceKey(c.apiKey, c.project ?? "", owner, MA)
       : undefined;
     // Simulator acceptance profiles apply to local builds only: an account's
     // workspace key must match the one the service labels its resources with.
@@ -403,7 +403,7 @@ export class Client {
       base ??
       digest(
         JSON.stringify([
-          ARK_BASE_URL,
+          MA_BASE_URL,
           c.apiKey,
           c.project ?? "",
           ...(this.scope ? [this.scope] : []),
@@ -453,7 +453,8 @@ export class Client {
       }
       const ark = new ArkClient(
         {
-          arkBaseUrl: ARK_BASE_URL,
+          arkBaseUrl: MA_BASE_URL,
+          provider: MA,
           arkKey: c.apiKey,
           project: c.project ?? "",
         },

@@ -1,8 +1,11 @@
 import { t } from "../../shared/i18n";
-export const ARK_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3";
-const origins = new Set(["https://ark.cn-beijing.volces.com"]);
+import { maProvider } from "../../shared/ma-provider";
+// The Managed Agents backend chosen at build time; Volcano Ark by default.
+export const MA = maProvider(import.meta.env.VITE_MUSE_MA_PROVIDER);
+export const MA_BASE_URL = MA.baseUrl;
+const origins = new Set([MA.origin]);
 
-// All production network traffic goes directly to public Volcano endpoints.
+// All production network traffic goes directly to the public MA endpoints.
 // No proxy, service URL, app access token, or localhost fallback is accepted.
 export const directFetch: typeof fetch = async (input, init = {}) => {
   const url = new URL(

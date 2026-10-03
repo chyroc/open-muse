@@ -229,6 +229,10 @@ Configure local bindings in ignored `.dev.vars`:
   503.
 - `CREDENTIAL_ENCRYPTION_KEYS`: the keyring described under Background
   authorization. Without it account keys cannot be stored.
+- `MA_PROVIDER`: the Managed Agents backend that account keys belong to,
+  `ark` (default) or `claude`. It must match the apps' `VITE_MUSE_MA_PROVIDER`;
+  key checks, workspace preparation, background work, and reminders all call
+  that backend.
 - `ALLOWED_ORIGINS`: comma-separated exact origins for the native WebViews,
   typically `capacitor://localhost,muse://app`. Verify the actual app origins.
   Requests with no Origin still require authentication. Opaque `null` origins

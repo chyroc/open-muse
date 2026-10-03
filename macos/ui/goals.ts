@@ -2,7 +2,7 @@ import { t } from "../../shared/i18n";
 import type { Client } from "../../src/api";
 import { LocalDatabase } from "../../src/direct/storage";
 import { DirectIdentity } from "../../src/direct/identity";
-import { ARK_BASE_URL, directFetch } from "../../src/direct/transport";
+import { MA, MA_BASE_URL, directFetch } from "../../src/direct/transport";
 import { ApiError, ArkClient } from "../../shared/ark";
 import { digest, uuid } from "../../shared/crypto";
 import {
@@ -254,7 +254,8 @@ export class MacGoals {
       this.owner,
       new ArkClient(
         {
-          arkBaseUrl: ARK_BASE_URL,
+          arkBaseUrl: MA_BASE_URL,
+          provider: MA,
           arkKey: credentials.apiKey ?? "",
           project: credentials.project ?? "",
         },

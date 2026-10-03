@@ -1,6 +1,5 @@
 import { digest } from "./crypto";
-
-export const ARK_API_BASE = "https://ark.cn-beijing.volces.com/api/v3";
+import { arkProvider, type MAProvider } from "./ma-provider";
 
 // Scopes an account's MA agent, environment, memory store, and local records.
 // The verified account owner is part of the key, so accounts sharing one Ark
@@ -10,8 +9,10 @@ export function accountWorkspaceKey(
   apiKey: string,
   project: string,
   owner: string,
+  // Part of the key, so one key on two backends never shares a workspace.
+  provider: MAProvider = arkProvider,
 ) {
   return digest(
-    JSON.stringify([ARK_API_BASE, apiKey, project, "muse-account", owner]),
+    JSON.stringify([provider.baseUrl, apiKey, project, "muse-account", owner]),
   );
 }

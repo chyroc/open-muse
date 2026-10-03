@@ -65,6 +65,8 @@ const env: Env = {
     Deno.env.get("OPEN_MUSE_ALLOWED_ORIGINS") ??
     "capacitor://localhost,muse://app",
   BACKGROUND_ENABLED: Deno.env.get("OPEN_MUSE_BACKGROUND_ENABLED") ?? "true",
+  // Volcano Ark unless the apps were built for another MA backend.
+  MA_PROVIDER: Deno.env.get("OPEN_MUSE_MA_PROVIDER"),
   SCHEDULER_SOURCE: "external",
   SCHEDULER_TRIGGER_SECRET: Deno.env.get("SCHEDULER_TRIGGER_SECRET"),
   CREDENTIAL_ENCRYPTION_KEYS: Deno.env.get("CREDENTIAL_ENCRYPTION_KEYS"),

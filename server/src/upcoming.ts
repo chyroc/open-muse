@@ -13,7 +13,7 @@ import {
   reminderPrompt,
 } from "../../shared/upcoming";
 import { AccountCredentials } from "./account";
-import { HttpError, type Env } from "./env";
+import { HttpError, maEndpoint, type Env } from "./env";
 import { edgeFetch } from "./fetch";
 import { AccountWorkspaces } from "./workspace";
 
@@ -21,7 +21,6 @@ import { AccountWorkspaces } from "./workspace";
 // the account registered, so reminders arrive while every app is closed. Each
 // occurrence is claimed in D1 before one message is sent, and nothing is ever
 // sent twice: an ambiguous send is reconciled from history, never repeated.
-const base = "https://ark.cn-beijing.volces.com/api/v3";
 const LEASE = 4 * 60_000;
 const DAILY_LIMIT = 48;
 const RECONCILE_WINDOW = 86_400_000;
@@ -103,7 +102,7 @@ export class UpcomingDelivery {
     return {
       workspace,
       ark: new ArkClient(
-        { arkBaseUrl: base, arkKey: apiKey, project },
+        { ...maEndpoint(this.env), arkKey: apiKey, project },
         this.fetcher,
       ),
     };

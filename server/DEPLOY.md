@@ -105,6 +105,11 @@ npm run ios:build
 These are public configuration. Requests go to the base URL plus `/v1/…`, and
 the apps' connection policy names its origin.
 
+Apps and service use Volcano Ark Managed Agents by default. To build for
+Claude Managed Agents instead, add `VITE_MUSE_MA_PROVIDER=claude` to the app
+build and set the function secret `OPEN_MUSE_MA_PROVIDER=claude` (or
+`MA_PROVIDER` for a Worker); the two must match.
+
 ## Checking a deployment
 
 - `GET <base>/health` returns `{"ok":true}`.

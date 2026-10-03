@@ -1,11 +1,15 @@
 import type { AgentEvent, Category, Page, Session } from "../shared/types";
 import { boundedSignal } from "./abort";
+import { arkProvider, type MAProvider } from "./ma-provider";
 export interface ArkConfig {
+  // Base URL of the MA API, normally `provider.baseUrl`.
   arkBaseUrl: string;
   arkKey: string;
   project: string;
   agentId?: string;
   environmentId?: string;
+  // The Managed Agents backend; Volcano Ark when omitted.
+  provider?: MAProvider;
 }
 
 export class ApiError extends Error {
@@ -17,16 +21,25 @@ export class ApiError extends Error {
   }
 }
 
+// A client for the configured Managed Agents backend, named after the default.
 export class ArkClient {
+  private provider: MAProvider;
   constructor(
     private config: ArkConfig,
     private fetcher: typeof fetch = fetch,
     private lifecycle?: AbortSignal,
-  ) {}
-  private headers(init?: HeadersInit) {
+  ) {
+    this.provider = config.provider ?? arkProvider;
+  }
+  private headers(path: string, init?: HeadersInit) {
     const headers = new Headers(init);
-    headers.set("Authorization", `Bearer ${this.config.arkKey}`);
-    if (this.config.project) headers.set("X-Project-Name", this.config.project);
+    for (const [name, value] of Object.entries(
+      this.provider.headers(
+        { apiKey: this.config.arkKey, project: this.config.project },
+        path,
+      ),
+    ))
+      headers.set(name, value);
     return headers;
   }
   // Requests end after 30 seconds unless the caller allows longer.
@@ -34,7 +47,7 @@ export class ArkClient {
     path: string,
     { timeout = 30_000, ...init }: RequestInit & { timeout?: number } = {},
   ): Promise<T> {
-    const headers = this.headers(init.headers);
+    const headers = this.headers(path, init.headers);
     if (!(init.body instanceof FormData) && !headers.has("Content-Type"))
       headers.set("Content-Type", "application/json");
     headers.set("Accept", "application/json");
@@ -47,12 +60,16 @@ export class ArkClient {
         headers,
       });
       if (!response.ok) {
-        const diagnostic = await errorDiagnostic(response, this.config.arkKey);
+        const diagnostic = await errorDiagnostic(
+          response,
+          this.config.arkKey,
+          this.provider.requestIdHeader,
+        );
         throw new ApiError(
           [400, 401, 403, 404, 409, 413, 429].includes(response.status)
             ? response.status
             : 502,
-          `Ark request failed (HTTP ${response.status}${diagnostic ? `; ${diagnostic}` : ""}). Check your Ark connection or try again later.`,
+          `${this.provider.name} request failed (HTTP ${response.status}${diagnostic ? `; ${diagnostic}` : ""}). Check your Ark connection or try again later.`,
         );
       }
       if (response.status === 204) return { ok: true } as T;
@@ -76,6 +93,9 @@ export class ArkClient {
       model?: { id: string; reasoning_effort: string };
     },
   ): Promise<Session> {
+    // Choosing a model per conversation is an Ark capability.
+    if (selection?.model && !this.provider.modelChoice)
+      selection = { ...selection, model: undefined };
     if (
       !(selection?.agent ?? this.config.agentId) ||
       !(selection?.environment_id ?? this.config.environmentId)
@@ -119,7 +139,10 @@ export class ArkClient {
       }),
     });
     if (!session.id)
-      throw new ApiError(502, "Ark did not return a session ID.");
+      throw new ApiError(
+        502,
+        `${this.provider.name} did not return a session ID.`,
+      );
     return { ...session, category };
   }
   get(id: string) {
@@ -139,23 +162,23 @@ export class ArkClient {
     );
   }
   async stream(id: string, signal: AbortSignal) {
-    return this.fetcher(
-      `${this.config.arkBaseUrl}/sessions/${encodeURIComponent(id)}/events/stream`,
-      {
-        signal,
-        redirect: "error",
-        headers: this.headers({
-          Accept: "text/event-stream",
-        }),
-      },
-    );
+    const path = `/sessions/${encodeURIComponent(id)}/events/stream`;
+    return this.fetcher(`${this.config.arkBaseUrl}${path}`, {
+      signal,
+      redirect: "error",
+      headers: this.headers(path, { Accept: "text/event-stream" }),
+    });
   }
 }
 
 // Return only structured diagnostics and known validation categories, never raw error text that may contain credentials or user input.
-async function errorDiagnostic(response: Response, secret: string) {
+async function errorDiagnostic(
+  response: Response,
+  secret: string,
+  requestIdHeader: string,
+) {
   const parts: string[] = [];
-  const requestId = response.headers.get("x-request-id");
+  const requestId = response.headers.get(requestIdHeader);
   if (
     requestId &&
     /^[a-zA-Z0-9_-]{8,100}$/.test(requestId) &&

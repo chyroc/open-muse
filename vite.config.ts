@@ -6,10 +6,13 @@ import {
   backgroundOrigin,
 } from "./shared/background-origin";
 import { supabaseOrigin, supabasePublicKey } from "./shared/supabase-auth";
+import { maProvider } from "./shared/ma-provider";
 
 const background = backgroundOrigin(process.env.VITE_MUSE_BACKGROUND_URL);
 const auth = supabaseOrigin(process.env.VITE_MUSE_SUPABASE_URL);
 const authKey = supabasePublicKey(process.env.VITE_MUSE_SUPABASE_ANON_KEY);
+// The Managed Agents backend; Volcano Ark unless VITE_MUSE_MA_PROVIDER says otherwise.
+const ma = maProvider(process.env.VITE_MUSE_MA_PROVIDER);
 if (Boolean(auth) !== Boolean(authKey))
   throw new Error(
     "Configure the Supabase Auth origin and public key together.",
@@ -20,6 +23,7 @@ export default defineConfig({
     "import.meta.env.VITE_MUSE_BACKGROUND_URL": JSON.stringify(background),
     "import.meta.env.VITE_MUSE_SUPABASE_URL": JSON.stringify(auth),
     "import.meta.env.VITE_MUSE_SUPABASE_ANON_KEY": JSON.stringify(authKey),
+    "import.meta.env.VITE_MUSE_MA_PROVIDER": JSON.stringify(ma.id),
   },
   plugins: [
     react(),
@@ -32,7 +36,7 @@ export default defineConfig({
             tag: "meta",
             attrs: {
               "http-equiv": "Content-Security-Policy",
-              content: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; media-src 'self' blob:; connect-src 'self' https://ark.cn-beijing.volces.com${background ? ` ${backgroundConnectSource(background)}` : ""}${auth ? ` ${auth}` : ""}; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'`,
+              content: `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; media-src 'self' blob:; connect-src 'self' ${ma.origin}${background ? ` ${backgroundConnectSource(background)}` : ""}${auth ? ` ${auth}` : ""}; object-src 'none'; frame-src 'none'; base-uri 'self'; form-action 'none'`,
             },
             injectTo: "head-prepend",
           },

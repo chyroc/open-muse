@@ -6,11 +6,10 @@ import {
   type AccountCredentialStatus,
 } from "../../shared/account-credential";
 import { currentKeyId, revokeBackground, seal, unseal } from "./connection";
-import { HttpError, type Env } from "./env";
+import { HttpError, maEndpoint, type Env } from "./env";
 import { supabaseOrigin } from "../../shared/supabase-auth";
 
 type Row = { revision: number; encrypted: string | null; updated_at: number };
-const base = "https://ark.cn-beijing.volces.com/api/v3";
 const purpose = "open-muse-account-ark";
 const KEY_CHECK_WINDOW = 3_600_000,
   KEY_CHECK_LIMIT = 10;
@@ -122,7 +121,7 @@ export class AccountCredentials {
     try {
       await new ArkClient(
         {
-          arkBaseUrl: base,
+          ...maEndpoint(this.env),
           arkKey: credential.apiKey,
           project: credential.project,
         },
