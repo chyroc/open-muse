@@ -23,6 +23,10 @@
   animation: activity-detail-in var(--motion-sheet-duration)
     var(--motion-sheet-spring) backwards;
 }
+.activity-detail.expanded {
+  height: calc(var(--app-height, 100dvh) - env(safe-area-inset-top) - 8px);
+  transition: height var(--motion-sheet-duration) var(--motion-sheet-spring);
+}
 .activity-detail:focus {
   outline: none;
 }
@@ -36,6 +40,8 @@
 }
 .activity-detail-content {
   min-height: 0;
+  /* Scrolled content stays inside the rounded corners. */
+  border-radius: inherit;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 0 20px calc(20px + env(safe-area-inset-bottom));
@@ -47,8 +53,12 @@
   align-items: center;
   justify-content: space-between;
   margin: 0 -20px;
-  padding: 16px 16px 6px 20px;
-  background: linear-gradient(var(--surface-fill) 70%, transparent);
+  padding: 16px 16px 14px 20px;
+  z-index: 2;
+  background: linear-gradient(
+    var(--surface-fill) calc(100% - 10px),
+    transparent
+  );
   touch-action: none;
 }
 .activity-detail-state {
@@ -94,7 +104,7 @@
   -webkit-line-clamp: 2;
 }
 .activity-detail .activity-detail-title {
-  margin: 8px 0 0;
+  margin: 0;
   font-size: 17px;
   line-height: 23px;
   font-weight: 600;
@@ -229,7 +239,7 @@
     var(--motion-push-spring) both;
 }
 .activity-detail .activity-step-title {
-  margin: 10px 0 0;
+  margin: 2px 0 0;
   font-size: 17px;
   line-height: 23px;
   font-weight: 600;

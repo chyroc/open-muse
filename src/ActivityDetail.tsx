@@ -40,6 +40,8 @@ export function ActivityDetail({
   const [open, setOpen] = useState<string>();
   const [leaving, setLeaving] = useState(false);
   const [opened, setOpened] = useState(false);
+  // Like a system sheet, scrolling the half-height sheet raises it to full.
+  const [expanded, setExpanded] = useState(false);
   const content = useRef<HTMLDivElement>(null);
   const scroll = useRef(0);
   const dismiss = () => {
@@ -83,7 +85,7 @@ export function ActivityDetail({
   return (
     <dialog
       ref={dialog}
-      className="activity-detail"
+      className={`activity-detail${expanded ? " expanded" : ""}`}
       tabIndex={-1}
       aria-label={title}
       onCancel={(event) => {
@@ -95,7 +97,13 @@ export function ActivityDetail({
       }}
     >
       <ContinuousSurface />
-      <div className="activity-detail-content" ref={content}>
+      <div
+        className="activity-detail-content"
+        ref={content}
+        onScroll={(event) => {
+          if (!expanded && event.currentTarget.scrollTop > 0) setExpanded(true);
+        }}
+      >
         {step ? (
           <section
             key={step.id}
