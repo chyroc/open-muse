@@ -451,6 +451,16 @@ h3 {
 .empty-state p {
   margin: 0 0 12px;
 }
+/* Side-by-side chat on the feed, ideas, goals and library pages: the chat
+   sits between the rail and the page and takes 44% of the window. */
+.desktop-shell.side-split > .workspace.feed-split-chat {
+  order: 1;
+  flex: 0 0 44%;
+  border-right: 1px solid var(--line);
+}
+.desktop-shell.side-split > main.workspace:not(.feed-split-chat) {
+  order: 2;
+}
 /* Side chats: a panel docked beside the rail. Its edge resizes it, and a
    click there closes it. */
 .chat-drawer {

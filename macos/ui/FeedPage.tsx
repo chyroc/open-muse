@@ -9,7 +9,6 @@ import {
   Info,
   MessageCircle,
   MoreHorizontal,
-  PanelRight,
   RefreshCw,
   SlidersHorizontal,
   Trash2,
@@ -21,7 +20,7 @@ import type {
 } from "../../shared/inspiration";
 import { Markdown } from "../../src/components";
 import { useTask } from "../../src/useTask";
-import { Empty, Modal } from "./Chrome";
+import { Empty, Modal, SplitChatIcon } from "./Chrome";
 import { FeedInstructions, shownInstructions } from "./FeedInstructions";
 import {
   emptyFeedPresentation,
@@ -298,7 +297,7 @@ export function FeedPage({
         aria-pressed={split}
         onClick={onToggleChat}
       >
-        <PanelRight size={22} />
+        <SplitChatIcon open={split} />
       </button>
       <div className="feed-column">
         <header className="feed-heading route-heading">

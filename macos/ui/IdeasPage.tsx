@@ -9,7 +9,6 @@ import {
   Lightbulb,
   MessageCircle,
   MoreHorizontal,
-  PanelRight,
   RefreshCw,
   Search,
   Shapes,
@@ -21,7 +20,7 @@ import type { Client } from "../../src/api";
 import type { InspirationItem } from "../../shared/inspiration";
 import { Markdown } from "../../src/components";
 import { useTask } from "../../src/useTask";
-import { Modal } from "./Chrome";
+import { Modal, SplitChatIcon } from "./Chrome";
 import { navLabel, refreshIdeasLabel, viewIdeaLabel } from "./labels";
 import {
   MacIdeas,
@@ -546,7 +545,7 @@ export function IdeasPage({
         aria-pressed={split}
         onClick={onToggleChat}
       >
-        <PanelRight size={22} />
+        <SplitChatIcon open={split} />
       </button>
       <div className="ideas-column">
         <header className="ideas-heading route-heading">

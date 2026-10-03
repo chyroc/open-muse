@@ -478,18 +478,6 @@
 .library-error {
   color: var(--danger);
 }
-.desktop-shell.library-split > .rail {
-  order: 0;
-}
-.desktop-shell.library-split > .workspace.library-split-chat {
-  order: 1;
-  flex: 0 0 44%;
-  border-right: 1px solid var(--line);
-  border-left: 0;
-}
-.desktop-shell.library-split > .library-workspace {
-  order: 2;
-}
 .desktop-shell.library-split .library-header {
   padding: 44px 32px 22px;
 }

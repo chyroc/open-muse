@@ -1076,7 +1076,7 @@ export function DesktopApp({ client }: { client: Client }) {
 
   return (
     <div
-      className={`desktop-shell ${route.page === "library" && splitChat ? "library-split" : ""}`}
+      className={`desktop-shell ${inspirationPage && splitChat ? "side-split" : ""} ${route.page === "library" && splitChat ? "library-split" : ""}`}
     >
       <Rail
         page={route.page}

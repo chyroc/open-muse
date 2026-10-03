@@ -21,14 +21,13 @@ import {
   Trash2,
   Users,
   WandSparkles,
-  PanelRight,
   SquareCheck,
 } from "lucide-react";
 import type { Client } from "../../src/api";
 import type { Goal } from "../../shared/types";
 import { goalCategories, type GoalCategory } from "../../shared/goals";
 import { Markdown } from "../../src/components";
-import { Modal } from "./Chrome";
+import { Modal, SplitChatIcon } from "./Chrome";
 import {
   MacGoals,
   goalActivityLabel,
@@ -610,7 +609,7 @@ export function GoalsPage({
         aria-pressed={split}
         onClick={onToggleChat}
       >
-        <PanelRight size={22} />
+        <SplitChatIcon open={split} />
       </button>
       <div className="goals-column">
         <header className="goals-heading route-heading">

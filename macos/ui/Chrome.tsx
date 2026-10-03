@@ -41,6 +41,34 @@ export const GoalsIcon = createLucideIcon("goal-box", [
   ["path", { d: "m8 12.5 2.8 2.8L16.5 9", key: "tick" }],
 ]);
 
+// The side-by-side chat toggle: a window with a sidebar on its left, filled
+// while the chat is open beside the page.
+export function SplitChatIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      width={22}
+      height={22}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {open && (
+        <path
+          d="M6 4.5h3v15H6A2.5 2.5 0 0 1 3.5 17V7A2.5 2.5 0 0 1 6 4.5z"
+          fill="currentColor"
+          stroke="none"
+        />
+      )}
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+      <path d="M9 4.5v15" />
+    </svg>
+  );
+}
+
 // The library: four shapes in a grid.
 export const LibraryIcon = createLucideIcon("shape-grid", [
   ["path", { d: "M7 2.8 10.2 6 7 9.2 3.8 6z", key: "diamond" }],

@@ -537,6 +537,13 @@ describe("Mac Ideas UI", () => {
     expect(host.querySelector<HTMLDivElement>(".feed-split-chat")?.hidden).toBe(
       false,
     );
+    // The chat opens on the left of the page, as the reference app does.
+    expect(host.querySelector(".desktop-shell.side-split")).toBeTruthy();
+    expect(
+      host
+        .querySelector(".ideas-split-toggle")
+        ?.querySelector("svg path[fill='currentColor']"),
+    ).toBeTruthy();
     expect(host.querySelector(".feed-quote")).toBeNull();
     await click("View idea: Idea one");
     expect(host.textContent).toContain("Open conversation");

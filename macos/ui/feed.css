@@ -274,10 +274,6 @@
   overflow-wrap: anywhere;
   line-height: 1.5;
 }
-.workspace.feed-split-chat {
-  flex: 0 0 360px;
-  border-left: 1px solid var(--line);
-}
 .feed-split-chat .chat-scroll {
   padding-left: 18px;
   padding-right: 18px;
@@ -307,8 +303,5 @@
   .desktop-feed {
     padding-left: 62px;
     padding-right: 26px;
-  }
-  .workspace.feed-split-chat {
-    flex-basis: 330px;
   }
 }
