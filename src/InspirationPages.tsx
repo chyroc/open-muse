@@ -22,6 +22,12 @@ import { PageHeader, Sheet } from "./MusePages";
 import { useTask } from "./useTask";
 import { defaultFeedInstructions } from "../shared/inspiration";
 import { starterIdeas } from "../shared/starter-ideas";
+import { backgroundClient, type BackgroundClient } from "./background-client";
+import {
+  isBackgroundPost,
+  mergeBackgroundFeed,
+  useBackgroundFeed,
+} from "./background-feed";
 import "./inspiration.css";
 
 export function InspirationPost({
@@ -36,6 +42,9 @@ export function InspirationPost({
   busy: boolean;
 }) {
   const [info, setInfo] = useState(false);
+  // Prepared by the service on the account's schedule: no like on this
+  // device, and Discuss always opens a new draft.
+  const away = isBackgroundPost(item);
   return (
     <article className="inspiration-post" aria-label={item.title}>
       <span className="post-symbol" aria-hidden="true">
@@ -49,14 +58,16 @@ export function InspirationPost({
         <PostImages item={item} />
         <Sources item={item} />
         <footer className="post-actions">
-          <button
-            aria-label={item.liked ? t("Unlike post") : t("Like post")}
-            aria-pressed={item.liked}
-            disabled={busy}
-            onClick={onLike}
-          >
-            <Heart size={20} fill={item.liked ? "currentColor" : "none"} />
-          </button>
+          {!away && (
+            <button
+              aria-label={item.liked ? t("Unlike post") : t("Like post")}
+              aria-pressed={item.liked}
+              disabled={busy}
+              onClick={onLike}
+            >
+              <Heart size={20} fill={item.liked ? "currentColor" : "none"} />
+            </button>
+          )}
           <button className="post-discuss" onClick={onDiscuss}>
             <MessageCircle size={19} />
             {t("Discuss")}
@@ -73,6 +84,9 @@ export function InspirationPost({
           <aside className="post-information">
             <strong>{t("Why this post")}</strong>
             <p>{item.reason}</p>
+            {away && (
+              <p>{t("Prepared while you were away, on your schedule.")}</p>
+            )}
             <a href={`#/task/${item.session_id}`}>
               {t("View generation conversation")} <ArrowUpRight size={14} />
             </a>
@@ -149,12 +163,15 @@ export function InspirationPage({
   onDiscuss,
   editInstructions,
   onEditorClose,
+  background = backgroundClient,
 }: {
   client: Client;
   kind: InspirationKind;
   onDiscuss: (item: InspirationItem) => void;
   editInstructions?: boolean;
   onEditorClose?: () => void;
+  // The Open Muse service, whose scheduled posts join the Feed.
+  background?: BackgroundClient;
 }) {
   const [data, setData] = useState<InspirationSnapshot>();
   const [error, setError] = useState("");
@@ -198,7 +215,13 @@ export function InspirationPage({
       if (alive.current) setLoading(false);
     }
   }, [client, kind]);
-  useRefreshHandler(refresh);
+  const away = useBackgroundFeed(kind === "feed" ? background : null);
+  useRefreshHandler(
+    useCallback(
+      () => Promise.all([refresh(), away.reload()]).then(() => {}),
+      [refresh, away.reload],
+    ),
+  );
   useEffect(() => {
     alive.current = true;
     // Show what this device already has while the cloud is read.
@@ -249,7 +272,9 @@ export function InspirationPage({
       }
     }
   }
-  const found = data?.items.filter((item) => item.kind === kind) ?? [];
+  const found = mergeBackgroundFeed(data?.items ?? [], away.posts).filter(
+    (item) => item.kind === kind,
+  );
   // Until personal ideas are found, show what the companion can already do.
   const starters = kind === "ideas" && !found.length;
   const items = starters ? starterIdeas(t) : found;

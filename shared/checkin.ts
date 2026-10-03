@@ -7,6 +7,7 @@ import {
   pendingPermissions,
   type AgentEvent,
 } from "./types";
+import { localDay, localHour } from "./proactive";
 
 export const checkInPolicy = {
   // The conversation must have been quiet this long before the companion
@@ -29,19 +30,21 @@ export type CheckInRecord = {
   replyId?: string;
 };
 
-const sameLocalDay = (a: number, b: number) =>
-  new Date(a).toDateString() === new Date(b).toDateString();
-
 export function checkInDue(input: {
   enabled: boolean;
   now: number;
   status: string;
   history: AgentEvent[];
   records: CheckInRecord[];
+  // The person's IANA time zone; the device's own when omitted. The service
+  // passes the one the account registered.
+  timeZone?: string;
 }) {
-  const { now, history, records } = input;
+  const { now, history, records, timeZone } = input;
+  const sameLocalDay = (a: number, b: number) =>
+    localDay(a, timeZone) === localDay(b, timeZone);
   if (!input.enabled || input.status !== "idle") return false;
-  const hour = new Date(now).getHours();
+  const hour = localHour(now, timeZone);
   if (hour < checkInPolicy.from || hour >= checkInPolicy.until) return false;
   // An unresolved initiation must be reconciled before another is considered.
   if (records.some((record) => record.phase === "sending")) return false;
@@ -89,11 +92,14 @@ const checkInOpening =
 export const isCheckInPrompt = (text: string) =>
   text.startsWith(checkInOpening) && text.endsWith("</open-muse-checkin>");
 
-export function checkInPrompt(language: string, now: Date) {
+// The service passes the account's registered time zone; the apps use the
+// device's own. The text is otherwise identical, so every app hides it.
+export function checkInPrompt(language: string, now: Date, timeZone?: string) {
   const locale = /^[a-z]{2,3}(?:-[a-z0-9]{2,8}){0,3}$/i.test(language)
     ? language
     : "en";
   const local = now.toLocaleString("en-US", {
+    timeZone,
     weekday: "long",
     hour: "numeric",
     minute: "2-digit",

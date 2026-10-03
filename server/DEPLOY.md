@@ -112,7 +112,11 @@ build and set the function secret `OPEN_MUSE_MA_PROVIDER=claude` (or
 
 ## Checking a deployment
 
-- `GET <base>/health` returns `{"ok":true}`.
+- `GET <base>/health` returns `"ok":true` with `scheduler.lastTickAt` within
+  the last few minutes once the timer runs. While the timer has not
+  succeeded for 15 minutes it returns 503 with `"ok":false`; point an uptime
+  monitor at it. `keyRotation.pending` counts values not yet under the current
+  encryption key.
 - A signed-in account's `GET <base>/v1/status` returns its `muse_user_*` owner;
   a second account sees none of the first account's credential, connection,
   runs, devices, or Feed.
@@ -121,6 +125,62 @@ build and set the function secret `OPEN_MUSE_MA_PROVIDER=claude` (or
 - After an account saves its key, prepares its workspace, and allows background
   work, `POST <base>/v1/runs` queues a run that later timer ticks move to
   `complete`.
+- Incoming webhooks need nothing extra: the function is deployed with
+  `--no-verify-jwt`, so external systems reach `POST <base>/v1/hooks/<id>`
+  with only the hook's token, and the apps show `<base>/v1/hooks/<id>`. A
+  request with a wrong token returns 401. Keep request-URL logging off at any
+  proxy in front of the service, since Lark sends the token as `?token=`.
+
+## Rotating the encryption keyring
+
+The function's secrets cannot be read back, so a new keyring is added next to
+the deployed one instead of edited into it.
+
+1. Generate a keyring locally with a key ID the deployed keyring does not use
+   (a date keeps it unique), and back it up somewhere private before going
+   further. Losing it after the switch makes stored credentials unreadable.
+
+   ```sh
+   node -e 'console.log(JSON.stringify({current:"k20261003",keys:{k20261003:require("node:crypto").randomBytes(32).toString("base64")}}))' > next-keyring.json
+   chmod 600 next-keyring.json
+   ```
+
+2. Set it as `CREDENTIAL_ENCRYPTION_KEYS_NEXT` from a private file, then ship
+   the code with the other secrets kept (`SUPABASE_WORKSPACE` only), which also
+   restarts the function with the new secret:
+
+   ```sh
+   (umask 077; printf "CREDENTIAL_ENCRYPTION_KEYS_NEXT='%s'\n" "$(cat next-keyring.json)" > next.env)
+   ve byted-supabase-cli secrets set --env-file next.env --workspace-id <workspace>
+   rm next.env
+   SUPABASE_WORKSPACE=<workspace> node server/deploy/volcengine/deploy-function.mjs
+   ```
+
+   New values are now sealed with the new key and older rows still open.
+   Until step 4, ship code only in this keep-secrets mode. If
+   the new keyring is malformed or reuses a key ID with other material,
+   credential storage stops working (status reports
+   `credentialStorageReady: false`); unset the secret and start over.
+
+3. Wait until `GET <base>/health` reports `keyRotation.pending` as `0`. Each
+   timer tick reseals up to 50 rows per sealed column. A count that stops
+   falling means rows the keyring cannot open; do not continue.
+
+4. Make the new keyring the only one: set `CREDENTIAL_ENCRYPTION_KEYS` to it
+   the same way (an env file containing `CREDENTIAL_ENCRYPTION_KEYS='…'`),
+   then remove the rotation secret and ship again:
+
+   ```sh
+   ve byted-supabase-cli secrets unset CREDENTIAL_ENCRYPTION_KEYS_NEXT --workspace-id <workspace>
+   SUPABASE_WORKSPACE=<workspace> node server/deploy/volcengine/deploy-function.mjs
+   ```
+
+   Pass the new keyring from now on when running a full deployment. Keep the old
+   keyring's backup until database backups holding older ciphertext expire.
+
+On a Worker, use `wrangler secret put CREDENTIAL_ENCRYPTION_KEYS_NEXT`, then
+`wrangler secret put CREDENTIAL_ENCRYPTION_KEYS` and
+`wrangler secret delete CREDENTIAL_ENCRYPTION_KEYS_NEXT` in the same order.
 
 ## Alternative: Cloudflare Worker and D1
 

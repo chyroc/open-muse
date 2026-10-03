@@ -35,6 +35,8 @@ is reset in the app with a code sent by email, which needs outgoing email
 configured at the Auth provider. **Delete account** in the same card removes
 the account, everything the Open Muse service keeps for it, and its sign-in;
 conversations, memory, and the agent stay in the person's Ark account.
+**Export my data** saves a JSON copy of everything the service keeps for the
+account, with the Ark API key shown only by its last four characters.
 
 Builds without these values run in single-user local mode: the API key is kept
 on the device and no account or service request is made.
@@ -80,7 +82,8 @@ checked before another write; they are never blindly retried or adopted.
 | Schedule (enabled, time zone, time) | Open Muse service, `schedules` | Plain D1 row, account-scoped | Server-side only |
 | Agent model, instructions, tools, permission policy, MCP servers, skills; environment settings | The account's Ark agent and environment, plus a sealed copy in `account_workspaces` of what Ark reported after the last change made through Open Muse | Ark; AES-GCM for the sealed copy | Read back from the sealed record; the resources are the same |
 | Name, SOUL, MEMORY, goals, and Feed instructions | The account's Ark memory store | Ark | Same memory store |
-| Conversation list, saved replies, Library, Feed likes, local approvals | Device IndexedDB, scoped by workspace key | Not app-encrypted | Not synced; conversations themselves remain in Ark |
+| Chosen model and thinking level, saved replies, Feed and Ideas posts with likes and discussion links, Feed instructions dismissal, archived side chats | Device IndexedDB, scoped by workspace key, plus a synced copy in `account_sync_items` | Not app-encrypted on the device; AES-GCM on the service, bound to account, workspace key, item, and revision | Synced for the same workspace key (see [Sync across devices](#sync-across-devices)) |
+| Side-chat list, main-chat selection and continuation, local approvals, reactions | Device IndexedDB, scoped by workspace key | Not app-encrypted | Not synced; conversations themselves remain in Ark |
 | Open Muse session | Keychain (sessionStorage on web) | OS-protected | Each device signs in |
 | Appearance (Mac) | Device preference | None | Not synced |
 
@@ -125,6 +128,41 @@ Existing agents retain their model. New agents use the public tool-calling model
 errors remain visible. The inference `/models` endpoint currently has invalid
 CORS responses, so neither sign-in nor workspace preparation depends on it.
 
+### Sync across devices
+
+In an account build, the account's devices keep these in step for the same
+workspace key: the chosen model and thinking level, saved replies (one item
+per original session and event, so saving the same reply on two devices keeps
+one), Feed and Ideas posts with their likes and discussion links, the Feed
+instructions dismissal, and which side chats are archived. Main-chat selection
+and continuation, the side-chat list, reactions, approvals, check-in and
+reminder receipts, and pending generation runs are not synced. Local builds
+never upload any of it.
+
+Each device keeps its records in IndexedDB as before and syncs when the app
+starts, when it returns to the foreground (at most every two minutes), and a
+couple of seconds after a change: it first reads what changed since its last
+cursor, then sends its own changes. Every change waits in an outbox kept under
+the workspace key, with a stable mutation ID, until the service confirms it, so
+an interrupted send is repeated with the same ID and written once. The
+workspace key includes the signed-in account, so signing out or switching
+accounts never sends the previous account's pending changes. Records saved
+under the account's workspace before sync existed already belong to that
+account and are uploaded on the first sync; records from a local build or
+another account are not.
+
+The service writes an item only at the revision the device last saw. When
+another device changed it first, the device merges the two field by field
+against the copy it last synced: a field changed only on this device is kept
+and sent again on top of the other device's copy; a field changed on both sides
+takes the copy already on the service. For example, a like on one device and a
+discussion link on another both survive, while two different model choices end
+with the one saved first. Deleting an item leaves a tombstone so an outdated
+device cannot bring it back. A saved reply over 20,000 characters, or any item
+the service refuses, stays only on the device where it was made. A model the
+app does not offer, chosen on a newer version, is kept on the service and left
+alone locally. Screens show synced changes the next time they read their data.
+
 ## Storage and security
 
 - iOS and macOS keep API keys (local builds) and Open Muse account sessions in
@@ -137,8 +175,9 @@ CORS responses, so neither sign-in nor workspace preparation depends on it.
 - Workspace mappings, session metadata, legacy goals, saved replies, and local approval
   records live in IndexedDB. They contain no raw API keys, but conversation
   content is not encrypted by the app. Protect the device/browser profile.
-- Saved replies and conversation indexes are device-local. Current goals live
-  in personal MA memory; conversations and execution history are read from MA.
+- Conversation indexes are device-local; saved replies sync in account builds
+  (see [Sync across devices](#sync-across-devices)). Current goals live in
+  personal MA memory; conversations and execution history are read from MA.
 - Personal identity documents live in an app-owned MA memory store, scoped to
   the same workspace key as the agent (account owner, API key, and project in
   account builds). Local pending-write records can contain document drafts
@@ -244,8 +283,10 @@ Settings. Start a side chat for a separate topic. Archiving and restoring only
 change the local sidebar index; they never delete or terminate a cloud session.
 Existing cloud conversations remain accessible as side chats.
 
-Main-chat selection and archive state are device-local and isolated by API key
-and project. They are not cross-device preferences. Creation attempts are
+Main-chat selection is device-local and isolated by API key and project; it is
+not a cross-device preference. In an account build, archiving or restoring a
+side chat syncs to the account's other devices; the main chat and its earlier
+chapters never take an archive state from another device. Creation attempts are
 recorded before submission and recovered by a random marker after ambiguous
 failures, rather than creating another session automatically.
 
@@ -267,14 +308,13 @@ across devices. No choice is an implicit tool approval or hidden action.
 Only a validated `muse-choice` JSON block can create these controls. Ordinary
 Markdown, quoted examples, and HTML do not become interactive commands.
 Incomplete or malformed questions leave the message composer available.
-Background check-ins require a separately verified scheduling mechanism.
 
 ### Check-ins
 
 When the main chat comes to the front after a quiet period, the companion can
 start the conversation with one short question about an active goal, a recent
 topic, or a stated preference, read from personal memory. It may use an inline
-question. A check-in happens only while the app is open, between 08:00 and
+question. A check-in from the app happens only while it is open, between 08:00 and
 22:00 local time, at least 18 hours after the last message, at most once per
 local day, and never while a reply, approval, or tool result is pending or
 while a welcome, check-in, or reminder from any device is unanswered. A new
@@ -286,7 +326,22 @@ fixed app-written opening; it remains in execution history. Claims are transacti
 identity, and an uncertain result is confirmed from history, never sent again.
 Each check-in is a real, possibly billed Ark request. Settings has a
 device-local toggle under **Check-ins**, on by default. Check-ins do not send
-notifications or run in the background.
+notifications.
+
+With an Open Muse account, the app first claims the day's check-in (its local
+date) with the Open Muse service, and only the device or service that claims
+it first sends it. When the claim is lost, nothing is sent and the day is not
+asked about again; when the service cannot be reached, nothing is sent and the
+claim is tried the next time. Local mode has no claim.
+
+Once delivery while closed is on in Upcoming, **Check-ins** also offers **Check
+in even when Open Muse is closed**, an account setting that is off by default.
+The service then checks in on the registered main chat while every app is
+closed, with the same rules in the time zone the app last registered, and
+counts toward the same once-per-day limit (see
+[the service README](../server/README.md#check-ins-and-goal-follow-ups-while-closed)).
+It uses the account's saved Ark key; each check-in is a real, possibly billed
+Ark request.
 
 ### Upcoming
 
@@ -314,9 +369,13 @@ rejected result. Only the latest occurrence from the last 36 hours is
 delivered; older misses are not replayed. A device delivers only occurrences
 after it first ran this feature, so a new device does not repeat earlier
 reminders. Before sending, it also skips occurrences another device already
-delivered to the main chat; two devices sending in the same moment can still
-both deliver one. Resuming or changing an item does not replay occurrences
-that passed in the meantime.
+delivered to the main chat. In local mode, two devices sending in the same
+moment can still both deliver one; with an Open Muse account, each device
+claims every occurrence with the service first and delivers only the ones it
+won. An occurrence another device or the service claimed is left to it; when
+the service cannot be reached, the occurrence stays due and nothing is sent
+for it until a claim succeeds. Resuming or changing an item does not replay
+occurrences that passed in the meantime.
 
 With an Open Muse account, **Deliver even when Open Muse is closed** in the Upcoming
 tab registers the main chat with the Open Muse service, which then delivers due
@@ -335,6 +394,26 @@ Upcoming tab; signing out clears it. Notifications are requested the first
 time there is something to announce and are not shown while the app is in
 front, where the main chat delivers the item itself. There are no remote push
 notifications, and the Mac and web apps show no notifications.
+
+### Incoming webhooks
+
+With an Open Muse account, the **Webhooks** card in Settings > Account and
+workspace on iPhone creates webhook
+URLs that other services can post events to: a Lark (Feishu) event
+subscription, a script, or IFTTT. Each event becomes one hidden
+app-generated message in the main chat, and the companion tells you what
+happened when it matters, using its normal tools and asking before external
+actions. Creating a hook shows its address and secret once, plus the address
+with the secret as a `token` parameter for services that cannot set headers;
+the list shows each hook's last event, and revoking one (after confirming)
+stops it at once. Events are accepted only while background work is allowed
+under **While you're away** and **Deliver even when Open Muse is closed** is
+on in Upcoming; a busy chat refuses an event so the sender can retry. Event
+contents are treated as untrusted third-party data, never as your request.
+Anyone with a hook's address and secret can post into your main chat, so
+revoke a hook whose address leaked. See
+[the service README](../server/README.md#incoming-webhooks) for limits and the
+security details.
 
 ## Personal identity and memory
 
@@ -397,8 +476,21 @@ Malformed documents remain visible as errors and are never replaced with an
 empty plan. Unconfirmed writes are not automatically repeated.
 
 Tracking currently means user-confirmed plans and reported progress, not
-scheduled execution. No autonomous check-ins, notification delivery, or external
-monitoring are enabled. Completing a goal does not interrupt running tools.
+scheduled execution. Notification delivery and external monitoring are not
+enabled. Completing a goal does not interrupt running tools.
+
+With an Open Muse account and delivery while closed on, **Follow up on goals**
+under **Check-ins** (off by default) lets the service ask about a stalled goal.
+When an active goal in `GOALS.md` has had no update for seven days, the service
+sends one app-generated message to the main chat naming the goal that has gone
+longest without one, opening with `<open-muse-goal>` (`shared/goal-followup.ts`).
+It asks the companion to reread `GOALS.md` and ask one short question about
+that goal, and to update progress only from what the person reports. The apps
+hide it like a check-in. It follows the same quiet hours and pending-state
+rules as check-ins, takes the place of that day's check-in, happens at most
+once per account every three days and for the same goal at most weekly, and
+is claimed like other app-generated messages, never resent. Each follow-up is
+a real, possibly billed Ark request.
 
 ## Capabilities
 
@@ -411,16 +503,27 @@ conversation. Sources are supplied by the assistant and may need verification.
 Feed instructions are editable through the top-right control and saved to
 `FEED.md` in personal MA memory with conflict checks and readback verification.
 Changes affect future posts only. Likes, generated-post indexes, dismissed
-instructions, and discussion links are device-local and scoped to the active
-connection. Opening Discuss or an idea prepares an editable side-chat draft;
+instructions, and discussion links are scoped to the active connection. In
+account builds they sync across the account's devices (see
+[Sync across devices](#sync-across-devices)); in local builds they stay on the
+device. Opening Discuss or an idea prepares an editable side-chat draft;
 it does not send a message until the user presses Send. Existing discussions
 reopen their linked conversation.
 
 Generation runs persist submission markers and recover from real session
 history after relaunch. Ambiguous session or message submissions are never
 automatically repeated. Invalid output leaves existing content unchanged and
-links to the generation conversation. Generation is user-triggered; no periodic
-background delivery, push notifications, or autonomous scheduling is enabled.
+links to the generation conversation. Generation on the device is
+user-triggered; push notifications are not enabled.
+
+In account builds, posts the Open Muse service prepared on the schedule set
+under **While you're away** also appear in the Feed, on iPhone and Mac. They
+are merged with the device's posts newest first; a post the device already
+shows from the same MA reply appears once. The device's cached copy shows at
+once and offline, and the page never waits for the service. These posts have
+no like, and Discuss opens a new side-chat draft each time (on Mac, quotes the
+post in the chat) instead of reopening a linked discussion, because likes and
+discussion links belong to the device's own posts.
 
 Conversations support streamed events, history backfill, interruption, tool
 approvals, Markdown export, goals, and saving real replies with source links.

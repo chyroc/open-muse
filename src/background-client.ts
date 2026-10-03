@@ -1,6 +1,18 @@
 import { t } from "../shared/i18n";
 import { upcomingDeliveryInput } from "../shared/upcoming";
 import {
+  webhookCreatedSchema,
+  webhookListSchema,
+  webhookName,
+} from "../shared/webhooks";
+import {
+  syncPullResponse,
+  syncPushInput,
+  syncPushResponse,
+  type SyncMutation,
+} from "../shared/account-sync";
+import { claimInput, claimResult, type ClaimInput } from "../shared/proactive";
+import {
   deviceIdInput,
   deviceList,
   deviceRecord,
@@ -539,8 +551,14 @@ export class BackgroundClient {
       | "/v1/account/workspace/reconcile"
       | "/v1/account/workspace/compare"
       | "/v1/account/upcoming"
+      | "/v1/account/claims"
+      | "/v1/account/export"
       | "/v1/account/devices"
       | `/v1/account/devices/${string}`
+      | "/v1/account/webhooks"
+      | `/v1/account/webhooks/${string}`
+      | "/v1/account/sync"
+      | `/v1/account/sync?${string}`
       | "/v1/browser/views",
     schema: z.ZodType<T>,
     init?: RequestInit,
@@ -625,6 +643,9 @@ export class BackgroundClient {
     language: "en" | "zh-CN";
     enabled: boolean;
     revision: number;
+    checkins?: boolean;
+    goal_followups?: boolean;
+    time_zone?: string;
   }) {
     return this.accountRequest(
       "/v1/account/upcoming",
@@ -638,6 +659,43 @@ export class BackgroundClient {
           "The Open Muse service can only deliver reminders to this account's own main chat.",
         ),
       },
+    );
+  }
+  // Claims one check-in, reminder occurrence, or goal follow-up for this
+  // account. Only the first claimant sends it; a claim is never retried.
+  claimProactive(input: ClaimInput) {
+    return this.accountRequest("/v1/account/claims", claimResult, {
+      method: "POST",
+      body: JSON.stringify(claimInput.parse(input)),
+    });
+  }
+  // Incoming webhooks of this account. The secret comes back only from
+  // creation, once; the service keeps a hash. Creating is sent once and never
+  // retried: after a lost response, list the hooks and revoke any unknown one.
+  webhooks() {
+    return this.accountRequest("/v1/account/webhooks", webhookListSchema);
+  }
+  async createWebhook(name: string) {
+    const created = await this.accountRequest(
+      "/v1/account/webhooks",
+      webhookCreatedSchema,
+      {
+        method: "POST",
+        body: JSON.stringify({ name: webhookName.parse(name) }),
+      },
+      {
+        409: t(
+          "This account already has the most webhooks it can keep. Revoke one first.",
+        ),
+      },
+    );
+    return { ...created, url: `${this.origin}${created.path}` };
+  }
+  revokeWebhook(id: string) {
+    return this.accountRequest(
+      `/v1/account/webhooks/${encodeURIComponent(id)}`,
+      z.object({ ok: z.literal(true) }),
+      { method: "DELETE" },
     );
   }
   // Presence of this account's devices. Registering again refreshes when the
@@ -665,6 +723,25 @@ export class BackgroundClient {
       z.object({ ok: z.literal(true) }),
       { method: "DELETE" },
     );
+  }
+  // Settings and lists kept in step across this account's devices, for the
+  // account's current workspace only. Pull returns changes after a cursor;
+  // push writes each item only at its base revision.
+  pullAccountSync(workspace: string, after: number) {
+    const query = new URLSearchParams({
+      workspace: z
+        .string()
+        .regex(/^[0-9a-f]{64}$/)
+        .parse(workspace),
+      after: String(z.number().int().nonnegative().parse(after)),
+    });
+    return this.accountRequest(`/v1/account/sync?${query}`, syncPullResponse);
+  }
+  pushAccountSync(workspace: string, mutations: SyncMutation[]) {
+    return this.accountRequest("/v1/account/sync", syncPushResponse, {
+      method: "PUT",
+      body: JSON.stringify(syncPushInput.parse({ workspace, mutations })),
+    });
   }
   // The account's workspace configuration for its current key, as sealed by
   // the service. Nothing is created by reading it.
@@ -770,6 +847,26 @@ export class BackgroundClient {
           "The change is unconfirmed. Refresh the workspace to check it; it was not repeated.",
         ),
       },
+    );
+  }
+  // A copy of everything the service keeps for this account, decrypted for
+  // the account itself (never the full Ark API key). Read-only.
+  exportAccount() {
+    return this.accountRequest(
+      "/v1/account/export",
+      z
+        .object({
+          format: z.literal(1),
+          exportedAt: z.number(),
+          owner: z.string(),
+          tables: z.record(
+            z.string(),
+            z.array(z.record(z.string(), z.unknown())),
+          ),
+        })
+        .passthrough(),
+      undefined,
+      { 503: t("Your data could not be exported right now. Try again later.") },
     );
   }
   // Deletes the account at the service, which also removes its sign-in, then

@@ -20,6 +20,15 @@ import type {
 } from "../../shared/inspiration";
 import { Markdown } from "../../src/components";
 import { useTask } from "../../src/useTask";
+import {
+  backgroundClient,
+  type BackgroundClient,
+} from "../../src/background-client";
+import {
+  isBackgroundPost,
+  mergeBackgroundFeed,
+  useBackgroundFeed,
+} from "../../src/background-feed";
 import { Empty, Modal, SplitChatIcon } from "./Chrome";
 import { FeedInstructions, shownInstructions } from "./FeedInstructions";
 import {
@@ -139,19 +148,22 @@ export function FeedPost({
           </ul>
         )}
         <footer>
-          <button
-            className={`feed-love ${item.liked ? "loved" : ""}`}
-            disabled={busy}
-            aria-label={item.liked ? t("Remove love") : t("Love")}
-            aria-pressed={item.liked}
-            onClick={onLove}
-          >
-            <Heart
-              size={23}
-              fill={item.liked ? "currentColor" : "none"}
-              strokeWidth={1.6}
-            />
-          </button>
+          {/* Posts the service prepared on a schedule have no love here. */}
+          {!isBackgroundPost(item) && (
+            <button
+              className={`feed-love ${item.liked ? "loved" : ""}`}
+              disabled={busy}
+              aria-label={item.liked ? t("Remove love") : t("Love")}
+              aria-pressed={item.liked}
+              onClick={onLove}
+            >
+              <Heart
+                size={23}
+                fill={item.liked ? "currentColor" : "none"}
+                strokeWidth={1.6}
+              />
+            </button>
+          )}
           <button disabled={busy} onClick={onDiscuss}>
             <MessageCircle size={23} strokeWidth={1.6} />
             {t("Discuss")}
@@ -178,7 +190,10 @@ export function FeedPage({
   onEditorChange,
   split,
   onToggleChat,
+  background = backgroundClient,
 }: {
+  // The Open Muse service, whose scheduled posts join the feed.
+  background?: BackgroundClient;
   client: Client;
   onDiscuss: (item: InspirationItem) => void;
   onOpenChat: (id: string) => void;
@@ -205,6 +220,7 @@ export function FeedPage({
   const pending = Boolean(run && !["complete", "failed"].includes(run.phase));
   const resumable = run && ["preparing", "ready"].includes(run.phase);
   const generation = useTask(client, pending ? run?.session_id : undefined);
+  const away = useBackgroundFeed(background);
   const refresh = useCallback(async () => {
     if (lock.current || reading.current) return;
     reading.current = true;
@@ -281,7 +297,8 @@ export function FeedPage({
       if (alive.current) setBusy(false);
     }
   }
-  const editions = feedEditions(data?.items ?? [], presentation);
+  const items = mergeBackgroundFeed(data?.items ?? [], away.posts);
+  const editions = feedEditions(items, presentation);
   const hasPosts = Boolean(editions.length);
   return (
     <section
@@ -371,7 +388,7 @@ export function FeedPage({
                   onMove={(direction) =>
                     void action(() =>
                       store.update((state) =>
-                        moveFeedItem(state, data!.items, item.id, direction),
+                        moveFeedItem(state, items, item.id, direction),
                       ),
                     )
                   }
@@ -450,14 +467,21 @@ export function FeedPage({
               className="icon-button"
               aria-label={t("Refresh feed")}
               disabled={busy}
-              onClick={() => void refresh()}
+              onClick={() => {
+                void refresh();
+                void away.reload();
+              }}
             >
               <RefreshCw size={17} />
             </button>
             <p>
-              {t(
-                "Generated with MA when you ask. Automatic background editions are not connected yet.",
-              )}
+              {background.configured()
+                ? t(
+                    "Generated with MA when you ask. Posts prepared on your account's schedule appear here too.",
+                  )
+                : t(
+                    "Generated with MA when you ask. Automatic background editions are not connected yet.",
+                  )}
             </p>
           </footer>
         )}

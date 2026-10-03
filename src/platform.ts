@@ -15,9 +15,17 @@ export function appSurface(): Surface {
   return shell.webkit?.messageHandlers?.museComputer ? "mac" : "web";
 }
 
+// Saves text as a file: a save panel on the Mac, the share sheet on iOS, and a
+// download on the web. The labels default to a conversation's Markdown.
 export async function exportText(
   name: string,
   content: string,
+  labels: {
+    saved?: string;
+    dialogTitle?: string;
+    downloaded?: string;
+    type?: string;
+  } = {},
 ): Promise<string> {
   const desktop = window as unknown as {
     webkit?: {
@@ -33,7 +41,7 @@ export async function exportText(
         const result = (event as CustomEvent).detail;
         if (result.id !== id) return;
         window.removeEventListener("muse-export-result", listener);
-        if (result.success) resolve(t("Conversation saved"));
+        if (result.success) resolve(labels.saved ?? t("Conversation saved"));
         else if (result.cancelled) resolve(t("Export canceled"));
         else
           reject(new Error(t("Save failed. Please check file permissions.")));
@@ -51,21 +59,23 @@ export async function exportText(
     const result = await Share.share({
       title: name,
       text: content,
-      dialogTitle: t("Export conversation"),
+      dialogTitle: labels.dialogTitle ?? t("Export conversation"),
     });
     return result.activityType
       ? t("Handed off to the selected app")
       : t("Share sheet closed");
   }
   const url = URL.createObjectURL(
-    new Blob([content], { type: "text/markdown;charset=utf-8" }),
+    new Blob([content], {
+      type: labels.type ?? "text/markdown;charset=utf-8",
+    }),
   );
   const link = document.createElement("a");
   link.href = url;
   link.download = name;
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  return t("Markdown download started");
+  return labels.downloaded ?? t("Markdown download started");
 }
 
 // Shares plain text through the system share sheet, or copies it where no

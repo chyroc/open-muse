@@ -6,16 +6,27 @@ import {
   isCheckInPrompt,
   type CheckInRecord,
 } from "../../shared/checkin";
+import { isGoalFollowUpPrompt } from "../../shared/goal-followup";
+import { localDay } from "../../shared/proactive";
 import type { AgentEvent, Session } from "../../shared/types";
-import { InitiationLog, type Send } from "./initiations";
+import { InitiationLog, type Claim, type Send } from "./initiations";
 import type { LocalDatabase } from "./storage";
 
-export type CheckInState = { enabled: boolean; records: CheckInRecord[] };
+// `elsewhere` is a local date whose check-in another device or the service
+// claimed, so this device does not ask the service again that day.
+export type CheckInState = {
+  enabled: boolean;
+  records: CheckInRecord[];
+  elsewhere?: string;
+};
 type Remote = {
   // The current main conversation, if one exists; never creates one.
   main(): Promise<Session | undefined>;
   history(session: string): Promise<AgentEvent[]>;
   send: Send;
+  // With an Open Muse account, the day's check-in is claimed with the service
+  // first; local mode has no claim.
+  claim?: Claim;
 };
 
 // At most one check-in per quiet period and local day for each device-local
@@ -35,7 +46,8 @@ export class DirectCheckIn extends InitiationLog<CheckInState> {
       { enabled: true, records: [] },
       "checkin",
       "The check-in is unconfirmed. Refresh history; it will not be sent again.",
-      isCheckInPrompt,
+      // A goal follow-up the service sent is shown and hidden like a check-in.
+      (text) => isCheckInPrompt(text) || isGoalFollowUpPrompt(text),
     );
   }
   setEnabled(enabled: boolean) {
@@ -66,7 +78,9 @@ export class DirectCheckIn extends InitiationLog<CheckInState> {
     await this.reconcile(main.id, history, true);
     state = await this.state();
     const now = this.now();
+    const day = localDay(now);
     if (
+      state.elsewhere === day ||
       !checkInDue({
         enabled: state.enabled,
         now,
@@ -97,6 +111,25 @@ export class DirectCheckIn extends InitiationLog<CheckInState> {
       };
     });
     if (!claimed) return undefined;
+    if (this.remote.claim) {
+      // Only the device or service that claims the day first checks in. When
+      // the service cannot confirm the claim, nothing is sent.
+      let won = false;
+      try {
+        won = await this.remote.claim("checkin", day, main.id);
+      } catch {
+        await this.withdraw(record.eventId);
+        return undefined;
+      }
+      if (!won) {
+        await this.withdraw(record.eventId);
+        await this.db.update<CheckInState>(this.key, (old) => ({
+          ...(old ?? this.empty),
+          elsewhere: day,
+        }));
+        return undefined;
+      }
+    }
     return this.deliver(record, this.remote.send, this.remote.history);
   }
 }

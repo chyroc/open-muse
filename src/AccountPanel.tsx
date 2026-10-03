@@ -1,9 +1,10 @@
 import { t } from "../shared/i18n";
 import { useEffect, useRef, useState } from "react";
-import { LoaderCircle, LogOut, UserRound } from "lucide-react";
+import { Download, LoaderCircle, LogOut, UserRound } from "lucide-react";
 import type { Client } from "./api";
 import { backgroundClient, type BackgroundClient } from "./background-client";
 import { SupabaseLoginForm } from "./SupabaseLoginForm";
+import { exportText } from "./platform";
 
 // The Open Muse account is the user's identity on every device. Signing in or out
 // switches which account's Ark key, workspace, and history this app uses.
@@ -138,6 +139,42 @@ export function AccountPanel({
               )}
             </small>
           </div>
+          {owner && (
+            <div className="logout-row account-export">
+              <button
+                className="button secondary"
+                disabled={busy}
+                onClick={() =>
+                  void run(async () => {
+                    const data = await service.exportAccount();
+                    const day = new Date(data.exportedAt)
+                      .toISOString()
+                      .slice(0, 10);
+                    setNotice(
+                      await exportText(
+                        `open-muse-account-${day}.json`,
+                        JSON.stringify(data, null, 2),
+                        {
+                          saved: t("Your data was saved"),
+                          dialogTitle: t("Export my data"),
+                          downloaded: t("Your data download started"),
+                          type: "application/json;charset=utf-8",
+                        },
+                      ),
+                    );
+                  })
+                }
+              >
+                <Download size={15} />
+                {t("Export my data")}
+              </button>
+              <small>
+                {t(
+                  "Saves a JSON copy of everything the Open Muse service keeps for this account: settings, devices, background work, Feed, and reminder delivery. Your Ark API key is shown only by its last four characters. Keep the file private.",
+                )}
+              </small>
+            </div>
+          )}
           {owner && (
             <div className="account-delete">
               <label className="background-consent background-remove-consent">

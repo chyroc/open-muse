@@ -34,6 +34,7 @@ const initiationLabels = {
   checkin: "Check-in",
   reminder: "Reminder",
   browser: "Cloud browser",
+  webhook: "Webhook",
 } as const;
 
 function TaskGlyph() {

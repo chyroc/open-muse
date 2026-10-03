@@ -5,7 +5,7 @@ import {
   type AccountCredential,
   type AccountCredentialStatus,
 } from "../../shared/account-credential";
-import { currentKeyId, revokeBackground, seal, unseal } from "./connection";
+import { revokeBackground, seal, unseal } from "./connection";
 import { HttpError, maEndpoint, type Env } from "./env";
 import { supabaseOrigin } from "../../shared/supabase-auth";
 
@@ -187,46 +187,5 @@ export class AccountCredentials {
   }
 }
 
-// Seal rows written under a retired key with the current key. The revision and
-// ciphertext guard prevents overwriting a concurrent user change.
-export async function rewrapRetiredKeys(env: Env, limit = 20) {
-  const current = currentKeyId(env);
-  if (!current) return;
-  for (const [table, rowPurpose] of [
-    ["account_credentials", purpose],
-    ["ark_connections", "open-muse-ark-connection"],
-    ["account_workspaces", "open-muse-account-workspace"],
-    ["account_devices", "open-muse-account-device"],
-  ] as const) {
-    const rows = await env.DB.prepare(
-      `SELECT owner_id,revision,encrypted FROM ${table}
-      WHERE encrypted IS NOT NULL AND encrypted NOT LIKE ? LIMIT ?`,
-    )
-      // Sealed values are JSON envelopes naming the key that sealed them.
-      .bind(`%"keyId":"${current}"%`, limit)
-      .all<{ owner_id: string; revision: number; encrypted: string }>();
-    for (const row of rows.results) {
-      try {
-        const value = await unseal(
-          env,
-          rowPurpose,
-          row.owner_id,
-          row.revision,
-          row.encrypted,
-        );
-        await env.DB.prepare(
-          `UPDATE ${table} SET encrypted=? WHERE owner_id=? AND revision=? AND encrypted=?`,
-        )
-          .bind(
-            await seal(env, rowPurpose, row.owner_id, row.revision, value),
-            row.owner_id,
-            row.revision,
-            row.encrypted,
-          )
-          .run();
-      } catch {
-        /* Leave the row readable under its original key. */
-      }
-    }
-  }
-}
+// Resealing under a rotated key covers every sealed table; see rotation.ts.
+export { rewrapRetiredKeys } from "./rotation";

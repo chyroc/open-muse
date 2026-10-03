@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { MessageCircleHeart } from "lucide-react";
 import { t } from "../shared/i18n";
 import type { Client } from "./api";
+import { ClosedFollowUpSwitches } from "./ClosedFollowUps";
 
 // Device-local preference for app-initiated check-ins in the main chat.
 // `bare` renders just the switch row and its note, for a settings sheet.
@@ -41,29 +42,32 @@ export function CheckInSettings({
   };
   if (bare)
     return (
-      <div className="settings-switch-section">
-        <label className="settings-switch-row">
-          <span>{t("Ask me something when I come back")}</span>
-          <input
-            type="checkbox"
-            role="switch"
-            className="ios-switch"
-            checked={enabled ?? false}
-            disabled={enabled === undefined}
-            onChange={(event) => toggle(event.target.checked)}
-          />
-        </label>
-        <p className="settings-footnote">
-          {t(
-            "After a quiet day, opening the main chat may start one short question based on your memory and goals. At most once a day, only while the app is open. Each check-in is a real Ark request and may be billed.",
-          )}
-        </p>
-        {error && (
-          <p className="settings-footnote" role="alert">
-            {error}
+      <>
+        <div className="settings-switch-section">
+          <label className="settings-switch-row">
+            <span>{t("Ask me something when I come back")}</span>
+            <input
+              type="checkbox"
+              role="switch"
+              className="ios-switch"
+              checked={enabled ?? false}
+              disabled={enabled === undefined}
+              onChange={(event) => toggle(event.target.checked)}
+            />
+          </label>
+          <p className="settings-footnote">
+            {t(
+              "After a quiet day, opening the main chat may start one short question based on your memory and goals. At most once a day, only while the app is open. Each check-in is a real Ark request and may be billed.",
+            )}
           </p>
-        )}
-      </div>
+          {error && (
+            <p className="settings-footnote" role="alert">
+              {error}
+            </p>
+          )}
+        </div>
+        <ClosedFollowUpSwitches client={client} />
+      </>
     );
   return (
     <section

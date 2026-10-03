@@ -37,7 +37,13 @@ describe("Native API", () => {
   it("serves health without exposing configuration", async () => {
     const res = await handle(req("/health", {}, null), env, auth);
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true, service: "open-muse-server" });
+    // Only liveness, scheduler times, and a rotation count: no configuration.
+    expect(await res.json()).toEqual({
+      ok: true,
+      service: "open-muse-server",
+      scheduler: { lastTickAt: null, lastFailureAt: null, stale: false },
+      keyRotation: { pending: null },
+    });
     expect(res.headers.get("Cache-Control")).toBe("no-store");
   });
   it("fails closed without credentials or without account configuration", async () => {

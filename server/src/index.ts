@@ -16,10 +16,26 @@ import { externalScheduler, TRIGGER_PATH, verifyTrigger } from "./trigger";
 import { UpcomingDelivery, upcomingInput } from "./upcoming";
 import { AccountDevices, deviceInput, validDeviceId } from "./devices";
 import { BrowserViews, relay } from "./browser";
+import { AccountSync, pullInput, pushInput } from "./sync";
+import { SYNC_LIMITS } from "../../shared/account-sync";
+import { ProactiveClaims } from "./claims";
+import { claimInput } from "../../shared/proactive";
+import { health, heartbeat } from "./health";
+import { exportAccount } from "./account-export";
+import {
+  AccountWebhooks,
+  receiveWebhook,
+  webhookIngress,
+  webhookInput,
+} from "./webhooks";
 
 async function runScheduler(env: Env) {
-  await rewrapRetiredKeys(env).catch(() => {});
-  await tick(env);
+  // Resealing under a rotated key runs in bounded batches each tick, so a
+  // rotation completes without user action.
+  await heartbeat(env, async () => {
+    await rewrapRetiredKeys(env).catch(() => {});
+    await tick(env);
+  });
 }
 
 async function body(
@@ -69,13 +85,18 @@ export async function handle(
   let origin: string | null = null;
   let response: Response;
   try {
-    origin = checkOrigin(request, env);
     const url = new URL(request.url);
+    // Incoming webhooks are posted by external systems with any Origin or
+    // none. Only this one route skips the origin check: it is authenticated
+    // by the hook's own secret and never gets CORS headers.
+    const hook = webhookIngress(url.pathname, request.method);
+    origin = hook ? null : checkOrigin(request, env);
     if (request.method === "OPTIONS") {
       if (!origin) throw new HttpError(403, "An allowed origin is required.");
       response = new Response(null, { status: 204 });
     } else if (url.pathname === "/health" && request.method === "GET") {
-      response = json({ ok: true, service: "open-muse-server" });
+      const result = await health(env);
+      response = json(result.body, result.status);
     } else if (url.pathname === TRIGGER_PATH && request.method === "POST") {
       // Server-to-server only: no browser origin, no user identity.
       if (request.headers.has("Origin"))
@@ -102,6 +123,18 @@ export async function handle(
           await body(request, 800_000),
           Date.now(),
         ),
+      );
+    } else if (hook) {
+      const result = await receiveWebhook(
+        env,
+        hook,
+        request,
+        Date.now(),
+        fetcher,
+      );
+      response = json(
+        result,
+        "status" in result && result.status === "unconfirmed" ? 202 : 200,
       );
     } else {
       // Always a verified Open Muse account; see authenticate().
@@ -300,12 +333,56 @@ export async function handle(
         else if (id && !part && request.method === "DELETE")
           response = json(await views.close(id, now));
         else throw new HttpError(404, "Endpoint not found.");
+      } else if (url.pathname.startsWith("/v1/account/webhooks")) {
+        const webhooks = new AccountWebhooks(env, owner);
+        const id = /^\/v1\/account\/webhooks\/([^/]+)$/.exec(
+          url.pathname,
+        )?.[1];
+        if (url.pathname === "/v1/account/webhooks" && request.method === "GET")
+          response = json(await webhooks.list(await ready()));
+        else if (
+          url.pathname === "/v1/account/webhooks" &&
+          request.method === "POST"
+        )
+          response = json(
+            await webhooks.create(webhookInput(await body(request, 1024))),
+          );
+        else if (id && request.method === "DELETE")
+          response = json(await webhooks.revoke(id));
+        else throw new HttpError(404, "Endpoint not found.");
+      } else if (url.pathname === "/v1/account/sync") {
+        const sync = new AccountSync(env, owner);
+        if (request.method === "GET") {
+          const input = pullInput(url.searchParams);
+          response = json(await sync.pull(input.workspace, input.after));
+        } else if (request.method === "PUT")
+          response = json(
+            await sync.push(
+              pushInput(await body(request, SYNC_LIMITS.bodyBytes)),
+            ),
+          );
+        else throw new HttpError(405, "Method not allowed.");
       } else if (url.pathname === "/v1/account/upcoming") {
         const upcoming = new UpcomingDelivery(env, owner, fetcher);
         if (request.method === "GET") response = json(await upcoming.read());
         else if (request.method === "PUT")
           response = json(await upcoming.save(upcomingInput(await body(request))));
         else throw new HttpError(405, "Method not allowed.");
+      } else if (
+        url.pathname === "/v1/account/claims" &&
+        request.method === "POST"
+      ) {
+        const input = claimInput.safeParse(await body(request, 1024));
+        if (!input.success)
+          throw new HttpError(400, "Name a valid claim for a conversation.");
+        response = json(
+          await new ProactiveClaims(env, owner).claim(input.data),
+        );
+      } else if (
+        url.pathname === "/v1/account/export" &&
+        request.method === "GET"
+      ) {
+        response = json(await exportAccount(env, owner, Date.now()));
       } else if (url.pathname === "/v1/account" && request.method === "DELETE") {
         const input = await body(request);
         if (input.confirm !== true || Object.keys(input).length !== 1)

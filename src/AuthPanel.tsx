@@ -5,6 +5,7 @@ import type { Client } from "./api";
 import { WorkspacePanel } from "./WorkspacePanel";
 import { BackgroundSettings } from "./BackgroundSettings";
 import { AccountPanel } from "./AccountPanel";
+import { WebhooksSettings } from "./WebhooksSettings";
 import type { BackgroundClient } from "./background-client";
 
 interface Status {
@@ -261,6 +262,7 @@ export function AuthPanel({
         service={service}
         client={client}
       />
+      <WebhooksSettings key={`webhooks-${account}`} service={service} />
     </>
   );
 }

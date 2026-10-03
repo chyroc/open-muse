@@ -20,6 +20,10 @@ export interface Env {
   // Worker secret: {"current":"v1","keys":{"v1":"<32-byte base64>"}}.
   // This keyring must never be stored in D1 or sent to clients.
   CREDENTIAL_ENCRYPTION_KEYS?: string;
+  // Optional secret used only while rotating: the new keyring, same shape.
+  // Its keys are added to the ones above and its current key seals new
+  // values; the scheduler reseals every older row (see rotation.ts).
+  CREDENTIAL_ENCRYPTION_KEYS_NEXT?: string;
   // Removes one user from the Auth provider, given the verified user ID of the
   // account deleting itself. Only deployments that can do this without a
   // service-role key provide it; without it accounts cannot be deleted.

@@ -2,6 +2,7 @@ import { t } from "../../shared/i18n";
 import { ApiError } from "../../shared/ark";
 import type { CheckInRecord } from "../../shared/checkin";
 import { eventText, type AgentEvent, type Page } from "../../shared/types";
+import type { ClaimKind } from "../../shared/proactive";
 import type { LocalDatabase } from "./storage";
 
 export type InitiationRecord = CheckInRecord;
@@ -11,6 +12,15 @@ export type Send = (
   text: string,
   eventId: string,
 ) => Promise<Page<AgentEvent>>;
+// Claims one message with the Open Muse service before it is sent, where the
+// signed-in account has one: true when this device won the claim, false when
+// another app or the service holds it. A failed request throws; callers then
+// send nothing.
+export type Claim = (
+  kind: ClaimKind,
+  key: string,
+  session: string,
+) => Promise<boolean>;
 
 // A device-local log of app-generated messages in the main chat. Each one is
 // claimed before sending, confirmed by exact ID and text from history, and
@@ -44,6 +54,19 @@ export class InitiationLog<S extends InitiationState> {
         ...current,
         records: current.records.map((record) =>
           record.eventId === eventId ? change(record) : record,
+        ),
+      };
+    });
+  }
+  // Drops a record claimed in the log that will not be sent, because another
+  // device or the service holds its claim or the claim could not be made.
+  protected withdraw(eventId: string) {
+    return this.db.update<S>(this.key, (old) => {
+      const current = old ?? this.empty;
+      return {
+        ...current,
+        records: current.records.filter(
+          (record) => record.eventId !== eventId || record.phase !== "sending",
         ),
       };
     });

@@ -1,6 +1,7 @@
 import { formatLocale, systemLanguage, t } from "../shared/i18n";
 import { flushSync } from "react-dom";
 import { starterIdeaPrefix } from "../shared/starter-ideas";
+import { isBackgroundPost } from "./background-feed";
 import {
   Fragment,
   useCallback,
@@ -768,7 +769,11 @@ function Workspace({
         }
         if (inspirationDraft) {
           // Starter ideas are not saved items, so there is nothing to link.
-          if (!inspirationDraft.id.startsWith(starterIdeaPrefix))
+          // Neither are starter ideas or the service's scheduled posts.
+          if (
+            !inspirationDraft.id.startsWith(starterIdeaPrefix) &&
+            !isBackgroundPost(inspirationDraft)
+          )
             await client.linkInspirationDiscussion(
               inspirationDraft.id,
               session.id,

@@ -30,20 +30,37 @@ function bytes(value: string) {
 function base64(value: Uint8Array) {
   return btoa(String.fromCharCode(...value));
 }
+const keyringSchema = z
+  .object({
+    current: z.string().regex(/^[\w-]{1,40}$/),
+    keys: z.record(z.string().regex(/^[\w-]{1,40}$/), z.string()),
+  })
+  .strict();
+function parseKeyring(value: string | undefined) {
+  const ring = keyringSchema.parse(JSON.parse(value ?? ""));
+  if (!ring.keys[ring.current] || Object.keys(ring.keys).length > 10)
+    throw new Error();
+  for (const key of Object.values(ring.keys))
+    if (bytes(key).length !== 32) throw new Error();
+  return ring;
+}
+// The effective keyring. During a rotation CREDENTIAL_ENCRYPTION_KEYS_NEXT
+// holds the new keyring: its keys join the deployed ones and its current key
+// seals new values, while rows sealed under the deployed keys still open. A
+// set but invalid NEXT keyring, or one key ID naming two different keys,
+// fails closed instead of silently sealing under the old key.
 function keyring(env: Env) {
   try {
-    const ring = z
-      .object({
-        current: z.string().regex(/^[\w-]{1,40}$/),
-        keys: z.record(z.string().regex(/^[\w-]{1,40}$/), z.string()),
-      })
-      .strict()
-      .parse(JSON.parse(env.CREDENTIAL_ENCRYPTION_KEYS ?? ""));
-    if (!ring.keys[ring.current] || Object.keys(ring.keys).length > 10)
-      throw new Error();
-    for (const key of Object.values(ring.keys))
-      if (bytes(key).length !== 32) throw new Error();
-    return ring;
+    const ring = parseKeyring(env.CREDENTIAL_ENCRYPTION_KEYS);
+    if (!env.CREDENTIAL_ENCRYPTION_KEYS_NEXT) return ring;
+    const next = parseKeyring(env.CREDENTIAL_ENCRYPTION_KEYS_NEXT);
+    for (const [id, key] of Object.entries(next.keys))
+      if (
+        Object.hasOwn(ring.keys, id) &&
+        base64(bytes(ring.keys[id])) !== base64(bytes(key))
+      )
+        throw new Error();
+    return { current: next.current, keys: { ...ring.keys, ...next.keys } };
   } catch {
     throw unavailable();
   }
@@ -64,7 +81,8 @@ export type SealPurpose =
   | "open-muse-account-workspace"
   | "open-muse-account-device"
   | "open-muse-browser-frame"
-  | "open-muse-browser-input";
+  | "open-muse-browser-input"
+  | "open-muse-account-sync";
 const aad = (purpose: SealPurpose, owner: string, revision: number) =>
   new TextEncoder().encode(JSON.stringify([purpose, 1, owner, revision]));
 async function cryptoKey(value: string) {

@@ -2,6 +2,7 @@ import { t } from "../../shared/i18n";
 import { ApiError } from "../../shared/ark";
 import { uuid } from "../../shared/crypto";
 import { checkInPolicy } from "../../shared/checkin";
+import { reminderClaimKey } from "../../shared/proactive";
 import {
   deliveredOccurrences,
   dueOccurrence,
@@ -19,7 +20,12 @@ import {
   type AgentEvent,
   type Session,
 } from "../../shared/types";
-import { InitiationLog, type InitiationRecord, type Send } from "./initiations";
+import {
+  InitiationLog,
+  type Claim,
+  type InitiationRecord,
+  type Send,
+} from "./initiations";
 import type { LocalDatabase } from "./storage";
 
 // `since` is when this device started delivering, so a new device does not
@@ -40,6 +46,9 @@ type Remote = {
   register?(session: string): Promise<unknown>;
   history(session: string): Promise<AgentEvent[]>;
   send: Send;
+  // With an Open Muse account, each occurrence is claimed with the service
+  // before it is sent; local mode has no claim.
+  claim?: Claim;
 };
 
 // Upcoming items live in MA memory; delivery is device-local. Each due
@@ -201,12 +210,14 @@ export class DirectUpcoming extends InitiationLog<UpcomingState> {
       at: now,
     };
     let claimed = false;
+    let previous: Record<string, number> = {};
     await this.db.update<UpcomingState>(this.key, (old) => {
       const current = old ?? this.empty;
       if (current.records.at(-1)?.eventId !== latest) return current;
       if (due.some(({ item, at }) => (current.delivered[item.id] ?? 0) >= at))
         return current;
       claimed = true;
+      previous = current.delivered;
       const delivered = { ...current.delivered };
       for (const { item, at } of due) delivered[item.id] = at;
       return {
@@ -216,6 +227,52 @@ export class DirectUpcoming extends InitiationLog<UpcomingState> {
       };
     });
     if (!claimed) return undefined;
-    return this.deliver(record, this.remote.send, this.remote.history);
+    if (!this.remote.claim)
+      return this.deliver(record, this.remote.send, this.remote.history);
+    // Only the device or service that claims an occurrence first delivers
+    // it. Occurrences another one holds are left to it; ones whose claim could
+    // not be made stay due here and nothing is sent for them now.
+    const won: typeof due = [];
+    const lost: typeof due = [];
+    try {
+      for (const entry of due)
+        ((await this.remote.claim(
+          "reminder",
+          reminderClaimKey(entry.item.id, entry.at),
+          main.id,
+        ))
+          ? won
+          : lost
+        ).push(entry);
+    } catch {
+      /* The rest stay unclaimed. */
+    }
+    const unclaimed = due.filter(
+      (entry) => !won.includes(entry) && !lost.includes(entry),
+    );
+    if (unclaimed.length)
+      await this.db.update<UpcomingState>(this.key, (old) => {
+        const current = old ?? this.empty;
+        const delivered = { ...current.delivered };
+        for (const { item, at } of unclaimed)
+          if (delivered[item.id] === at) {
+            if (previous[item.id] === undefined) delete delivered[item.id];
+            else delivered[item.id] = previous[item.id];
+          }
+        return { ...current, delivered };
+      });
+    if (!won.length) {
+      await this.withdraw(record.eventId);
+      return undefined;
+    }
+    if (won.length === due.length)
+      return this.deliver(record, this.remote.send, this.remote.history);
+    const text = reminderPrompt(language, new Date(now), won);
+    await this.patch(record.eventId, (old) => ({ ...old, text }));
+    return this.deliver(
+      { ...record, text },
+      this.remote.send,
+      this.remote.history,
+    );
   }
 }

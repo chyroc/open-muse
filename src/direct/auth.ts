@@ -10,6 +10,12 @@ import type {
   AccountWorkspaceResponse,
 } from "../../shared/account-workspace";
 import type { UpcomingDelivery } from "../../shared/upcoming";
+import type {
+  SyncMutation,
+  SyncPullResponse,
+  SyncPushResponse,
+} from "../../shared/account-sync";
+import type { ClaimInput, ClaimResult } from "../../shared/proactive";
 import { credentials as defaultVault, type CredentialStore } from "./storage";
 import { MA, MA_BASE_URL, directFetch } from "./transport";
 
@@ -62,7 +68,13 @@ export interface AccountProvider {
     language: "en" | "zh-CN";
     enabled: boolean;
     revision: number;
+    checkins?: boolean;
+    goal_followups?: boolean;
+    time_zone?: string;
   }): Promise<UpcomingDelivery>;
+  // Claims one app-generated message with the service, so only one app or
+  // the service sends it; absent where it is unsupported.
+  claimProactive?(input: ClaimInput): Promise<ClaimResult>;
   // The live cloud browser relay; absent where it is unsupported.
   openBrowserView?(): Promise<{
     id: string;
@@ -73,6 +85,13 @@ export interface AccountProvider {
   browserFrame?(id: string, after: number): Promise<BrowserFrame>;
   browserInput?(id: string, events: unknown[]): Promise<void>;
   closeBrowserView?(id: string): Promise<void>;
+  // Settings and lists kept in step across the account's devices; absent
+  // where it is unsupported.
+  pullAccountSync?(workspace: string, after: number): Promise<SyncPullResponse>;
+  pushAccountSync?(
+    workspace: string,
+    mutations: SyncMutation[],
+  ): Promise<SyncPushResponse>;
   accountOwner(): string | undefined;
   restore(): Promise<void>;
   accountCredential(): Promise<AccountCredentialResponse>;

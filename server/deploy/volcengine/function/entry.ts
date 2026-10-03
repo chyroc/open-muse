@@ -70,6 +70,10 @@ const env: Env = {
   SCHEDULER_SOURCE: "external",
   SCHEDULER_TRIGGER_SECRET: Deno.env.get("SCHEDULER_TRIGGER_SECRET"),
   CREDENTIAL_ENCRYPTION_KEYS: Deno.env.get("CREDENTIAL_ENCRYPTION_KEYS"),
+  // Set only while rotating the keyring (see DEPLOY.md).
+  CREDENTIAL_ENCRYPTION_KEYS_NEXT: Deno.env.get(
+    "CREDENTIAL_ENCRYPTION_KEYS_NEXT",
+  ),
   // open_muse.delete_auth_user removes exactly one Auth user; the service role
   // may run it but has no other access to the auth schema.
   async DELETE_AUTH_USER(userId) {

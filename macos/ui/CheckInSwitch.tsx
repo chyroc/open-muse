@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { t } from "../../shared/i18n";
 import type { Client } from "../../src/api";
 import { Switch } from "./SettingsSwitch";
+import {
+  closedFollowUpCopy,
+  useClosedFollowUps,
+} from "../../src/ClosedFollowUps";
 
 // Device-local preference for app-initiated check-ins in the main chat. Each
 // one is a real Ark request, so the switch says so.
@@ -9,6 +13,7 @@ export function CheckInSwitch({ client }: { client: Client }) {
   const signedIn = client.signedIn();
   const [enabled, setEnabled] = useState<boolean>();
   const [error, setError] = useState("");
+  const closed = useClosedFollowUps(client);
   useEffect(() => {
     if (!signedIn) return;
     let active = true;
@@ -44,6 +49,29 @@ export function CheckInSwitch({ client }: { client: Client }) {
       {error && (
         <p className="settings-error" role="alert">
           {error}
+        </p>
+      )}
+      {closed.visible && (
+        <div className="settings-group">
+          <Switch
+            label={closedFollowUpCopy().checkins}
+            detail={closedFollowUpCopy().checkinsDetail}
+            checked={closed.checkins}
+            disabled={closed.busy}
+            onChange={(next) => closed.set("checkins", next)}
+          />
+          <Switch
+            label={closedFollowUpCopy().goals}
+            detail={closedFollowUpCopy().goalsDetail}
+            checked={closed.goals}
+            disabled={closed.busy}
+            onChange={(next) => closed.set("goal_followups", next)}
+          />
+        </div>
+      )}
+      {closed.error && (
+        <p className="settings-error" role="alert">
+          {closed.error}
         </p>
       )}
     </>

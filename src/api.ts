@@ -1,4 +1,5 @@
 import { t, systemLanguage, type Language } from "../shared/i18n";
+import { isWebhookPrompt } from "../shared/webhooks";
 import { z } from "zod";
 import { ArkClient, ApiError } from "../shared/ark";
 import { digest, uuid } from "../shared/crypto";
@@ -35,6 +36,8 @@ import { DirectGoals } from "./direct/goals";
 import { DirectChoices } from "./direct/choices";
 import { DirectWelcome } from "./direct/welcome";
 import { DirectCheckIn } from "./direct/checkin";
+import type { Claim } from "./direct/initiations";
+import { validTimeZone } from "../shared/proactive";
 import { DirectUpcoming } from "./direct/upcoming";
 import {
   DirectVault,
@@ -87,6 +90,7 @@ import type {
   IdentityDocumentName,
 } from "../shared/identity";
 import { DirectInspiration } from "./direct/inspiration";
+import { AccountSync, syncAdapters } from "./direct/account-sync";
 import {
   defaultFeedInstructions,
   inspirationPrompt,
@@ -222,6 +226,7 @@ export class Client {
   private timeZone: () => string;
   private verifiedAt = 0;
   private verifying?: Promise<void>;
+  private accountSyncs?: { sync: AccountSync; runtime: Runtime };
   constructor(
     options: {
       vault?: CredentialStore;
@@ -270,6 +275,7 @@ export class Client {
     this.reset();
     await this.identity.restore();
     if (this.identity.accountMode()) this.verifiedAt = this.now();
+    this.accountSync()?.soon();
   }
   // Call after signing in to or out of an Open Muse account. The previous account's
   // runtime, key, and pending work are dropped before anything else runs.
@@ -277,6 +283,7 @@ export class Client {
     this.reset();
     await this.identity.sync();
     this.verifiedAt = this.now();
+    this.accountSync()?.soon();
   }
   // Picks up a key replaced or removed on another device or window, and a
   // session the account service no longer accepts. Returns true when the
@@ -299,6 +306,7 @@ export class Client {
       (stored?.revision ?? 0) === this.identity.storedRevision()
     ) {
       this.verifiedAt = this.now();
+      this.accountSync()?.soon(120_000);
       return false;
     }
     await this.accountChanged();
@@ -735,29 +743,34 @@ export class Client {
   async refreshInspiration(kind: InspirationKind) {
     const service = this.inspirationService(this.context());
     await service.refresh(z.enum(["feed", "ideas"]).parse(kind));
+    this.accountSync()?.changed();
     return service.snapshot();
   }
   async generateInspiration(kind: InspirationKind) {
     const service = this.inspirationService(this.context());
     await service.generate(z.enum(["feed", "ideas"]).parse(kind));
+    this.accountSync()?.changed();
     return service.snapshot();
   }
   saveFeedInstructions(content: string, revision: string) {
     return this.context().companion.saveFeedInstructions(content, revision);
   }
-  dismissFeedInstructions() {
-    return this.inspirationService(this.context()).dismissInstructions();
+  async dismissFeedInstructions() {
+    await this.inspirationService(this.context()).dismissInstructions();
+    this.accountSync()?.changed();
   }
-  likeInspiration(id: string, liked: boolean) {
-    return this.inspirationService(this.context()).like(
+  async likeInspiration(id: string, liked: boolean) {
+    await this.inspirationService(this.context()).like(
       z.string().max(200).parse(id),
       z.boolean().parse(liked),
     );
+    this.accountSync()?.changed();
   }
   async linkInspirationDiscussion(id: string, session: string) {
     const r = this.context();
     await r.ark.get(validId(session));
-    return this.inspirationService(r).link(id, session);
+    await this.inspirationService(r).link(id, session);
+    this.accountSync()?.changed();
   }
   async identityMounted(id: string) {
     const r = this.context();
@@ -1224,7 +1237,25 @@ export class Client {
           runtime: r,
           eventId,
         }),
+      claim: this.proactiveClaim(r),
     }));
+  }
+  // With an Open Muse account, app-generated messages are claimed with the
+  // service before they are sent, so no two devices (or a device and the
+  // service) send the same one. Local mode has no claim.
+  private proactiveClaim(r: Runtime): Claim | undefined {
+    const account = this.identity.account;
+    if (!this.identity.accountMode() || !account?.claimProactive)
+      return undefined;
+    return async (kind, key, session) => {
+      const result = await account.claimProactive!({
+        kind,
+        key,
+        session_id: validId(session),
+      });
+      r.abort.signal.throwIfAborted();
+      return result.claimed;
+    };
   }
   startCheckIn(language: string) {
     return this.checkInService(this.context()).start(language);
@@ -1270,6 +1301,7 @@ export class Client {
           runtime: r,
           eventId,
         }),
+      claim: this.proactiveClaim(r),
     }));
   }
   upcoming() {
@@ -1306,6 +1338,7 @@ export class Client {
     r: Runtime,
     enabled: boolean,
     session?: string,
+    followUps: { checkins?: boolean; goal_followups?: boolean } = {},
   ) {
     const account = this.identity.account;
     if (!this.identity.accountMode() || !account?.saveUpcomingDelivery)
@@ -1325,11 +1358,15 @@ export class Client {
         t("Start the main chat before turning this on."),
       );
     validId(target);
+    // The person's time zone, for check-ins and goal follow-ups.
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const value = await account.saveUpcomingDelivery({
       session_id: target,
       language: systemLanguage(),
       enabled,
       revision: current?.revision ?? 0,
+      ...followUps,
+      ...(validTimeZone(zone) ? { time_zone: zone } : {}),
     });
     r.abort.signal.throwIfAborted();
     this.upcomingServer = { key: r.key, at: this.now(), value };
@@ -1348,6 +1385,22 @@ export class Client {
   }
   setUpcomingDelivery(enabled: boolean) {
     return this.saveServerUpcoming(this.context(), z.boolean().parse(enabled));
+  }
+  // Check-ins and goal follow-ups by the service while the apps are closed;
+  // they need delivery while closed to be on.
+  setClosedFollowUps(change: { checkins?: boolean; goal_followups?: boolean }) {
+    return this.saveServerUpcoming(
+      this.context(),
+      true,
+      undefined,
+      z
+        .object({
+          checkins: z.boolean().optional(),
+          goal_followups: z.boolean().optional(),
+        })
+        .strict()
+        .parse(change),
+    );
   }
   changeUpcoming(
     id: string,
@@ -1409,7 +1462,12 @@ export class Client {
   async archiveConversation(id: string, archived: boolean) {
     const r = this.context();
     const session = (await this.remember(r, [await r.ark.get(validId(id))]))[0];
-    return this.conversations(r).archive(session, z.boolean().parse(archived));
+    const index = await this.conversations(r).archive(
+      session,
+      z.boolean().parse(archived),
+    );
+    this.accountSync()?.changed();
+    return index;
   }
   private approvalKey(r: Runtime, id: string, tool: string) {
     return `${r.key}:approval:${digest(`${id}\0${tool}`)}`;
@@ -1458,6 +1516,11 @@ export class Client {
       isBrowserLaunch(eventText(original))
     )
       return { ...original, app_initiation: "browser" };
+    if (
+      original.type === "user.message" &&
+      isWebhookPrompt(eventText(original))
+    )
+      return { ...original, app_initiation: "webhook" };
     const annotated = await this.upcomingService(r).annotate(
       id,
       await this.checkInService(r).annotate(
@@ -2099,6 +2162,49 @@ export class Client {
       `${r.key}:model`,
       choice === null ? null : modelChoiceInput.parse(choice),
     );
+    this.accountSync()?.changed();
+  }
+  // The account's model choice, Feed reactions and posts, saved replies, and
+  // archived side chats, kept in step with its other devices. Account builds
+  // only: local mode never uploads anything. The instance is bound to this
+  // account and workspace and stops when either changes.
+  private accountSync(): AccountSync | undefined {
+    const owner = this.identity.accountOwner();
+    const account = this.identity.account;
+    if (!owner || !account?.pullAccountSync || !account.pushAccountSync)
+      return undefined;
+    if (!this.signedIn()) return undefined;
+    let r: Runtime;
+    try {
+      r = this.context();
+    } catch {
+      return undefined;
+    }
+    const current = this.accountSyncs;
+    if (current?.runtime === r && current.sync.owner === owner)
+      return current.sync;
+    current?.sync.stop();
+    const sync = new AccountSync(
+      this.db,
+      owner,
+      r.key,
+      {
+        pull: (workspace, after) => account.pullAccountSync!(workspace, after),
+        push: (workspace, mutations) =>
+          account.pushAccountSync!(workspace, mutations),
+      },
+      syncAdapters(this.db, r.key),
+      () =>
+        !r.abort.signal.aborted &&
+        this.runtime === r &&
+        this.identity.accountOwner() === owner,
+    );
+    this.accountSyncs = { sync, runtime: r };
+    return sync;
+  }
+  // An explicit sync pass; undefined where nothing syncs.
+  syncAccountData() {
+    return this.accountSync()?.sync();
   }
   // The live cloud browser: needs an Open Muse account, whose service relays
   // the view, and a conversation whose sandbox runs the browser.
@@ -2268,6 +2374,7 @@ export class Client {
         return rows;
       },
     );
+    this.accountSync()?.changed();
     return rows.find(
       (item) => item.session_id === session_id && item.event_id === event_id,
     )!;

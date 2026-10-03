@@ -4,6 +4,8 @@ import { HttpError, type Env } from "./env";
 // reference. A new owner-keyed table must be listed here so deleting an
 // account leaves nothing of it behind.
 export const ACCOUNT_TABLES = [
+  "webhook_deliveries",
+  "webhooks",
   "browser_inputs",
   "browser_views",
   "feed_items",
@@ -13,7 +15,10 @@ export const ACCOUNT_TABLES = [
   "upcoming_deliveries",
   "upcoming_messages",
   "upcoming_targets",
+  "proactive_claims",
   "account_devices",
+  "account_sync_items",
+  "account_sync_counters",
   "account_resources",
   "account_workspaces",
   "account_rate_limits",

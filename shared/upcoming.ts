@@ -81,6 +81,11 @@ export const upcomingDeliveryInput = z.object({
   since: z.number().nullable(),
   revision: z.number().int().nonnegative(),
   state: z.enum(["active", "session_unavailable"]).nullable(),
+  // Check-ins and goal follow-ups while the apps are closed; both off by
+  // default. Older services omit them.
+  checkins: z.boolean().optional(),
+  goal_followups: z.boolean().optional(),
+  time_zone: z.string().nullable().optional(),
 });
 export type UpcomingDelivery = z.infer<typeof upcomingDeliveryInput>;
 export type Schedule = z.infer<typeof scheduleInput>;

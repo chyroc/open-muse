@@ -13,9 +13,9 @@ binaries are hosted here. Clients call Ark directly with the account's key.
 The service supports explicit one-off Feed generation, a daily local-time
 schedule, durable MA submission/reconciliation, and cursor-based Feed retrieval.
 Background generation is disabled by default. Both native apps include the
-controls in Settings, under **While you're away**. Background results currently
-appear in that card, not in the main Feed tab. Push notifications are not
-implemented.
+controls in Settings, under **While you're away**. Background results appear in
+that card and in the Feed tab of account builds, next to the posts the device
+generated. Push notifications are not implemented.
 
 A clock ticks every five minutes: a signed external trigger from a Volcengine
 veFaaS timer when `SCHEDULER_SOURCE=external`, or Workers Cron on Cloudflare. Each tick
@@ -27,7 +27,8 @@ hour of monitoring, a run requires explicit review; this does not stop MA or
 guarantee a model-spend cap. Pausing a schedule stops future automatic dispatch,
 not already queued or running work.
 
-Every endpoint except `/health` and the signed scheduler trigger requires an
+Every endpoint except `/health`, the signed scheduler trigger, the cloud
+browser relay, and incoming webhook ingress (`POST /v1/hooks/:id`) requires an
 Open Muse account session (see below). The service derives ownership only from
 the verified session, never from a submitted name, query string, or resource ID.
 
@@ -46,6 +47,33 @@ history and never resent, and no new reminder is sent while one is
 unconfirmed. At most one message per account per tick and 48 per day. The agent
 handles the reminder with its normal tools in the main chat; any step that needs
 approval waits for the user in the app.
+
+Each occurrence is also claimed as `reminder` `<item id>@<occurrence ms>` in
+`proactive_claims`, the same key the apps claim through `POST
+/v1/account/claims` before they deliver locally, so an app and the service
+never both deliver it.
+
+#### Check-ins and goal follow-ups while closed
+
+An account that registered delivery while closed can also opt in, separately,
+to check-ins and goal follow-ups (`checkins`, `goal_followups`; both off by
+default). They run in the same tick and lease as reminders, only when no
+reminder is due, with the account's sealed key, and follow the apps' check-in
+rules in the time zone the account registered: between 08:00 and 22:00, at
+least 18 hours after the last message, never while the conversation is
+running, waits for a reply, an approval, or a tool result, or while a welcome,
+check-in, reminder, or goal follow-up is unanswered (from the latest 100
+events). At most one per local day: each claims `checkin` with the local date,
+and nothing is sent within 20 hours of another check-in claim, whoever made
+it. The check-in text is `checkInPrompt` from `shared/checkin.ts`, the app's
+own hidden format. A goal follow-up replaces that day's check-in: when
+`GOALS.md` has an active goal without an update for seven days, the stalest
+one is named in one `goalFollowUpPrompt` (`shared/goal-followup.ts`) message,
+claimed as `goal` `<goal id>@<local date>`. At most one goal follow-up per
+account every three days, and the same goal at most weekly. Messages share the
+reminder log: claimed before sending, never resent, an ambiguous result looked
+up in history, and counted in the 48-per-day limit. Each is a real, possibly
+billed Ark request.
 
 ### Live cloud browser
 
@@ -70,6 +98,53 @@ the other routes require the account session. Frames and input are sealed
 with the account, input is deleted once the helper has taken it, and both
 are removed with the account. The token appears in that conversation's MA
 history and stops working when the view ends or expires.
+
+### Incoming webhooks
+
+An account can create up to 10 webhook URLs that external systems post events
+to, such as a Lark (Feishu) event subscription, a script, or IFTTT. Each
+accepted event becomes one hidden app-generated message in the main chat the
+account registered for Upcoming delivery, asking the companion to handle it
+with its normal tools; anything that needs approval waits for the person in the
+app. The service posts with the account's saved Ark key, like reminders.
+
+- Ingress is `POST /v1/hooks/:id`. It needs no account session and is the only
+  route exempt from the origin check; it never returns CORS headers. The
+  hook's secret authenticates it, as `Authorization: Bearer <secret>` or, for
+  senders that cannot set headers (Lark), a `?token=<secret>` query parameter.
+  The secret (`omh_` and 43 random URL-safe characters) is returned once, at
+  creation; the database keeps only its SHA-256 hash, compared in constant
+  time. A missing, wrong, or unknown hook's token all get the same 401.
+- The body is read up to 32 KB (413 beyond). An `application/json` body must
+  parse; any other content type is taken as text. After the token check, a JSON
+  body `{type: "url_verification", challenge}` is answered with `{challenge}`
+  (Lark's handshake) and nothing is sent. Lark's encrypted events are not
+  supported; leave the event subscription's encrypt key unset.
+- Event data is untrusted. It is quoted into the message as one JSON string,
+  with `<` escaped and cut to 6,000 characters, under instructions that it is
+  third-party data, not a request from the person, and authorizes nothing.
+  Headers are never quoted, and the secret is removed if the sender echoes it.
+- `X-Event-Id`, or Lark's `header.event_id`, deduplicates: a repeated ID gets
+  `{duplicate: true, status}` and sends nothing. Each delivery is recorded
+  (MA event ID, time, status, event ID) before one `user.message` is posted.
+  A definite rejection returns 502 and frees the event ID for another attempt;
+  an ambiguous send returns 202 `{status: "unconfirmed"}`, is checked in the
+  chat's history on later requests, and is never resent.
+- Delivery needs background work allowed for the account (`PUT
+  /v1/connection`), a key stored under the configured issuer with a verified
+  request in the last 30 days (as for scheduled work), and an enabled Upcoming
+  registration whose conversation still runs the account's agent; otherwise
+  409 `{code: "background_not_allowed" | "no_main_chat"}`. While the chat is
+  running or waits for an approval or a tool result, the request returns 503
+  `{code: "busy"}` and nothing is recorded, so the sender may retry.
+- At most 30 accepted events per hook and 60 per account in a rolling hour
+  (429). Revoking a hook or deleting the account deletes its rows, and ingress
+  stops at once.
+
+Treat a webhook URL with its token like a password: anyone holding it can post
+events into the main chat. The token can appear in the sender's logs and in
+proxy access logs when sent as a query parameter; revoke and recreate a hook
+whose URL leaked. Hook names are stored as written and are not secret.
 
 ## Open Muse accounts
 
@@ -232,6 +307,8 @@ Configure local bindings in ignored `.dev.vars`:
   503.
 - `CREDENTIAL_ENCRYPTION_KEYS`: the keyring described under Background
   authorization. Without it account keys cannot be stored.
+- `CREDENTIAL_ENCRYPTION_KEYS_NEXT`: optional, set only while rotating the
+  keyring (see Background authorization).
 - `MA_PROVIDER`: the Managed Agents backend that account keys belong to,
   `ark` (default) or `claude`. It must match the apps' `VITE_MUSE_MA_PROVIDER`;
   key checks, workspace preparation, background work, and reminders all call
@@ -288,7 +365,15 @@ deployed or that a real unattended generation can complete.
 
 ## API
 
-- `GET /health`: public liveness only; no configuration or credentials.
+- `GET /health`: public, no configuration or credentials. Returns `{ok,
+  service, scheduler: {lastTickAt, lastFailureAt, stale}, keyRotation:
+  {pending}}`: the times of the scheduler's last successful and last failed
+  tick (or `null`), `stale` when no tick succeeded within 15 minutes (counted
+  from deployment before the first tick), and how many sealed values are not yet
+  under the current encryption key (`null` while unknown, for example without
+  a usable keyring). A deployment with `SCHEDULER_SOURCE=external` and
+  background work enabled answers 503 with `ok: false` while the scheduler is
+  stale, so an uptime monitor can alert; otherwise `ok` is `true`.
 - `GET /v1/status`: requires `Authorization: Bearer <account access token>`;
   checks the database.
 - `PUT /v1/schedule`: `{enabled, timezone, local_time, revision, confirm}`;
@@ -310,10 +395,23 @@ deployed or that a real unattended generation can complete.
   sealed for this account. A stale revision from another device returns 409.
 - `DELETE /v1/account/credential`: `{revision, confirm: true}` leaves a
   tombstone for this account only.
+- `GET /v1/account/export`: everything the service keeps for the signed-in
+  account, as `{format: 1, exportedAt, owner, tables, truncated?}`. `tables`
+  has one array of rows for each owner-keyed table, opened for the account
+  itself: credential metadata with only the project and the Ark API key's
+  last four characters, workspace records, device names, the background
+  binding's resource IDs (no key), schedule, runs (no pending prompts, leases,
+  or connection fingerprints), Feed, reminder delivery, and cloud browser views
+  without their frames or input, and synced settings and lists opened per
+  item. Tables without a dedicated export leave out
+  columns that look secret and show sealed values as `"sealed"`; a value the
+  keyring cannot open is `"unavailable"`. At most 10,000 rows per table;
+  `truncated` names any table that had more. Read-only.
 - `DELETE /v1/account`: `{confirm: true}` deletes the signed-in account: every
   row the service keeps for it (credential, workspace records, devices,
-  background connection, schedule, runs, Feed, reminder delivery), then its
-  sign-in at the Auth provider. Data goes first, so a failure at the provider
+  synced settings, background connection, schedule, runs, Feed, reminder
+  delivery, webhooks), then its sign-in at the Auth provider. Data goes first, so a
+  failure at the provider
   leaves a sign-in that can repeat the request. Returns `{deleted: true}`, or
   503 before deleting anything where the deployment cannot remove sign-ins
   (the Volcengine deployment can; a Cloudflare Worker cannot). Ark resources
@@ -326,16 +424,62 @@ deployed or that a real unattended generation can complete.
 - `GET /v1/account/devices`: `{devices: [{id, name, platform, app_version,
   last_seen_at}]}`, most recently seen first, for the signed-in account only.
 - `DELETE /v1/account/devices/:id`: forgets one device; repeating it succeeds.
+- `POST /v1/account/webhooks`: `{name}` (1–60 characters) creates an incoming
+  webhook and returns `{id, name, created_at, last_delivery_at, path, secret}`,
+  the only time the secret is shown. `path` is `/v1/hooks/:id`; the apps join
+  it to their configured service URL. At most 10 per account (409 `{code:
+  "webhook_limit"}`). Sent once; after a lost response, list and revoke.
+- `GET /v1/account/webhooks`: `{webhooks: [{id, name, created_at,
+  last_delivery_at}], deliveries: [{id, webhook_id, event_id, status,
+  created_at}], ready: {mainChat, background}}`, the account's hooks and its 20
+  most recent deliveries, without secrets.
+- `DELETE /v1/account/webhooks/:id`: revokes one hook of this account and its
+  delivery records; repeating it succeeds.
+- `POST /v1/hooks/:id`: public ingress, described under Incoming webhooks.
+  Returns `{ok, duplicate, delivery, status}` (202 while unconfirmed) or
+  `{challenge}`.
+- `GET /v1/account/sync?workspace=<key>&after=<cursor>`: `{items, cursor,
+  hasMore}` with this account's synced items changed after the cursor, for the
+  workspace key of the account's current Ark key only (409 `{code:
+  "workspace_changed"}` for any other key, including another account's). Each
+  item is `{namespace, id, revision, value, mutation_id, seq, updated_at}`;
+  `value` is `null` for a deleted item (a tombstone). Keep the returned cursor
+  for the next pull; at most 200 items per page.
+- `PUT /v1/account/sync`: `{workspace, mutations: [{namespace, id, value,
+  base_revision, mutation_id}]}`, at most 25 per request. Namespaces are
+  `model`, `feed`, `saved`, and `archive`, each with its own item IDs and value
+  schema (`shared/account-sync.ts`); anything else is a 400. `value: null`
+  deletes. Each item is written only while it is still at `base_revision` (0
+  for a new item) and returns `{status: "applied", revision, seq}`; otherwise
+  nothing is written and it returns `{status: "conflict", item}` with the
+  server's copy. Repeating a mutation ID that already wrote the item returns
+  `applied` without writing again. An invalid or oversized value (over 64 KB)
+  returns `{status: "rejected", reason: "invalid"}`, and a new item beyond 5,000
+  per account (tombstones included) `{reason: "limit"}`. Values are sealed with
+  the account, workspace key, namespace, item ID, and revision.
 - `PUT /v1/account/upcoming`: `{session_id, language: "en" | "zh-CN", enabled,
-  revision, confirm: true}` registers the account's main conversation for
-  reminder delivery. Enabling reads the session with the account's key and
-  accepts it only when it runs the account's own service-created agent (403
-  otherwise). A stale revision returns 409. Delivery covers occurrences after it
-  was first enabled; changing the conversation keeps that start.
+  revision, checkins?, goal_followups?, time_zone?, confirm: true}` registers
+  the account's main conversation for reminder delivery. Enabling reads the
+  session with the account's key and accepts it only when it runs the account's
+  own service-created agent (403 otherwise). A stale revision returns 409.
+  Delivery covers occurrences after it was first enabled; changing the
+  conversation keeps that start. `checkins` and `goal_followups` opt in to
+  check-ins and goal follow-ups while the apps are closed; both are off by
+  default, an omitted value keeps the saved one, and `enabled: false` turns
+  both off. Turning either on needs a valid IANA `time_zone` (sent or saved
+  earlier), otherwise 400.
 - `GET /v1/account/upcoming`: `{enabled, session_id, language, since,
-  revision, state}`, where `state` is `"session_unavailable"` once the
-  conversation is gone or no longer runs the account's agent; register again to
-  resume. `GET /v1/status` reports `upcoming: {delivery: "server" | "off",
+  revision, state, checkins, goal_followups, time_zone}`, where `state` is
+  `"session_unavailable"` once the conversation is gone or no longer runs the
+  account's agent; register again to resume.
+- `POST /v1/account/claims`: `{kind: "checkin" | "reminder" | "goal", key,
+  session_id}` claims one app-generated message for the signed-in account
+  before an app sends it. `key` is 1–120 letters, digits, and `_.:@+-` (a local
+  date such as `2026-10-05` for a check-in, `<item id>@<occurrence ms>` for a
+  reminder). The first claim for the account, kind, and key wins and returns
+  `{claimed: true}`; later ones return `{claimed: false, by: "app" |
+  "service", age_ms}`. Claims expire after eight days and are pruned on each
+  tick; at most 1000 live claims per account (429 beyond). `GET /v1/status` reports `upcoming: {delivery: "server" | "off",
   session_id}` for accounts; clients stop delivering locally while it names
   their main conversation.
 - `GET /v1/account/workspace`: `{revision, workspace?, unconfirmed}` for the
@@ -437,10 +581,10 @@ account's record.
 
 Replacing or removing the key, in the same database transaction, also removes the account's
 background binding, disables its schedule, and stops unfinished runs, so no
-scheduled work continues with the previous key. The scheduled handler reseals up
-to 20 rows per table under the current `CREDENTIAL_ENCRYPTION_KEYS` entry. Keep
-a retired key in the keyring until no row reports it. Responses never include
-the keyring. Only the owning account's `GET` returns the key.
+scheduled work continues with the previous key. Each scheduler tick reseals up
+to 50 rows per sealed column under the current key and records how many remain
+(`keyRotation.pending` in `/health`). Keep a retired key in the keyring until
+that reaches 0. Responses never include the keyring. Only the owning account's `GET` returns the key.
 
 Responses use `Cache-Control: no-store`. There is no wildcard CORS and no
 cookie-based authentication. Origin checks do not replace token authentication.
@@ -466,10 +610,17 @@ encryption**: the authorized service briefly decrypts the key to call Ark.
 Administrators of the hosting platform with runtime or secret access remain trusted. HTTPS
 protects requests in transit; do not enable request-body logging or tracing.
 
-For rotation, add a new key ID and switch `current`, retaining previous keys
-until all retained envelopes/backups have been migrated or expired. Do not
-remove an old key prematurely. This version has no automated bulk re-encryption
-or backup purge. Database backups can retain older ciphertext; removing
+For rotation without reading the deployed secret back, set the new keyring as
+`CREDENTIAL_ENCRYPTION_KEYS_NEXT` (same shape, a new key ID). While it is set,
+the effective keyring is both key sets together and `current` comes from the
+new one, so new values are sealed with the new key and every older row still
+opens. A NEXT keyring that does not parse, or that gives an existing key ID
+different key material, makes credential storage unavailable instead of
+quietly sealing with the old key. The scheduler reseals every sealed table in
+bounded batches; once `/health` reports `keyRotation.pending` as 0, replace
+`CREDENTIAL_ENCRYPTION_KEYS` with the new keyring and remove NEXT. The steps
+are in [Deploying](DEPLOY.md#rotating-the-encryption-keyring). There is no
+backup purge. Database backups can retain older ciphertext; removing
 the live row is not proof of physical erasure from backups.
 
 `DELETE /v1/connection` with `{revision, confirm: true}` removes the live encrypted

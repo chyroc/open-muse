@@ -4,6 +4,7 @@ import {
   pendingCustomTools,
   pendingPermissions,
   type AgentEvent,
+  type Goal,
 } from "../../shared/types";
 import {
   deliveredOccurrences,
@@ -12,7 +13,22 @@ import {
   reminderBatch,
   reminderPrompt,
 } from "../../shared/upcoming";
+import { checkInDue, checkInPolicy, checkInPrompt } from "../../shared/checkin";
+import { parseGoals } from "../../shared/goals";
+import {
+  goalFollowUpPolicy,
+  goalFollowUpPrompt,
+  staleGoal,
+} from "../../shared/goal-followup";
+import {
+  goalClaimKey,
+  localDay,
+  localHour,
+  reminderClaimKey,
+  validTimeZone,
+} from "../../shared/proactive";
 import { AccountCredentials } from "./account";
+import { ProactiveClaims, pruneClaims } from "./claims";
 import { HttpError, maEndpoint, type Env } from "./env";
 import { edgeFetch } from "./fetch";
 import { AccountWorkspaces } from "./workspace";
@@ -21,6 +37,7 @@ import { AccountWorkspaces } from "./workspace";
 // the account registered, so reminders arrive while every app is closed. Each
 // occurrence is claimed in D1 before one message is sent, and nothing is ever
 // sent twice: an ambiguous send is reconciled from history, never repeated.
+// Accounts that also opted in get check-ins and goal follow-ups the same way.
 const LEASE = 4 * 60_000;
 const DAILY_LIMIT = 48;
 const RECONCILE_WINDOW = 86_400_000;
@@ -40,6 +57,9 @@ type Target = {
   since: number;
   revision: number;
   state: "active" | "session_unavailable";
+  checkins: number;
+  goal_followups: number;
+  time_zone: string | null;
 };
 type Message = { event_id: string; session_id: string; phase: string };
 type Session = {
@@ -60,7 +80,7 @@ export class UpcomingDelivery {
 
   private target() {
     return this.env.DB.prepare(
-      "SELECT session_id,language,enabled,since,revision,state FROM upcoming_targets WHERE owner_id=?",
+      "SELECT session_id,language,enabled,since,revision,state,checkins,goal_followups,time_zone FROM upcoming_targets WHERE owner_id=?",
     )
       .bind(this.owner)
       .first<Target>();
@@ -83,6 +103,9 @@ export class UpcomingDelivery {
       since: target?.since ?? null,
       revision: target?.revision ?? 0,
       state: target?.state ?? null,
+      checkins: Boolean(target?.checkins),
+      goal_followups: Boolean(target?.goal_followups),
+      time_zone: target?.time_zone ?? null,
     };
   }
 
@@ -122,6 +145,9 @@ export class UpcomingDelivery {
       language: (typeof languages)[number];
       enabled: boolean;
       revision: number;
+      checkins?: boolean;
+      goal_followups?: boolean;
+      time_zone?: string;
     },
     now = Date.now(),
   ) {
@@ -131,6 +157,16 @@ export class UpcomingDelivery {
         409,
         "Reminder delivery changed on another device. Refresh before saving.",
       );
+    // Omitted opt-ins keep their value, so re-registering a new chapter does
+    // not change them. Turning delivery off turns both off.
+    const timeZone = input.time_zone ?? current?.time_zone ?? null;
+    const checkins =
+      input.enabled && (input.checkins ?? Boolean(current?.checkins));
+    const goals =
+      input.enabled &&
+      (input.goal_followups ?? Boolean(current?.goal_followups));
+    if ((checkins || goals) && !validTimeZone(timeZone))
+      throw new HttpError(400, "A valid time zone is required for check-ins.");
     if (input.enabled) {
       const { ark, workspace } = await this.context();
       const session = await this.session(
@@ -151,11 +187,12 @@ export class UpcomingDelivery {
     // may already have delivered are never replayed.
     const since = current?.enabled ? current.since : now;
     const result = await this.env.DB.prepare(
-      `INSERT INTO upcoming_targets(owner_id,session_id,language,enabled,since,revision,state,next_check_at,updated_at)
-      VALUES(?,?,?,?,?,1,'active',?,?)
+      `INSERT INTO upcoming_targets(owner_id,session_id,language,enabled,since,revision,state,next_check_at,updated_at,checkins,goal_followups,time_zone)
+      VALUES(?,?,?,?,?,1,'active',?,?,?,?,?)
       ON CONFLICT(owner_id) DO UPDATE SET session_id=excluded.session_id,language=excluded.language,
         enabled=excluded.enabled,since=?,revision=upcoming_targets.revision+1,state='active',
-        next_check_at=excluded.next_check_at,updated_at=excluded.updated_at
+        next_check_at=excluded.next_check_at,updated_at=excluded.updated_at,
+        checkins=excluded.checkins,goal_followups=excluded.goal_followups,time_zone=excluded.time_zone
       WHERE upcoming_targets.revision=?`,
     )
       .bind(
@@ -166,6 +203,9 @@ export class UpcomingDelivery {
         since,
         now,
         now,
+        checkins ? 1 : 0,
+        goals ? 1 : 0,
+        timeZone,
         since,
         input.revision,
       )
@@ -186,7 +226,9 @@ export class UpcomingDelivery {
     return (page.data ?? []).reverse();
   }
 
-  private async document(ark: ArkClient, store: string) {
+  // A memory document's text: null when it does not exist, undefined when it
+  // cannot be read unambiguously.
+  private async memory(ark: ArkClient, store: string, file: string) {
     const path = `/memory_stores/${validId(store)}/memories`;
     const rows: Memory[] = [];
     let page = "";
@@ -198,12 +240,20 @@ export class UpcomingDelivery {
       if (!result.next_page || result.next_page === page) break;
       page = result.next_page;
     }
-    const hits = rows.filter((row) => row.path === "/UPCOMING.md");
-    if (hits.length !== 1) return hits.length ? undefined : [];
+    const hits = rows.filter((row) => row.path === file);
+    if (hits.length !== 1) return hits.length ? undefined : null;
     const memory = await ark.request<Memory>(`${path}/${validId(hits[0].id)}`);
-    if (typeof memory.content !== "string") return undefined;
+    return typeof memory.content === "string"
+      ? memory.content.trim()
+      : undefined;
+  }
+
+  private async document(ark: ArkClient, store: string) {
+    const content = await this.memory(ark, store, "/UPCOMING.md");
+    if (content === null) return [];
+    if (content === undefined) return undefined;
     try {
-      return parseUpcoming(memory.content.trim());
+      return parseUpcoming(content);
     } catch {
       return undefined;
     }
@@ -283,6 +333,19 @@ export class UpcomingDelivery {
     // client's tool result; try again on a later tick.
     if (session.status !== "idle") return "busy";
 
+    // Due reminders come first; a check-in or goal follow-up only when no
+    // reminder is due.
+    const reminders = await this.reminders(ark, workspace, target, now);
+    if (reminders !== "idle" && reminders !== "unreadable") return reminders;
+    return (await this.initiate(ark, workspace, target, now)) ?? reminders;
+  }
+
+  private async reminders(
+    ark: ArkClient,
+    workspace: { memoryStoreId?: string },
+    target: Target,
+    now: number,
+  ) {
     const items = await this.document(ark, workspace.memoryStoreId!);
     if (!items) return "unreadable";
     const last = await this.env.DB.prepare(
@@ -315,19 +378,30 @@ export class UpcomingDelivery {
     )
       .bind(this.owner, now - 86_400_000)
       .first<{ n: number }>();
-    if ((sent?.n ?? 0) >= DAILY_LIMIT) return "limited";
+    if (Number(sent?.n ?? 0) >= DAILY_LIMIT) return "limited";
 
-    // Claim before sending. An occurrence another invocation claimed first is
-    // left to it.
+    // Claim before sending. An occurrence another invocation, or an app,
+    // claimed first is left to it.
     const event = `evt-${uuid()}`;
+    const claims = new ProactiveClaims(this.env, this.owner);
     await this.env.DB.batch([
       this.env.DB.prepare(
-        "INSERT INTO upcoming_messages(event_id,owner_id,session_id,phase,created_at,updated_at) VALUES(?,?,?,'sending',?,?)",
+        "INSERT INTO upcoming_messages(event_id,owner_id,session_id,phase,created_at,updated_at,kind) VALUES(?,?,?,'sending',?,?,'reminder')",
       ).bind(event, this.owner, target.session_id, now, now),
       ...due.map(({ item, at }) =>
         this.env.DB.prepare(
           "INSERT INTO upcoming_deliveries(owner_id,item_id,occurrence_at,event_id) VALUES(?,?,?,?) ON CONFLICT DO NOTHING",
         ).bind(this.owner, item.id, at, event),
+      ),
+      ...due.map(({ item, at }) =>
+        claims.statement(
+          "reminder",
+          reminderClaimKey(item.id, at),
+          target.session_id,
+          "service",
+          event,
+          now,
+        ),
       ),
     ]);
     const claimed = await this.env.DB.prepare(
@@ -335,10 +409,14 @@ export class UpcomingDelivery {
     )
       .bind(this.owner, event)
       .all<{ item_id: string; occurrence_at: number }>();
-    const mine = due.filter(({ item, at }) =>
-      claimed.results.some(
-        (row) => row.item_id === item.id && row.occurrence_at === at,
-      ),
+    const held = await claims.held("reminder", event);
+    const mine = due.filter(
+      ({ item, at }) =>
+        held.has(reminderClaimKey(item.id, at)) &&
+        claimed.results.some(
+          (row) =>
+            row.item_id === item.id && Number(row.occurrence_at) === at,
+        ),
     );
     if (!mine.length) {
       await this.env.DB.prepare(
@@ -348,26 +426,41 @@ export class UpcomingDelivery {
         .run();
       return "idle";
     }
+    return this.send(
+      ark,
+      target.session_id,
+      event,
+      reminderPrompt(target.language, new Date(now), mine),
+      "sent",
+      now,
+    );
+  }
+
+  // Posts one claimed message. A definite rejection consumes it; anything
+  // else is left unconfirmed and looked up in history, never resent.
+  private async send<T extends string>(
+    ark: ArkClient,
+    session: string,
+    event: string,
+    text: string,
+    done: T,
+    now: number,
+  ) {
     try {
-      await ark.request(`/sessions/${validId(target.session_id)}/events`, {
+      await ark.request(`/sessions/${validId(session)}/events`, {
         method: "POST",
         body: JSON.stringify({
           events: [
             {
               id: event,
               type: "user.message",
-              content: [
-                {
-                  type: "text",
-                  text: reminderPrompt(target.language, new Date(now), mine),
-                },
-              ],
+              content: [{ type: "text", text }],
             },
           ],
         }),
       });
       await this.phase(event, "sent", now);
-      return "sent";
+      return done;
     } catch (error) {
       await this.phase(
         event,
@@ -376,8 +469,142 @@ export class UpcomingDelivery {
           : "unconfirmed",
         now,
       );
-      return "unconfirmed";
+      return "unconfirmed" as const;
     }
+  }
+
+  // A check-in or goal follow-up while the apps are closed, for an account
+  // that opted in. The same rules as the apps' check-ins apply, in the
+  // registered time zone: 08:00-22:00, at least 18 hours after the last
+  // message, nothing pending or unanswered, and at most one per local day
+  // across the apps and the service. A goal follow-up takes that day's place.
+  private async initiate(
+    ark: ArkClient,
+    workspace: { memoryStoreId?: string },
+    target: Target,
+    now: number,
+  ) {
+    if (!target.checkins && !target.goal_followups) return undefined;
+    const zone = target.time_zone ?? undefined;
+    if (!validTimeZone(zone)) return undefined;
+    const hour = localHour(now, zone);
+    if (hour < checkInPolicy.from || hour >= checkInPolicy.until)
+      return undefined;
+    const claims = new ProactiveClaims(this.env, this.owner);
+    const day = localDay(now, zone);
+    const checkins = await claims.recent("checkin", now - 2 * 86_400_000, now);
+    if (
+      checkins.some(
+        (row) =>
+          row.claim_key === day ||
+          Number(row.created_at) > now - checkInPolicy.minGap,
+      )
+    )
+      return undefined;
+    let goal: Goal | undefined;
+    if (target.goal_followups) {
+      const followed = await claims.recent(
+        "goal",
+        now - goalFollowUpPolicy.perGoal,
+        now,
+      );
+      if (
+        !followed.some(
+          (row) => Number(row.created_at) > now - goalFollowUpPolicy.gap,
+        )
+      ) {
+        const content = await this.memory(
+          ark,
+          workspace.memoryStoreId!,
+          "/GOALS.md",
+        );
+        try {
+          goal = content
+            ? staleGoal(
+                parseGoals(content),
+                now,
+                new Set(followed.map((row) => row.claim_key.split("@")[0])),
+              )
+            : undefined;
+        } catch {
+          goal = undefined;
+        }
+      }
+    }
+    if (!goal && !target.checkins) return undefined;
+    const history = await this.recent(ark, target.session_id);
+    if (
+      !checkInDue({
+        enabled: true,
+        now,
+        status: "idle",
+        history,
+        records: [],
+        timeZone: zone,
+      })
+    )
+      return undefined;
+    const sent = await this.env.DB.prepare(
+      "SELECT count(*) AS n FROM upcoming_messages WHERE owner_id=? AND created_at>=?",
+    )
+      .bind(this.owner, now - 86_400_000)
+      .first<{ n: number }>();
+    if (Number(sent?.n ?? 0) >= DAILY_LIMIT) return "limited";
+
+    const event = `evt-${uuid()}`;
+    const kind = goal ? "goal" : "checkin";
+    await this.env.DB.batch([
+      this.env.DB.prepare(
+        "INSERT INTO upcoming_messages(event_id,owner_id,session_id,phase,created_at,updated_at,kind) VALUES(?,?,?,'sending',?,?,?)",
+      ).bind(event, this.owner, target.session_id, now, now, kind),
+      claims.statement(
+        "checkin",
+        day,
+        target.session_id,
+        "service",
+        event,
+        now,
+      ),
+      ...(goal
+        ? [
+            claims.statement(
+              "goal",
+              goalClaimKey(goal.id, day),
+              target.session_id,
+              "service",
+              event,
+              now,
+            ),
+          ]
+        : []),
+    ]);
+    const won =
+      (await claims.held("checkin", event)).has(day) &&
+      (!goal ||
+        (await claims.held("goal", event)).has(goalClaimKey(goal.id, day)));
+    if (!won) {
+      // An app checked in first; release what this attempt holds.
+      await this.env.DB.batch([
+        this.env.DB.prepare(
+          "DELETE FROM upcoming_messages WHERE event_id=? AND owner_id=?",
+        ).bind(event, this.owner),
+        this.env.DB.prepare(
+          "DELETE FROM proactive_claims WHERE owner_id=? AND claim_id=?",
+        ).bind(this.owner, event),
+      ]);
+      return undefined;
+    }
+    const date = new Date(now);
+    return this.send(
+      ark,
+      target.session_id,
+      event,
+      goal
+        ? goalFollowUpPrompt(target.language, date, goal, zone)
+        : checkInPrompt(target.language, date, zone),
+      goal ? "goal" : "checkin",
+      now,
+    );
   }
 }
 
@@ -390,11 +617,22 @@ export function upcomingInput(input: Record<string, unknown>) {
     typeof input.enabled !== "boolean" ||
     !Number.isSafeInteger(input.revision) ||
     (input.revision as number) < 0 ||
+    (input.checkins !== undefined && typeof input.checkins !== "boolean") ||
+    (input.goal_followups !== undefined &&
+      typeof input.goal_followups !== "boolean") ||
+    (input.time_zone !== undefined && !validTimeZone(input.time_zone)) ||
     Object.keys(input).some(
       (key) =>
-        !["session_id", "language", "enabled", "revision", "confirm"].includes(
-          key,
-        ),
+        ![
+          "session_id",
+          "language",
+          "enabled",
+          "revision",
+          "checkins",
+          "goal_followups",
+          "time_zone",
+          "confirm",
+        ].includes(key),
     )
   )
     throw new HttpError(400, "Confirm reminder delivery for a conversation.");
@@ -403,6 +641,9 @@ export function upcomingInput(input: Record<string, unknown>) {
     language: (typeof languages)[number];
     enabled: boolean;
     revision: number;
+    checkins?: boolean;
+    goal_followups?: boolean;
+    time_zone?: string;
   };
 }
 
@@ -415,6 +656,7 @@ export async function deliverDueUpcoming(
   now: number,
   fetcher: typeof fetch = edgeFetch,
 ) {
+  await pruneClaims(env, now).catch(() => {});
   if (!issuer) return;
   const due = await env.DB.prepare(
     `SELECT t.owner_id FROM upcoming_targets t JOIN account_credentials c ON c.owner_id=t.owner_id
