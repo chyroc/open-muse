@@ -77,7 +77,9 @@ print(json.dumps(out))
   }
 }
 
-describe("Lark sign-in across cloud environments", () => {
+// Each scenario runs a Python process and a local server, which can take a
+// few seconds while the rest of the suite runs in parallel.
+describe("Lark sign-in across cloud environments", { timeout: 30_000 }, () => {
   it("saves a sign-in once and restores it in the next sandbox", () => {
     const out = scenario(String.raw`
 fresh_sandbox(); link()
