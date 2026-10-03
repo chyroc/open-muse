@@ -15,6 +15,7 @@ import { accountWorkspaceKey } from "../../shared/workspace-key";
 import { externalScheduler, TRIGGER_PATH, verifyTrigger } from "./trigger";
 import { UpcomingDelivery, upcomingInput } from "./upcoming";
 import { AccountDevices, deviceInput, validDeviceId } from "./devices";
+import { BrowserViews, relay } from "./browser";
 
 async function runScheduler(env: Env) {
   await rewrapRetiredKeys(env).catch(() => {});
@@ -82,6 +83,26 @@ export async function handle(
       await verifyTrigger(request, env);
       await runScheduler(env);
       response = json({ ok: true });
+    } else if (
+      /^\/v1\/browser\/relay\/[\w-]{1,80}$/.test(url.pathname) &&
+      request.method === "POST"
+    ) {
+      // The cloud browser helper in an MA sandbox, holding only its view's
+      // token: server-to-server, no account session and no browser origin.
+      if (request.headers.has("Origin"))
+        throw new HttpError(403, "This application origin is not allowed.");
+      const token = /^Bearer ([A-Za-z0-9_-]{20,200})$/.exec(
+        request.headers.get("Authorization") ?? "",
+      )?.[1];
+      response = json(
+        await relay(
+          env,
+          url.pathname.split("/")[4],
+          token ?? "",
+          await body(request, 800_000),
+          Date.now(),
+        ),
+      );
     } else {
       // Always a verified Open Muse account; see authenticate().
       const { owner, userId } = await verifiedAccount(request, env, fetcher);
@@ -254,6 +275,30 @@ export async function handle(
           );
         else if (id && request.method === "DELETE")
           response = json(await devices.forget(validDeviceId(id)));
+        else throw new HttpError(404, "Endpoint not found.");
+      } else if (url.pathname.startsWith("/v1/browser/views")) {
+        const views = new BrowserViews(env, owner);
+        const [, id, part] =
+          /^\/v1\/browser\/views(?:\/([^/]+)(?:\/(frame|input))?)?$/.exec(
+            url.pathname,
+          ) ?? [];
+        const now = Date.now();
+        if (!id && !part && request.method === "POST")
+          response = json(await views.open(now));
+        else if (id && part === "frame" && request.method === "GET")
+          response = json(
+            await views.frame(
+              id,
+              Math.max(0, Number(url.searchParams.get("after")) || 0),
+              now,
+            ),
+          );
+        else if (id && part === "input" && request.method === "POST")
+          response = json(
+            await views.input(id, (await body(request, 8192)).events, now),
+          );
+        else if (id && !part && request.method === "DELETE")
+          response = json(await views.close(id, now));
         else throw new HttpError(404, "Endpoint not found.");
       } else if (url.pathname === "/v1/account/upcoming") {
         const upcoming = new UpcomingDelivery(env, owner, fetcher);

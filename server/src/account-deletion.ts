@@ -4,6 +4,8 @@ import { HttpError, type Env } from "./env";
 // reference. A new owner-keyed table must be listed here so deleting an
 // account leaves nothing of it behind.
 export const ACCOUNT_TABLES = [
+  "browser_inputs",
+  "browser_views",
   "feed_items",
   "runs",
   "schedules",

@@ -62,7 +62,9 @@ export type SealPurpose =
   | "open-muse-ark-connection"
   | "open-muse-account-ark"
   | "open-muse-account-workspace"
-  | "open-muse-account-device";
+  | "open-muse-account-device"
+  | "open-muse-browser-frame"
+  | "open-muse-browser-input";
 const aad = (purpose: SealPurpose, owner: string, revision: number) =>
   new TextEncoder().encode(JSON.stringify([purpose, 1, owner, revision]));
 async function cryptoKey(value: string) {
