@@ -179,6 +179,24 @@ class MuseBridgeViewController: CAPBridgeViewController {
                 injectionTime: .atDocumentStart, forMainFrameOnly: true
             ))
         }
+        // This iPhone's name and the app version, so the account's device
+        // list can show it. Without a special entitlement the name is the
+        // generic model name.
+        if let data = try? JSONSerialization.data(withJSONObject: ["name": UIDevice.current.name]),
+           let device = String(data: data, encoding: .utf8) {
+            webView?.configuration.userContentController.addUserScript(WKUserScript(
+                source: "window.__OPEN_MUSE_DEVICE__ = \(device);",
+                injectionTime: .atDocumentStart, forMainFrameOnly: true
+            ))
+        }
+        if let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
+           let data = try? JSONSerialization.data(withJSONObject: version, options: .fragmentsAllowed),
+           let json = String(data: data, encoding: .utf8) {
+            webView?.configuration.userContentController.addUserScript(WKUserScript(
+                source: "window.__OPEN_MUSE_VERSION__ = \(json);",
+                injectionTime: .atDocumentStart, forMainFrameOnly: true
+            ))
+        }
         // Floating sheets keep their corners concentric with the display's,
         // which the web view cannot read.
         let corner = (UIScreen.main.value(forKey: "_displayCornerRadius") as? CGFloat) ?? 0

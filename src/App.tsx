@@ -68,6 +68,7 @@ import {
   reminderNotificationsSupported,
 } from "./reminderNotifications";
 import { backgroundClient } from "./background-client";
+import { registerThisIPhone } from "./iphone-device";
 import { Sheet, primaryNavigation } from "./MusePages";
 import { LibraryPage } from "./LibraryPage";
 import {
@@ -152,6 +153,21 @@ export default function App() {
     document.addEventListener("visibilitychange", foreground);
     return () => document.removeEventListener("visibilitychange", foreground);
   }, [client, restored]);
+  // The iPhone app reports itself to the signed-in account's device list at
+  // start, after signing in, and on returning to the foreground; it is
+  // throttled and silent, and does nothing in other builds.
+  useEffect(() => {
+    if (!restored) return;
+    const report = () => {
+      if (document.hidden) return;
+      void Promise.resolve()
+        .then(() => registerThisIPhone())
+        .catch(() => {});
+    };
+    report();
+    document.addEventListener("visibilitychange", report);
+    return () => document.removeEventListener("visibilitychange", report);
+  }, [restored, revision]);
   if (!restored)
     return (
       <main className="restore-screen" aria-live="polite">
