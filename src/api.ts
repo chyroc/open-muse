@@ -59,6 +59,11 @@ import {
 } from "../shared/activity-summary";
 import type { ActivityStep, ActivityTurn } from "../shared/activity";
 import {
+  browserLaunchMessage,
+  isBrowserLaunch,
+  type BrowserEvent,
+} from "../shared/remote-view";
+import {
   modelChoiceInput,
   modelOverride,
   sessionUsesModel,
@@ -1420,6 +1425,11 @@ export class Client {
       welcome_reply: _welcome,
       ...original
     } = event;
+    if (
+      original.type === "user.message" &&
+      isBrowserLaunch(eventText(original))
+    )
+      return { ...original, app_initiation: "browser" };
     const annotated = await this.upcomingService(r).annotate(
       id,
       await this.checkInService(r).annotate(
@@ -2037,6 +2047,49 @@ export class Client {
       `${r.key}:model`,
       choice === null ? null : modelChoiceInput.parse(choice),
     );
+  }
+  // The live cloud browser: needs an Open Muse account, whose service relays
+  // the view, and a conversation whose sandbox runs the browser.
+  browserViewSupported() {
+    return (
+      this.signedIn() &&
+      this.identity.accountMode() &&
+      Boolean(this.identity.account?.openBrowserView)
+    );
+  }
+  // Opens a view and asks the conversation's agent to start the helper.
+  async startBrowserView(session: string) {
+    const account = this.browserAccount();
+    const view = await account.openBrowserView!();
+    try {
+      await this.send(session, {
+        type: "user.message",
+        text: browserLaunchMessage(
+          account.browserHelperUrl!(),
+          account.browserRelayUrl!(view.id),
+          view.token,
+        ),
+      });
+    } catch (error) {
+      await account.closeBrowserView!(view.id).catch(() => {});
+      throw error;
+    }
+    return view.id;
+  }
+  private browserAccount() {
+    const account = this.identity.account;
+    if (!this.browserViewSupported() || !account)
+      throw new ApiError(409, t("Sign in to an Open Muse account first."));
+    return account;
+  }
+  browserFrame(id: string, after: number) {
+    return this.browserAccount().browserFrame!(id, after);
+  }
+  browserInput(id: string, events: BrowserEvent[]) {
+    return this.browserAccount().browserInput!(id, events);
+  }
+  closeBrowserView(id: string) {
+    return this.browserAccount().closeBrowserView!(id);
   }
   // Labels written for finished requests in the activity list, and failed
   // attempts, by the request's message ID.

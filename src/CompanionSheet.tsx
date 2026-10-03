@@ -22,7 +22,7 @@ import type {
   IdentityDocument,
   IdentityDocumentName,
 } from "../shared/identity";
-import type { AgentEvent } from "../shared/types";
+import { eventText, type AgentEvent } from "../shared/types";
 import type { Client } from "./api";
 import { CompanionAvatar } from "./ChatUI";
 import { Markdown, PermissionCard } from "./components";
@@ -30,6 +30,7 @@ import { ActivityList } from "./ActivityList";
 import { animateAway, useDragToDismiss } from "./gesture";
 import { activityTurns } from "../shared/activity";
 import { UpcomingPanel } from "./UpcomingPanel";
+import { BrowserViewer } from "./BrowserViewer";
 import { ApprovalHistory } from "./ApprovalHistory";
 import { AvatarShareSheet } from "./AvatarShareSheet";
 import { approvalHistory } from "../shared/approvals";
@@ -189,6 +190,21 @@ export function CompanionSheet({
   const [mounted, setMounted] = useState<boolean>();
   const [sharing, setSharing] = useState(false);
   const [menu, setMenu] = useState(false);
+  // The live cloud browser: being started, or the open view's ID.
+  const [browser, setBrowser] = useState<string>();
+  const [browserError, setBrowserError] = useState("");
+  const browserReady = Boolean(sessionId) && client.browserViewSupported();
+  async function openBrowser() {
+    if (!sessionId || browser) return;
+    setBrowser("starting");
+    setBrowserError("");
+    try {
+      setBrowser(await client.startBrowserView(sessionId));
+    } catch (reason) {
+      setBrowser(undefined);
+      setBrowserError((reason as Error).message);
+    }
+  }
   const closing = useRef(false);
   // Slides down and away, then reports closed.
   const dismiss = () => {
@@ -468,18 +484,46 @@ export function CompanionSheet({
                 <b />
               </span>
             </div>
-            <a
-              className="desktop-open"
-              href="#/studio"
-              aria-label={t("View workspace in MA Studio")}
-              onClick={onClose}
-            >
-              {t("Open workspace")}
-              <Maximize2 size={13} strokeWidth={2} />
-            </a>
+            {browserReady ? (
+              <button
+                type="button"
+                className="desktop-open"
+                disabled={browser === "starting"}
+                onClick={() => void openBrowser()}
+              >
+                {browser === "starting" ? (
+                  <LoaderCircle size={15} className="spin" />
+                ) : null}
+                {t("Open browser")}
+                <Maximize2 size={13} strokeWidth={2} />
+              </button>
+            ) : (
+              <a
+                className="desktop-open"
+                href="#/studio"
+                aria-label={t("View workspace in MA Studio")}
+                onClick={onClose}
+              >
+                {t("Open workspace")}
+                <Maximize2 size={13} strokeWidth={2} />
+              </a>
+            )}
+            {browserError && (
+              <p className="inline-error" role="alert">
+                {browserError}
+              </p>
+            )}
           </section>
         )}
       </div>
+      {browser && browser !== "starting" && (
+        <BrowserViewer
+          client={client}
+          view={browser}
+          unavailable={browserUnavailable(events, browser)}
+          onClose={() => setBrowser(undefined)}
+        />
+      )}
       {sharing && (
         <AvatarShareSheet
           name={identity.name}
@@ -769,4 +813,29 @@ function IdentityEditor({
       )}
     </dialog>
   );
+}
+
+// Whether the agent answered the request that started this view by saying
+// this conversation cannot run the cloud browser. The request names the view.
+function browserUnavailable(events: AgentEvent[], view: string) {
+  let start = -1;
+  for (let index = events.length - 1; index >= 0; index--)
+    if (
+      events[index].app_initiation === "browser" &&
+      eventText(events[index]).includes(view)
+    ) {
+      start = index;
+      break;
+    }
+  if (start < 0) return false;
+  return events
+    .slice(start + 1)
+    .some(
+      (event, index, rest) =>
+        event.type === "agent.message" &&
+        !rest
+          .slice(0, index)
+          .some((earlier) => earlier.type === "user.message") &&
+        /^\s*UNAVAILABLE\b/.test(eventText(event)),
+    );
 }

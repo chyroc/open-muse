@@ -33,6 +33,7 @@ const initiationLabels = {
   welcome: "Welcome",
   checkin: "Check-in",
   reminder: "Reminder",
+  browser: "Cloud browser",
 } as const;
 
 function TaskGlyph() {

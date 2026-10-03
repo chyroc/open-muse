@@ -1,0 +1,168 @@
+/* The live cloud browser: a dark sheet that rises over everything, a title
+   and done button, the page in the middle, and a floating tool bar. */
+.browser-viewer {
+  position: fixed;
+  inset: auto 0 0;
+  top: calc(var(--app-top, 0px) + env(safe-area-inset-top));
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 780px);
+  max-width: none;
+  height: auto;
+  max-height: none;
+  margin: 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--floating-sheet-radius) var(--floating-sheet-radius)
+    var(--device-corner, 0px) var(--device-corner, 0px);
+  color: #fff;
+  background: #1c1c1e;
+  overflow: hidden;
+  animation: companion-sheet-up var(--motion-sheet-duration)
+    var(--motion-sheet-spring) backwards;
+}
+.browser-viewer:focus {
+  outline: none;
+}
+.browser-viewer::backdrop {
+  background: var(--sheet-dim);
+  animation: companion-sheet-dim var(--motion-sheet-duration) ease-out both;
+}
+.browser-viewer.closing::backdrop {
+  opacity: 0;
+  transition: opacity var(--motion-sheet-dismiss-duration) ease-in;
+}
+.browser-viewer header {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 74px;
+}
+.browser-viewer h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+}
+.browser-viewer-round {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: #fff;
+  background: rgb(255 255 255 / 14%);
+  box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 22%);
+  transition: transform var(--motion-press-duration) ease-out;
+}
+.browser-viewer-round:active {
+  transform: scale(var(--motion-press-scale));
+}
+.browser-viewer header .browser-viewer-round {
+  position: absolute;
+  top: 15px;
+  right: 16px;
+}
+.browser-viewer-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+}
+.browser-viewer-stage img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 100%;
+  object-fit: contain;
+  background: #fff;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.browser-viewer-status {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 80%;
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: 20px;
+  font-size: 15px;
+  line-height: 20px;
+  text-align: center;
+  color: rgb(255 255 255 / 85%);
+  background: rgb(0 0 0 / 55%);
+}
+.browser-viewer-entry {
+  display: flex;
+  gap: 10px;
+  margin: 0 16px 12px;
+}
+.browser-viewer-entry input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 22px;
+  font: inherit;
+  font-size: 17px;
+  color: #fff;
+  background: rgb(255 255 255 / 12%);
+}
+.browser-viewer-entry input::placeholder {
+  color: rgb(255 255 255 / 45%);
+}
+.browser-viewer-entry button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: #fff;
+  background: rgb(255 255 255 / 12%);
+}
+.browser-viewer footer {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 4px 20px calc(18px + env(safe-area-inset-bottom));
+}
+.browser-viewer-stop {
+  position: absolute;
+  left: 20px;
+  width: 50px;
+  height: 50px;
+  color: #ff453a;
+}
+.browser-viewer-tools {
+  display: flex;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 25px;
+  background: rgb(255 255 255 / 12%);
+  box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 18%);
+}
+.browser-viewer-tools button {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  color: #fff;
+  transition:
+    background-color var(--motion-fade-duration) ease-out,
+    transform var(--motion-press-duration) ease-out;
+}
+.browser-viewer-tools button:active {
+  transform: scale(var(--motion-press-scale));
+}
+.browser-viewer-tools button[aria-pressed="true"] {
+  background: rgb(255 255 255 / 18%);
+}
+.browser-viewer-tools button:disabled {
+  opacity: 0.4;
+}

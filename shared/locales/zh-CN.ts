@@ -1177,4 +1177,19 @@ export const zhCN: Record<string, string> = {
   "Set time": "已预设时间",
   Pause: "暂停",
   Resume: "继续",
+  "Open browser": "打开浏览器",
+  "Cloud browser": "云端浏览器",
+  "You’re in control": "全由你掌控",
+  "Done controlling the browser": "已完成对浏览器的控制",
+  "Starting the browser…": "正在启动浏览器…",
+  "The cloud browser did not start. Try again in a new chat.":
+    "云端浏览器没有启动。请在新的对话中再试一次。",
+  "The cloud browser view has ended.": "云端浏览器已结束。",
+  "This conversation cannot run the cloud browser. Start a new chat and try again.":
+    "这个对话无法运行云端浏览器。请开始新的对话后再试。",
+  "Go to address": "前往网址",
+  "Type in the page": "在网页中输入",
+  "Return key": "回车",
+  "End the cloud browser": "结束云端浏览器",
+  Keyboard: "键盘",
 };

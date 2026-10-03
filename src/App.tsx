@@ -880,10 +880,20 @@ function Workspace({
     };
   }, [client, conversationIds, turnDone, lastEventId]);
   const outputs = turnOutputs(events, savedFiles, work.hidden);
+  // Replies to the app's own browser requests are bookkeeping, not chat.
+  const browserReplies = new Set<string>();
+  let inBrowserTurn = false;
+  for (const event of events) {
+    if (event.type === "user.message")
+      inBrowserTurn = event.app_initiation === "browser";
+    else if (inBrowserTurn && event.type === "agent.message")
+      browserReplies.add(event.id);
+  }
   const messageEvents = events.filter(
     (event) =>
       ["user.message", "agent.message"].includes(event.type) &&
       !event.app_initiation &&
+      !browserReplies.has(event.id) &&
       (eventText(event) || messageAttachments(event).length),
   );
   const isChat = tab === "home";

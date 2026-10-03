@@ -51,6 +51,8 @@ export type APIKeyLogin = z.infer<typeof apiKeyLogin> & {
 };
 // The signed-in Open Muse account, its server-side Ark credential, and the
 // workspace the service created for it.
+import type { BrowserFrame } from "../background-client";
+
 export interface AccountProvider {
   accountConfigured(): boolean;
   // Service delivery of Upcoming reminders; absent where it is unsupported.
@@ -61,6 +63,17 @@ export interface AccountProvider {
     enabled: boolean;
     revision: number;
   }): Promise<UpcomingDelivery>;
+  // The live cloud browser relay; absent where it is unsupported.
+  openBrowserView?(): Promise<{
+    id: string;
+    token: string;
+    expires_at: number;
+  }>;
+  browserHelperUrl?(): string;
+  browserRelayUrl?(id: string): string;
+  browserFrame?(id: string, after: number): Promise<BrowserFrame>;
+  browserInput?(id: string, events: unknown[]): Promise<void>;
+  closeBrowserView?(id: string): Promise<void>;
   accountOwner(): string | undefined;
   restore(): Promise<void>;
   accountCredential(): Promise<AccountCredentialResponse>;

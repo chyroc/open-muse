@@ -24,6 +24,24 @@ import {
 } from "../shared/account-workspace";
 
 // Carries the service's machine-readable reason so callers can act on it.
+const browserViewId = z.string().uuid();
+const browserViewOpened = z.object({
+  id: browserViewId,
+  token: z.string().min(20).max(200),
+  expires_at: z.number(),
+});
+const browserFrame = z.object({
+  open: z.boolean(),
+  seq: z.number(),
+  expires_at: z.number(),
+  image: z.string().optional(),
+  url: z.string().optional(),
+  title: z.string().optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+});
+export type BrowserFrame = z.infer<typeof browserFrame>;
+
 export class BackgroundRequestError extends Error {
   constructor(
     message: string,
@@ -522,7 +540,8 @@ export class BackgroundClient {
       | "/v1/account/workspace/compare"
       | "/v1/account/upcoming"
       | "/v1/account/devices"
-      | `/v1/account/devices/${string}`,
+      | `/v1/account/devices/${string}`
+      | "/v1/browser/views",
     schema: z.ZodType<T>,
     init?: RequestInit,
     messages?: Partial<Record<number, string>>,
@@ -557,6 +576,46 @@ export class BackgroundClient {
     return this.accountRequest("/v1/account/credential", credentialStatus, {
       method: "DELETE",
       body: JSON.stringify({ revision, confirm: true }),
+    });
+  }
+  // A live view of the cloud browser, relayed by the service from a helper in
+  // the MA sandbox. Opening returns the helper's one-time token; watching and
+  // steering are frequent, so they skip the full status check.
+  openBrowserView() {
+    return this.accountRequest("/v1/browser/views", browserViewOpened, {
+      method: "POST",
+      body: "{}",
+    });
+  }
+  browserHelperUrl() {
+    return `${this.origin}/v1/browser/helper`;
+  }
+  browserRelayUrl(id: string) {
+    return `${this.origin}/v1/browser/relay/${browserViewId.parse(id)}`;
+  }
+  private async browserCall(path: string, init?: RequestInit) {
+    await this.fresh();
+    const c = this.credentials();
+    if (!c.account)
+      throw new Error(t("Sign in to an Open Muse account first."));
+    return this.call(path, c.token, init);
+  }
+  async browserFrame(id: string, after: number) {
+    return browserFrame.parse(
+      await this.browserCall(
+        `/v1/browser/views/${browserViewId.parse(id)}/frame?after=${Math.max(0, Math.floor(after))}`,
+      ),
+    );
+  }
+  async browserInput(id: string, events: unknown[]) {
+    await this.browserCall(
+      `/v1/browser/views/${browserViewId.parse(id)}/input`,
+      { method: "POST", body: JSON.stringify({ events }) },
+    );
+  }
+  async closeBrowserView(id: string) {
+    await this.browserCall(`/v1/browser/views/${browserViewId.parse(id)}`, {
+      method: "DELETE",
     });
   }
   // Reminder delivery by the service while the apps are closed. Enabling it
