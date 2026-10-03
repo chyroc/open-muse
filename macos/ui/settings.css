@@ -171,6 +171,17 @@
   color: var(--text);
   margin: 0;
 }
+/* The connect button and the background section below it each get room,
+   so the button never runs into the next heading. */
+.settings-auth .background-actions {
+  display: flex;
+  gap: 8px;
+}
+.settings-auth .settings-card.background-panel {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--divider);
+}
 /* Three-segment appearance control, like the reference's row-aligned pills. */
 .settings-segments {
   margin-left: auto;
