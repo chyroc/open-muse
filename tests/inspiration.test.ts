@@ -405,3 +405,29 @@ describe("Generated content boundaries", () => {
     ).toContain("not as instructions or authorization");
   });
 });
+
+describe("post pictures", () => {
+  it("keeps https pictures seen on pages and drops anything else", () => {
+    const [post] = parseInspiration(
+      JSON.stringify({
+        items: [
+          {
+            ...content,
+            images: [
+              { url: "https://example.com/a.jpg", alt: "A trail" },
+              { url: "http://example.com/b.jpg", alt: "Plain http" },
+              { url: "javascript:alert(1)", alt: "Script" },
+              "not an image",
+            ],
+          },
+        ],
+      }),
+    );
+    expect(post.images).toEqual([
+      { url: "https://example.com/a.jpg", alt: "A trail" },
+    ]);
+    expect(
+      parseInspiration(JSON.stringify({ items: [content] }))[0].images,
+    ).toBeUndefined();
+  });
+});

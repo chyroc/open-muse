@@ -46,6 +46,7 @@ export function InspirationPost({
           {item.title}
         </h2>
         <Markdown text={item.body} />
+        <PostImages item={item} />
         <Sources item={item} />
         <footer className="post-actions">
           <button
@@ -102,6 +103,29 @@ export function InspirationIdea({
       <span>{item.body}</span>
     </button>
   );
+}
+
+// A post's pictures in a row that scrolls sideways; one that fails to load
+// is dropped rather than left as a blank card.
+function PostImages({ item }: { item: InspirationItem }) {
+  const [failed, setFailed] = useState<string[]>([]);
+  const images = (item.images ?? []).filter(
+    (image) => !failed.includes(image.url),
+  );
+  return images.length ? (
+    <div className="post-images">
+      {images.map((image) => (
+        <img
+          key={image.url}
+          src={image.url}
+          alt={image.alt}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={() => setFailed((current) => [...current, image.url])}
+        />
+      ))}
+    </div>
+  ) : null;
 }
 
 function Sources({ item }: { item: InspirationItem }) {

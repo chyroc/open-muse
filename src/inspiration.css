@@ -379,3 +379,25 @@
     color: #aeaeb2;
   }
 }
+/* A post's pictures: rounded cards in a row that scrolls past the edge. */
+.post-images {
+  display: flex;
+  gap: 8px;
+  margin: 12px -16px 4px 0;
+  padding-right: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+.post-images::-webkit-scrollbar {
+  display: none;
+}
+.post-images img {
+  flex: 0 0 auto;
+  width: 178px;
+  height: 120px;
+  border-radius: 16px;
+  object-fit: cover;
+  background: #ececee;
+  scroll-snap-align: start;
+}
