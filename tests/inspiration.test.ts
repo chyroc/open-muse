@@ -331,6 +331,19 @@ describe("Generated content boundaries", () => {
     expect(context).toContain("I enjoy walking");
     expect(context).not.toMatch(/reasoning|raw tool/);
   });
+  it("reads a set of posts written as a Python literal, without evaluating it", () => {
+    const python = `{'items': [{'title': "Runner's warmup", 'body': 'Line one\\nSee [UCLA](https://example.com/a) \\u2014 ok', 'emoji': '\u{1F3C3}', 'reason': 'Saved topic', 'category': 'Running', 'prompt': 'Want a plan?', 'sources': [{'title': 'UCLA', 'url': 'https://example.com/a'}]}]}`;
+    const [post] = parseInspiration(python);
+    expect(post.title).toBe("Runner's warmup");
+    expect(post.body).toBe("Line one\nSee [UCLA](https://example.com/a) \u2014 ok");
+    expect(post.sources).toEqual([{ title: "UCLA", url: "https://example.com/a" }]);
+    expect(() => parseInspiration("{'items': [__import__('os')]}")).toThrow(
+      "not a valid set of posts",
+    );
+    expect(() => parseInspiration("{'items': [{'title': 'x'")).toThrow(
+      "not a valid set of posts",
+    );
+  });
   it("includes real context and explicitly forbids invented capabilities and write actions", () => {
     const prompt = inspirationPrompt("feed", {
       instructions: "Local hikes",
@@ -348,6 +361,7 @@ describe("Generated content boundaries", () => {
     expect(prompt).toContain("More exercise");
     expect(prompt).toContain("Do not promise future autonomous delivery");
     expect(prompt).toContain("Do not write memory");
+    expect(prompt).toContain("strict JSON: double-quoted keys and strings");
     expect(
       discussionPrompt({
         ...content,
