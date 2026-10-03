@@ -6,7 +6,12 @@ import {
   pendingPermissions,
   type AgentEvent,
 } from "../../shared/types";
-import { webhookPolicy, webhookPrompt } from "../../shared/webhooks";
+import {
+  larkChannelMessage,
+  larkChannelPrompt,
+  webhookPolicy,
+  webhookPrompt,
+} from "../../shared/webhooks";
 import { ACCOUNT_ACTIVITY_WINDOW, AccountCredentials } from "./account";
 import { tokenHash } from "./auth";
 import { ConnectionStore } from "./connection";
@@ -377,6 +382,13 @@ class WebhookDelivery {
   }
 
   async deliver(data: string, eventKey: string | null, now: number) {
+    // A Lark bot message is delivered as the person's message channel.
+    let lark: ReturnType<typeof larkChannelMessage>;
+    try {
+      lark = larkChannelMessage(JSON.parse(data));
+    } catch {
+      lark = undefined;
+    }
     if (eventKey) {
       const seen = await this.duplicate(eventKey, now);
       if (seen) return seen;
@@ -487,12 +499,14 @@ class WebhookDelivery {
               content: [
                 {
                   type: "text",
-                  text: webhookPrompt(
-                    target.language,
-                    new Date(now),
-                    this.hook,
-                    data.trim() || "(empty)",
-                  ),
+                  text: lark
+                    ? larkChannelPrompt(target.language, new Date(now), lark)
+                    : webhookPrompt(
+                        target.language,
+                        new Date(now),
+                        this.hook,
+                        data.trim() || "(empty)",
+                      ),
                 },
               ],
             },
