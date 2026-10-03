@@ -47,6 +47,27 @@ unconfirmed. At most one message per account per tick and 48 per day. The agent
 handles the reminder with its normal tools in the main chat; any step that needs
 approval waits for the user in the app.
 
+### Live cloud browser
+
+The phone cannot reach a browser running in the account's MA sandbox, so the
+service relays a live view of one. Opening a view (`POST /v1/browser/views`)
+returns a random token once; the app sends it in a hidden message asking the
+conversation's agent to download the helper from `GET /v1/browser/helper` and
+start it in the background with the toolbox's Python. The helper runs its own
+headless Chrome and, in one request per cycle to
+`POST /v1/browser/relay/<view>`, posts the viewport when it changed and takes
+the person's pending input. The app polls
+`GET /v1/browser/views/<view>/frame` and sends taps, scrolls, typing, Back and
+addresses to `POST /v1/browser/views/<view>/input`; `DELETE` ends the view and
+the helper with it.
+
+Each account has at most one view, which expires after 30 minutes. The relay
+route accepts no browser origin and only the view's token, stored as a hash;
+the other routes require the account session. Frames and input are sealed
+with the account, input is deleted once the helper has taken it, and both
+are removed with the account. The token appears in that conversation's MA
+history and stops working when the view ends or expires.
+
 ## Open Muse accounts
 
 The API accepts end-user access tokens from one explicitly configured
