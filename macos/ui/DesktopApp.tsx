@@ -1107,7 +1107,9 @@ export function DesktopApp({ client }: { client: Client }) {
             : openSettings()
         }
       />
-      {drawer && !document && (
+      {/* A pinned panel docks on the chat page only; elsewhere it waits there
+          until the person comes back to the chat. */}
+      {drawer && !document && (route.page === "chat" || !keepPanel) && (
         <SideChatsPanel
           chats={sideChats(sessions, index, "").map(panelRow)}
           archivedChats={sideChats(sessions, index, "", true).map(panelRow)}
@@ -1322,7 +1324,7 @@ export function DesktopApp({ client }: { client: Client }) {
           <>
             <header className="chat-toolbar">
               {/* A pinned panel stands in for its own toggle. */}
-              {!(drawer && keepPanel) && (
+              {!(drawer && keepPanel && route.page === "chat") && (
                 <button
                   className="glass-pill"
                   aria-label={t("Open chats and side chats")}

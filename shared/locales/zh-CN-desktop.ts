@@ -309,7 +309,7 @@ export const zhDesktop: Record<string, string> = {
   "Back to chat list": "返回聊天列表",
   "Archived chats": "归档的对话",
   "Side chats you archive will appear here.": "你归档的旁聊会显示在这里。",
-  "Resize or close the chat panel": "调整大小或关闭聊天面板",
+  "Resize panel": "调整面板大小",
   "Unarchive {title}": "取消归档{title}",
   "Start a side chat in the drawer": "发起旁聊",
   "Side chats organize conversations by topic, in the drawer":

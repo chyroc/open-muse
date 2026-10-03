@@ -167,6 +167,8 @@ describe("Mac side chats panel", () => {
   it("closes on a click of its edge and resizes on a drag", async () => {
     const { view, onClose, onWidth } = await render({});
     const edge = view.querySelector(".side-chats-edge")!;
+    expect(edge.getAttribute("aria-label")).toBe("Resize panel");
+    expect(edge.getAttribute("aria-valuenow")).toBe("240");
     const pointer = (type: string, clientX: number) =>
       act(async () => {
         edge.dispatchEvent(

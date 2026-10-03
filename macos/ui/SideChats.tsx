@@ -269,8 +269,11 @@ function PanelEdge({
       className="side-chats-edge"
       role="separator"
       aria-orientation="vertical"
-      aria-label={t("Resize or close the chat panel")}
-      title={t("Resize or close the chat panel")}
+      aria-label={t("Resize panel")}
+      aria-valuenow={Math.round(width)}
+      aria-valuemin={sideChatPanel.minWidth}
+      aria-valuemax={sideChatPanel.maxWidth}
+      title={t("Resize panel")}
       onPointerDown={(event) => {
         if (event.button !== 0 || !event.isPrimary) return;
         event.preventDefault();
