@@ -86,11 +86,22 @@ def main():
     with Browser() as browser:
         browser.call("Emulation.setDeviceMetricsOverride",
             {"width": WIDTH, "height": HEIGHT, "deviceScaleFactor": 1, "mobile": False})
-        browser.call("Page.navigate", {"url": start})
-        after, shown, failures = 0, None, 0
+        if start != "about:blank":
+            browser.call("Page.navigate", {"url": start})
+        after, shown, failures, blank = 0, None, 0, 0
         deadline = time.monotonic() + 35 * 60
         while time.monotonic() < deadline:
-            image = browser.call("Page.captureScreenshot", {"format": "jpeg", "quality": 60})["data"]
+            try:
+                image = browser.call("Page.captureScreenshot",
+                    {"format": "jpeg", "quality": 60})["data"]
+                blank = 0
+            except RuntimeError:
+                # A page between documents cannot be captured for a moment.
+                blank += 1
+                if blank >= 60:
+                    return
+                time.sleep(0.5)
+                continue
             digest = hashlib.sha1(image.encode()).hexdigest()
             body = {"after": after}
             if digest != shown:
