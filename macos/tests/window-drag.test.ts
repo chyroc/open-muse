@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { installWindowDrag, startsWindowDrag } from "../ui/windowDrag";
+import {
+  installWindowDrag,
+  startsWindowDrag,
+  titleStripHeight,
+} from "../ui/windowDrag";
 
 afterEach(() => {
   document.body.innerHTML = "";
@@ -54,5 +58,12 @@ describe("dragging the window by its top strip", () => {
     expect(swift).toContain("final class WindowWebView: WKWebView");
     expect(swift).toContain("window.performDrag(with: event)");
     expect(swift).toContain('"AppleActionOnDoubleClick"');
+    // An inactive window still answers a press in the strip, as a title bar does.
+    expect(swift).toContain(
+      "override func acceptsFirstMouse(for event: NSEvent?)",
+    );
+    expect(swift).toContain(
+      `static let titleStripHeight: CGFloat = ${titleStripHeight}`,
+    );
   });
 });
