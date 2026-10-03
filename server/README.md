@@ -443,7 +443,7 @@ deployed or that a real unattended generation can complete.
   for the next pull; at most 200 items per page.
 - `PUT /v1/account/sync`: `{workspace, mutations: [{namespace, id, value,
   base_revision, mutation_id}]}`, at most 25 per request. Namespaces are
-  `model`, `feed`, `saved`, and `archive`, each with its own item IDs and value
+  `model`, `feed`, `saved`, `archive`, and `main`, each with its own item IDs and value
   schema (`shared/account-sync.ts`); anything else is a 400. `value: null`
   deletes. Each item is written only while it is still at `base_revision` (0
   for a new item) and returns `{status: "applied", revision, seq}`; otherwise

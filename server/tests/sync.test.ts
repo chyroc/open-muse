@@ -146,6 +146,8 @@ describe("Account sync", () => {
         mutation("saved", "not-a-digest", { id: "a" }),
         mutation("archive", "sesn_1", { archived: false, title: "x" }),
         mutation("feed", "post-2", { ...post, body: "x".repeat(70_000) }),
+        mutation("main", "chat", { id: "sesn_1", previous: ["sesn_1"] }),
+        mutation("main", "other", { id: "sesn_1", previous: [] }),
       ]),
     );
     expect(
@@ -153,7 +155,7 @@ describe("Account sync", () => {
         r.status,
         r.reason,
       ]),
-    ).toEqual(Array(5).fill(["rejected", "invalid"]));
+    ).toEqual(Array(7).fill(["rejected", "invalid"]));
     expect((await read(pull())).items).toEqual([]);
   });
 
@@ -221,6 +223,18 @@ describe("Account sync", () => {
       ]),
     );
     expect(again[0]).toMatchObject({ status: "applied", revision: 3 });
+  });
+
+  it("keeps the account's main chat", async () => {
+    const after = (await read(pull())).cursor;
+    const main = { id: "sesn_main_2", previous: ["sesn_main_1"] };
+    const [applied] = await results(
+      await push(alice, [mutation("main", "chat", main)]),
+    );
+    expect(applied).toMatchObject({ status: "applied", revision: 1 });
+    expect((await read(pull(alice, after))).items).toMatchObject([
+      { namespace: "main", id: "chat", revision: 1, value: main },
+    ]);
   });
 
   it("never overwrites a newer copy and returns it instead", async () => {

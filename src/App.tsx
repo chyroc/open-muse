@@ -530,6 +530,17 @@ function Workspace({
   useEffect(() => {
     if (lastStatusId) void reload();
   }, [lastStatusId, reload]);
+  // The account's main chat or archive changed on another device.
+  useEffect(
+    () =>
+      client.onAccountData(() => {
+        void client
+          .conversationIndex()
+          .then((conversations) => alive.current && setIndex(conversations))
+          .catch(() => {});
+      }),
+    [client],
+  );
   async function beginWelcome(retry = false) {
     if (welcomeJob.current) return;
     welcomeJob.current = true;

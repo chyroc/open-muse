@@ -3,7 +3,13 @@ import { z } from "zod";
 // Personal settings and lists an Open Muse account keeps in step across its
 // devices. The service stores each item sealed per account and workspace key;
 // both sides validate every value with these schemas.
-export const syncNamespaces = ["model", "feed", "saved", "archive"] as const;
+export const syncNamespaces = [
+  "model",
+  "feed",
+  "saved",
+  "archive",
+  "main",
+] as const;
 export type SyncNamespace = (typeof syncNamespaces)[number];
 
 export const SYNC_LIMITS = {
@@ -89,6 +95,14 @@ export const archiveValue = z
   .object({ archived: z.literal(true), title: text(500) })
   .strict();
 export const MODEL_ITEM_ID = "choice";
+// The account's main chat: the session every device opens as its main chat
+// and its earlier chapters, oldest first.
+export const mainChatValue = z
+  .object({ id: resourceId, previous: z.array(resourceId).max(500) })
+  .strict()
+  .refine((value) => !value.previous.includes(value.id));
+export type MainChatValue = z.infer<typeof mainChatValue>;
+export const MAIN_CHAT_ID = "chat";
 
 export const syncItemId = z.string().regex(/^[\w.-]{1,200}$/);
 
@@ -113,9 +127,13 @@ export function syncValue(
           ? /^[0-9a-f]{64}$/.test(id)
             ? savedValue
             : undefined
-          : resourceId.safeParse(id).success
-            ? archiveValue
-            : undefined;
+          : namespace === "main"
+            ? id === MAIN_CHAT_ID
+              ? mainChatValue
+              : undefined
+            : resourceId.safeParse(id).success
+              ? archiveValue
+              : undefined;
   const parsed = schema?.safeParse(value);
   if (!parsed?.success) return { ok: false };
   if (

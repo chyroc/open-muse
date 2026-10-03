@@ -81,8 +81,8 @@ checked before another write; they are never blindly retried or adopted.
 | Schedule (enabled, time zone, time) | Open Muse service, `schedules` | Plain D1 row, account-scoped | Server-side only |
 | Agent model, instructions, tools, permission policy, MCP servers, skills; environment settings | The account's Ark agent and environment, plus a sealed copy in `account_workspaces` of what Ark reported after the last change made through Open Muse | Ark; AES-GCM for the sealed copy | Read back from the sealed record; the resources are the same |
 | Name, SOUL, MEMORY, goals, and Feed instructions | The account's Ark memory store | Ark | Same memory store |
-| Chosen model and thinking level, saved replies, Feed and Ideas posts with likes and discussion links, Feed instructions dismissal, archived side chats | Device IndexedDB, scoped by workspace key, plus a synced copy in `account_sync_items` | Not app-encrypted on the device; AES-GCM on the service, bound to account, workspace key, item, and revision | Synced for the same workspace key (see [Sync across devices](#sync-across-devices)) |
-| Side-chat list, main-chat selection and continuation, local approvals, reactions | Device IndexedDB, scoped by workspace key | Not app-encrypted | Not synced; conversations themselves remain in Ark |
+| Chosen model and thinking level, saved replies, Feed and Ideas posts with likes and discussion links, Feed instructions dismissal, archived side chats, the main chat and its earlier chapters | Device IndexedDB, scoped by workspace key, plus a synced copy in `account_sync_items` | Not app-encrypted on the device; AES-GCM on the service, bound to account, workspace key, item, and revision | Synced for the same workspace key (see [Sync across devices](#sync-across-devices)) |
+| Side-chat list, in-progress main-chat continuation, local approvals, reactions | Device IndexedDB, scoped by workspace key | Not app-encrypted | Not synced; conversations themselves remain in Ark |
 | Open Muse session | Keychain (sessionStorage on web) | OS-protected | Each device signs in |
 | Appearance (Mac) | Device preference | None | Not synced |
 
@@ -133,10 +133,18 @@ In an account build, the account's devices keep these in step for the same
 workspace key: the chosen model and thinking level, saved replies (one item
 per original session and event, so saving the same reply on two devices keeps
 one), Feed and Ideas posts with their likes and discussion links, the Feed
-instructions dismissal, and which side chats are archived. Main-chat selection
-and continuation, the side-chat list, reactions, approvals, check-in and
+instructions dismissal, which side chats are archived, and the main chat with
+its earlier chapters. The side-chat list, reactions, approvals, check-in and
 reminder receipts, and pending generation runs are not synced. Local builds
 never upload any of it.
+
+Every device of the account opens the same main chat. A device without one
+syncs before starting a main chat and opens the account's instead; a device
+that had its own keeps it as a side chat. When one device continues the main
+chat into a new chapter, the others follow it and earlier chapters still lead
+to it. A new chapter that a device has already started creating finishes
+first and then becomes the account's main chat; if two devices continue at the
+same time, the chapter created last wins and the other stays as a side chat.
 
 Each device keeps its records in IndexedDB as before and syncs when the app
 starts, when it returns to the foreground (at most every two minutes), and a
@@ -160,7 +168,8 @@ with the one saved first. Deleting an item leaves a tombstone so an outdated
 device cannot bring it back. A saved reply over 20,000 characters, or any item
 the service refuses, stays only on the device where it was made. A model the
 app does not offer, chosen on a newer version, is kept on the service and left
-alone locally. Screens show synced changes the next time they read their data.
+alone locally. Screens show synced changes the next time they read their data;
+the chat list and main chat update as soon as a change arrives.
 
 ## Storage and security
 
@@ -282,10 +291,11 @@ Settings. Start a side chat for a separate topic. Archiving and restoring only
 change the local sidebar index; they never delete or terminate a cloud session.
 Existing cloud conversations remain accessible as side chats.
 
-Main-chat selection is device-local and isolated by API key and project; it is
-not a cross-device preference. In an account build, archiving or restoring a
-side chat syncs to the account's other devices; the main chat and its earlier
-chapters never take an archive state from another device. Creation attempts are
+Main-chat selection is isolated by API key and project. In an account build,
+the main chat and its chapters are shared by the account's devices, and
+archiving or restoring a side chat syncs to them; the main chat and its earlier
+chapters never take an archive state from another device. In a local build the
+main chat belongs to the device. Creation attempts are
 recorded before submission and recovered by a random marker after ambiguous
 failures, rather than creating another session automatically.
 

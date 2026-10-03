@@ -5,10 +5,12 @@ import type { InspirationItem } from "../../shared/inspiration";
 import type { LibraryItem } from "../../shared/types";
 import {
   FEED_SETTINGS_ID,
+  MAIN_CHAT_ID,
   MODEL_ITEM_ID,
   SYNC_LIMITS,
   syncNamespaces,
   syncValue,
+  type MainChatValue,
   type SyncItem,
   type SyncMutation,
   type SyncNamespace,
@@ -19,7 +21,7 @@ import type { ConversationIndex } from "./conversations";
 import type { LocalDatabase } from "./storage";
 
 // Keeps the account's chosen model, Feed reactions and posts, saved replies,
-// and archived side chats in step across the account's devices.
+// archived side chats, and main chat in step across the account's devices.
 //
 // Each item has a base: the copy last known to match the service. A local
 // value that differs from its base goes to an outbox (persisted with a stable
@@ -33,7 +35,7 @@ import type { LocalDatabase } from "./storage";
 // Only account builds sync, and only the signed-in account's own workspace:
 // the outbox lives under the workspace key, which includes the verified
 // account, so signing out or switching accounts never sends another
-// account's pending changes. Main-chat selection is not synced.
+// account's pending changes.
 export type SyncTransport = {
   pull(workspace: string, after: number): Promise<SyncPullResponse>;
   push(workspace: string, mutations: SyncMutation[]): Promise<SyncPushResponse>;
@@ -59,6 +61,8 @@ type State = {
 };
 export type SyncReport = {
   pulled: number;
+  // Local records changed by the service's copies.
+  applied: number;
   pushed: number;
   conflicts: number;
   rejected: number;
@@ -103,6 +107,8 @@ export class AccountSync {
   private running?: Promise<SyncReport>;
   private timer?: ReturnType<typeof setTimeout>;
   private lastRun = 0;
+  // Called after a pass that changed a local record.
+  onApplied?: () => void;
   constructor(
     private db: LocalDatabase,
     readonly owner: string,
@@ -138,10 +144,15 @@ export class AccountSync {
   }
   // Runs one pull-then-push pass; concurrent calls share it.
   sync() {
-    return (this.running ??= this.run().finally(() => {
-      this.running = undefined;
-      this.lastRun = this.now();
-    }));
+    return (this.running ??= this.run()
+      .then((report) => {
+        if (report.applied && this.active()) this.onApplied?.();
+        return report;
+      })
+      .finally(() => {
+        this.running = undefined;
+        this.lastRun = this.now();
+      }));
   }
   // After a local change: wait briefly so several changes go together.
   changed(delay = 2000) {
@@ -168,6 +179,7 @@ export class AccountSync {
   private async run(): Promise<SyncReport> {
     const report: SyncReport = {
       pulled: 0,
+      applied: 0,
       pushed: 0,
       conflicts: 0,
       rejected: 0,
@@ -287,7 +299,9 @@ export class AccountSync {
         if (!syncValue(namespace, id, merged.value).ok)
           merged = { value: server, conflict: true };
         out.merged = merged;
-        return same(merged.value, current) ? undefined : merged.value;
+        if (same(merged.value, current)) return undefined;
+        report.applied++;
+        return merged.value;
       });
     }
     state.base[key] = { revision, value: server };
@@ -560,6 +574,90 @@ export function archiveAdapter(db: LocalDatabase, key: string): SyncAdapter {
   };
 }
 
+// The main chat every device of the account opens. A device takes the
+// account's main chat over its own; the one it had stays as an earlier
+// chapter when it is one, and as a side chat otherwise. While this device is
+// creating a new chapter, the service's copy waits; the newer chapter then
+// becomes the account's main chat.
+export function mainAdapter(db: LocalDatabase, key: string): SyncAdapter {
+  const storage = `${key}:conversations:v1`;
+  const value = (index: ConversationIndex): MainChatValue | null =>
+    index.mainId
+      ? {
+          id: index.mainId,
+          previous: (index.entries[index.mainId]?.previousIds ?? [])
+            .filter((id) => id !== index.mainId)
+            .slice(-500),
+        }
+      : null;
+  return {
+    namespace: "main",
+    async snapshot() {
+      const index = (await db.get<ConversationIndex>(storage)) ?? {
+        entries: {},
+      };
+      const values = new Map<string, unknown>();
+      const ignored = new Set<string>();
+      const current = value(index);
+      if (current) values.set(MAIN_CHAT_ID, current);
+      if (index.pending?.kind === "main") ignored.add(MAIN_CHAT_ID);
+      return { values, ignored };
+    },
+    async update(id, change) {
+      await db.update<ConversationIndex>(storage, (old) => {
+        const index = old ?? { entries: {} };
+        // A main chat whose creation may already be under way here is
+        // finished first.
+        const creating =
+          index.pending?.kind === "main" &&
+          (index.pending.phase === "creating" || !index.pending.previous);
+        if (id !== MAIN_CHAT_ID || creating) {
+          change(undefined);
+          return index;
+        }
+        const next = change(value(index)) as MainChatValue | null | undefined;
+        // A removed item leaves this device's main chat as it is.
+        if (!next) return index;
+        adoptMain(index, next);
+        return index;
+      });
+    },
+  };
+}
+
+function adoptMain(index: ConversationIndex, main: MainChatValue) {
+  const old = index.mainId;
+  const chain = [...main.previous, main.id];
+  const title =
+    (old && index.entries[old]?.title) ??
+    index.entries[main.id]?.title ??
+    "Main chat";
+  chain.forEach((id, i) => {
+    const later = chain[i + 1];
+    const entry = {
+      ...index.entries[id],
+      title,
+      kind: "main" as const,
+      archived: false,
+    };
+    delete entry.continuedBy;
+    delete entry.previousIds;
+    if (later) entry.continuedBy = later;
+    else if (main.previous.length) entry.previousIds = main.previous;
+    index.entries[id] = entry;
+  });
+  if (old && !chain.includes(old)) {
+    const entry = { ...index.entries[old], kind: "side" as const };
+    entry.title ??= title;
+    entry.archived ??= false;
+    delete entry.continuedBy;
+    index.entries[old] = entry;
+  }
+  index.mainId = main.id;
+  // A new chapter this device had only begun preparing gives way.
+  if (index.pending?.kind === "main") delete index.pending;
+}
+
 export const syncAdapters = (db: LocalDatabase, key: string) =>
   syncNamespaces.map((namespace) =>
     ({
@@ -567,5 +665,6 @@ export const syncAdapters = (db: LocalDatabase, key: string) =>
       feed: feedAdapter,
       saved: savedAdapter,
       archive: archiveAdapter,
+      main: mainAdapter,
     })[namespace](db, key),
   );

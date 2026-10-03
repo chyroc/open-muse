@@ -9,7 +9,10 @@ import {
 import { LocalDatabase } from "../src/direct/storage";
 import { Client } from "../src/api";
 import type { AccountProvider } from "../src/direct/auth";
-import type { ConversationIndex } from "../src/direct/conversations";
+import {
+  currentConversation,
+  type ConversationIndex,
+} from "../src/direct/conversations";
 import { digest, uuid } from "../shared/crypto";
 import { accountWorkspaceKey } from "../shared/workspace-key";
 import { MA } from "../src/direct/transport";
@@ -199,7 +202,7 @@ describe("Account sync", () => {
       },
     });
     const report = await a.sync.sync();
-    expect(report).toMatchObject({ pushed: 5, conflicts: 0, rejected: 0 });
+    expect(report).toMatchObject({ pushed: 6, conflicts: 0, rejected: 0 });
     expect(await a.sync.pending()).toBe(0);
 
     const b = device(server);
@@ -218,7 +221,9 @@ describe("Account sync", () => {
     const index = await b.db.get<ConversationIndex>(
       `${b.key}:conversations:v1`,
     );
+    expect(index?.mainId).toBe("sesn_main");
     expect(index?.entries).toEqual({
+      sesn_main: { title: "Main chat", kind: "main", archived: false },
       sesn_side: { title: "Side", kind: "side", archived: true },
     });
     // Nothing applied on B goes back to the service.
@@ -369,6 +374,139 @@ describe("Account sync", () => {
     ).toMatchObject({ archived: true });
   });
 
+  it("shares one main chat and its new chapters across devices", async () => {
+    const server = service();
+    const a = device(server);
+    const b = device(server);
+    const c = device(server);
+    const at = (d: { key: string }) => `${d.key}:conversations:v1`;
+    const read = async (d: { db: LocalDatabase; key: string }) =>
+      (await d.db.get<ConversationIndex>(at(d)))!;
+    await a.db.set<ConversationIndex>(at(a), {
+      mainId: "sesn_main_2",
+      entries: {
+        sesn_main_1: {
+          title: "Main chat",
+          kind: "main",
+          archived: false,
+          continuedBy: "sesn_main_2",
+        },
+        sesn_main_2: {
+          title: "Main chat",
+          kind: "main",
+          archived: false,
+          previousIds: ["sesn_main_1"],
+        },
+      },
+    });
+    await c.db.set<ConversationIndex>(at(c), {
+      mainId: "sesn_c",
+      entries: { sesn_c: { title: "主要聊天", kind: "main", archived: false } },
+    });
+    await a.sync.sync();
+    await b.sync.sync();
+    await c.sync.sync();
+    const fresh = await read(b);
+    expect(fresh.mainId).toBe("sesn_main_2");
+    expect(currentConversation(fresh, "sesn_main_1")).toBe("sesn_main_2");
+    // C's own main chat stays open as a side chat.
+    const other = await read(c);
+    expect(other.mainId).toBe("sesn_main_2");
+    expect(other.entries.sesn_main_2.previousIds).toEqual(["sesn_main_1"]);
+    expect(other.entries.sesn_c).toEqual({
+      title: "主要聊天",
+      kind: "side",
+      archived: false,
+    });
+    expect(await c.sync.pending()).toBe(0);
+    // A new chapter started on B reaches A.
+    await b.db.update<ConversationIndex>(at(b), (index) => {
+      index!.entries.sesn_main_2.continuedBy = "sesn_main_3";
+      index!.entries.sesn_main_3 = {
+        title: "Main chat",
+        kind: "main",
+        archived: false,
+        previousIds: ["sesn_main_1", "sesn_main_2"],
+      };
+      index!.mainId = "sesn_main_3";
+      return index!;
+    });
+    await b.sync.sync();
+    await a.sync.sync();
+    const first = await read(a);
+    expect(first.mainId).toBe("sesn_main_3");
+    expect(currentConversation(first, "sesn_main_1")).toBe("sesn_main_3");
+    expect(first.entries.sesn_main_3.previousIds).toEqual([
+      "sesn_main_1",
+      "sesn_main_2",
+    ]);
+  });
+
+  it("finishes a chapter this device is creating, which then wins", async () => {
+    const server = service();
+    const a = device(server);
+    const b = device(server);
+    const at = (d: { key: string }) => `${d.key}:conversations:v1`;
+    const main = (id: string, previousIds?: string[]): ConversationIndex => ({
+      mainId: id,
+      entries: {
+        [id]: {
+          title: "Main chat",
+          kind: "main",
+          archived: false,
+          ...(previousIds ? { previousIds } : {}),
+        },
+      },
+    });
+    await a.db.set(at(a), main("sesn_1"));
+    await a.sync.sync();
+    await b.sync.sync();
+    await b.db.update<ConversationIndex>(at(b), (index) => ({
+      ...index!,
+      pending: {
+        token: "open-muse-pending-1",
+        title: "Main chat",
+        kind: "main",
+        category: "general",
+        previous: "sesn_1",
+        phase: "creating",
+      },
+    }));
+    await a.db.set(at(a), main("sesn_a2", ["sesn_1"]));
+    await a.sync.sync();
+    await b.sync.sync();
+    expect((await b.db.get<ConversationIndex>(at(b)))?.mainId).toBe("sesn_1");
+    expect(server.calls.at(-1)?.op).toBe("pull");
+    await b.db.set(at(b), main("sesn_b2", ["sesn_1"]));
+    await b.sync.sync();
+    await a.sync.sync();
+    const index = (await a.db.get<ConversationIndex>(at(a)))!;
+    expect(index.mainId).toBe("sesn_b2");
+    expect(index.entries.sesn_a2.kind).toBe("side");
+    expect(index.entries.sesn_1.continuedBy).toBe("sesn_b2");
+  });
+
+  it("drops a main chat value with its own ID among the earlier chapters", async () => {
+    const server = service();
+    const a = device(server);
+    await a.db.set<ConversationIndex>(`${a.key}:conversations:v1`, {
+      mainId: "sesn_1",
+      entries: {
+        sesn_1: {
+          title: "Main chat",
+          kind: "main",
+          archived: false,
+          previousIds: ["sesn_0"],
+        },
+      },
+    });
+    await a.sync.sync();
+    expect(server.items.get(`${a.key}/main/chat`)?.value).toEqual({
+      id: "sesn_1",
+      previous: ["sesn_0"],
+    });
+  });
+
   it("keeps a model this app does not offer without overwriting it", async () => {
     const server = service();
     const a = device(server);
@@ -461,6 +599,31 @@ describe("Client account sync", () => {
     });
     const key = accountWorkspaceKey(apiKey, "", who.owner, MA);
     expect(server.calls.every((c) => c.workspace === key)).toBe(true);
+  });
+
+  it("opens the account's main chat on a device that had none", async () => {
+    const server = service();
+    const who = { owner: "muse_user_one" };
+    const key = accountWorkspaceKey(apiKey, "", who.owner, MA);
+    const phone = device(server, key, who.owner);
+    await phone.db.set<ConversationIndex>(`${key}:conversations:v1`, {
+      mainId: "sesn_main",
+      entries: {
+        sesn_main: { title: "Main chat", kind: "main", archived: false },
+      },
+    });
+    await phone.sync.sync();
+    const { client } = accountClient(
+      server,
+      new LocalDatabase(`c-${uuid()}`),
+      who,
+    );
+    const changed = vi.fn();
+    client.onAccountData(changed);
+    await client.restore();
+    await client.syncAccountData();
+    expect((await client.conversationIndex()).mainId).toBe("sesn_main");
+    expect(changed).toHaveBeenCalled();
   });
 
   it("does not sync in local mode", async () => {

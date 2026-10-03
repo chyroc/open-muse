@@ -228,6 +228,7 @@ export class Client {
   private verifiedAt = 0;
   private verifying?: Promise<void>;
   private accountSyncs?: { sync: AccountSync; runtime: Runtime };
+  private accountDataListeners = new Set<() => void>();
   constructor(
     options: {
       vault?: CredentialStore;
@@ -1457,7 +1458,14 @@ export class Client {
         history.map((event) => event.id),
       );
     }
+    // A device without a main chat takes the account's before starting one.
+    if (kind === "main" && !index.mainId && !index.pending)
+      await this.accountSync()
+        ?.sync()
+        .catch(() => {});
     const session = await this.conversations(r).create(kind, title, category);
+    if (kind === "main" && session.id !== index.mainId)
+      this.accountSync()?.changed(0);
     await this.remember(r, [session]);
     return session;
   }
@@ -2166,8 +2174,8 @@ export class Client {
     );
     this.accountSync()?.changed();
   }
-  // The account's model choice, Feed reactions and posts, saved replies, and
-  // archived side chats, kept in step with its other devices. Account builds
+  // The account's model choice, Feed reactions and posts, saved replies,
+  // archived side chats, and main chat, kept in step with its other devices. Account builds
   // only: local mode never uploads anything. The instance is bound to this
   // account and workspace and stops when either changes.
   private accountSync(): AccountSync | undefined {
@@ -2201,8 +2209,17 @@ export class Client {
         this.runtime === r &&
         this.identity.accountOwner() === owner,
     );
+    sync.onApplied = () => {
+      for (const listener of this.accountDataListeners) listener();
+    };
     this.accountSyncs = { sync, runtime: r };
     return sync;
+  }
+  // Called when another device's change reached this one, such as the
+  // account's main chat moving on.
+  onAccountData(listener: () => void) {
+    this.accountDataListeners.add(listener);
+    return () => void this.accountDataListeners.delete(listener);
   }
   // An explicit sync pass; undefined where nothing syncs.
   syncAccountData() {
