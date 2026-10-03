@@ -35,10 +35,11 @@
 }
 .goals-create h2,
 .goals-list h2 {
-  font-size: 20px;
-  line-height: 28px;
+  font-size: 18px;
+  line-height: 26px;
   font-weight: 600;
-  margin: 0 0 12px;
+  margin: 0;
+  padding: 10px 0;
 }
 .goals-create {
   margin-top: 8px;
@@ -55,10 +56,15 @@
   text-align: left;
   font-size: 16px;
 }
-.goal-category > svg {
+.goal-category-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
   color: var(--text-2);
 }
-.goal-category > span {
+.goal-category > span:not(.goal-category-icon) {
   flex: 1;
 }
 .goal-category > svg:last-child {
@@ -72,11 +78,24 @@
   gap: 8px;
   align-items: center;
 }
+/* Active goals carry a dot that breathes slowly. */
 .goals-dot {
   width: 8px;
   height: 8px;
   background: var(--accent);
   border-radius: 50%;
+  animation: goals-dot-pulse 2.4s ease-in-out infinite;
+}
+@keyframes goals-dot-pulse {
+  50% {
+    transform: scale(1.35);
+    opacity: 0.6;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .goals-dot {
+    animation: none;
+  }
 }
 .desktop-goal-row {
   position: relative;

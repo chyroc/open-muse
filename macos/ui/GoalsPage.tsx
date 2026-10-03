@@ -22,6 +22,7 @@ import {
   Users,
   WandSparkles,
   PanelRight,
+  SquareCheck,
 } from "lucide-react";
 import type { Client } from "../../src/api";
 import type { Goal } from "../../shared/types";
@@ -43,7 +44,7 @@ const categoryIcons = {
   career: BriefcaseBusiness,
   interests: Palette,
   productivity: Laptop,
-  custom: CheckSquare,
+  custom: SquareCheck,
 };
 function GoalMenu({
   goal,
@@ -709,7 +710,9 @@ export function GoalsPage({
                   disabled={busy}
                   onClick={() => setCategory(category.id)}
                 >
-                  <Icon size={24} strokeWidth={1.7} />
+                  <span className="goal-category-icon" aria-hidden="true">
+                    <Icon size={22} strokeWidth={1.5} />
+                  </span>
                   <span>{t(category.label)}</span>
                   <ChevronRight size={20} strokeWidth={1.5} />
                 </button>
