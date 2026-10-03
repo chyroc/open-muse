@@ -72,11 +72,15 @@ const lark = (): Connector => ({
   ),
   Icon: MessagesSquare,
 });
-const larkSignedIn = (): Connector => ({
+const larkSignedIn = (kept: boolean): Connector => ({
   ...lark(),
-  detail: t(
-    "Signed in to your Lark account in your assistant's cloud environment. When the main chat continues into a new chapter, sign in again.",
-  ),
+  detail: kept
+    ? t(
+        "Signed in to your Lark account. Your assistant keeps this sign-in for new conversations.",
+      )
+    : t(
+        "Signed in to your Lark account in your assistant's cloud environment. When the main chat continues into a new chapter, sign in again.",
+      ),
 });
 const larkSignIn =
   "Help me sign in to Lark with lark-cli so you can work in my Lark account.";
@@ -91,7 +95,11 @@ export function ConnectorsSheet({
   // and whether the assistant is signed in to Lark in the main chat.
   client: Pick<
     Client,
-    "healthConnected" | "setHealthConnected" | "larkConnected"
+    | "healthConnected"
+    | "setHealthConnected"
+    | "larkConnected"
+    | "larkKept"
+    | "forgetLark"
   >;
   onClose: () => void;
   // Puts text in the main chat composer for the person to review and send.
@@ -159,7 +167,7 @@ export function ConnectorsSheet({
   const connected = [
     ...included(),
     ...(linked ? healthItem : []),
-    ...(larkLinked ? [larkSignedIn()] : []),
+    ...(larkLinked ? [larkSignedIn(client.larkKept())] : []),
   ].filter(matches);
   const available = [
     ...(linked ? [] : healthItem),
@@ -210,7 +218,12 @@ export function ConnectorsSheet({
                         <button
                           type="button"
                           className="connector-disconnect"
-                          onClick={() => onDraft(t(larkSignOut))}
+                          onClick={() =>
+                            void client.forgetLark().then(
+                              () => onDraft(t(larkSignOut)),
+                              (reason: Error) => setError(reason.message),
+                            )
+                          }
                         >
                           {t("Disconnect")}
                         </button>

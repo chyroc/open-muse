@@ -83,6 +83,7 @@ checked before another write; they are never blindly retried or adopted.
 | Name, SOUL, MEMORY, goals, and Feed instructions | The account's Ark memory store | Ark | Same memory store |
 | Chosen model and thinking level, saved replies, Feed and Ideas posts with likes and discussion links, Feed instructions dismissal, archived side chats, the main chat and its earlier chapters | Device IndexedDB, scoped by workspace key, plus a synced copy in `account_sync_items` | Not app-encrypted on the device; AES-GCM on the service, bound to account, workspace key, item, and revision | Synced for the same workspace key (see [Sync across devices](#sync-across-devices)) |
 | Side-chat list, in-progress main-chat continuation, local approvals, reactions | Device IndexedDB, scoped by workspace key | Not app-encrypted | Not synced; conversations themselves remain in Ark |
+| Lark sign-in (lark-cli configuration and token store) | The conversation's cloud environment, plus a saved copy in `lark_states` (account builds) | AES-GCM on the service, bound to the account | Restored in each new conversation's cloud environment; Disconnect in Connectors removes it |
 | Open Muse session | Keychain (sessionStorage on web) | OS-protected | Each device signs in |
 | Appearance (Mac) | Device preference | None | Not synced |
 

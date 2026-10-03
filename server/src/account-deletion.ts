@@ -8,6 +8,8 @@ export const ACCOUNT_TABLES = [
   "webhooks",
   "browser_inputs",
   "browser_views",
+  "lark_tokens",
+  "lark_states",
   "feed_items",
   "runs",
   "schedules",

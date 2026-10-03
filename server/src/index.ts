@@ -16,6 +16,7 @@ import { externalScheduler, TRIGGER_PATH, verifyTrigger } from "./trigger";
 import { UpcomingDelivery, upcomingInput } from "./upcoming";
 import { AccountDevices, deviceInput, validDeviceId } from "./devices";
 import { BrowserViews, relay } from "./browser";
+import { LarkStates, MAX_LARK_STATE, sandboxState } from "./lark";
 import { AccountSync, pullInput, pushInput } from "./sync";
 import { SYNC_LIMITS } from "../../shared/account-sync";
 import { ProactiveClaims } from "./claims";
@@ -121,6 +122,27 @@ export async function handle(
           url.pathname.split("/")[4],
           token ?? "",
           await body(request, 800_000),
+          Date.now(),
+        ),
+      );
+    } else if (url.pathname === "/v1/lark/sandbox/state") {
+      // lark-cli in an MA sandbox, holding only the token the app issued for
+      // its conversation: server-to-server, no account session or origin.
+      if (request.headers.has("Origin"))
+        throw new HttpError(403, "This application origin is not allowed.");
+      if (request.method !== "GET" && request.method !== "PUT")
+        throw new HttpError(404, "Endpoint not found.");
+      const token = /^Bearer ([A-Za-z0-9_-]{20,200})$/.exec(
+        request.headers.get("Authorization") ?? "",
+      )?.[1];
+      response = json(
+        await sandboxState(
+          env,
+          token ?? "",
+          request.method,
+          request.method === "PUT"
+            ? await body(request, MAX_LARK_STATE + 1024)
+            : undefined,
           Date.now(),
         ),
       );
@@ -332,6 +354,17 @@ export async function handle(
           );
         else if (id && !part && request.method === "DELETE")
           response = json(await views.close(id, now));
+        else throw new HttpError(404, "Endpoint not found.");
+      } else if (
+        url.pathname === "/v1/lark/tokens" &&
+        request.method === "POST"
+      ) {
+        response = json(await new LarkStates(env, owner).issue(Date.now()));
+      } else if (url.pathname === "/v1/lark/state") {
+        const states = new LarkStates(env, owner);
+        if (request.method === "GET") response = json(await states.status());
+        else if (request.method === "DELETE")
+          response = json(await states.remove());
         else throw new HttpError(404, "Endpoint not found.");
       } else if (url.pathname.startsWith("/v1/account/webhooks")) {
         const webhooks = new AccountWebhooks(env, owner);

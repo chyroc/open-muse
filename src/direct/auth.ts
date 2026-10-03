@@ -85,6 +85,12 @@ export interface AccountProvider {
   browserFrame?(id: string, after: number): Promise<BrowserFrame>;
   browserInput?(id: string, events: unknown[]): Promise<void>;
   closeBrowserView?(id: string): Promise<void>;
+  // The account's saved Lark sign-in for its cloud environments; absent
+  // where it is unsupported.
+  issueLarkToken?(): Promise<{ token: string; expires_at: number }>;
+  larkStateUrl?(): string;
+  larkState?(): Promise<{ saved: boolean; updated_at?: number }>;
+  removeLarkState?(): Promise<{ saved: boolean }>;
   // Settings and lists kept in step across the account's devices; absent
   // where it is unsupported.
   pullAccountSync?(workspace: string, after: number): Promise<SyncPullResponse>;

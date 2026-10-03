@@ -75,6 +75,28 @@ reminder log: claimed before sending, never resent, an ambiguous result looked
 up in history, and counted in the 48-per-day limit. Each is a real, possibly
 billed Ark request.
 
+### Saved Lark sign-in
+
+lark-cli keeps its app configuration and the person's token in the cloud
+environment, and every conversation gets a fresh one. To keep the person
+signed in, the app asks for a token (`POST /v1/lark/tokens`) the first time it
+sends a message in a conversation and passes it to that conversation's
+sandbox in the hidden context note. The toolbox's `lark-cli` wrapper then
+reads the saved state with `GET /v1/lark/sandbox/state` before a command in a
+sandbox that has none, and after a command that changed it (a sign-in, a
+renewed token, a sign-out) writes it with
+`PUT /v1/lark/sandbox/state` `{state, base_revision}`; a stale revision
+returns 409 `{code: "lark_state_changed"}` and the sandbox writes again on top,
+since its copy is the newest. `state: null` empties it. The app reads only
+whether a sign-in is saved (`GET /v1/lark/state`) and removes it with
+`DELETE /v1/lark/state`, which also revokes every token.
+
+The archive holds credentials, so it is sealed with the account and never
+returned to the app. The sandbox routes accept no browser origin and only a
+token, stored as a hash and valid for 30 days; an account keeps at most 50.
+A sandbox writes nothing until it has read the saved copy, so a failed read
+never replaces a saved sign-in. Deleting the account removes both.
+
 ### Live cloud browser
 
 The phone cannot reach a browser running in the account's MA sandbox, so the

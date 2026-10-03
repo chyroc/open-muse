@@ -37,6 +37,14 @@ import {
 
 // Carries the service's machine-readable reason so callers can act on it.
 const browserViewId = z.string().uuid();
+const larkToken = z.object({
+  token: z.string().regex(/^[A-Za-z0-9_-]{20,200}$/),
+  expires_at: z.number(),
+});
+const larkSaved = z.object({
+  saved: z.boolean(),
+  updated_at: z.number().optional(),
+});
 const browserViewOpened = z.object({
   id: browserViewId,
   token: z.string().min(20).max(200),
@@ -533,7 +541,9 @@ export class BackgroundClient {
       | `/v1/account/webhooks/${string}`
       | "/v1/account/sync"
       | `/v1/account/sync?${string}`
-      | "/v1/browser/views",
+      | "/v1/browser/views"
+      | "/v1/lark/tokens"
+      | "/v1/lark/state",
     schema: z.ZodType<T>,
     init?: RequestInit,
     messages?: Partial<Record<number, string>>,
@@ -604,6 +614,26 @@ export class BackgroundClient {
   }
   async closeBrowserView(id: string) {
     await this.browserCall(`/v1/browser/views/${browserViewId.parse(id)}`, {
+      method: "DELETE",
+    });
+  }
+  // The account's Lark sign-in, kept for its conversations' cloud
+  // environments. A token lets one conversation's sandbox read and save it;
+  // the app only learns whether one is saved, and can remove it.
+  issueLarkToken() {
+    return this.accountRequest("/v1/lark/tokens", larkToken, {
+      method: "POST",
+      body: "{}",
+    });
+  }
+  larkStateUrl() {
+    return `${this.origin}/v1/lark/sandbox/state`;
+  }
+  larkState() {
+    return this.accountRequest("/v1/lark/state", larkSaved);
+  }
+  removeLarkState() {
+    return this.accountRequest("/v1/lark/state", larkSaved, {
       method: "DELETE",
     });
   }

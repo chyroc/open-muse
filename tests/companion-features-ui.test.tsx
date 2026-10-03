@@ -105,6 +105,8 @@ describe("Connectors", () => {
           healthConnected: async () => false,
           setHealthConnected: async () => {},
           larkConnected: async () => false,
+          larkKept: () => true,
+          forgetLark: async () => {},
         }}
         onClose={() => {}}
         onDraft={() => {}}

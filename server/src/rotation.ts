@@ -54,6 +54,13 @@ export const SEALED_COLUMNS: readonly {
     revision: "revision",
     purpose: "open-muse-account-sync",
   },
+  // The saved Lark sign-in; empty after lark-cli signs out.
+  {
+    table: "lark_states",
+    column: "encrypted",
+    revision: "revision",
+    purpose: "open-muse-lark-state",
+  },
 ];
 
 // Sealed values are JSON envelopes naming the key that sealed them. Key IDs

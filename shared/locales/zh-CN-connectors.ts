@@ -7,4 +7,6 @@ export const zhConnectors: Record<string, string> = {
   "Signed in to your Lark account in your assistant's cloud environment. When the main chat continues into a new chapter, sign in again.":
     "已在助手的云端环境中登录你的飞书账号。主要聊天续到新章节后，需要重新登录。",
   "Sign me out of Lark with lark-cli.": "帮我用 lark-cli 退出飞书登录。",
+  "Signed in to your Lark account. Your assistant keeps this sign-in for new conversations.":
+    "已登录你的飞书账号。新的对话会沿用这次登录。",
 };

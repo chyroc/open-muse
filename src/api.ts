@@ -66,6 +66,7 @@ import {
 } from "../shared/remote-view";
 import { isWelcomePrompt } from "../shared/welcome";
 import { larkSignedIn } from "../shared/lark-status";
+import { larkStateNote } from "../shared/lark-state";
 import {
   modelChoiceInput,
   modelOverride,
@@ -1717,6 +1718,7 @@ export class Client {
       // Files are mounted before the message is sent, so a failure leaves
       // nothing half-sent; the paths then reach the agent's tools.
       let note: Partial<AgentEvent> | undefined;
+      let lark: { key: string; text: string } | undefined;
       if (input.type === "user.message") {
         const notes = [
           turnContext(new Date(this.now()), this.timeZone(), this.surface),
@@ -1735,6 +1737,8 @@ export class Client {
             ),
           );
         }
+        lark = await this.larkNote(r, id);
+        if (lark) notes.push(lark.text);
         note = {
           type: "system.message",
           content: [{ type: "text", text: notes.join("\n\n") }],
@@ -1818,6 +1822,7 @@ export class Client {
         },
       );
       const rows = Array.isArray(result.data) ? result.data : [];
+      if (lark) await this.db.set(lark.key, true);
       if (mainWrite) await this.conversations(r).confirmSend(id, [mainWrite]);
       if (autoKey && autoRecord) {
         autoRecord.state = "confirmed";
@@ -1848,6 +1853,22 @@ export class Client {
       throw error;
     } finally {
       this.sends.delete(lock);
+    }
+  }
+  // Gives a conversation's cloud environment, once, a token for the
+  // account's saved Lark sign-in, so lark-cli there starts signed in and
+  // keeps the sign-in saved. Account builds only; when the token cannot be
+  // issued the message goes without it.
+  private async larkNote(r: Runtime, id: string) {
+    const account = this.identity.account;
+    if (!account?.issueLarkToken || !account.larkStateUrl) return undefined;
+    const key = `${r.key}:lark-note:${id}`;
+    if (await this.db.get<boolean>(key)) return undefined;
+    try {
+      const { token } = await account.issueLarkToken();
+      return { key, text: larkStateNote(account.larkStateUrl(), token) };
+    } catch {
+      return undefined;
     }
   }
   // Answers custom tool calls this client ran. Only calls the session is still
@@ -2361,9 +2382,10 @@ export class Client {
     return summary;
   }
   // Whether the assistant is signed in to Lark in the main chat's current
-  // cloud environment, as its lark-cli output last showed. The sign-in lives
-  // in that environment, so a new chapter of the main chat starts signed out.
-  // `cached` reads only what this device kept, for an immediate answer.
+  // cloud environment, as its lark-cli output last showed, or, before it has
+  // used Lark there, whether the account keeps a saved sign-in that the
+  // environment restores. `cached` reads only what this device kept, for an
+  // immediate answer.
   async larkConnected(cached = false) {
     if (!this.signedIn()) return false;
     const r = this.context();
@@ -2375,7 +2397,27 @@ export class Client {
           r.ark,
           `/sessions/${validId(main)}/events?order=asc&limit=200`,
         );
-    return larkSignedIn(events) ?? false;
+    const shown = larkSignedIn(events);
+    if (shown !== undefined) return shown;
+    // Nothing in this chapter yet: a saved sign-in starts it signed in.
+    const account = this.identity.account;
+    if (cached || !this.identity.accountMode() || !account?.larkState)
+      return false;
+    return (await account.larkState().catch(() => ({ saved: false }))).saved;
+  }
+  // Whether a Lark sign-in carries over to new conversations.
+  larkKept() {
+    return (
+      this.identity.accountMode() &&
+      Boolean(this.identity.account?.issueLarkToken)
+    );
+  }
+  // Removes the account's saved Lark sign-in, so later conversations start
+  // signed out. The current one signs out when the person asks it to.
+  async forgetLark() {
+    const account = this.identity.account;
+    if (this.identity.accountMode() && account?.removeLarkState)
+      await account.removeLarkState();
   }
   // Whether this identity connected Apple Health on this device; while it is,
   // the companion's Health reads are answered without asking each time.

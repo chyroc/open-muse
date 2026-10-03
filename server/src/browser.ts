@@ -106,13 +106,13 @@ export function browserEvent(value: unknown): BrowserEvent {
   }
 }
 
-function base64url(bytes: Uint8Array) {
+export function base64url(bytes: Uint8Array) {
   let text = "";
   for (const byte of bytes) text += String.fromCharCode(byte);
   return btoa(text).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-async function hash(token: string) {
+export async function hash(token: string) {
   const digest = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(token),

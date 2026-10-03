@@ -681,6 +681,39 @@ describe("Direct MA client", () => {
       f.fetcher.mock.calls.some(([, init]) => init?.method === "DELETE"),
     ).toBe(false);
   });
+  it("gives each conversation's cloud environment its Lark token once, in the hidden note", async () => {
+    const f = fixture();
+    await f.login();
+    const session = await f.client.openConversation("side", "Lark");
+    // Stand in for an account build whose service keeps the Lark sign-in.
+    const identity = (
+      f.client as unknown as { identity: Record<string, unknown> }
+    ).identity;
+    const issueLarkToken = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue({ token: "t".repeat(43), expires_at: 0 });
+    identity.account = {
+      issueLarkToken,
+      larkStateUrl: () => "https://svc.example/v1/lark/sandbox/state",
+      accountOwner: () => undefined,
+      accountConfigured: () => false,
+    };
+    const notes = () =>
+      f.events
+        .filter((event) => event.type === "system.message")
+        .map((event) => event.content?.[0]?.text ?? "");
+    // A token that cannot be issued never holds the message back.
+    await f.client.send(session.id, { type: "user.message", text: "One" });
+    expect(notes()[0]).not.toContain("[Open Muse Lark sign-in]");
+    await f.client.send(session.id, { type: "user.message", text: "Two" });
+    expect(notes()[1]).toContain(
+      `/opt/open-muse/lark-link 'https://svc.example/v1/lark/sandbox/state' '${"t".repeat(43)}'`,
+    );
+    await f.client.send(session.id, { type: "user.message", text: "Three" });
+    expect(notes()[2]).not.toContain("[Open Muse Lark sign-in]");
+    expect(issueLarkToken).toHaveBeenCalledTimes(2);
+  });
   it("continues a main chat that has attachment mounts, refusing other mounts", async () => {
     const f = fixture();
     await f.login();
