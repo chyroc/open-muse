@@ -1194,4 +1194,5 @@ export const zhCN: Record<string, string> = {
   Keyboard: "键盘",
   "New tab": "新标签页",
   "Search or type a web address": "搜索或输入网址",
+  "Resume browsing": "继续浏览",
 };

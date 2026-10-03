@@ -1560,6 +1560,16 @@ function Workspace({
           onNew={newSideChat}
           onRename={() => prefill(t("Change your name to"))}
           onChangeAvatar={() => prefill(t("Change your avatar to"))}
+          prepareSession={async () => {
+            if (activeId && activeId !== index.mainId) return activeId;
+            const session = await client.openConversation(
+              "main",
+              t("Main chat"),
+              category,
+            );
+            setIndex(await client.conversationIndex());
+            return session.id;
+          }}
         />
       )}
       {selectedMessage && selectedBubble && (

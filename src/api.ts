@@ -2075,8 +2075,15 @@ export class Client {
       await account.closeBrowserView!(view.id).catch(() => {});
       throw error;
     }
+    this.liveView = { id: view.id, expires: view.expires_at };
     return view.id;
   }
+  // The view still running after its sheet was put away, if any.
+  activeBrowserView() {
+    const view = this.liveView;
+    return view && view.expires > Date.now() + 10_000 ? view.id : undefined;
+  }
+  private liveView?: { id: string; expires: number };
   private browserAccount() {
     const account = this.identity.account;
     if (!this.browserViewSupported() || !account)
@@ -2090,6 +2097,7 @@ export class Client {
     return this.browserAccount().browserInput!(id, events);
   }
   closeBrowserView(id: string) {
+    if (this.liveView?.id === id) this.liveView = undefined;
     return this.browserAccount().closeBrowserView!(id);
   }
   // Labels written for finished requests in the activity list, and failed

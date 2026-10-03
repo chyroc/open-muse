@@ -163,6 +163,7 @@ export function CompanionSheet({
   onNew,
   onRename,
   onChangeAvatar,
+  prepareSession,
   isMain = false,
 }: {
   client: Client;
@@ -180,6 +181,8 @@ export function CompanionSheet({
   onRename?: () => void;
   // Starts a message asking the companion to change how it looks.
   onChangeAvatar?: () => void;
+  // The conversation to use now, continuing the main chat when it needs to.
+  prepareSession?: () => Promise<string>;
   isMain?: boolean;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -196,10 +199,18 @@ export function CompanionSheet({
   const browserReady = Boolean(sessionId) && client.browserViewSupported();
   async function openBrowser() {
     if (!sessionId || browser) return;
+    const running = client.activeBrowserView();
+    if (running) {
+      setBrowser(running);
+      return;
+    }
     setBrowser("starting");
     setBrowserError("");
     try {
-      setBrowser(await client.startBrowserView(sessionId));
+      // The browser runs in the sandbox of the conversation the person will
+      // talk in, so the main chat is brought up to date first.
+      const target = (await prepareSession?.()) ?? sessionId;
+      setBrowser(await client.startBrowserView(target));
     } catch (reason) {
       setBrowser(undefined);
       setBrowserError((reason as Error).message);
@@ -494,7 +505,9 @@ export function CompanionSheet({
                 {browser === "starting" ? (
                   <LoaderCircle size={15} className="spin" />
                 ) : null}
-                {t("Open browser")}
+                {client.activeBrowserView()
+                  ? t("Resume browsing")
+                  : t("Open browser")}
                 <Maximize2 size={13} strokeWidth={2} />
               </button>
             ) : (

@@ -21,7 +21,8 @@ const pollInterval = 600;
 const startTimeout = 6 * 60 * 1000;
 
 // The cloud browser, live: what the helper in the sandbox shows, with taps,
-// drags, typing and addresses sent back to it. Closing ends the view, which
+// drags, typing and addresses sent back to it. Done puts the sheet away and
+// leaves the browser running for the companion; stop ends the view, which
 // stops the helper.
 export function BrowserViewer({
   client,
@@ -109,10 +110,11 @@ export function BrowserViewer({
       scale: image.current!.naturalWidth / rect.width,
     };
   };
-  const dismiss = () => {
+  // Done hands the browser back and keeps it running; stop ends it.
+  const dismiss = (end = false) => {
     if (closing.current) return;
     closing.current = true;
-    void client.closeBrowserView(view).catch(() => {});
+    if (end || ended) void client.closeBrowserView(view).catch(() => {});
     dialog.current?.classList.add("closing");
     animateAway(dialog.current, "y", 1, onClose);
   };
@@ -153,7 +155,7 @@ export function BrowserViewer({
           type="button"
           className="browser-viewer-round"
           aria-label={t("Done controlling the browser")}
-          onClick={dismiss}
+          onClick={() => dismiss()}
         >
           <Check size={24} strokeWidth={2} />
         </button>
@@ -263,7 +265,7 @@ export function BrowserViewer({
           type="button"
           className="browser-viewer-round browser-viewer-stop"
           aria-label={t("End the cloud browser")}
-          onClick={dismiss}
+          onClick={() => dismiss(true)}
         >
           <Square size={14} fill="currentColor" strokeWidth={0} />
         </button>
