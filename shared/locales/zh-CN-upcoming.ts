@@ -20,6 +20,8 @@ export const zhUpcoming: Record<string, string> = {
   "Once, {date}": "一次，{date}",
   "Every day at {time}": "每天 {time}",
   "Monthly on day {day} at {time}": "每月 {day} 日 {time}",
+  Yearly: "每年",
+  "Every year on {date} at {time}": "每年{date} {time}",
   "Every {days} at {time}": "每{days} {time}",
   "The previous change to upcoming items is unconfirmed. Refresh before trying again.":
     "上一次对即将到来事项的更改尚未确认。请刷新后再试。",

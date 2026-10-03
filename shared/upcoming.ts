@@ -58,6 +58,15 @@ export const scheduleInput = z.discriminatedUnion("kind", [
       time,
     })
     .strict(),
+  // Birthdays and anniversaries; a day the month lacks falls on its last day.
+  z
+    .object({
+      kind: z.literal("yearly"),
+      month: z.number().int().min(1).max(12),
+      day: z.number().int().min(1).max(31),
+      time,
+    })
+    .strict(),
 ]);
 export const upcomingInput = z
   .object({
@@ -190,6 +199,11 @@ export function occurrences(
       const last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
       if (d !== Math.min(schedule.day, last)) continue;
     }
+    if (schedule.kind === "yearly") {
+      if (m !== schedule.month - 1) continue;
+      const last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+      if (d !== Math.min(schedule.day, last)) continue;
+    }
     const at = instant(Date.UTC(y, m, d, hour, minute), zone);
     if (at === undefined || at <= from) continue;
     if (at > to) break;
@@ -244,6 +258,17 @@ export function describeSchedule(
   if (schedule.kind === "monthly")
     return t("Monthly on day {day} at {time}", {
       day: schedule.day,
+      time: clock,
+    });
+  if (schedule.kind === "yearly")
+    return t("Every year on {date} at {time}", {
+      date: new Date(
+        Date.UTC(2024, schedule.month - 1, schedule.day),
+      ).toLocaleDateString(locale, {
+        timeZone: "UTC",
+        month: "long",
+        day: "numeric",
+      }),
       time: clock,
     });
   const names = [...schedule.days]
@@ -315,5 +340,5 @@ Reminders and recurring tasks live in UPCOMING.md in the same personal memory st
 
 When the person asks for a reminder or a task at a time or on a repeating schedule ("every Monday at 9am, remind me to submit my timesheet"), make sure the timing is clear, then add one item and read the document back before confirming. Say plainly that Open Muse delivers it as a message in this chat at or after that time: while the app is open, or also while it is closed if the person turned on delivery while closed in Upcoming. On iPhone, if the person allows notifications, Open Muse also schedules a notification for items due within a week of the last time the app was open, so it can appear while the app is closed; an item further out gets one once the app is opened in the week before it. Other devices show none. Do not ask them to keep the app running. Move, pause, or cancel items only when asked, preserving every other item.
 
-UPCOMING.md is a JSON object, without Markdown fences: {"version":1,"items":[...]}. Each item has id (unique letters/digits/hyphens, max 80), title (short label, max 160), instruction (what to say or do when it is due, max 2000), schedule, time_zone (the person's IANA time zone, such as America/Los_Angeles; ask if unknown), status (active, paused, or done), created_at and updated_at (ISO 8601 timestamps with offset). schedule is one of {"kind":"once","at":"<ISO 8601 with offset>"}, {"kind":"daily","time":"HH:MM"}, {"kind":"weekly","days":[0-6, Sunday is 0],"time":"HH:MM"}, or {"kind":"monthly","day":1-31,"time":"HH:MM"}; times are 24-hour local times in time_zone. Write every timestamp exactly as YYYY-MM-DDTHH:MM:SS+HH:MM (or Z). Preserve IDs and created_at on updates; update updated_at. Maximum 100 items and 64000 characters. Reread the latest document immediately before each edit. Never overwrite unreadable data with an empty list. Keep this schema and all IDs out of ordinary replies.
+UPCOMING.md is a JSON object, without Markdown fences: {"version":1,"items":[...]}. Each item has id (unique letters/digits/hyphens, max 80), title (short label, max 160), instruction (what to say or do when it is due, max 2000), schedule, time_zone (the person's IANA time zone, such as America/Los_Angeles; ask if unknown), status (active, paused, or done), created_at and updated_at (ISO 8601 timestamps with offset). schedule is one of {"kind":"once","at":"<ISO 8601 with offset>"}, {"kind":"daily","time":"HH:MM"}, {"kind":"weekly","days":[0-6, Sunday is 0],"time":"HH:MM"}, {"kind":"monthly","day":1-31,"time":"HH:MM"}, or {"kind":"yearly","month":1-12,"day":1-31,"time":"HH:MM"} for birthdays and anniversaries; times are 24-hour local times in time_zone. Write every timestamp exactly as YYYY-MM-DDTHH:MM:SS+HH:MM (or Z). Preserve IDs and created_at on updates; update updated_at. Maximum 100 items and 64000 characters. Reread the latest document immediately before each edit. Never overwrite unreadable data with an empty list. Keep this schema and all IDs out of ordinary replies.
 `;

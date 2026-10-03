@@ -95,6 +95,45 @@ describe("Upcoming schedules", () => {
     expect(nextOccurrence({ ...once, status: "paused" }, now)).toBe(undefined);
   });
 
+  it("repeats birthdays every year, on the last day of a short February", () => {
+    const birthday = item({
+      schedule: { kind: "yearly", month: 5, day: 4, time: "09:00" },
+      time_zone: "Asia/Shanghai",
+    });
+    const now = Date.parse("2026-10-04T00:00:00+08:00");
+    expect(new Date(nextOccurrence(birthday, now)!).toISOString()).toBe(
+      "2027-05-04T01:00:00.000Z",
+    );
+    // The year after, too.
+    expect(
+      new Date(
+        nextOccurrence(birthday, Date.parse("2027-05-05T00:00:00+08:00"))!,
+      ).toISOString(),
+    ).toBe("2028-05-04T01:00:00.000Z");
+    const leap = item({
+      schedule: { kind: "yearly", month: 2, day: 29, time: "08:00" },
+      time_zone: "UTC",
+    });
+    expect(
+      occurrences(
+        leap,
+        Date.parse("2027-01-01T00:00:00Z"),
+        Date.parse("2028-12-31T00:00:00Z"),
+        800,
+      ).map((at) => new Date(at).toISOString().slice(0, 10)),
+    ).toEqual(["2027-02-28", "2028-02-29"]);
+    expect(describeSchedule(birthday, "en-US")).toBe(
+      "Every year on May 4 at 9:00 AM",
+    );
+    expect(
+      t(
+        "Every year on {date} at {time}",
+        { date: "5月4日", time: "09:00" },
+        "zh-CN",
+      ),
+    ).toBe("每年5月4日 09:00");
+  });
+
   it("makes only the latest missed occurrence due, within a window", () => {
     const daily = item({ schedule: { kind: "daily", time: "09:00" } });
     const now = Date.parse("2026-10-05T20:00:00Z");

@@ -21,11 +21,12 @@ type Snapshot = { items: UpcomingItem[]; revision: string };
 
 // Reminders and recurring tasks saved in personal memory, soonest first.
 // Groups follow how often an item repeats, most frequent first.
-const repetitions = ["daily", "weekly", "monthly", "once"] as const;
+const repetitions = ["daily", "weekly", "monthly", "yearly", "once"] as const;
 const repetitionLabels = {
   daily: "Daily",
   weekly: "Weekly",
   monthly: "Monthly",
+  yearly: "Yearly",
   once: "One time",
 } as const;
 
