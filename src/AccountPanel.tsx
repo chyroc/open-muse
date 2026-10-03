@@ -239,30 +239,6 @@ export function AccountPanel({
             });
             return submitted;
           }}
-          onRequestReset={async (email) => {
-            let sent = false;
-            await run(async () => {
-              await service.requestPasswordReset(email);
-              sent = true;
-            });
-            return sent;
-          }}
-          onReset={(email, code, password) =>
-            run(async () => {
-              await service.resetPassword(email, code, password);
-              try {
-                await service.signInAccount(email, password);
-              } catch {
-                setNotice(
-                  t(
-                    "Your password was changed. Sign in with the new password.",
-                  ),
-                );
-                return;
-              }
-              await switched();
-            })
-          }
         />
       )}
       {busy && (

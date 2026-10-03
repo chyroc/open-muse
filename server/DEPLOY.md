@@ -45,9 +45,7 @@ ve byted-supabase-cli auth config get --workspace-id <workspace>
 
 The public endpoint's HTTPS origin is the Auth origin; the `AnonKey` value is
 the public key. Review signup and email-confirmation policy with
-`auth config get` / `auth config set`. Password reset in the apps emails a
-one-time code, so configure outgoing email (`smtp_*` settings) and keep
-`{{ .Token }}` in the recovery template; without SMTP the request fails. The Postgres host is the workspace's
+`auth config get` / `auth config set`. The Postgres host is the workspace's
 compute endpoint (`*.pg*.aidap-global.<region>.volces.com`).
 
 ## 2. API and database

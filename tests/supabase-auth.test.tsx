@@ -449,70 +449,7 @@ describe("Native Supabase Auth trial", () => {
     },
   );
 });
-describe("Password recovery and account deletion", () => {
-  it("resets a password with an emailed code, ends the recovery session, and never reveals the account", async () => {
-    const f = fixture();
-    const calls: string[] = [];
-    f.authFetch.mockImplementation(async (input, init) => {
-      const path =
-        new URL(String(input)).pathname + new URL(String(input)).search;
-      calls.push(`${init?.method} ${path}`);
-      if (path === "/auth/v1/recover") {
-        expect(JSON.parse(String(init?.body))).toEqual({
-          email: "person@example.com",
-        });
-        return Response.json({});
-      }
-      if (path === "/auth/v1/verify") {
-        expect(JSON.parse(String(init?.body))).toEqual({
-          type: "recovery",
-          email: "person@example.com",
-          token: "123456",
-        });
-        return Response.json(session(subject, "recovery-access-token-123456"));
-      }
-      if (path === "/auth/v1/user") {
-        expect(new Headers(init?.headers).get("Authorization")).toBe(
-          "Bearer recovery-access-token-123456",
-        );
-        expect(JSON.parse(String(init?.body))).toEqual({
-          password: "a-new-private-password",
-        });
-        return Response.json({ id: subject });
-      }
-      if (path.startsWith("/auth/v1/logout"))
-        return new Response(null, { status: 204 });
-      return Response.json(session());
-    });
-    await f.client.requestPasswordReset("person@example.com");
-    await f.client.resetPassword(
-      "person@example.com",
-      " 123456 ",
-      "a-new-private-password",
-    );
-    expect(calls).toEqual([
-      "POST /auth/v1/recover",
-      "POST /auth/v1/verify",
-      "PUT /auth/v1/user",
-      "POST /auth/v1/logout?scope=local",
-    ]);
-    expect(f.read()).toBe("");
-    expect(f.serviceFetch).not.toHaveBeenCalled();
-  });
-  it("explains a wrong code without changing the password", async () => {
-    const f = fixture();
-    f.authFetch.mockResolvedValueOnce(
-      Response.json({ error: "otp_expired" }, { status: 403 }),
-    );
-    await expect(
-      f.client.resetPassword("person@example.com", "123456", "a-new-password"),
-    ).rejects.toThrow("wrong or has expired");
-    expect(f.authFetch).toHaveBeenCalledOnce();
-    await expect(
-      f.client.resetPassword("person@example.com", "abc", "a-new-password"),
-    ).rejects.toThrow("code from the email");
-    expect(f.authFetch).toHaveBeenCalledOnce();
-  });
+describe("Account deletion", () => {
   it("deletes the account once, then forgets the session on this device", async () => {
     const f = fixture();
     await f.client.signInAccount("person@example.com", password);

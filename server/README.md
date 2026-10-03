@@ -245,12 +245,8 @@ windows. Devices without Web Locks must sign in again instead. Signing out sends
 one `POST /auth/v1/logout?scope=local` and always removes the local session;
 other devices stay signed in.
 
-A forgotten password is reset in the app with a one-time code: `POST
-/auth/v1/recover` emails it, `POST /auth/v1/verify` (`type: "recovery"`) trades
-it for a short recovery session, `PUT /auth/v1/user` sets the new password with
-that session, which is then signed out; the person signs in as usual. The
-provider must have outgoing email (SMTP) configured, and its recovery template
-must include the code (`{{ .Token }}`). OAuth callbacks are not implemented.
+The apps offer no password reset, because the deployment sends no email.
+OAuth callbacks are not implemented.
 
 Deleting the account (`DELETE /v1/account`) removes everything the service
 keeps for it and then the sign-in itself; Ark resources stay in the person's
