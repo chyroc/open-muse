@@ -422,7 +422,12 @@ export function LibraryPage({
                   thumbnail={thumbnails[selected.id]}
                   onOpen={() => void fileAction("preview")}
                 />
-                <p>{selected.session_title}</p>
+                <p>
+                  {/* The main chat keeps an internal English title. */}
+                  {selected.session_title === "Main chat"
+                    ? t("Main chat")
+                    : selected.session_title}
+                </p>
                 {selected.bytes != null && (
                   <small>
                     {t("Size: {size}", { size: fileSizeLabel(selected.bytes) })}
