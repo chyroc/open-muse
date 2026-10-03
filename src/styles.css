@@ -354,6 +354,14 @@
 .logout-row button {
   flex-shrink: 0;
 }
+.account-delete {
+  border-top: 1px solid #e5e6db;
+  margin-top: 20px;
+  padding-top: 16px;
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
 .result-json {
   overflow: auto;
   max-height: 450px;

@@ -138,4 +138,29 @@ export const zhAccount: Record<string, string> = {
   "Check the last change": "检查上次更改",
   "Save the current settings": "保存当前设置",
   "Recreate with default settings": "使用默认设置重新创建",
+  "Forgot password?": "忘记密码？",
+  "Enter your account email and we'll send a code to reset your password.":
+    "输入账号邮箱，我们会发送一个验证码，用于重设密码。",
+  "Send code": "发送验证码",
+  "If an account uses this email, a code is on its way. Enter it with your new password.":
+    "如果该邮箱已注册账号，验证码已经发出。请输入验证码和新密码。",
+  "Code from the email": "邮件中的验证码",
+  "New password": "新密码",
+  "Set new password and sign in": "设置新密码并登录",
+  "Back to sign in": "返回登录",
+  "Enter a valid email.": "请输入有效的邮箱。",
+  "The code could not be sent. Wait a minute and try again; it was not retried.":
+    "验证码未能发送。请等一分钟后再试；系统未自动重试。",
+  "Enter the code from the email.": "请输入邮件中的验证码。",
+  "The code is wrong or has expired. Request a new one.":
+    "验证码错误或已过期，请重新获取。",
+  "The new password was not accepted. Choose a different one and request a new code.":
+    "新密码未被接受。请换一个密码，并重新获取验证码。",
+  "Your password was changed. Sign in with the new password.":
+    "密码已修改，请使用新密码登录。",
+  "Permanently delete my Open Muse account with its saved Ark API key, workspace settings, devices, background work, and reminder delivery. Conversations, memory, and the agent stay in your Ark account. This cannot be undone.":
+    "永久删除我的 Open Muse 账号，包括其中保存的 Ark API Key、工作区设置、设备、后台任务和提醒送达。对话、记忆和智能体仍保留在你的 Ark 账号中。此操作无法撤销。",
+  "Delete account": "删除账号",
+  "Your Open Muse account was deleted.": "你的 Open Muse 账号已删除。",
+  "This service cannot delete accounts.": "此服务不支持删除账号。",
 };

@@ -146,6 +146,69 @@ export class SupabaseAuth {
     // Signup can require email verification. Do not infer successful login,
     // disclose account existence, or adopt a signup session without review.
   }
+  // Asks the provider to email a one-time code for choosing a new password.
+  // The reply never reveals whether the email belongs to an account.
+  async requestPasswordReset(email: string) {
+    const parsed = login.shape.email.safeParse(email);
+    if (!parsed.success) throw new Error(t("Enter a valid email."));
+    try {
+      await this.request("/recover", {
+        method: "POST",
+        body: JSON.stringify({ email: parsed.data }),
+      });
+    } catch (error) {
+      if (error instanceof AccountRequestError)
+        throw new Error(
+          t(
+            "The code could not be sent. Wait a minute and try again; it was not retried.",
+          ),
+        );
+      throw error;
+    }
+  }
+  // Trades the emailed code for a short recovery session, sets the new
+  // password with it, and ends that session. The person then signs in as usual.
+  async resetPassword(email: string, code: string, password: string) {
+    const input = this.input(email, password);
+    if (!/^\d{6,10}$/.test(code.trim()))
+      throw new Error(t("Enter the code from the email."));
+    let recovery: SupabaseSession;
+    try {
+      recovery = this.session(
+        await this.request("/verify", {
+          method: "POST",
+          body: JSON.stringify({
+            type: "recovery",
+            email: input.email,
+            token: code.trim(),
+          }),
+        }),
+      );
+    } catch (error) {
+      if (error instanceof AccountRequestError)
+        throw new Error(
+          t("The code is wrong or has expired. Request a new one."),
+        );
+      throw error;
+    }
+    try {
+      await this.request("/user", {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${recovery.accessToken}` },
+        body: JSON.stringify({ password: input.password }),
+      });
+    } catch (error) {
+      if (error instanceof AccountRequestError)
+        throw new Error(
+          t(
+            "The new password was not accepted. Choose a different one and request a new code.",
+          ),
+        );
+      throw error;
+    } finally {
+      await this.signOut(recovery.accessToken).catch(() => {});
+    }
+  }
   // Revokes this session's refresh token at the provider. Sent once; the
   // caller removes the local session whatever the outcome.
   async signOut(accessToken: string) {

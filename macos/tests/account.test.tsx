@@ -16,21 +16,27 @@ async function setup(language: string) {
   document.body.appendChild(host);
   root = createRoot(host);
   const onSignIn = vi.fn(async () => {}),
-    onSignUp = vi.fn(async () => true);
+    onSignUp = vi.fn(async () => true),
+    onRequestReset = vi.fn(async () => true),
+    onReset = vi.fn(async () => {});
   await act(async () =>
     root!.render(
       <SupabaseLoginForm
         busy={false}
         onSignIn={onSignIn}
         onSignUp={onSignUp}
+        onRequestReset={onRequestReset}
+        onReset={onReset}
       />,
     ),
   );
-  return { onSignIn, onSignUp };
+  return { onSignIn, onSignUp, onRequestReset, onReset };
 }
 async function input(type: string, value: string) {
   await act(async () => {
-    const node = host.querySelector<HTMLInputElement>(`input[type="${type}"]`)!;
+    const node = host.querySelector<HTMLInputElement>(
+      type === "code" ? 'input[inputmode="numeric"]' : `input[type="${type}"]`,
+    )!;
     Object.getOwnPropertyDescriptor(
       HTMLInputElement.prototype,
       "value",
@@ -97,4 +103,45 @@ describe("Shared native account login form", () => {
       host.querySelector<HTMLInputElement>('input[type="password"]')!.value,
     ).toBe("");
   });
+  it.each(["en", "zh-Hans"])(
+    "resets a forgotten password with an emailed code in %s",
+    async (language) => {
+      const f = await setup(language);
+      const chinese = language.startsWith("zh");
+      const button = (label: string) =>
+        [...host.querySelectorAll<HTMLButtonElement>("button")].find(
+          (node) => node.textContent === label,
+        )!;
+      await act(async () =>
+        button(chinese ? "忘记密码？" : "Forgot password?").click(),
+      );
+      expect(host.querySelector('input[type="password"]')).toBeNull();
+      await input("email", "person@example.com");
+      await submit();
+      expect(f.onRequestReset).toHaveBeenCalledExactlyOnceWith(
+        "person@example.com",
+      );
+      expect(f.onSignIn).not.toHaveBeenCalled();
+      expect(host.textContent).toContain(
+        chinese ? "邮件中的验证码" : "Code from the email",
+      );
+      await input("code", " 123456 ");
+      await input("password", "new-private-password");
+      await submit();
+      expect(f.onReset).toHaveBeenCalledExactlyOnceWith(
+        "person@example.com",
+        "123456",
+        "new-private-password",
+      );
+      expect(
+        host.querySelector<HTMLInputElement>('input[type="password"]')!.value,
+      ).toBe("");
+      await act(async () =>
+        button(chinese ? "返回登录" : "Back to sign in").click(),
+      );
+      expect(
+        button(chinese ? "登录 Open Muse" : "Sign in to Open Muse"),
+      ).toBeTruthy();
+    },
+  );
 });

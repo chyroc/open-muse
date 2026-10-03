@@ -359,6 +359,32 @@ export class BackgroundClient {
       await this.accounts.signUp(email, password);
     });
   }
+  // Password recovery talks only to the Auth provider. Afterwards the person
+  // signs in with the new password like any other sign-in.
+  requestPasswordReset(email: string) {
+    return this.exclusive(async () => {
+      if (!this.accountConfigured())
+        throw new Error(
+          t("Open Muse account login is not configured in this build."),
+        );
+      await this.accounts.requestPasswordReset(email);
+    });
+  }
+  resetPassword(email: string, code: string, password: string) {
+    return this.exclusive(async () => {
+      if (this.current || this.retired)
+        throw new Error(
+          t(
+            "Disconnect the current background connection before signing in to another Open Muse account.",
+          ),
+        );
+      if (!this.accountConfigured())
+        throw new Error(
+          t("Open Muse account login is not configured in this build."),
+        );
+      await this.accounts.resetPassword(email, code, password);
+    });
+  }
   renewAccountLogin() {
     return this.exclusive(() => this.renew(true));
   }
@@ -488,6 +514,7 @@ export class BackgroundClient {
   }
   private accountRequest<T>(
     path:
+      | "/v1/account"
       | "/v1/account/credential"
       | "/v1/account/workspace"
       | "/v1/account/workspace/settings"
@@ -688,6 +715,17 @@ export class BackgroundClient {
         ),
       },
     );
+  }
+  // Deletes the account at the service, which also removes its sign-in, then
+  // forgets the session on this device. Sent once and never retried.
+  async deleteAccount() {
+    await this.accountRequest(
+      "/v1/account",
+      z.object({ deleted: z.literal(true) }),
+      { method: "DELETE", body: JSON.stringify({ confirm: true }) },
+      { 503: t("This service cannot delete accounts.") },
+    );
+    await this.disconnect();
   }
   // Removes the saved connection from this device only, including a retired
   // device-token connection. It does not revoke anything at the service.

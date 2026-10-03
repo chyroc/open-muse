@@ -449,6 +449,125 @@ describe("Native Supabase Auth trial", () => {
     },
   );
 });
+describe("Password recovery and account deletion", () => {
+  it("resets a password with an emailed code, ends the recovery session, and never reveals the account", async () => {
+    const f = fixture();
+    const calls: string[] = [];
+    f.authFetch.mockImplementation(async (input, init) => {
+      const path =
+        new URL(String(input)).pathname + new URL(String(input)).search;
+      calls.push(`${init?.method} ${path}`);
+      if (path === "/auth/v1/recover") {
+        expect(JSON.parse(String(init?.body))).toEqual({
+          email: "person@example.com",
+        });
+        return Response.json({});
+      }
+      if (path === "/auth/v1/verify") {
+        expect(JSON.parse(String(init?.body))).toEqual({
+          type: "recovery",
+          email: "person@example.com",
+          token: "123456",
+        });
+        return Response.json(session(subject, "recovery-access-token-123456"));
+      }
+      if (path === "/auth/v1/user") {
+        expect(new Headers(init?.headers).get("Authorization")).toBe(
+          "Bearer recovery-access-token-123456",
+        );
+        expect(JSON.parse(String(init?.body))).toEqual({
+          password: "a-new-private-password",
+        });
+        return Response.json({ id: subject });
+      }
+      if (path.startsWith("/auth/v1/logout"))
+        return new Response(null, { status: 204 });
+      return Response.json(session());
+    });
+    await f.client.requestPasswordReset("person@example.com");
+    await f.client.resetPassword(
+      "person@example.com",
+      " 123456 ",
+      "a-new-private-password",
+    );
+    expect(calls).toEqual([
+      "POST /auth/v1/recover",
+      "POST /auth/v1/verify",
+      "PUT /auth/v1/user",
+      "POST /auth/v1/logout?scope=local",
+    ]);
+    expect(f.read()).toBe("");
+    expect(f.serviceFetch).not.toHaveBeenCalled();
+  });
+  it("explains a wrong code without changing the password", async () => {
+    const f = fixture();
+    f.authFetch.mockResolvedValueOnce(
+      Response.json({ error: "otp_expired" }, { status: 403 }),
+    );
+    await expect(
+      f.client.resetPassword("person@example.com", "123456", "a-new-password"),
+    ).rejects.toThrow("wrong or has expired");
+    expect(f.authFetch).toHaveBeenCalledOnce();
+    await expect(
+      f.client.resetPassword("person@example.com", "abc", "a-new-password"),
+    ).rejects.toThrow("code from the email");
+    expect(f.authFetch).toHaveBeenCalledOnce();
+  });
+  it("deletes the account once, then forgets the session on this device", async () => {
+    const f = fixture();
+    await f.client.signInAccount("person@example.com", password);
+    const deletes: RequestInit[] = [];
+    const base = f.serviceFetch.getMockImplementation()!;
+    f.serviceFetch.mockImplementation(async (input, init) => {
+      if (new URL(String(input)).pathname.endsWith("/v1/account")) {
+        deletes.push(init!);
+        return Response.json({ deleted: true });
+      }
+      return base(input, init);
+    });
+    await f.client.deleteAccount();
+    expect(deletes).toHaveLength(1);
+    expect(deletes[0].method).toBe("DELETE");
+    expect(JSON.parse(String(deletes[0].body))).toEqual({ confirm: true });
+    expect(f.read()).toBe("");
+    expect(f.client.accountOwner()).toBeUndefined();
+  });
+  it("says so when the service cannot delete accounts, keeping the session", async () => {
+    const f = fixture();
+    await f.client.signInAccount("person@example.com", password);
+    const base = f.serviceFetch.getMockImplementation()!;
+    f.serviceFetch.mockImplementation(async (input, init) =>
+      new URL(String(input)).pathname.endsWith("/v1/account")
+        ? Response.json({ error: "unavailable" }, { status: 503 })
+        : base(input, init),
+    );
+    await expect(f.client.deleteAccount()).rejects.toThrow(
+      "cannot delete accounts",
+    );
+    expect(f.client.accountConnected()).toBe(true);
+  });
+  it.each([[["en"]], [["zh-Hans"]]])(
+    "offers deletion only after explicit consent %j",
+    async (languages) => {
+      vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", languages);
+      const f = fixture();
+      await f.client.signInAccount("person@example.com", password);
+      const html = renderToStaticMarkup(
+        <AccountPanel
+          service={f.client}
+          client={{ accountChanged: async () => {} }}
+          onChanged={() => {}}
+        />,
+      );
+      const chinese = languages[0].startsWith("zh");
+      expect(html).toContain(chinese ? "删除账号" : "Delete account");
+      expect(html).toContain(
+        chinese ? "此操作无法撤销" : "This cannot be undone",
+      );
+      expect(html).toMatch(/<button class="button danger" disabled="">/);
+    },
+  );
+});
 describe("Upcoming delivery by the service", () => {
   it("reads and saves delivery for the signed-in account with confirmation", async () => {
     const f = fixture();

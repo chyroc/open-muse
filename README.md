@@ -45,7 +45,11 @@ such a build, **Settings → Open Muse account** signs in or registers with an e
 and password. The account is the user's identity on every device. The session is
 stored in Keychain (sessionStorage on the web), renewed shortly before it
 expires with protection against replaying a rotated refresh token, and revoked
-at the provider on sign-out. Other devices stay signed in.
+at the provider on sign-out. Other devices stay signed in. A forgotten password
+is reset in the app with a code sent by email, which needs outgoing email
+configured at the Auth provider. **Delete account** in the same card removes
+the account, everything the Open Muse service keeps for it, and its sign-in;
+conversations, memory, and the agent stay in the person's Ark account.
 
 Builds without these values run in single-user local mode: the API key is kept
 on the device and no account or service request is made.

@@ -17,6 +17,7 @@ export function AccountPanel({
   onChanged: () => void;
 }) {
   const [owner, setOwner] = useState(service.accountOwner());
+  const [deleteConsent, setDeleteConsent] = useState(false);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [notice, setNotice] = useState("");
@@ -94,46 +95,82 @@ export function AccountPanel({
           </button>
         </div>
       ) : owner || unconfirmed ? (
-        <div className="logout-row">
-          <p
-            className="background-note account-id"
-            role={unconfirmed ? "alert" : undefined}
-          >
-            {owner
-              ? t("Account ID: {id}", { id: owner.slice("muse_user_".length) })
-              : t(
-                  "The last session renewal could not be confirmed, so this session is no longer used. Sign out of Open Muse and sign in again.",
+        <>
+          <div className="logout-row">
+            <p
+              className="background-note account-id"
+              role={unconfirmed ? "alert" : undefined}
+            >
+              {owner
+                ? t("Account ID: {id}", {
+                    id: owner.slice("muse_user_".length),
+                  })
+                : t(
+                    "The last session renewal could not be confirmed, so this session is no longer used. Sign out of Open Muse and sign in again.",
+                  )}
+            </p>
+            <button
+              className="button secondary"
+              disabled={busy}
+              onClick={() =>
+                void run(async () => {
+                  let revoked = false;
+                  try {
+                    revoked = (await service.signOutAccount()).revoked;
+                  } finally {
+                    await switched();
+                  }
+                  if (!revoked)
+                    setNotice(
+                      t(
+                        "Signed out on this device. The account service could not confirm ending the session; it expires on its own.",
+                      ),
+                    );
+                })
+              }
+            >
+              <LogOut size={15} />
+              {t("Sign out of Open Muse")}
+            </button>
+            <small>
+              {t(
+                "Signs out this device and ends this session at the account service. Other devices stay signed in. Nothing is deleted.",
+              )}
+            </small>
+          </div>
+          {owner && (
+            <div className="account-delete">
+              <label className="background-consent background-remove-consent">
+                <input
+                  type="checkbox"
+                  checked={deleteConsent}
+                  disabled={busy}
+                  onChange={(event) => setDeleteConsent(event.target.checked)}
+                />
+                {t(
+                  "Permanently delete my Open Muse account with its saved Ark API key, workspace settings, devices, background work, and reminder delivery. Conversations, memory, and the agent stay in your Ark account. This cannot be undone.",
                 )}
-          </p>
-          <button
-            className="button secondary"
-            disabled={busy}
-            onClick={() =>
-              void run(async () => {
-                let revoked = false;
-                try {
-                  revoked = (await service.signOutAccount()).revoked;
-                } finally {
-                  await switched();
+              </label>
+              <button
+                className="button danger"
+                disabled={busy || !deleteConsent}
+                onClick={() =>
+                  void run(async () => {
+                    try {
+                      await service.deleteAccount();
+                    } finally {
+                      setDeleteConsent(false);
+                    }
+                    await switched();
+                    setNotice(t("Your Open Muse account was deleted."));
+                  })
                 }
-                if (!revoked)
-                  setNotice(
-                    t(
-                      "Signed out on this device. The account service could not confirm ending the session; it expires on its own.",
-                    ),
-                  );
-              })
-            }
-          >
-            <LogOut size={15} />
-            {t("Sign out of Open Muse")}
-          </button>
-          <small>
-            {t(
-              "Signs out this device and ends this session at the account service. Other devices stay signed in. Nothing is deleted.",
-            )}
-          </small>
-        </div>
+              >
+                {t("Delete account")}
+              </button>
+            </div>
+          )}
+        </>
       ) : (
         <SupabaseLoginForm
           busy={busy}
@@ -165,6 +202,30 @@ export function AccountPanel({
             });
             return submitted;
           }}
+          onRequestReset={async (email) => {
+            let sent = false;
+            await run(async () => {
+              await service.requestPasswordReset(email);
+              sent = true;
+            });
+            return sent;
+          }}
+          onReset={(email, code, password) =>
+            run(async () => {
+              await service.resetPassword(email, code, password);
+              try {
+                await service.signInAccount(email, password);
+              } catch {
+                setNotice(
+                  t(
+                    "Your password was changed. Sign in with the new password.",
+                  ),
+                );
+                return;
+              }
+              await switched();
+            })
+          }
         />
       )}
       {busy && (
