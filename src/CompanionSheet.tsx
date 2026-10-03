@@ -397,6 +397,7 @@ export function CompanionSheet({
           <section className="companion-activity">
             {activityTurns(events).length ? (
               <ActivityList
+                client={client}
                 events={events}
                 running={status === t("Replying")}
               />

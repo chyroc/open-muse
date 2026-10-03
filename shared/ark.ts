@@ -29,12 +29,16 @@ export class ArkClient {
     if (this.config.project) headers.set("X-Project-Name", this.config.project);
     return headers;
   }
-  async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  // Requests end after 30 seconds unless the caller allows longer.
+  async request<T>(
+    path: string,
+    { timeout = 30_000, ...init }: RequestInit & { timeout?: number } = {},
+  ): Promise<T> {
     const headers = this.headers(init.headers);
     if (!(init.body instanceof FormData) && !headers.has("Content-Type"))
       headers.set("Content-Type", "application/json");
     headers.set("Accept", "application/json");
-    const bound = boundedSignal([init.signal, this.lifecycle], 30_000);
+    const bound = boundedSignal([init.signal, this.lifecycle], timeout);
     try {
       const response = await this.fetcher(`${this.config.arkBaseUrl}${path}`, {
         ...init,

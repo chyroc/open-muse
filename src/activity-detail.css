@@ -245,24 +245,12 @@
   font-weight: 600;
   overflow-wrap: anywhere;
 }
-.activity-step-note,
-.activity-step-result {
+.activity-step-note {
   font-size: 16px;
   line-height: 23px;
   overflow-wrap: anywhere;
 }
-.activity-step-note .markdown > :first-child,
-.activity-step-result .markdown > :first-child {
-  margin-top: 8px;
-}
-.activity-step-result {
-  margin-top: 4px;
-}
-.activity-step-result ul,
-.activity-step-result ol {
-  padding-left: 20px;
-}
-.activity-step-result li + li {
+.activity-step-note .markdown > :first-child {
   margin-top: 8px;
 }
 .activity-step-input {
@@ -459,8 +447,4 @@
   font-size: 15px;
   line-height: 21px;
   color: #000;
-}
-/* Tool output keeps its own line breaks. */
-.activity-step-result p {
-  white-space: pre-line;
 }

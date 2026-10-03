@@ -12,8 +12,10 @@ import {
   activitySteps,
   clockTime,
   plainText,
+  type ActivityStep,
   type ActivityTurn,
 } from "../shared/activity";
+import type { ActivitySummary } from "../shared/activity-summary";
 import { eventText } from "../shared/types";
 import { Markdown } from "./components";
 import { ContinuousSurface } from "./ContinuousSurface";
@@ -26,11 +28,14 @@ import "./activity-detail.css";
 export function ActivityDetail({
   turn,
   title,
+  summary,
   running,
   onClose,
 }: {
   turn: ActivityTurn;
   title: string;
+  // Labels a small model wrote for this request, when there are any.
+  summary?: ActivitySummary;
   running: boolean;
   onClose: () => void;
 }) {
@@ -64,6 +69,14 @@ export function ActivityDetail({
   }, []);
   const steps = activitySteps(turn, running);
   const step = steps.find((item) => item.id === open);
+  // A step reads as its written label when there is one, otherwise as the
+  // tool and what it acted on, with the narration that introduced it.
+  const labelOf = (item: ActivityStep) => summary?.steps[steps.indexOf(item)];
+  const stepTitle = (item: ActivityStep) =>
+    labelOf(item)?.title ||
+    `${t(item.label)}${item.target ? `：${item.target}` : ""}`;
+  const stepNote = (item: ActivityStep) =>
+    labelOf(item)?.description || item.note;
   // A step page starts at its top; the list comes back where it was left.
   useLayoutEffect(() => {
     if (content.current) content.current.scrollTop = step ? 0 : scroll.current;
@@ -125,19 +138,14 @@ export function ActivityDetail({
                 <ArrowLeft size={20} strokeWidth={2.2} />
               </button>
             </header>
-            <h2 className="activity-step-title">
-              {t(step.label)}
-              {step.target && `：${step.target}`}
-            </h2>
-            {step.note && (
+            <h2 className="activity-step-title">{stepTitle(step)}</h2>
+            {stepNote(step) && (
               <div className="activity-step-note">
-                <Markdown text={step.note} />
+                <Markdown text={stepNote(step)} />
               </div>
             )}
             {step.result ? (
-              <div className="activity-step-result">
-                <Markdown text={step.result} />
-              </div>
+              <pre className="activity-step-input">{step.result}</pre>
             ) : (
               <pre className="activity-step-input">{step.input}</pre>
             )}
@@ -164,7 +172,11 @@ export function ActivityDetail({
               </button>
             </header>
             <h2 className="activity-detail-title">{title}</h2>
-            {turn.reply && <p className="activity-detail-line">{turn.reply}</p>}
+            {(summary?.summary || turn.reply) && (
+              <p className="activity-detail-line">
+                {summary?.summary || turn.reply}
+              </p>
+            )}
             <time dateTime={turn.at}>{clockTime(turn.at)}</time>
             {(turn.error || rest) && (
               <div className="activity-detail-answer">
@@ -195,11 +207,8 @@ export function ActivityDetail({
                           )}
                         </span>
                         <span className="activity-step-text">
-                          <strong>
-                            {t(item.label)}
-                            {item.target && `：${item.target}`}
-                          </strong>
-                          {item.note && <small>{item.note}</small>}
+                          <strong>{stepTitle(item)}</strong>
+                          {stepNote(item) && <small>{stepNote(item)}</small>}
                         </span>
                         <ChevronRight
                           size={16}

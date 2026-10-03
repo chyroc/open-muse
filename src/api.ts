@@ -1,4 +1,4 @@
-import { t, systemLanguage } from "../shared/i18n";
+import { t, systemLanguage, type Language } from "../shared/i18n";
 import { z } from "zod";
 import { ArkClient, ApiError } from "../shared/ark";
 import { digest, uuid } from "../shared/crypto";
@@ -51,6 +51,13 @@ import {
   type Attachment,
 } from "../shared/attachments";
 import { MediaStore, type KeptMedia } from "./direct/media";
+import {
+  parseSummary,
+  summaryRequest,
+  type ActivitySummary,
+  type SummaryRecord,
+} from "../shared/activity-summary";
+import type { ActivityStep, ActivityTurn } from "../shared/activity";
 import {
   modelChoiceInput,
   modelOverride,
@@ -2030,6 +2037,54 @@ export class Client {
       `${r.key}:model`,
       choice === null ? null : modelChoiceInput.parse(choice),
     );
+  }
+  // Labels written for finished requests in the activity list, and failed
+  // attempts, by the request's message ID.
+  async activitySummaries(): Promise<Record<string, SummaryRecord>> {
+    if (!this.signedIn()) return {};
+    return (
+      (await this.db.get<Record<string, SummaryRecord>>(
+        `${this.context().key}:activity-summaries`,
+      )) ?? {}
+    );
+  }
+  // Labels one finished request with a small model and keeps the result on
+  // this device; a failure is kept too, so it is not retried at once. Each
+  // call is one Ark request.
+  async summarizeActivity(
+    turn: ActivityTurn,
+    steps: readonly ActivityStep[],
+    language: Language,
+  ): Promise<ActivitySummary | undefined> {
+    const r = this.context();
+    let summary: ActivitySummary | undefined;
+    try {
+      const reply = await r.ark.request<{
+        choices?: { message?: { content?: unknown } }[];
+      }>("/chat/completions", {
+        method: "POST",
+        body: JSON.stringify(summaryRequest(turn, steps, language)),
+        timeout: 90_000,
+      });
+      summary = parseSummary(
+        reply.choices?.[0]?.message?.content,
+        steps.length,
+        language,
+      );
+    } finally {
+      const record: SummaryRecord = summary ?? { failed: Date.now() };
+      await this.db.update<Record<string, SummaryRecord>>(
+        `${r.key}:activity-summaries`,
+        (current = {}) => {
+          // Keep the most recent few hundred.
+          const { [turn.id]: _, ...rest } = current;
+          return Object.fromEntries(
+            Object.entries({ ...rest, [turn.id]: record }).slice(-400),
+          );
+        },
+      );
+    }
+    return summary;
   }
   // Whether this identity connected Apple Health on this device; while it is,
   // the companion's Health reads are answered without asking each time.
