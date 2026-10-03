@@ -962,7 +962,7 @@ export function DesktopApp({ client }: { client: Client }) {
     const quote =
       !route.newSide && (!id || id === index.mainId) ? quotedPost : undefined;
     const message = quote
-      ? `${discussionPrompt(quote)}\n\nMy message:\n${text}`
+      ? `${discussionPrompt(quote)}\n\n${t("My message:")}\n${text}`
       : text;
     if (message.length > 16000) {
       setError(

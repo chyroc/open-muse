@@ -680,6 +680,7 @@ export class Client {
         r.abort.signal.throwIfAborted();
         return r.redact(
           inspirationPrompt(kind, {
+            language: systemLanguage(),
             instructions: instructions.content,
             recent: recentInspirationContext(events),
             goals: JSON.stringify(

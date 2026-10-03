@@ -13,6 +13,7 @@ import { zhReactions } from "./zh-CN-reactions";
 import { zhWebhooks } from "./zh-CN-webhooks";
 import { zhProactive } from "./zh-CN-proactive";
 import { zhExport } from "./zh-CN-export";
+import { zhIdeas } from "./zh-CN-ideas";
 
 // English source messages are stable keys. Keep protocol names and user data out.
 export const zhCN: Record<string, string> = {
@@ -31,6 +32,7 @@ export const zhCN: Record<string, string> = {
   ...zhWebhooks,
   ...zhProactive,
   ...zhExport,
+  ...zhIdeas,
   "Restoring connection…": "正在恢复连接…",
   Retry: "重试",
   "If submission is unconfirmed, refresh history before trying again.":
