@@ -11,7 +11,9 @@
 
 ## Project
 
-Open Muse is a personal AI task assistant built on Volcano Ark Managed Agents (MA). It ships a mobile-first web app, an iOS app, a macOS native shell, and a retained Android project.
+Open Muse is a personal AI task assistant built on a Managed Agents (MA) service. It ships a mobile-first web app, an iOS app, a macOS native shell, and a retained Android project.
+
+Volcano Ark MA is the default and reference backend; Claude Managed Agents is an alternative selected with `VITE_MUSE_MA_PROVIDER` / `MA_PROVIDER`. Every backend difference lives in `shared/ma-provider.ts`. Ark comes first: build and verify features on Ark, and where Ark has a capability Claude lacks, leave it out on Claude instead of emulating it.
 
 Current focus: the iOS app comes first, the macOS app second. Do not modify the web app or the Android project unless explicitly requested.
 

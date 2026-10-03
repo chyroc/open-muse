@@ -29,6 +29,17 @@
 
 <sub>截图为英文界面；应用内置简体中文，会跟随系统语言。</sub>
 
+## 基于 Managed Agents 构建
+
+Open Muse 是 **Managed Agents（MA）** 服务的客户端。MA 托管智能体的运行循环，提供可持久保存、带版本的智能体，隔离的云端环境，以事件流方式推进的会话，以及记忆库。每个工作区对应一个智能体、一个环境和一个记忆库，每段对话都是一个 MA 会话。应用用你自己的 Key 直接调用 MA 接口，Open Muse 不代理任何模型请求。
+
+| 后端 | 状态 |
+| --- | --- |
+| [火山方舟 Managed Agents](https://www.volcengine.com/product/ark) | 默认的基准后端。本文介绍的所有功能都在它上面实现并验证过。 |
+| [Claude Managed Agents](https://platform.claude.com/docs/en/managed-agents/overview) | 资源模型相同的备选后端，用来保持后端可替换。方舟独有的能力（例如从方舟模型目录里为单段对话选模型、按项目划分的 Key）不提供。尚未端到端验证。 |
+
+构建时用 `VITE_MUSE_MA_PROVIDER` 选择后端（默认 `ark`，可选 `claude`），Open Muse 服务用 `MA_PROVIDER` 选择，两者必须一致。后端之间的所有差异都集中在 [`shared/ma-provider.ts`](shared/ma-provider.ts)。
+
 ## 它能做什么
 
 **按需读懂你的身体（iPhone）。** 问一句「今天练得怎么样？」或「这周睡得比上周好吗？」，Open Muse 会当场读取 Apple 健康：步数、活动能量、锻炼分钟、步行与跑步距离、心率、静息心率、睡眠、运动记录和体重。在应用里连接 Apple 健康之前，每次读取都会先问你；连接之后直接读取，在连接器里断开即恢复逐次询问。读不到的数字，它绝不编造。

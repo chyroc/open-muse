@@ -27,6 +27,17 @@ English | [简体中文](README.zh-CN.md)
   </tr>
 </table>
 
+## Built on Managed Agents
+
+Open Muse is a client for a **Managed Agents (MA)** service: a hosted agent loop with persisted, versioned agents, an isolated cloud environment, sessions that stream events, and memory stores. Each workspace gets one agent, one environment, and one memory store, and every conversation is an MA session. The apps call the MA API directly with your own key; Open Muse runs no model proxy.
+
+| Backend | Status |
+| --- | --- |
+| [Volcano Ark Managed Agents](https://www.volcengine.com/product/ark) | Default and reference backend. Everything in this README is built and verified on it. |
+| [Claude Managed Agents](https://platform.claude.com/docs/en/managed-agents/overview) | Alternative backend with the same resource model, included to keep the backend replaceable. Ark-only features, such as choosing a model per conversation from the Ark catalog and project-scoped keys, are left out. Not verified end to end. |
+
+The backend is chosen at build time with `VITE_MUSE_MA_PROVIDER` (`ark` by default, or `claude`) and, for the Open Muse service, with `MA_PROVIDER`; the two must match. Every difference between backends lives in [`shared/ma-provider.ts`](shared/ma-provider.ts).
+
 ## What it can do
 
 **Your health, on demand (iPhone).** Ask "how was my workout today?" or "how did I sleep this week compared to last?" and Open Muse reads Apple Health right then — steps, active energy, exercise minutes, distance, heart rate, resting heart rate, sleep, workouts, and weight. Until you connect Apple Health in the app, every read asks you first; once connected, reads happen right away, and **Disconnect** in Connectors goes back to asking. It never makes up a number it could not read.
