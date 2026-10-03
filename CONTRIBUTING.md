@@ -18,7 +18,7 @@ Common types are `feat`, `fix`, `refactor`, `test`, `docs`, and `chore`. Each co
 
 - Commit only application source, necessary build configuration, reproducible tests, and public docs.
 - Do not commit credentials, sessions, databases, private server addresses, internal docs, personal paths, device logs, or installers.
-- Keep screenshots, raw research material, and cloud acceptance attachments in ignored local directories; public verification records retain only the method, results, and boundaries.
+- Keep screenshots, raw research material, and cloud acceptance attachments in ignored local directories; public verification records retain only the method, results, and boundaries. The exception is the curated README screenshots in `docs/images/`, captured with test data as described in the README rules of `AGENTS.md`.
 - Use public sources for dependencies; retain copyright and license notices required by third parties.
 - Stage files individually, and check `git diff --cached` and `git diff --cached --check` before committing.
 

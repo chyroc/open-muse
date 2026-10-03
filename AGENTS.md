@@ -2,7 +2,7 @@
 
 ## Language
 
-- Keep repository documentation (including all READMEs), code comments, identifiers, and commit messages in English. Do not translate existing documentation.
+- Keep repository documentation, code comments, identifiers, and commit messages in English. Do not translate existing documentation. The one exception is `README.zh-CN.md`, the Simplified Chinese counterpart of `README.md` (see README below).
 - iOS and macOS user-facing interfaces support English and Simplified Chinese. On launch, follow the system/app preferred-language list, select the first supported English or Chinese preference, and fall back to English if none matches. Chinese locale variants use Simplified Chinese. Do not hard-code an English UI or persist an independent language override by default.
 - Keep app-authored labels, accessibility text, empty states, confirmations, and errors in the shared localization catalog (`shared/locales/zh-CN.ts`) and use `shared/i18n.ts`. Native macOS menus and dialogs use the matching `macos/*.lproj/Localizable.strings` resources. Dates and times use the selected language's locale.
 - Chinese text is allowed in localization resources and localization tests. Keep protocol names, API fields, resource IDs, file names, and machine-readable values unchanged. Never translate user-authored content, chat history, model output, or raw upstream diagnostic payloads as UI copy.
@@ -36,6 +36,14 @@ Goals for the macOS app:
 - `docs/` — integration notes and verification records
 
 Builds configured with `VITE_MUSE_BACKGROUND_URL`, `VITE_MUSE_SUPABASE_URL`, and `VITE_MUSE_SUPABASE_ANON_KEY` use an Open Muse account (Supabase Auth email/password) as the user's identity. The Ark API key is only the model-service credential: it is stored encrypted per account by the Open Muse service, read back only by that account's verified sessions, and scoped with the account owner so accounts sharing one key keep separate workspaces, memory, history, and local records. Clients still call public Volcano Ark APIs directly with that key. Builds without that configuration run in single-user local mode with a device-held API key. Volcano SSO is not supported. Without credentials the app stays disconnected and never generates simulated replies. Real calls may incur cloud costs. Mock responses and the old server migration harness belong only in tests and must never be bundled.
+
+## README
+
+- `README.md` (English, the default) and `README.zh-CN.md` (Simplified Chinese) introduce the project to new readers: what Open Muse does, why it is worth trying, screenshots, the supported apps, a short getting-started, and links to the docs. Each links to the other on its first lines.
+- Keep both READMEs in step: same sections, same claims, same screenshots. Change one, change the other in the same commit.
+- Keep development and implementation detail out of the READMEs. Building, running, account builds, native projects, and project layout belong in `docs/development.md`; detailed behavior (accounts, storage and security, conversations, memory, goals, reminders, Feed and Ideas) belongs in `docs/how-it-works.md`. The READMEs only link to them. Those docs stay in English.
+- Every capability a README claims must exist in the current code. Describe limits honestly; do not advertise unverified or unreleased features.
+- README screenshots live in `docs/images/`. Capture them from a real build with a test account and non-sensitive data, show only app windows (no terminal, desktop, personal paths, account IDs, keys, or other people's data), resize to at most 1600 px wide, and replace a screenshot when the screen it shows changes noticeably.
 
 ## Commands
 

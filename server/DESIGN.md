@@ -1,7 +1,7 @@
 # Backend design boundaries
 
 This document records design boundaries and future expansion, not a feature
-status checklist. See [README](README.md) for implemented behavior and setup.
+status checklist. See [README](README.md) for implemented behavior and setup, and [How it works](../docs/how-it-works.md) for the app side.
 
 The application still connects directly to Volcano APIs. Keep that mode usable
 without an Open Muse account or backend. The service owns application sync

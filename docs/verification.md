@@ -24,7 +24,7 @@ Current acceptance focuses on iOS. The web and macOS results below record earlie
 
 The production assets were served by a static preview server without an application backend. A real API-key login, recovery of the existing cloud workspace, and two conversation turns passed: the second turn recalled the first turn's marker and doubled `42` to `84`. Saving a reply and reloading restored the session and conversation.
 
-Browser request inspection confirmed that MA traffic went directly to the public Ark origin, not a local API service. Login uses a read-only MA agent-list request. The inference `/models` endpoint currently returns invalid CORS headers, so login and workspace preparation do not depend on it. Existing agents keep their model; new agents use the public default documented in the README, subject to actual project access.
+Browser request inspection confirmed that MA traffic went directly to the public Ark origin, not a local API service. Login uses a read-only MA agent-list request. The inference `/models` endpoint currently returns invalid CORS headers, so login and workspace preparation do not depend on it. Existing agents keep their model; new agents use the public default documented in [How it works](how-it-works.md), subject to actual project access.
 
 ## Real MA on iOS
 
