@@ -170,16 +170,20 @@
   gap: 4px;
 }
 .activity-step-text strong {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow-wrap: anywhere;
-  font-size: 15px;
-  line-height: 21px;
+  font-size: 16px;
+  line-height: 20px;
   font-weight: 600;
 }
 .activity-step-text small {
   display: -webkit-box;
   overflow: hidden;
   font-size: 14px;
-  line-height: 20px;
+  line-height: 18px;
   color: #6e6e73;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 4;
@@ -191,24 +195,109 @@
   transition: transform var(--motion-release-duration)
     var(--motion-release-ease);
 }
-.activity-steps button[aria-expanded="true"] .activity-step-chevron {
-  transform: rotate(90deg);
+/* A dotted thread joins each step to the next. */
+.activity-steps li {
+  position: relative;
 }
-.activity-step-io {
-  margin: 0 0 8px 28px;
-  animation: activity-step-io-in var(--motion-fade-duration) ease-out;
+.activity-steps li:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  top: 34px;
+  bottom: -2px;
+  left: 9px;
+  z-index: 1;
+  width: 2px;
+  background: radial-gradient(circle, #c7c7cc 0.9px, transparent 1.1px) 0 0 /
+    2px 5px repeat-y;
+  pointer-events: none;
 }
-.activity-step-io pre {
-  max-height: 200px;
-  margin: 0 0 6px;
-  padding: 10px 12px;
-  overflow: auto;
-  border-radius: 10px;
-  font-size: 12px;
-  line-height: 17px;
+/* A step opens on its own page inside the sheet, pushed in from the right;
+   going back slides it away and the list returns where it was. */
+.activity-detail-content {
+  overflow-x: hidden;
+}
+.activity-step-page {
+  animation: activity-step-push var(--motion-push-duration)
+    var(--motion-push-spring) both;
+}
+.activity-step-page.leaving {
+  animation: activity-step-pop var(--motion-push-duration)
+    var(--motion-push-ease) forwards;
+}
+.activity-detail-main.returning {
+  animation: activity-step-return var(--motion-push-duration)
+    var(--motion-push-spring) both;
+}
+.activity-detail .activity-step-title {
+  margin: 10px 0 0;
+  font-size: 17px;
+  line-height: 23px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.activity-step-note,
+.activity-step-result {
+  font-size: 16px;
+  line-height: 23px;
+  overflow-wrap: anywhere;
+}
+.activity-step-note .markdown > :first-child,
+.activity-step-result .markdown > :first-child {
+  margin-top: 8px;
+}
+.activity-step-result {
+  margin-top: 4px;
+}
+.activity-step-result ul,
+.activity-step-result ol {
+  padding-left: 20px;
+}
+.activity-step-result li + li {
+  margin-top: 8px;
+}
+.activity-step-input {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 13px;
+  line-height: 18px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   background: #f1f1f3;
+}
+@keyframes activity-step-push {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes activity-step-pop {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes activity-step-return {
+  from {
+    transform: translateX(-30%);
+    opacity: 0.4;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes activity-step-push {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes activity-step-pop {
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes activity-step-return {
+    from {
+      opacity: 0;
+    }
+  }
 }
 @keyframes activity-detail-in {
   from {
@@ -218,12 +307,6 @@
 @keyframes activity-detail-dim {
   from {
     opacity: 0;
-  }
-}
-@keyframes activity-step-io-in {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -250,7 +333,7 @@
   .activity-step-text small {
     color: #aeaeb2;
   }
-  .activity-step-io pre {
+  .activity-step-input {
     background: #2c2c2e;
   }
   .activity-detail-state.done {
@@ -366,4 +449,8 @@
   font-size: 15px;
   line-height: 21px;
   color: #000;
+}
+/* Tool output keeps its own line breaks. */
+.activity-step-result p {
+  white-space: pre-line;
 }
