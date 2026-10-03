@@ -32,18 +32,22 @@ function fakeWebView(systemBodySize: number) {
 }
 
 describe("Dynamic Type", () => {
-  it("scales text by the system body size against the default 17pt", () => {
-    expect(textScale(17)).toBe(1);
-    expect(textScale(19)).toBeCloseTo(19 / 17);
+  it("keeps the type scale at everyday sizes and enlarges only accessibility sizes", () => {
+    // Every standard category, from xSmall (14pt) to xxxLarge (23pt).
+    for (const body of [14, 15, 16, 17, 19, 21, 23])
+      expect(textScale(body)).toBe(1);
+    // Accessibility categories enlarge by how far they exceed 23pt.
+    expect(textScale(28)).toBeCloseTo(28 / 23);
+    expect(textScale(53)).toBeCloseTo(53 / 23);
     expect(textScale(Number.NaN)).toBe(1);
     expect(textScale(200)).toBe(3);
   });
   it("keeps the same scale however often the app returns to the foreground", () => {
-    const view = fakeWebView(19);
+    const view = fakeWebView(33);
     view.start();
-    expect(view.props.get("-webkit-text-size-adjust")).toBe("112%");
+    expect(view.props.get("-webkit-text-size-adjust")).toBe("143%");
     for (let i = 0; i < 5; i++) view.returnToApp();
-    expect(view.props.get("-webkit-text-size-adjust")).toBe("112%");
-    expect(Number(view.props.get("--type-scale"))).toBeCloseTo(19 / 17);
+    expect(view.props.get("-webkit-text-size-adjust")).toBe("143%");
+    expect(Number(view.props.get("--type-scale"))).toBeCloseTo(33 / 23);
   });
 });

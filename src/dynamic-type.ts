@@ -1,14 +1,15 @@
-// Follow the system text size (Dynamic Type) in the iOS web view. WebKit
+// Follow the system's accessibility text sizes in the iOS web view. WebKit
 // resolves `-apple-system-body` to the body size of the current content size
-// category; text scales by that ratio while fixed layout metrics stay put, as
-// native text styles do.
-const defaultBodySize = 17;
+// category. The everyday sizes, up to the largest standard one (23pt body),
+// keep the app's own type scale; the larger accessibility sizes enlarge text
+// by how far they exceed it, while fixed layout metrics stay put.
+const largestStandardBody = 23;
 const adjust = "-webkit-text-size-adjust";
 
 // The text scale for a measured system body size, within sane bounds.
 export function textScale(bodySize: number) {
   if (!Number.isFinite(bodySize) || bodySize <= 0) return 1;
-  return Math.min(Math.max(bodySize / defaultBodySize, 0.8), 3);
+  return Math.min(Math.max(bodySize / largestStandardBody, 1), 3);
 }
 
 function measureBodySize() {

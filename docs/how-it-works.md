@@ -216,8 +216,9 @@ can pin English or 简体中文 on this device; Follow system removes the choice
 The choice restarts the app, is not synced, and is cleared by a device reset.
 Native system sheets, such as permission prompts, follow the system language.
 
-**Appearance (iOS):** the app follows the system light or dark appearance and
-the system text size (Dynamic Type). Settings opens as a sheet over the current
+**Appearance (iOS):** the app follows the system light or dark appearance. Text
+keeps its size at the everyday system text sizes and grows at the larger
+accessibility sizes (Dynamic Type). Settings opens as a sheet over the current
 page. Feed, Ideas, Goals, and Library refresh when pulled down from the top.
 Long-pressing a message offers a quick emoji reaction (more in a searchable
 sheet), Reply (quotes it into the composer), Copy, Select, Share, and for the

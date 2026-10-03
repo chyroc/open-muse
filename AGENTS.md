@@ -95,7 +95,7 @@ What "not stiff" means in practice:
 - Message streams animate insertion, updates, and loading as a continuous flow; typing/streaming state settles without jumps, and keyboard tracking never fights the scroll position.
 - Buttons and rows have press feedback (scale/opacity/highlight) that releases on touch-up; nothing should only react on tap-end.
 - Respect the user's Reduce Motion setting: replace large movement with short opacity/scale crossfades instead of dropping animation entirely.
-- Match dark/light appearance, Dynamic Type, and the localization catalog; motion and layout must hold up in both English and Simplified Chinese.
+- Match dark/light appearance and the localization catalog; motion and layout must hold up in both English and Simplified Chinese. Text keeps the reference type scale at every standard Dynamic Type size and grows only at the accessibility sizes, so layouts must hold up at those too.
 
 Before considering a screen done, run it on the target device and compare the interaction rhythm against the reference. If a transition feels mechanical, tune the spring/timing first instead of accepting it.
 
