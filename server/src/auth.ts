@@ -19,6 +19,15 @@ export async function authenticate(
   env: Env,
   fetcher: typeof fetch = edgeFetch,
 ) {
+  return (await verifiedAccount(request, env, fetcher)).owner;
+}
+// The verified owner together with the Auth provider's user ID, which only
+// account deletion needs.
+export async function verifiedAccount(
+  request: Request,
+  env: Env,
+  fetcher: typeof fetch = edgeFetch,
+) {
   if (!env.SUPABASE_AUTH_URL)
     throw new HttpError(503, "Open Muse accounts are not configured.");
   const bearer = /^Bearer ([A-Za-z0-9_.-]{20,16384})$/.exec(

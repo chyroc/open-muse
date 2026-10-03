@@ -16,6 +16,10 @@ export interface Env {
   // Worker secret: {"current":"v1","keys":{"v1":"<32-byte base64>"}}.
   // This keyring must never be stored in D1 or sent to clients.
   CREDENTIAL_ENCRYPTION_KEYS?: string;
+  // Removes one user from the Auth provider, given the verified user ID of the
+  // account deleting itself. Only deployments that can do this without a
+  // service-role key provide it; without it accounts cannot be deleted.
+  DELETE_AUTH_USER?: (userId: string) => Promise<void>;
   // The fields below are set only on the per-account Env built from that
   // account's sealed connection (see configurationEnv). They are never
   // deployment settings, and accounts never inherit service-level values.

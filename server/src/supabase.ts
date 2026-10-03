@@ -47,7 +47,7 @@ export async function authenticateSupabase(
   try {
     const user = supabaseUserSchema.parse(await response.json());
     if (user.is_anonymous) throw new Error();
-    return supabaseOwner(origin, user.id);
+    return { owner: supabaseOwner(origin, user.id), userId: user.id };
   } catch {
     throw new HttpError(
       401,

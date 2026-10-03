@@ -137,6 +137,13 @@ ALTER ROLE open_muse_service SET search_path = open_muse;
 GRANT USAGE ON SCHEMA open_muse TO open_muse_service;
 ALTER DEFAULT PRIVILEGES IN SCHEMA open_muse GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO open_muse_service;
 ALTER DEFAULT PRIVILEGES IN SCHEMA open_muse GRANT USAGE, SELECT ON SEQUENCES TO open_muse_service;
+-- Account deletion: the service may remove one Auth user by its verified ID
+-- without holding a service-role key or any other access to the auth schema.
+CREATE OR REPLACE FUNCTION open_muse.delete_auth_user(target uuid)
+  RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path = ''
+  AS 'DELETE FROM auth.users WHERE id = target';
+REVOKE ALL ON FUNCTION open_muse.delete_auth_user(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION open_muse.delete_auth_user(uuid) TO open_muse_service;
 CREATE TABLE IF NOT EXISTS open_muse.schema_migrations (
   name TEXT PRIMARY KEY,
   applied_at TIMESTAMPTZ NOT NULL DEFAULT now()

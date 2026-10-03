@@ -1,5 +1,6 @@
 import { edgeFetch } from "./fetch";
-import { authenticate, checkOrigin } from "./auth";
+import { checkOrigin, verifiedAccount } from "./auth";
+import { deleteAccount } from "./account-deletion";
 import { backgroundReady, HttpError, json, type Env } from "./env";
 import { Repository } from "./repository";
 import { validateTime } from "./schedule";
@@ -83,7 +84,7 @@ export async function handle(
       response = json({ ok: true });
     } else {
       // Always a verified Open Muse account; see authenticate().
-      const owner = await authenticate(request, env, fetcher);
+      const { owner, userId } = await verifiedAccount(request, env, fetcher);
       await new AccountCredentials(env, owner).seen(Date.now());
       const repo = new Repository(env.DB, owner);
       const connections = new ConnectionStore(env, owner);
@@ -260,6 +261,11 @@ export async function handle(
         else if (request.method === "PUT")
           response = json(await upcoming.save(upcomingInput(await body(request))));
         else throw new HttpError(405, "Method not allowed.");
+      } else if (url.pathname === "/v1/account" && request.method === "DELETE") {
+        const input = await body(request);
+        if (input.confirm !== true || Object.keys(input).length !== 1)
+          throw new HttpError(400, "Confirm deleting the Open Muse account.");
+        response = json(await deleteAccount(env, owner, userId));
       } else if (url.pathname === "/v1/account/credential") {
         const credentials = new AccountCredentials(env, owner);
         if (request.method === "GET") response = json(await credentials.read());

@@ -45,7 +45,9 @@ ve byted-supabase-cli auth config get --workspace-id <workspace>
 
 The public endpoint's HTTPS origin is the Auth origin; the `AnonKey` value is
 the public key. Review signup and email-confirmation policy with
-`auth config get` / `auth config set`. The Postgres host is the workspace's
+`auth config get` / `auth config set`. Password reset in the apps emails a
+one-time code, so configure outgoing email (`smtp_*` settings) and keep
+`{{ .Token }}` in the recovery template; without SMTP the request fails. The Postgres host is the workspace's
 compute endpoint (`*.pg*.aidap-global.<region>.volces.com`).
 
 ## 2. API and database
@@ -62,7 +64,10 @@ node server/deploy/volcengine/deploy-function.mjs
 ```
 
 The script bundles the service with `function/entry.ts`, creates the
-`open_muse` schema and role, applies new files from `migrations-postgres/`
+`open_muse` schema and role, creates `open_muse.delete_auth_user`, a security
+definer function that removes one Auth user by ID and is the role's only
+access to the `auth` schema (used by account deletion), applies new files from
+`migrations-postgres/`
 (recorded in `open_muse.schema_migrations`), sets the function secrets from a
 private temporary file, and deploys the function. It is safe to rerun. Keep
 the secrets outside the repository; losing the keyring makes stored

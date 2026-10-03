@@ -144,8 +144,18 @@ same-user refresh is saved immediately, before the service check. Web Locks
 coordinate renewal across windows and a saved-session comparison rejects stale
 windows. Devices without Web Locks must sign in again instead. Signing out sends
 one `POST /auth/v1/logout?scope=local` and always removes the local session;
-other devices stay signed in. Account deletion, password reset, and OAuth
-callbacks are not implemented.
+other devices stay signed in.
+
+A forgotten password is reset in the app with a one-time code: `POST
+/auth/v1/recover` emails it, `POST /auth/v1/verify` (`type: "recovery"`) trades
+it for a short recovery session, `PUT /auth/v1/user` sets the new password with
+that session, which is then signed out; the person signs in as usual. The
+provider must have outgoing email (SMTP) configured, and its recovery template
+must include the code (`{{ .Token }}`). OAuth callbacks are not implemented.
+
+Deleting the account (`DELETE /v1/account`) removes everything the service
+keeps for it and then the sign-in itself; Ark resources stay in the person's
+Ark account.
 
 After sign-in the client reads the account's Ark key with
 `GET /v1/account/credential` and keeps it in memory. It prepares the workspace
@@ -272,6 +282,14 @@ deployed or that a real unattended generation can complete.
   sealed for this account. A stale revision from another device returns 409.
 - `DELETE /v1/account/credential`: `{revision, confirm: true}` leaves a
   tombstone for this account only.
+- `DELETE /v1/account`: `{confirm: true}` deletes the signed-in account: every
+  row the service keeps for it (credential, workspace records, devices,
+  background connection, schedule, runs, Feed, reminder delivery), then its
+  sign-in at the Auth provider. Data goes first, so a failure at the provider
+  leaves a sign-in that can repeat the request. Returns `{deleted: true}`, or
+  503 before deleting anything where the deployment cannot remove sign-ins
+  (the Volcengine deployment can; a Cloudflare Worker cannot). Ark resources
+  and already submitted MA work are not touched.
 - `PUT /v1/account/devices/:id`: `{name, platform: "mac" | "ios",
   app_version}` registers or refreshes one app install of the account, where
   `:id` is a random per-install UUID. Presence only: nothing is sent to devices.

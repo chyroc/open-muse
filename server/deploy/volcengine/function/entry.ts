@@ -68,6 +68,14 @@ const env: Env = {
   SCHEDULER_SOURCE: "external",
   SCHEDULER_TRIGGER_SECRET: Deno.env.get("SCHEDULER_TRIGGER_SECRET"),
   CREDENTIAL_ENCRYPTION_KEYS: Deno.env.get("CREDENTIAL_ENCRYPTION_KEYS"),
+  // open_muse.delete_auth_user removes exactly one Auth user; the service role
+  // may run it but has no other access to the auth schema.
+  async DELETE_AUTH_USER(userId) {
+    await db
+      .prepare("SELECT open_muse.delete_auth_user(?::uuid)")
+      .bind(userId)
+      .run();
+  },
 };
 
 // The gateway passes `/<function-name>/<path>`; the service routes on <path>.
