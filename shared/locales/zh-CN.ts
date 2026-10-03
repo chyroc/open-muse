@@ -657,7 +657,7 @@ export const zhCN: Record<string, string> = {
   "Your feedback has not been saved.": "反馈尚未保存。",
   "Thanks for the feedback.": "感谢反馈。",
   "I'm always thinking about new and different ways to help you. I'll surface my favorite ideas here.":
-    "我会不断探索新的方式提供帮助，并把值得尝试的点子放在这里。",
+    "我一直在思考各种新奇的方式来帮你。我会把我觉得超棒的点子放在这里。",
   "Loading ideas": "正在加载点子",
   "No ideas yet.": "暂无点子。",
   "New ideas show up here as your companion learns about you.":
