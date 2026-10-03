@@ -1,7 +1,6 @@
-// The sandbox side of the app's live cloud browser view. The Open Muse
-// service serves this script; the agent downloads it and starts it in the
-// background with the toolbox's Python when the person opens the browser. It
-// runs its own headless Chrome, sends each changed viewport to the Open Muse
+// The sandbox side of the app's live cloud browser view, installed with the
+// toolbox as /opt/open-muse/remote-view. The agent starts it in the
+// background when the person opens the browser. It runs its own headless Chrome, sends each changed viewport to the Open Muse
 // relay and replays the person's taps, scrolls and typing there. It stops when the view
 // is closed or expires, or after repeated relay failures.
 export const remoteViewWidth = 1280;
@@ -226,12 +225,8 @@ if __name__ == "__main__":
 // which only lets the helper post frames and read input for that one view.
 const launchOpening = "[Open Muse cloud browser]";
 export const isBrowserLaunch = (text: string) => text.startsWith(launchOpening);
-export function browserLaunchMessage(
-  helper: string,
-  relay: string,
-  token: string,
-) {
+export function browserLaunchMessage(relay: string, token: string) {
   const quote = (value: string) => `'${value.replace(/'/g, "")}'`;
-  return `${launchOpening} The person opened the live cloud browser in the app. Run exactly this command once and then reply with only the word OK: curl -fsS ${quote(helper)} -o /tmp/open-muse-remote-view.py && (nohup /opt/open-muse/python /tmp/open-muse-remote-view.py ${quote(relay)} ${quote(token)} > /tmp/remote-view.log 2>&1 &)
-If /opt/open-muse/python does not exist or the download fails, reply with only the word UNAVAILABLE. Do not repeat, store or remember the token, and do nothing else.`;
+  return `${launchOpening} The person opened the live cloud browser in the app. Start it with this command and reply with only OK: nohup /opt/open-muse/remote-view ${quote(relay)} ${quote(token)} > /tmp/remote-view.log 2>&1 &
+If /opt/open-muse/remote-view does not exist, reply with only UNAVAILABLE.`;
 }

@@ -69,7 +69,6 @@ export interface AccountProvider {
     token: string;
     expires_at: number;
   }>;
-  browserHelperUrl?(): string;
   browserRelayUrl?(id: string): string;
   browserFrame?(id: string, after: number): Promise<BrowserFrame>;
   browserInput?(id: string, events: unknown[]): Promise<void>;

@@ -52,14 +52,17 @@ approval waits for the user in the app.
 The phone cannot reach a browser running in the account's MA sandbox, so the
 service relays a live view of one. Opening a view (`POST /v1/browser/views`)
 returns a random token once; the app sends it in a hidden message asking the
-conversation's agent to download the helper from `GET /v1/browser/helper` and
-start it in the background with the toolbox's Python. The helper runs its own
+conversation's agent to start the helper that ships with the cloud toolbox
+(`/opt/open-muse/remote-view`) in the background. The agent's instructions
+describe this request and accept it only as the person's own message. The
+helper runs its own
 headless Chrome and, in one request per cycle to
 `POST /v1/browser/relay/<view>`, posts the viewport when it changed and takes
 the person's pending input. The app polls
 `GET /v1/browser/views/<view>/frame` and sends taps, scrolls, typing, Back and
 addresses to `POST /v1/browser/views/<view>/input`; `DELETE` ends the view and
-the helper with it.
+the helper with it. While a view runs, the helper also leaves a module in
+the sandbox that lets the agent act in the tab the person is watching.
 
 Each account has at most one view, which expires after 30 minutes. The relay
 route accepts no browser origin and only the view's token, stored as a hash;

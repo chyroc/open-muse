@@ -587,9 +587,6 @@ export class BackgroundClient {
       body: "{}",
     });
   }
-  browserHelperUrl() {
-    return `${this.origin}/v1/browser/helper`;
-  }
   browserRelayUrl(id: string) {
     return `${this.origin}/v1/browser/relay/${browserViewId.parse(id)}`;
   }

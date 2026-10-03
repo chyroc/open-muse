@@ -2066,7 +2066,6 @@ export class Client {
       await this.send(session, {
         type: "user.message",
         text: browserLaunchMessage(
-          account.browserHelperUrl!(),
           account.browserRelayUrl!(view.id),
           view.token,
         ),
