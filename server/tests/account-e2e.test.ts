@@ -875,7 +875,7 @@ describe("Open Muse accounts end to end", () => {
     expect(kept).toEqual([{ store_id: "memory-label-era" }, earlier]);
   });
 
-  it("keeps an upgraded device's saved key unused until the user saves it to the account", async () => {
+  it("never uses or uploads an upgraded device's saved key", async () => {
     const legacy = JSON.stringify({
       kind: "api_key",
       apiKey: sharedKey,
@@ -884,10 +884,11 @@ describe("Open Muse accounts end to end", () => {
     provider.register("carol@example.com");
     const upgraded = device(legacy);
     await upgraded.client.restore();
-    expect(await upgraded.client.auth("status")).toMatchObject({
+    expect(await upgraded.client.auth("status")).toEqual({
       loggedIn: false,
-      legacy: "api_key",
-      legacyKey: true,
+      ready: false,
+      method: undefined,
+      project: undefined,
       account: { signedIn: false },
     });
     const calls = upstream.fetcher.mock.calls.length;
@@ -896,17 +897,13 @@ describe("Open Muse accounts end to end", () => {
     );
     await upgraded.signIn("carol@example.com");
     expect(upgraded.client.signedIn()).toBe(false);
+    await expect(
+      upgraded.client.auth("import-legacy", { confirm: true }),
+    ).rejects.toThrow("Unknown");
+    expect(upgraded.client.signedIn()).toBe(false);
     expect(upstream.fetcher.mock.calls.length).toBe(calls);
-    await upgraded.client.auth("import-legacy", { confirm: true });
-    expect(upgraded.client.signedIn()).toBe(true);
-    // The earlier record stays on the device until explicitly removed.
+    // The earlier record stays on the device, untouched.
     expect(upgraded.vault.value).toBe(legacy);
-    const config = await upgraded.prepare();
-    expect(Object.values(workspaces).map((w) => w.agentId)).not.toContain(
-      config.agentId,
-    );
-    await upgraded.client.auth("remove-legacy", { confirm: true });
-    expect(upgraded.vault.value).toBe("");
   });
 
   it("removing the key from the account stops every device from using it", async () => {
