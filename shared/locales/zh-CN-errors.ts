@@ -266,4 +266,8 @@ export const zhErrors: Record<string, string> = {
     "主要聊天中仍有消息尚未确认。启动此点子前，请刷新历史记录。",
   "Another window submitted this idea. Refresh to see it.":
     "另一个窗口已提交此点子。请刷新查看。",
+  "The connection to Volcano was interrupted before the response arrived. No request is retried automatically.":
+    "响应返回前，与火山引擎的连接中断了。请求不会自动重试。",
+  "Volcano did not answer in time. No request is retried automatically.":
+    "火山引擎未能及时响应。请求不会自动重试。",
 };

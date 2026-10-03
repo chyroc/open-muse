@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentEvent, Session } from "../shared/types";
 import { mergeEvents, mergeHistorySnapshot } from "../shared/types";
 import type { Client } from "./api";
+import { isNetworkFailure } from "../shared/network-error";
 import { AutoApprover } from "./autoApprove";
 
 export function useTask(client: Client, id?: string) {
@@ -33,6 +34,8 @@ export function useTask(client: Client, id?: string) {
     let reconnect: ReturnType<typeof setTimeout>;
     let resync: ReturnType<typeof setTimeout>;
     let retry = 0;
+    // Network failures in a row; the first few are retried without a message.
+    let quietFailures = 0;
     let historyLoaded = false;
     let knownEvents: AgentEvent[] = [];
     const receive = (incoming: AgentEvent[]) => {
@@ -64,12 +67,17 @@ export function useTask(client: Client, id?: string) {
         receive(mergeHistorySnapshot(beforeRead, knownEvents, history));
         setSession(remote);
         setError("");
+        quietFailures = 0;
         void client.keepEvents(id, knownEvents).catch(() => {});
       } catch (err) {
         if (signal.aborted) return;
         // A request the system cut off, as when the app was in the
         // background, is read again shortly instead of shown as an error.
-        if (["AbortError", "TimeoutError"].includes((err as Error).name)) {
+        // A connection that keeps failing is reported after a few tries.
+        if (
+          (err as Error).name === "AbortError" ||
+          (isNetworkFailure(err) && ++quietFailures <= 3)
+        ) {
           clearTimeout(resync);
           resync = setTimeout(() => void sync(), 2000);
         } else setError((err as Error).message);

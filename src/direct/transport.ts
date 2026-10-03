@@ -17,19 +17,57 @@ export const directFetch: typeof fetch = async (input, init = {}) => {
   );
   if (!origins.has(url.origin) || url.username || url.password)
     throw new Error(t("This is not an allowed Volcano API endpoint."));
+  let response: Response;
   try {
-    return await fetch(input, {
+    response = await fetch(input, {
       ...init,
       credentials: "omit",
       cache: "no-store",
       redirect: "error",
     });
   } catch (error) {
-    if (init.signal?.aborted) throw error;
-    throw new Error(
-      t(
-        "Couldn't reach Volcano directly. Check your network; the endpoint must allow this app's origin (CORS). No request is retried automatically.",
-      ),
-    );
+    throw networkError(error, init.signal, unreachable);
   }
+  // Reading the body can fail too, as when the system suspends the app while
+  // a response arrives; WebKit then reports only "Load failed".
+  for (const method of ["json", "text"] as const) {
+    const read = response[method].bind(response);
+    Object.defineProperty(response, method, {
+      value: () =>
+        read().catch((error: unknown) => {
+          throw networkError(error, init.signal, interrupted);
+        }),
+    });
+  }
+  return response;
 };
+
+const unreachable = () =>
+  t(
+    "Couldn't reach Volcano directly. Check your network; the endpoint must allow this app's origin (CORS). No request is retried automatically.",
+  );
+const interrupted = () =>
+  t(
+    "The connection to Volcano was interrupted before the response arrived. No request is retried automatically.",
+  );
+
+// Network failures keep a recognizable name, so a view that reads in the
+// background can try again quietly, and carry readable copy instead of the
+// browser's own text such as "Load failed" or "Fetch is aborted". A request
+// the caller cancelled keeps its original error.
+function networkError(
+  error: unknown,
+  signal: AbortSignal | null | undefined,
+  message: () => string,
+) {
+  if (signal?.aborted && (signal.reason as Error)?.name !== "TimeoutError")
+    return error;
+  const timedOut = signal?.aborted;
+  const failure = new Error(
+    timedOut
+      ? t("Volcano did not answer in time. No request is retried automatically.")
+      : message(),
+  );
+  failure.name = timedOut ? "TimeoutError" : "NetworkError";
+  return failure;
+}

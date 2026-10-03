@@ -5,18 +5,32 @@ export function boundedSignal(
   milliseconds?: number,
 ) {
   const controller = new AbortController();
-  const abort = () => controller.abort();
-  for (const parent of parents) {
+  // A parent's reason is passed on; running out of time is a TimeoutError, so
+  // callers can tell a slow request from one they cancelled themselves.
+  const follow = (parent: AbortSignal) => () => controller.abort(parent.reason);
+  const listeners = parents.map((parent) => {
+    const abort = parent ? follow(parent) : () => {};
     if (parent?.aborted) abort();
     else parent?.addEventListener("abort", abort, { once: true });
-  }
+    return abort;
+  });
   const timer =
-    milliseconds === undefined ? undefined : setTimeout(abort, milliseconds);
+    milliseconds === undefined
+      ? undefined
+      : setTimeout(
+          () =>
+            controller.abort(
+              new DOMException("The request timed out.", "TimeoutError"),
+            ),
+          milliseconds,
+        );
   return {
     signal: controller.signal,
     dispose() {
       clearTimeout(timer);
-      for (const parent of parents) parent?.removeEventListener("abort", abort);
+      parents.forEach((parent, index) =>
+        parent?.removeEventListener("abort", listeners[index]),
+      );
     },
   };
 }

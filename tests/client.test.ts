@@ -11,6 +11,7 @@ import {
   MA_BASE_URL as ARK_BASE_URL,
   directFetch,
 } from "../src/direct/transport";
+import { boundedSignal } from "../shared/abort";
 import { digest, uuid } from "../shared/crypto";
 import { operations } from "../shared/ma";
 import { buildRequest } from "../shared/ma-request";
@@ -1585,6 +1586,59 @@ describe("Direct credentials and origin boundaries", () => {
       cache: "no-store",
       redirect: "error",
     });
+  });
+  it("replaces the browser's own network failure text with readable errors", async () => {
+    const url = `${ARK_BASE_URL}/sessions`;
+    // A response whose body breaks off, as WebKit reports when the app is
+    // suspended mid-response.
+    const broken = () =>
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.error(new TypeError("Load failed"));
+          },
+        }),
+      );
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => broken()));
+    const read = (await directFetch(url)).json();
+    await expect(read).rejects.toMatchObject({ name: "NetworkError" });
+    await expect(read).rejects.not.toThrow("Load failed");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new TypeError("Load failed")),
+    );
+    await expect(directFetch(url)).rejects.toMatchObject({
+      name: "NetworkError",
+      message: expect.stringContaining("Couldn't reach Volcano"),
+    });
+
+    // Running out of time reads as a timeout, not "Fetch is aborted".
+    const timing = boundedSignal([], 10);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(
+        (_url, init: RequestInit) =>
+          new Promise((_, reject) =>
+            init.signal!.addEventListener("abort", () =>
+              reject(new DOMException("Fetch is aborted", "AbortError")),
+            ),
+          ),
+      ),
+    );
+    await expect(
+      directFetch(url, { signal: timing.signal }),
+    ).rejects.toMatchObject({
+      name: "TimeoutError",
+      message: expect.stringContaining("did not answer in time"),
+    });
+    timing.dispose();
+
+    // A request the caller cancelled keeps its own error.
+    const cancel = new AbortController();
+    const cancelled = directFetch(url, { signal: cancel.signal });
+    cancel.abort();
+    await expect(cancelled).rejects.toMatchObject({ name: "AbortError" });
   });
   it("keeps workspace identity compatible with the prior mapping without storing raw keys", () => {
     const hash = digest(JSON.stringify([ARK_BASE_URL, key, ""]));
