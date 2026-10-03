@@ -47,3 +47,10 @@ export function sideChatDrawerCopy() {
     action: chinese ? t("New side chat in the drawer") : t("New side chat"),
   };
 }
+
+// The Quick Chat composer's placeholder, in the desktop app's Chinese wording.
+export function quickChatPlaceholder() {
+  return systemLanguage() === "zh-CN"
+    ? t("Message in Quick Chat")
+    : t("Message");
+}

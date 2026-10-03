@@ -315,4 +315,6 @@ export const zhDesktop: Record<string, string> = {
   "New side chat in the drawer": "新旁聊",
   // Sign-in method in Settings.
   Email: "邮箱",
+  // Quick Chat composer placeholder, worded as the desktop app does.
+  "Message in Quick Chat": "发消息",
 };

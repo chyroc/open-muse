@@ -1,52 +1,97 @@
-/* Quick chat: a compact card in its own floating panel. The shell sizes the
-   panel to the card, so the card never scrolls the page itself. */
+/* Quick chat: a floating card in a clear panel. The panel leaves room around
+   the card for its shadow and for the portrait that sits on its top edge, and
+   the shell sizes the panel to the card, so the page never scrolls. */
+html:has(.quick-stage),
+body:has(.quick-stage),
+#root:has(.quick-stage) {
+  background: transparent;
+}
+.quick-stage {
+  display: flex;
+  justify-content: center;
+  padding: 52px 52px 52px;
+  min-height: 100vh;
+  box-sizing: border-box;
+  align-items: flex-end;
+}
 .quick-card {
+  position: relative;
   display: flex;
   flex-direction: column;
-  max-height: 560px;
+  width: 416px;
+  max-height: 616px;
+  border-radius: 24px;
   background: var(--surface);
   color: var(--text);
+  box-shadow:
+    0 4px 12px var(--quick-shadow-near),
+    0 16px 48px var(--quick-shadow-far);
+  animation: quick-card-in 0.32s cubic-bezier(0.22, 1.2, 0.36, 1) both;
 }
-.quick-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 44px;
-  flex-shrink: 0;
-  padding: 0 10px 0 12px;
-  /* The panel is dragged by its header. */
-  -webkit-user-select: none;
-  user-select: none;
+@keyframes quick-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
 }
-.quick-header .desktop-avatar {
-  transform: scale(0.55);
-  transform-origin: left center;
-  width: 24px;
-  height: 27px;
-  margin-right: -2px;
-}
-.quick-header strong {
-  font-size: 13px;
-  font-weight: 600;
-}
-.quick-icon {
-  margin-left: auto;
-  width: 28px;
-  height: 28px;
-  border-radius: 14px;
+/* The companion's portrait, centered on the card's top edge. */
+.quick-portrait {
+  position: absolute;
+  top: -36px;
+  left: 50%;
+  translate: -50% 0;
   display: grid;
   place-items: center;
-  color: var(--text-2);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--fill);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 2px 8px var(--quick-shadow-near);
+}
+.quick-portrait .desktop-avatar {
+  transform: scale(0.82) translateY(4px);
+}
+.quick-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: var(--text);
   transition:
     background 0.15s ease-out,
+    opacity 0.15s ease-out,
     transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
 }
-.quick-icon:hover {
+.quick-icon:hover:not(:disabled) {
   background: var(--fill-hover);
-  color: var(--text);
 }
-.quick-icon:active {
+.quick-icon:active:not(:disabled) {
   transform: scale(0.9);
+}
+.quick-icon:disabled {
+  opacity: 0.4;
+}
+/* Opening the conversation in the main window shows once there is one, or
+   while the pointer is over the card. */
+.quick-expand {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  color: var(--text-2);
+  opacity: 0;
+}
+.quick-card:hover .quick-expand,
+.quick-card:focus-within .quick-expand,
+.quick-card.has-messages .quick-expand {
+  opacity: 1;
 }
 .quick-messages {
   flex: 1 1 auto;
@@ -55,7 +100,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 2px 14px 10px;
+  padding: 24px 16px 4px;
 }
 .quick-message {
   max-width: 86%;
@@ -69,6 +114,10 @@
 .quick-message.from-user {
   align-self: flex-end;
   background: var(--blue);
+  transition: opacity 0.25s ease-out;
+}
+.quick-message.sending {
+  opacity: 0.6;
 }
 .quick-message p {
   margin: 0 0 6px;
@@ -88,63 +137,73 @@
   color: var(--text-2);
 }
 .quick-connect {
-  margin: 4px 14px 8px;
+  margin: 20px 16px 0;
   height: 34px;
   border-radius: 17px;
-  background: var(--primary-bg);
-  color: var(--primary-text);
+  background: var(--fill-hover);
+  color: var(--text);
   font-weight: 500;
 }
 .quick-error {
-  margin: 0 14px 6px;
+  margin: 12px 20px 0;
   font-size: 12px;
   color: var(--danger);
 }
-.quick-composer {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  flex-shrink: 0;
-  margin: 0 10px 10px;
-  padding: 7px 7px 7px 14px;
-  border-radius: 22px;
-  background: var(--fill);
-  box-shadow: inset 0 0 0 1px var(--line);
+.quick-card .mac-staged {
+  margin: 12px 16px 0;
 }
-.quick-composer textarea {
-  flex: 1;
+/* The field runs across the top of the card; the buttons sit in a row below. */
+.quick-field {
+  display: block;
+  margin: 17px 20px 0;
   min-width: 0;
   resize: none;
   border: 0;
   outline: 0;
+  padding: 0;
   background: transparent;
   color: var(--text);
-  line-height: 1.45;
-  padding: 5px 0;
-  max-height: 120px;
+  font-size: 16px;
+  line-height: 22px;
+  max-height: 132px;
+}
+.quick-field::placeholder {
+  color: var(--text-2);
+}
+.has-messages .quick-field {
+  margin-top: 10px;
+}
+.quick-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 17px 12px 12px;
+}
+.quick-attach {
+  margin-right: auto;
 }
 .quick-send {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
-  border-radius: 15px;
+  border-radius: 16px;
   display: grid;
   place-items: center;
-  background: var(--primary-bg);
-  color: var(--primary-text);
-  transition: transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+  background: var(--blue);
+  color: var(--accent);
+  transition:
+    background 0.15s ease-out,
+    opacity 0.15s ease-out,
+    transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.quick-send:disabled {
+  background: var(--accent-soft);
+  color: var(--text-2);
 }
 .quick-send:active:not(:disabled) {
   transform: scale(0.88);
 }
-/* The microphone in the composer; it pulses while listening. */
-.quick-composer .quick-dictate {
-  margin-left: 0;
-  width: 30px;
-  height: 30px;
-  border-radius: 15px;
-  flex-shrink: 0;
-}
+/* The microphone pulses while listening. */
 .quick-dictate.listening {
   color: var(--danger);
   background: var(--fill-hover);
@@ -162,7 +221,8 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .quick-message {
+  .quick-message,
+  .quick-card {
     animation: quick-fade 0.15s ease-out both;
   }
   .quick-icon,

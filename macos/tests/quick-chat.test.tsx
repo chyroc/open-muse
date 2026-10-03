@@ -11,8 +11,10 @@ import {
   QUICK_MAX_HEIGHT,
   QUICK_MIN_HEIGHT,
   QuickChat,
+  quickCard,
   quickHeight,
 } from "../ui/QuickChat";
+import { quickChatPlaceholder } from "../ui/labels";
 
 vi.mock("../../src/useTask", () => ({
   useTask: () => ({
@@ -176,6 +178,76 @@ describe("Mac quick chat", () => {
     expect(post).toHaveBeenCalledWith({ name: "quick-close" });
     expect(send).not.toHaveBeenCalled();
   });
+  it("draws the card with the portrait on its edge and a row of buttons", async () => {
+    shell();
+    const client = await fixture(true);
+    await mount(client);
+    const card = host!.querySelector(".quick-card")!;
+    expect(card.querySelector(".quick-portrait")).toBeTruthy();
+    expect(composer().placeholder).toBe("Message");
+    const buttons = [...card.querySelectorAll(".quick-toolbar button")].map(
+      (item) => item.getAttribute("aria-label"),
+    );
+    expect(buttons[0]).toBe("Add attachment");
+    expect(buttons.at(-1)).toBe("Send");
+    // The panel leaves the card's margins and portrait room on every side.
+    expect(QUICK_MIN_HEIGHT).toBe(100 + quickCard.margin * 2);
+    vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", ["zh-CN"]);
+    expect(quickChatPlaceholder()).toBe("发消息");
+    vi.unstubAllGlobals();
+  });
+  it("shows a sent message at once and sends picked files with it", async () => {
+    shell();
+    const client = await fixture(true);
+    vi.spyOn(client, "conversationIndex").mockResolvedValue({
+      mainId: "main-session",
+      entries: {},
+    });
+    vi.spyOn(client, "uploadAttachment").mockResolvedValue({
+      name: "notes.pdf",
+      kind: "document",
+      file_id: "file-notes",
+    });
+    let finish!: () => void;
+    const send = vi
+      .spyOn(client, "send")
+      .mockImplementation(
+        () => new Promise((resolve) => (finish = () => resolve({ data: [] }))),
+      );
+    await mount(client);
+    const input = host!.querySelector<HTMLInputElement>("input[type=file]")!;
+    Object.defineProperty(input, "files", {
+      configurable: true,
+      value: [new File(["%PDF-1.4"], "notes.pdf", { type: "application/pdf" })],
+    });
+    await act(async () => {
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    await type("Summarize this");
+    await act(async () => {
+      composer().dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      );
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(composer().value).toBe("");
+    expect(
+      host!.querySelector(".quick-message.sending")?.textContent,
+    ).toContain("Summarize this");
+    expect(send).toHaveBeenCalledWith("main-session", {
+      type: "user.message",
+      text: "Summarize this",
+      attachments: [
+        { name: "notes.pdf", kind: "document", file_id: "file-notes" },
+      ],
+    });
+    await act(async () => {
+      finish();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(host!.querySelector(".quick-message.sending")).toBeNull();
+  });
   it("translates its copy and keeps the shell's shortcut contract", () => {
     const source = readFileSync("macos/ui/QuickChat.tsx", "utf8");
     for (const [, key] of source.matchAll(/\bt\(\s*"([^"]+)"/g))
@@ -185,6 +257,9 @@ describe("Mac quick chat", () => {
     expect(swift).toContain("fallback: (UInt32(kVK_Space), UInt32(optionKey))");
     expect(swift).toContain('URL(string: "muse://app/#/quick")');
     expect(swift).toContain("override var canBecomeKey: Bool { true }");
+    // A clear panel: the page draws the card and its shadow.
+    expect(swift).toContain('view.setValue(false, forKey: "drawsBackground")');
+    expect(swift).toContain("panel.hasShadow = false");
     // Only the quick chat web view may resize or close the card.
     expect(swift).toContain("if message.webView === quickWebView {");
     for (const file of ["en", "zh-Hans"])

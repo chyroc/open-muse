@@ -45,6 +45,8 @@
   --overlay: #0000001a;
   --search-scrim: #0000001a;
   --nav-row-active: #00000007;
+  --quick-shadow-near: #00000014;
+  --quick-shadow-far: #0000001f;
   --search-shadow-near: #11111229;
   --search-shadow-far: #1111121f;
   --shadow: #0000001a;
@@ -92,6 +94,8 @@
   --overlay: #ffffff1f;
   --search-scrim: #0006;
   --nav-row-active: #ffffff08;
+  --quick-shadow-near: #00000040;
+  --quick-shadow-far: #00000059;
   --search-shadow-near: #11111229;
   --search-shadow-far: #1111121f;
   --shadow: #00000066;

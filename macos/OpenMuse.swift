@@ -105,15 +105,17 @@ private enum Motion {
     static let dismiss: TimeInterval = 0.12
 }
 
-// Quick chat geometry. The card reports its own height inside these bounds.
+// Quick chat geometry. The panel is clear: the page draws the 416-point card,
+// its shadow and the portrait on its top edge inside the panel's margins, and
+// reports the height it needs inside these bounds (QUICK_* in ui/QuickChat.tsx).
 private enum QuickChat {
-    static let width: CGFloat = 440
-    static let initialHeight: CGFloat = 132
-    static let minHeight: CGFloat = 132
-    static let maxHeight: CGFloat = 560
-    static let cornerRadius: CGFloat = 18
-    // Distance from the top of the screen, as a share of its visible height.
-    static let topInset: CGFloat = 0.2
+    static let width: CGFloat = 520
+    static let initialHeight: CGFloat = 204
+    static let minHeight: CGFloat = 204
+    static let maxHeight: CGFloat = 720
+    // The panel's bottom edge sits this far above the bottom of the visible
+    // screen, and the card grows upward from there.
+    static let bottomInset: CGFloat = 40
     static let rise: CGFloat = 10
 }
 
@@ -1228,21 +1230,16 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
         panel.backgroundColor = .clear
         panel.isOpaque = false
-        panel.hasShadow = true
+        panel.hasShadow = false
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
         panel.appearance = NSApplication.shared.appearance
         panel.delegate = self
-        let container = NSView(frame: frame)
-        container.wantsLayer = true
-        container.layer?.cornerRadius = QuickChat.cornerRadius
-        container.layer?.cornerCurve = .continuous
-        container.layer?.masksToBounds = true
-        container.layer?.borderWidth = 0.5
-        container.layer?.borderColor = NSColor.separatorColor.cgColor
         let view = makeWebView(frame)
-        container.addSubview(view)
-        panel.contentView = container
+        // The page is see-through around the card.
+        view.setValue(false, forKey: "drawsBackground")
+        view.underPageBackgroundColor = .clear
+        panel.contentView = view
         view.load(URLRequest(url: URL(string: "muse://app/#/quick")!))
         quickWebView = view
         return panel
@@ -1254,10 +1251,9 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         let screen = NSScreen.screens.first { $0.frame.contains(mouse) } ?? NSScreen.main
         guard let area = screen?.visibleFrame else { return }
         let height = panel.frame.height
-        let top = area.maxY - area.height * QuickChat.topInset
-        let target = NSRect(x: area.midX - QuickChat.width / 2, y: top - height, width: QuickChat.width, height: height)
+        let target = NSRect(x: area.midX - QuickChat.width / 2, y: area.minY + QuickChat.bottomInset, width: QuickChat.width, height: height)
         let reduced = Motion.reduced
-        panel.setFrame(reduced ? target : target.offsetBy(dx: 0, dy: QuickChat.rise), display: false)
+        panel.setFrame(reduced ? target : target.offsetBy(dx: 0, dy: -QuickChat.rise), display: false)
         panel.alphaValue = 0
         panel.makeKeyAndOrderFront(nil)
         NSAnimationContext.runAnimationGroup { context in
@@ -1278,14 +1274,13 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             if panel.alphaValue == 0 { panel.orderOut(nil) }
         })
     }
-    // The card asks for the height of its content; the top edge stays put so
-    // the card grows downward as the conversation fills in.
+    // The card asks for the height of its content; the bottom edge stays put
+    // so the card grows upward as the conversation fills in.
     private func resizeQuickChat(_ value: String?) {
         guard let panel = quickPanel, let raw = value.flatMap(Double.init) else { return }
         let height = min(QuickChat.maxHeight, max(QuickChat.minHeight, CGFloat(raw)))
         var frame = panel.frame
         guard abs(frame.height - height) >= 1 else { return }
-        frame.origin.y += frame.height - height
         frame.size.height = height
         guard panel.isVisible, !Motion.reduced else { panel.setFrame(frame, display: true); return }
         NSAnimationContext.runAnimationGroup { context in

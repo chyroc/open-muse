@@ -5,9 +5,14 @@ import {
   useRef,
   useState,
 } from "react";
-import { ArrowUp, Maximize2, Mic } from "lucide-react";
+import { ArrowUp, Maximize2, Mic, Plus } from "lucide-react";
 import { t } from "../../shared/i18n";
-import { eventText, taskState } from "../../shared/types";
+import { eventText, taskState, type AgentEvent } from "../../shared/types";
+import {
+  attachmentAccept,
+  attachmentBlocks,
+  type Attachment,
+} from "../../shared/attachments";
 import type { Client } from "../../src/api";
 import { Markdown } from "../../src/components";
 import { useTask } from "../../src/useTask";
@@ -18,12 +23,24 @@ import { connectionReady } from "./startup";
 import { dictationAvailable } from "./dictation";
 import { useDictation } from "./useDictation";
 import { connectionRoute } from "./settings";
+import { StagedFiles, stageFile, thumbnail, type Staged } from "./Attachments";
+import { quickChatPlaceholder } from "./labels";
 
 // How much of the main chat the card shows above its composer.
 export const QUICK_HISTORY = 6;
-// The card asks the shell for a height in this range and never scrolls the page.
-export const QUICK_MIN_HEIGHT = 132;
-export const QUICK_MAX_HEIGHT = 560;
+// The card floats in a transparent panel with room around it for its shadow
+// and for the portrait that sits on its top edge. The panel is sized to the
+// card plus that room, within this range, and never scrolls the page.
+export const quickCard = {
+  width: 416,
+  // Space left, right and below the card, and above the portrait.
+  margin: 52,
+  // How far the portrait rises above the card's top edge.
+  portraitRise: 36,
+  portrait: 48,
+};
+export const QUICK_MIN_HEIGHT = 204;
+export const QUICK_MAX_HEIGHT = 720;
 
 type WindowBridge = { postMessage: (value: object) => void };
 function shell(): WindowBridge | undefined {
@@ -55,17 +72,31 @@ export function QuickChat({ client }: { client: Client }) {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [files, setFiles] = useState<Staged[]>([]);
+  // The message being sent, shown at once while the request runs.
+  const [outgoing, setOutgoing] = useState<AgentEvent>();
+  const picker = useRef<HTMLInputElement>(null);
   const card = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
   const alive = useRef(true);
   const task = useTask(client, mainId);
   const events = task.session?.id === mainId ? task.events : [];
-  const messages = chatMessages(
-    events.filter(
+  const echoed =
+    outgoing &&
+    events.some(
+      (event) =>
+        event.type === "user.message" &&
+        eventText(event) === eventText(outgoing) &&
+        Date.parse(event.created_at ?? "") >=
+          Date.parse(outgoing.created_at ?? "") - 60_000,
+    );
+  const messages = chatMessages([
+    ...events.filter(
       (event) => !event.source_session_id || event.source_session_id === mainId,
     ),
-  ).slice(-QUICK_HISTORY);
+    ...(outgoing && !echoed ? [outgoing] : []),
+  ]).slice(-QUICK_HISTORY);
   const running = taskState(events, task.session?.status) === "running";
   const sendRef = useRef<() => Promise<void>>(async () => {});
   const dictation = useDictation({
@@ -135,7 +166,10 @@ export function QuickChat({ client }: { client: Client }) {
     const node = card.current;
     if (!node) return;
     const report = () =>
-      post("quick-size", String(quickHeight(node.scrollHeight)));
+      post(
+        "quick-size",
+        String(quickHeight(node.offsetHeight + quickCard.margin * 2)),
+      );
     report();
     const observer = new ResizeObserver(report);
     observer.observe(node);
@@ -153,10 +187,59 @@ export function QuickChat({ client }: { client: Client }) {
   }, [draft]);
 
   sendRef.current = send;
+  // Each file is checked against the shared limits, then uploaded.
+  function attach(picked: File[]) {
+    let count = files.filter((item) => item.state !== "failed").length;
+    const update = (key: string, patch: Partial<Staged>) =>
+      setFiles((old) =>
+        old.map((item) => (item.key === key ? { ...item, ...patch } : item)),
+      );
+    for (const file of picked) {
+      const item = stageFile(file, count, crypto.randomUUID());
+      if (item.state === "uploading") count++;
+      setFiles((old) => [...old, item]);
+      if (item.state !== "uploading") continue;
+      if (item.kind === "image")
+        void thumbnail(file).then(
+          (preview) => preview && update(item.key, { preview }),
+        );
+      client.uploadAttachment(file, file.name, count - 1).then(
+        (value) =>
+          update(item.key, { state: "ready", value, name: value.name }),
+        (failure: Error) =>
+          update(item.key, { state: "failed", error: failure.message }),
+      );
+    }
+  }
+  const readyFiles = files.flatMap((item) =>
+    item.state === "ready" && item.value ? [item.value as Attachment] : [],
+  );
+  const uploading = files.some((item) => item.state === "uploading");
+  const canSend =
+    ready &&
+    !busy &&
+    !running &&
+    !uploading &&
+    Boolean(draft.trim() || readyFiles.length);
   async function send() {
     const text = draft.trim();
-    if (!text || busy || running) return;
+    if ((!text && !readyFiles.length) || busy || running || uploading) return;
     if (!ready) return post("settings", connectionRoute);
+    const sentFiles = files;
+    const attachments = readyFiles;
+    // The message shows and the composer clears at once; a failure puts the
+    // text and files back without resending anything.
+    setOutgoing({
+      id: `local-${crypto.randomUUID()}`,
+      type: "user.message",
+      created_at: new Date().toISOString(),
+      content: [
+        ...attachmentBlocks(attachments),
+        ...(text ? [{ type: "text", text }] : []),
+      ],
+    });
+    setDraft("");
+    setFiles([]);
     setBusy(true);
     setError("");
     try {
@@ -165,88 +248,115 @@ export function QuickChat({ client }: { client: Client }) {
         target = (await client.openConversation("main", t("Main chat"))).id;
         if (alive.current) setMainId(target);
       }
-      await client.send(target, { type: "user.message", text });
+      await client.send(target, {
+        type: "user.message",
+        text,
+        ...(attachments.length ? { attachments } : {}),
+      });
       if (!alive.current) return;
-      setDraft("");
       post("quick-sent");
       await task.refresh();
     } catch (failure) {
       // An unconfirmed send keeps its text so it can be checked, not repeated.
-      if (alive.current) setError((failure as Error).message);
+      if (alive.current) {
+        setDraft((old) => old || text);
+        setFiles((old) => (old.length ? old : sentFiles));
+        setError((failure as Error).message);
+      }
     } finally {
-      if (alive.current) setBusy(false);
+      if (alive.current) {
+        setOutgoing(undefined);
+        setBusy(false);
+      }
     }
   }
 
   return (
-    <div className="quick-card" ref={card}>
-      <header className="quick-header">
-        <Avatar />
-        <strong>{name || t("Main chat")}</strong>
+    <div
+      className="quick-stage"
+      onMouseDown={(event) => {
+        // A press in the clear space around the card puts it away.
+        if (event.target === event.currentTarget) post("quick-close");
+      }}
+    >
+      <div
+        ref={card}
+        className={`quick-card ${messages.length ? "has-messages" : ""}`}
+      >
+        <span className="quick-portrait" aria-hidden="true">
+          <Avatar />
+        </span>
         <button
-          className="quick-icon"
+          className="quick-icon quick-expand"
           aria-label={t("Open in the main window")}
           title={t("Open in the main window")}
           onClick={() => post("workspace")}
         >
           <Maximize2 size={14} />
         </button>
-      </header>
-      {messages.length > 0 && (
-        <div
-          className="quick-messages"
-          ref={list}
-          role="log"
-          aria-label={t("Chat messages")}
-        >
-          {messages.map((event) => (
-            <article
-              key={event.id}
-              className={`quick-message ${event.type === "user.message" ? "from-user" : "from-assistant"}`}
-            >
-              {event.type === "user.message" ? (
-                <Markdown text={eventText(event)} />
-              ) : (
-                // Questions are answered in the workspace; here they read as
-                // the question with its options, never as raw JSON.
-                <AssistantContent
-                  text={eventText(event)}
-                  part="all"
-                  active={false}
-                  busy={false}
-                  streaming={false}
-                  onChoose={() => {}}
-                />
-              )}
-            </article>
-          ))}
-          {running && (
-            <p className="quick-thinking" role="status">
-              {t("{name} is working…", { name: name || "Muse" })}
-            </p>
-          )}
-        </div>
-      )}
-      {!ready && (
-        <button
-          className="quick-connect"
-          onClick={() => post("settings", connectionRoute)}
-        >
-          {t("Connect to Ark MA")}
-        </button>
-      )}
-      {error && (
-        <p className="quick-error" role="alert">
-          {error}
-        </p>
-      )}
-      <div className="quick-composer">
+        {messages.length > 0 && (
+          <div
+            className="quick-messages"
+            ref={list}
+            role="log"
+            aria-label={t("Chat messages")}
+          >
+            {messages.map((event) => (
+              <article
+                key={event.id}
+                className={`quick-message ${event.type === "user.message" ? "from-user" : "from-assistant"}${event.id === outgoing?.id ? " sending" : ""}`}
+              >
+                {event.type === "user.message" ? (
+                  <Markdown text={eventText(event)} />
+                ) : (
+                  // Questions are answered in the workspace; here they read as
+                  // the question with its options, never as raw JSON.
+                  <AssistantContent
+                    text={eventText(event)}
+                    part="all"
+                    active={false}
+                    busy={false}
+                    streaming={false}
+                    onChoose={() => {}}
+                  />
+                )}
+              </article>
+            ))}
+            {running && (
+              <p className="quick-thinking" role="status">
+                {t("{name} is working…", { name: name || "Muse" })}
+              </p>
+            )}
+          </div>
+        )}
+        {!ready && (
+          <button
+            className="quick-connect"
+            onClick={() => post("settings", connectionRoute)}
+          >
+            {t("Connect to Ark MA")}
+          </button>
+        )}
+        {error && (
+          <p className="quick-error" role="alert">
+            {error}
+          </p>
+        )}
+        {files.length > 0 && (
+          <StagedFiles
+            items={files}
+            onRemove={(key) =>
+              setFiles((old) => old.filter((item) => item.key !== key))
+            }
+          />
+        )}
         <textarea
           ref={composer}
+          className="quick-field"
           rows={1}
           autoFocus
           value={draft}
-          placeholder={t("Message")}
+          placeholder={quickChatPlaceholder()}
           aria-label={t("Message")}
           disabled={!ready}
           onChange={(event) => setDraft(event.currentTarget.value)}
@@ -257,30 +367,56 @@ export function QuickChat({ client }: { client: Client }) {
             }
           }}
         />
-        {dictationAvailable() && (
+        <div className="quick-toolbar">
+          <input
+            ref={picker}
+            type="file"
+            multiple
+            hidden
+            accept={attachmentAccept}
+            onChange={(event) => {
+              attach([...(event.currentTarget.files ?? [])]);
+              event.currentTarget.value = "";
+            }}
+          />
           <button
-            className={`quick-icon quick-dictate ${dictation.listening ? "listening" : ""}`}
-            aria-label={
-              dictation.listening ? t("Stop dictation") : t("Dictate a message")
-            }
-            aria-pressed={dictation.listening}
-            title={
-              dictation.listening ? t("Stop dictation") : t("Dictate a message")
-            }
+            className="quick-icon quick-attach"
+            aria-label={t("Add attachment")}
+            title={t("Add attachment")}
             disabled={!ready}
-            onClick={() => void dictation.toggle()}
+            onClick={() => picker.current?.click()}
           >
-            <Mic size={15} />
+            <Plus size={20} />
           </button>
-        )}
-        <button
-          className="quick-send"
-          aria-label={t("Send")}
-          disabled={!draft.trim() || busy || running || !ready}
-          onClick={() => void send()}
-        >
-          <ArrowUp size={16} />
-        </button>
+          {dictationAvailable() && (
+            <button
+              className={`quick-icon quick-dictate ${dictation.listening ? "listening" : ""}`}
+              aria-label={
+                dictation.listening
+                  ? t("Stop dictation")
+                  : t("Dictate a message")
+              }
+              aria-pressed={dictation.listening}
+              title={
+                dictation.listening
+                  ? t("Stop dictation")
+                  : t("Dictate a message")
+              }
+              disabled={!ready}
+              onClick={() => void dictation.toggle()}
+            >
+              <Mic size={17} />
+            </button>
+          )}
+          <button
+            className="quick-send"
+            aria-label={t("Send")}
+            disabled={!canSend}
+            onClick={() => void send()}
+          >
+            <ArrowUp size={17} />
+          </button>
+        </div>
       </div>
     </div>
   );
