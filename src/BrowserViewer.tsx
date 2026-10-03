@@ -6,6 +6,7 @@ import {
   Globe,
   Keyboard,
   LoaderCircle,
+  Lock,
   Square,
 } from "lucide-react";
 import { t } from "../shared/i18n";
@@ -37,7 +38,11 @@ export function BrowserViewer({
   const dialog = useRef<HTMLDialogElement>(null);
   const image = useRef<HTMLImageElement>(null);
   const closing = useRef(false);
-  const [frame, setFrame] = useState<{ src: string; title: string }>();
+  const [frame, setFrame] = useState<{
+    src: string;
+    title: string;
+    url: string;
+  }>();
   const [ended, setEnded] = useState(false);
   const [error, setError] = useState("");
   const [typing, setTyping] = useState<"text" | "address">();
@@ -66,6 +71,7 @@ export function BrowserViewer({
           setFrame({
             src: `data:image/jpeg;base64,${next.image}`,
             title: next.title ?? "",
+            url: next.url ?? "",
           });
         }
         if (!next.open) {
@@ -154,35 +160,61 @@ export function BrowserViewer({
       </header>
       <div className="browser-viewer-stage">
         {frame && (
-          <img
-            ref={image}
-            src={frame.src}
-            alt={frame.title || t("Cloud browser")}
-            draggable={false}
-            onPointerDown={(event) => {
-              pointer.current = {
-                x: event.clientX,
-                y: event.clientY,
-                id: event.pointerId,
-              };
-            }}
-            onPointerUp={(event) => {
-              const start = pointer.current;
-              pointer.current = undefined;
-              if (!start || start.id !== event.pointerId) return;
-              const moved = event.clientY - start.y;
-              const point = at(start.x, start.y);
-              if (Math.abs(moved) < 8 && Math.abs(event.clientX - start.x) < 8)
-                send({ type: "click", x: point.x, y: point.y });
-              else
-                send({
-                  type: "scroll",
-                  x: point.x,
-                  y: point.y,
-                  dy: Math.max(-5000, Math.min(5000, -moved * point.scale)),
-                });
-            }}
-          />
+          <div className="browser-viewer-window">
+            <div className="browser-viewer-tabs" aria-hidden="true">
+              <span className="browser-viewer-tab">
+                <Globe size={11} strokeWidth={2} />
+                <span>{frame.title || t("New tab")}</span>
+              </span>
+            </div>
+            <button
+              type="button"
+              className="browser-viewer-address"
+              aria-label={t("Go to address")}
+              onClick={() => setTyping("address")}
+            >
+              {frame.url.startsWith("https://") && (
+                <Lock size={11} strokeWidth={2.2} />
+              )}
+              <span>
+                {frame.url && frame.url !== "about:blank"
+                  ? frame.url.replace(/^https?:\/\//, "").replace(/\/$/, "")
+                  : t("Search or type a web address")}
+              </span>
+            </button>
+            <img
+              ref={image}
+              src={frame.src}
+              alt={frame.title || t("Cloud browser")}
+              draggable={false}
+              onPointerDown={(event) => {
+                pointer.current = {
+                  x: event.clientX,
+                  y: event.clientY,
+                  id: event.pointerId,
+                };
+              }}
+              onPointerUp={(event) => {
+                const start = pointer.current;
+                pointer.current = undefined;
+                if (!start || start.id !== event.pointerId) return;
+                const moved = event.clientY - start.y;
+                const point = at(start.x, start.y);
+                if (
+                  Math.abs(moved) < 8 &&
+                  Math.abs(event.clientX - start.x) < 8
+                )
+                  send({ type: "click", x: point.x, y: point.y });
+                else
+                  send({
+                    type: "scroll",
+                    x: point.x,
+                    y: point.y,
+                    dy: Math.max(-5000, Math.min(5000, -moved * point.scale)),
+                  });
+              }}
+            />
+          </div>
         )}
         {status && (
           <p className="browser-viewer-status" role="status">

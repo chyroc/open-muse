@@ -1192,4 +1192,6 @@ export const zhCN: Record<string, string> = {
   "Return key": "回车",
   "End the cloud browser": "结束云端浏览器",
   Keyboard: "键盘",
+  "New tab": "新标签页",
+  "Search or type a web address": "搜索或输入网址",
 };

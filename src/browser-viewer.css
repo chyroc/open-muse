@@ -166,3 +166,61 @@
 .browser-viewer-tools button:disabled {
   opacity: 0.4;
 }
+/* The page sits in a small desktop browser window: a tab strip with the
+   page's title and an address bar that opens the address field. */
+.browser-viewer-window {
+  width: 100%;
+  overflow: hidden;
+  background: #fff;
+}
+.browser-viewer-tabs {
+  display: flex;
+  height: 26px;
+  padding: 5px 8px 0 64px;
+  background:
+    radial-gradient(circle at 14px 13px, #ff5f57 4px, transparent 4.5px),
+    radial-gradient(circle at 28px 13px, #febc2e 4px, transparent 4.5px),
+    radial-gradient(circle at 42px 13px, #28c840 4px, transparent 4.5px),
+    #dfe1e5;
+  -webkit-text-size-adjust: 100%;
+}
+.browser-viewer-tab {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 60%;
+  padding: 0 10px;
+  border-radius: 8px 8px 0 0;
+  font-size: 11px;
+  color: #3c4043;
+  background: #fff;
+}
+.browser-viewer-tab span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.browser-viewer-address {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: calc(100% - 16px);
+  height: 24px;
+  margin: 4px 8px 5px;
+  padding: 0 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  color: #202124;
+  background: #f1f3f4;
+  text-align: left;
+  -webkit-text-size-adjust: 100%;
+}
+.browser-viewer-address span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.browser-viewer-address svg {
+  flex: 0 0 auto;
+  color: #5f6368;
+}
