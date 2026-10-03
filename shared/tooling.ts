@@ -264,6 +264,13 @@ exec /opt/open-muse/python /opt/open-muse/muse_browser.py "$@"
 MUSE_BROWSER_SH
 cat > /opt/open-muse/remote-view <<'MUSE_REMOTE_VIEW_SH'
 #!/usr/bin/env bash
+# A new sandbox may still be installing the toolbox; wait for it.
+for _ in $(seq 1 300); do
+  if [ -x /opt/open-muse/venv/bin/python ] && grep -q '"ready": *true' /opt/open-muse/status.json 2>/dev/null; then
+    break
+  fi
+  sleep 1
+done
 exec /opt/open-muse/python /opt/open-muse/remote_view.py "$@"
 MUSE_REMOTE_VIEW_SH
 cat > /opt/open-muse/lark-cli <<'MUSE_LARK_SH'
