@@ -15,6 +15,7 @@ import { defaultFeedInstructions } from "../../shared/inspiration";
 import { emptyGoalsDocument, parseGoals } from "../../shared/goals";
 import { emptyUpcomingDocument, parseUpcoming } from "../../shared/upcoming";
 import { memoryStoreName } from "../../shared/workspace-spec";
+import { avatarStyles } from "../../shared/avatar";
 
 type Store = { id: string; metadata?: Record<string, string> };
 type Memory = {
@@ -28,7 +29,10 @@ type Write = { token: string; content: string; before: string };
 const names = Object.keys(identityDefaults) as IdentityDocumentName[];
 const nameInput = z.enum(["SOUL.md", "MEMORY.md", "IDENTITY.md"]);
 const profileInput = z
-  .object({ name: z.string().trim().min(1).max(40) })
+  .object({
+    name: z.string().trim().min(1).max(40),
+    avatar: z.enum(avatarStyles).optional(),
+  })
   .strict();
 const validId = (id: string) => {
   if (!/^[\w-]{1,200}$/.test(id))
@@ -339,9 +343,11 @@ export class DirectIdentity {
       if (doc) result.documents[doc.name] = doc;
     });
     try {
-      result.name = profileInput.parse(
+      const profile = profileInput.parse(
         JSON.parse(result.documents["IDENTITY.md"].content),
-      ).name;
+      );
+      result.name = profile.name;
+      if (profile.avatar) result.avatar = profile.avatar;
     } catch {
       result.warning = t(
         "The saved name is invalid. Edit your identity to repair it; the original document is preserved.",

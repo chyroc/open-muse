@@ -239,6 +239,12 @@ function Workspace({
   const [config, setConfig] = useState<AppConfig>();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [companion, setCompanion] = useState(defaultIdentity);
+  // The companion's look, wherever its avatar is drawn.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (companion.avatar) root.dataset.avatar = companion.avatar;
+    else delete root.dataset.avatar;
+  }, [companion.avatar]);
   const [loadError, setLoadError] = useState("");
   const [actionError, setActionError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -688,6 +694,17 @@ function Workspace({
     setInspirationDraft(undefined);
     setCategory("general");
     navigate("/new");
+  }
+  // Starts a message from a menu: the draft must be in place before the
+  // keyboard rises, within the same tap.
+  function prefill(prompt: string) {
+    const text = systemLanguage() === "zh-CN" ? prompt : `${prompt} `;
+    flushSync(() => setDraft(text));
+    const input = document.querySelector<HTMLTextAreaElement>(
+      ".chat-composer textarea",
+    );
+    input?.focus({ preventScroll: true });
+    input?.setSelectionRange(text.length, text.length);
   }
   function setDraft(value: string) {
     setDrafts((current) => ({ ...current, [draftKey]: value }));
@@ -1531,17 +1548,8 @@ function Workspace({
           busy={busy || automaticCount > 0}
           onConfirm={confirm}
           onNew={newSideChat}
-          onRename={() => {
-            // The draft must be in place before the keyboard rises.
-            const prompt = t("Change your name to");
-            const text = systemLanguage() === "zh-CN" ? prompt : `${prompt} `;
-            flushSync(() => setDraft(text));
-            const input = document.querySelector<HTMLTextAreaElement>(
-              ".chat-composer textarea",
-            );
-            input?.focus({ preventScroll: true });
-            input?.setSelectionRange(text.length, text.length);
-          }}
+          onRename={() => prefill(t("Change your name to"))}
+          onChangeAvatar={() => prefill(t("Change your avatar to"))}
         />
       )}
       {selectedMessage && selectedBubble && (

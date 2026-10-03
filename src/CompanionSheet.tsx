@@ -2,6 +2,7 @@ import { systemLanguage, t } from "../shared/i18n";
 import { useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
+  CircleUserRound,
   Fingerprint,
   Globe,
   Heart,
@@ -160,6 +161,7 @@ export function CompanionSheet({
   onConfirm,
   onNew,
   onRename,
+  onChangeAvatar,
   isMain = false,
 }: {
   client: Client;
@@ -175,6 +177,8 @@ export function CompanionSheet({
   onNew: () => void;
   // Starts a message asking the companion to take a new name.
   onRename?: () => void;
+  // Starts a message asking the companion to change how it looks.
+  onChangeAvatar?: () => void;
   isMain?: boolean;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -274,6 +278,24 @@ export function CompanionSheet({
               onClick={() => setMenu(false)}
             />
             <div className="identity-menu" role="menu">
+              {onChangeAvatar && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenu(false);
+                    const element = dialog.current;
+                    if (!element) return;
+                    element.close();
+                    element.show();
+                    onChangeAvatar();
+                    dismiss();
+                  }}
+                >
+                  <CircleUserRound size={21} />
+                  {t("Change avatar")}
+                </button>
+              )}
               <button
                 type="button"
                 role="menuitem"
@@ -514,6 +536,15 @@ function IdentityEditor({
     }
   })();
   const dirty = draft !== (isName ? originalName : baseline.content);
+  // Other identity fields, such as the avatar, are kept when renaming.
+  const savedProfile = () => {
+    try {
+      const value: unknown = JSON.parse(baseline.content);
+      return value && typeof value === "object" ? value : {};
+    } catch {
+      return {};
+    }
+  };
   useEffect(() => {
     alive.current = true;
     const dialog = ref.current!;
@@ -540,7 +571,7 @@ function IdentityEditor({
     try {
       const result = await client.saveIdentityDocument(
         initial.name,
-        isName ? JSON.stringify({ name: draft }) : draft,
+        isName ? JSON.stringify({ ...savedProfile(), name: draft }) : draft,
         baseline.revision,
       );
       if (!alive.current) return;

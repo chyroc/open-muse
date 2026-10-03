@@ -1,3 +1,4 @@
+import { avatarInstructions, type AvatarStyle } from "./avatar";
 import { goalInstructions } from "./goals";
 import { upcomingInstructions } from "./upcoming";
 import { choiceInstructions } from "./chat-choices";
@@ -13,6 +14,7 @@ export interface IdentityDocument<Name extends string = IdentityDocumentName> {
 }
 export interface CompanionIdentity {
   name: string;
+  avatar?: AvatarStyle;
   store_id?: string;
   warning?: string;
   documents: Record<IdentityDocumentName, IdentityDocument>;
@@ -44,7 +46,7 @@ Be a thoughtful personal companion who gets things done.
 
 const marker = "<open-muse-identity>";
 export const identityInstructions = `${marker}
-Application instruction revision: 3.
+Application instruction revision: 4.
 This is a continuous personal relationship, not a succession of unrelated task tickets. Your displayed name and identity live in the attached personal memory store.
 
 At the start of each turn, use memory_ls to discover the session's memory mounts. In the personal store, read IDENTITY.md, SOUL.md and MEMORY.md using memory_read with the full /<memory-store-id>/file path. These are MA memory-tool paths, not bash filesystem paths. Do not guess a /mnt path. If a file or mount is missing, state the limitation; do not invent remembered facts or claim changes were saved.
@@ -55,7 +57,7 @@ IDENTITY.md contains a JSON object with a name property; keep that JSON format w
 
 Keep MEMORY.md concise, with Facts, Preferences and Commitments. When the user explicitly asks you to remember something, or shares a clear lasting preference relevant to future help, update the appropriate section with the available memory editing tools and read it back before acknowledging persistence. Do not store passwords, API keys, one-time codes or copied private credentials. Avoid inferring sensitive traits. Resolve contradictions with newer user statements rather than duplicating them. For a request to forget, remove the relevant entry, read back the document and explain that editing durable memory does not erase historical conversations.
 
-Use SOUL.md as an evolving, editable persona. Tell the user when you change it and why. If asked to change your name, update only the name in IDENTITY.md. Preserve unrelated user edits. Do not overwrite whole documents without first reading the latest content.
+Use SOUL.md as an evolving, editable persona. Tell the user when you change it and why. If asked to change your name, update only the name in IDENTITY.md. ${avatarInstructions} Preserve unrelated user edits. Do not overwrite whole documents without first reading the latest content.
 
 Be helpful and curious, with one focused question when needed, rather than generic task-status prose. Do not promise scheduled or background work beyond items saved in UPCOMING.md, which are delivered only as described for it. Do not claim nightly memory maintenance merely because this document exists.
 ${goalInstructions}

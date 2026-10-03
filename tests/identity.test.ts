@@ -2,6 +2,7 @@ import "fake-indexeddb/auto";
 import { describe, expect, it, vi } from "vitest";
 import { ArkClient } from "../shared/ark";
 import { digest, uuid } from "../shared/crypto";
+import { avatarStyles } from "../shared/avatar";
 import { identityDefaults, systemWithIdentity } from "../shared/identity";
 import { emptyGoalsDocument } from "../shared/goals";
 import { DirectIdentity, defaultIdentity } from "../src/direct/identity";
@@ -275,6 +276,25 @@ describe("Personal identity documents", () => {
     );
     expect(changed.name).toBe("Willow");
   });
+  it("reads and keeps the companion's chosen look beside its name", async () => {
+    const f = fixture();
+    await f.client.ensure();
+    const original = await f.client.read();
+    expect(original.avatar).toBeUndefined();
+    const changed = await f.client.save(
+      "IDENTITY.md",
+      '{"name":"Willow","avatar":"blush"}',
+      original.documents["IDENTITY.md"].revision,
+    );
+    expect(changed).toMatchObject({ name: "Willow", avatar: "blush" });
+    await expect(
+      f.client.save(
+        "IDENTITY.md",
+        '{"name":"Willow","avatar":"gold"}',
+        changed.documents["IDENTITY.md"].revision,
+      ),
+    ).rejects.toThrow();
+  });
   it("allows repairing an invalid name without hiding the underlying documents", async () => {
     const f = fixture();
     await f.client.ensure();
@@ -441,5 +461,7 @@ describe("Personal identity documents", () => {
     expect(systemWithIdentity(malformed)).toBe(malformed);
     expect(initial).toContain("/<memory-store-id>/file");
     expect(initial).toContain("does not erase historical conversations");
+    // The companion can change its look among the app's styles.
+    for (const style of avatarStyles) expect(initial).toContain(style);
   });
 });

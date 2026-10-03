@@ -1135,3 +1135,20 @@ html.sidebar-dragging .companion-shell {
     user-select: none;
   }
 }
+/* The companion's look, chosen in IDENTITY.md: only the fur changes color,
+   the face stays as it is. */
+:root[data-avatar="cocoa"] .companion-body {
+  filter: brightness(0.62) saturate(1.35);
+}
+:root[data-avatar="snow"] .companion-body {
+  filter: saturate(0.12) brightness(1.1);
+}
+:root[data-avatar="blush"] .companion-body {
+  filter: hue-rotate(-38deg) saturate(1.7);
+}
+:root[data-avatar="mint"] .companion-body {
+  filter: hue-rotate(95deg) saturate(1.25);
+}
+:root[data-avatar="sky"] .companion-body {
+  filter: hue-rotate(175deg) saturate(1.2);
+}
