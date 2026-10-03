@@ -140,6 +140,18 @@ describe("Cloud browser relay", () => {
     ).toEqual({ open: false, events: [] });
   });
 
+  it("serves the sandbox helper without an account", async () => {
+    const helper = await handle(
+      new Request("https://background.example/v1/browser/helper"),
+      env,
+      upstream,
+    );
+    expect(helper.status).toBe(200);
+    const source = await helper.text();
+    expect(source).toContain("def main():");
+    expect(source).not.toContain("__WIDTH__");
+  });
+
   it("keeps views private to their account and token", async () => {
     const opened = (await (
       await call(ALICE, "/v1/browser/views", "POST")

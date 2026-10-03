@@ -16,6 +16,7 @@ import { externalScheduler, TRIGGER_PATH, verifyTrigger } from "./trigger";
 import { UpcomingDelivery, upcomingInput } from "./upcoming";
 import { AccountDevices, deviceInput, validDeviceId } from "./devices";
 import { BrowserViews, relay } from "./browser";
+import { remoteViewDriver } from "../../shared/remote-view";
 
 async function runScheduler(env: Env) {
   await rewrapRetiredKeys(env).catch(() => {});
@@ -83,6 +84,11 @@ export async function handle(
       await verifyTrigger(request, env);
       await runScheduler(env);
       response = json({ ok: true });
+    } else if (url.pathname === "/v1/browser/helper" && request.method === "GET") {
+      // The sandbox helper's source, public like the app that embeds it.
+      response = new Response(remoteViewDriver, {
+        headers: { "Content-Type": "text/x-python; charset=utf-8" },
+      });
     } else if (
       /^\/v1\/browser\/relay\/[\w-]{1,80}$/.test(url.pathname) &&
       request.method === "POST"
