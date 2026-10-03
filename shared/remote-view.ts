@@ -26,6 +26,7 @@ import os
 import shutil
 import sys
 import time
+import urllib.error
 import urllib.request
 
 WIDTH, HEIGHT = __WIDTH__, __HEIGHT__
@@ -73,6 +74,7 @@ LIVE = "/tmp/open-muse-live"
 # open tab and leaves Chrome running when it closes.
 LIVE_MODULE = """
 import json
+import urllib.error
 import urllib.request
 from collections import deque
 
@@ -122,6 +124,10 @@ def share(browser):
         json.dump({"endpoint": browser.endpoint, "target": page["id"]}, state)
 
 
+def log(message):
+    print(time.strftime("%H:%M:%S"), message, file=sys.stderr, flush=True)
+
+
 def toolbox_ready():
     try:
         with open("/opt/open-muse/status.json") as status:
@@ -152,7 +158,8 @@ def relay_view(browser, relay, token, start):
         {"width": WIDTH, "height": HEIGHT, "deviceScaleFactor": 1, "mobile": False})
     if start != "about:blank":
         browser.call("Page.navigate", {"url": start})
-    after, shown, failures, blank = 0, None, 0, 0
+    after, shown, blank = 0, None, 0
+    failing_since = None
     deadline = time.monotonic() + 35 * 60
     while time.monotonic() < deadline:
         try:
@@ -163,6 +170,7 @@ def relay_view(browser, relay, token, start):
             # A page between documents cannot be captured for a moment.
             blank += 1
             if blank >= 60:
+                log("the page could not be captured; stopping")
                 return
             time.sleep(0.5)
             continue
@@ -177,15 +185,26 @@ def relay_view(browser, relay, token, start):
                         url=page.get("url", ""), title=page.get("title", ""))
         try:
             reply = post(relay, token, body)
-            failures = 0
-        except Exception:
-            failures += 1
-            if failures >= 10:
+            failing_since = None
+        except urllib.error.HTTPError as error:
+            if error.code == 404:
+                log("the view was replaced or removed; stopping")
                 return
-            time.sleep(1)
+            failing_since = failing_since or time.monotonic()
+            log("relay answered " + str(error.code))
+        except Exception as error:
+            failing_since = failing_since or time.monotonic()
+            log("relay unreachable: " + type(error).__name__)
+        if failing_since is not None:
+            # Ride out short outages of the relay, then give up.
+            if time.monotonic() - failing_since > 180:
+                log("the relay stayed unreachable; stopping")
+                return
+            time.sleep(min(10, 1 + time.monotonic() - failing_since))
             continue
         shown = digest
         if not reply.get("open"):
+            log("the view was closed; stopping")
             return
         for item in reply.get("events", []):
             try:
