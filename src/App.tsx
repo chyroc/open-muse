@@ -402,7 +402,10 @@ function Workspace({
     );
   };
   const task = useTask(client, activeId);
-  const events = task.session?.id === activeId ? task.events : [];
+  // useTask already drops another conversation's events; until the session
+  // itself is read, the events kept on this device show.
+  const events =
+    task.session && task.session.id !== activeId ? [] : task.events;
   const currentEvents = events.filter(
     (event) => !event.source_session_id || event.source_session_id === activeId,
   );
@@ -692,6 +695,20 @@ function Workspace({
     }
     // A reaction adds room under its message, so it also keeps the pin.
   }, [activeId, lastEventId, task.loading, awayFromBottom, reactions]);
+  // Content that grows after it is shown, such as history merged in or
+  // pictures that finish loading, keeps the pin unless the person scrolled
+  // away from the bottom.
+  const awayRef = useRef(awayFromBottom);
+  awayRef.current = awayFromBottom;
+  useEffect(() => {
+    const body = conversationBody.current;
+    if (!body) return;
+    const observer = new ResizeObserver(() => {
+      if (!awayRef.current) body.scrollTop = body.scrollHeight;
+    });
+    for (const child of Array.from(body.children)) observer.observe(child);
+    return () => observer.disconnect();
+  }, [activeId, lastEventId, task.loading]);
   useEffect(() => {
     if (!toast) return;
     const timeout = setTimeout(() => setToast(""), 3000);
