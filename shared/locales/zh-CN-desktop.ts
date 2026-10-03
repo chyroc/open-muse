@@ -5,7 +5,6 @@ export const zhDesktop: Record<string, string> = {
     "连接后即可查看你的提醒和定期任务。",
   "Ask in chat to be reminded of something or to have a task done on a schedule. It will appear here.":
     "在对话中让助手提醒你某件事，或按计划完成某项任务，它会显示在这里。",
-  Resume: "恢复",
   Pause: "暂停",
   Schedule: "计划",
   Next: "下次",
