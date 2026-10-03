@@ -1944,18 +1944,24 @@ export function DesktopApp({ client }: { client: Client }) {
           loading={loading}
           items={paletteItems({
             query,
-            chats: sessions
-              .filter((session) => !index.entries[session.id]?.continuedBy)
-              .map((session) => ({
-                id: session.id,
-                title: index.entries[session.id]?.title ?? session.title,
-              })),
+            chats: [
+              ...sessions.filter((session) => session.id === index.mainId),
+              ...sideChats(sessions, index, ""),
+            ].map((session) => ({
+              id: session.id,
+              title: index.entries[session.id]?.title ?? session.title,
+              preview: session.preview,
+              updatedAt: session.updated_at,
+              main: session.id === index.mainId,
+            })),
             goals: paletteGoals,
+            assistantName: name,
             onPage: goPage,
             onNewChat: () => navigate("/new"),
             onSettings: openSettings,
             onShortcuts: () => setShortcutsOpen(true),
             onChat: (chat) => {
+              if (chat === index.mainId) return navigate("/");
               const session = sessions.find((item) => item.id === chat);
               if (session) openChat(session);
             },

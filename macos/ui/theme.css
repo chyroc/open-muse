@@ -43,6 +43,9 @@
   --glass: #ffffffeb;
   --code: #ffffff70;
   --overlay: #0000001a;
+  --search-scrim: #0000001a;
+  --search-shadow-near: #11111229;
+  --search-shadow-far: #1111121f;
   --shadow: #0000001a;
   --blue: #cce6ff;
 }
@@ -86,6 +89,9 @@
   --glass: #28292beb;
   --code: #ffffff14;
   --overlay: #ffffff1f;
+  --search-scrim: #0006;
+  --search-shadow-near: #11111229;
+  --search-shadow-far: #1111121f;
   --shadow: #00000066;
   --blue: #005cff2b;
 }

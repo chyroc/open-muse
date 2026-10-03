@@ -15,7 +15,7 @@ import type { Page } from "./model";
 import { navLabel } from "./labels";
 
 // The feed: a card resting on the page behind it.
-const FeedIcon = createLucideIcon("feed-cards", [
+export const FeedIcon = createLucideIcon("feed-cards", [
   ["rect", { x: "8", y: "3", width: "13", height: "18", rx: "2.5", key: "card" }],
   [
     "path",
@@ -26,7 +26,7 @@ const FeedIcon = createLucideIcon("feed-cards", [
 ]);
 
 // A wide speech bubble with its tail at the lower left.
-const ChatIcon = createLucideIcon("chat-bubble", [
+export const ChatIcon = createLucideIcon("chat-bubble", [
   [
     "path",
     {
@@ -37,7 +37,7 @@ const ChatIcon = createLucideIcon("chat-bubble", [
 ]);
 
 // Goals: a box with a full-size tick.
-const GoalsIcon = createLucideIcon("goal-box", [
+export const GoalsIcon = createLucideIcon("goal-box", [
   ["rect", { x: "3.5", y: "3.5", width: "17", height: "17", rx: "3", key: "box" }],
   ["path", { d: "m8 12.5 2.8 2.8L16.5 9", key: "tick" }],
 ]);
