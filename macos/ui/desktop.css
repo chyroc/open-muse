@@ -310,6 +310,19 @@ h3 {
 .from-user .message-bubble {
   background: var(--blue);
 }
+/* A message that is still on its way shows at once, slightly faded, and
+   comes to full strength when the conversation confirms it. */
+.from-user .message-bubble {
+  transition: opacity 0.25s ease-out;
+}
+.message.sending .message-bubble {
+  opacity: 0.6;
+}
+@media (prefers-reduced-motion: reduce) {
+  .from-user .message-bubble {
+    transition-duration: 0.12s;
+  }
+}
 /* Corners shared with a neighbour in the same group tuck in. */
 .from-assistant.grouped-prev .message-bubble {
   border-top-left-radius: 6px;

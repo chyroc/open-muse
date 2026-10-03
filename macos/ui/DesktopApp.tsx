@@ -139,7 +139,11 @@ import {
   thumbnail,
   type Staged,
 } from "./Attachments";
-import { attachmentAccept, messageAttachments } from "../../shared/attachments";
+import {
+  attachmentAccept,
+  attachmentBlocks,
+  messageAttachments,
+} from "../../shared/attachments";
 import { uuid } from "../../shared/crypto";
 import {
   chatMessages,
@@ -280,6 +284,18 @@ export function DesktopApp({ client }: { client: Client }) {
   const stagedRef = useRef(staged);
   stagedRef.current = staged;
   const task = useTask(client, id);
+  // A sent message shows in the conversation at once, marked as sending, while
+  // the request runs. It belongs to the composer it left (and, once known, to
+  // the conversation it went to); the conversation's own copy of it, any user
+  // message that was not there when it was sent, then takes its place.
+  const [outgoing, setOutgoing] = useState<{
+    keys: string[];
+    event: AgentEvent;
+    before: Set<string>;
+  }>();
+  // Echoed events keep the key of the message they replace, so the bubble
+  // stays in place instead of being inserted again.
+  const echoKeys = useRef(new Map<string, string>());
   // Read through a ref so a new refresh function never re-runs the effects.
   const refreshTask = useRef(task.refresh);
   refreshTask.current = task.refresh;
@@ -956,39 +972,82 @@ export function DesktopApp({ client }: { client: Client }) {
       );
       return;
     }
+    const sentKey = draftKey;
+    const sentStaged = staged;
+    const local: AgentEvent = {
+      id: `local-${crypto.randomUUID()}`,
+      type: "user.message",
+      created_at: new Date().toISOString(),
+      content: [
+        ...attachmentBlocks(files),
+        ...(message ? [{ type: "text", text: message }] : []),
+      ],
+    };
+    setOutgoing({
+      keys: [sentKey],
+      event: local,
+      before: new Set(
+        events
+          .filter((event) => event.type === "user.message")
+          .map((event) => event.id),
+      ),
+    });
+    setDrafts((old) => ({ ...old, [sentKey]: "" }));
+    setStagedBy((old) => ({ ...old, [sentKey]: [] }));
+    setAway(false);
+    const settle = () =>
+      setOutgoing((old) => (old?.event.id === local.id ? undefined : old));
+    let target = id;
     await action(async () => {
-      const epoch = connectionVersion.current;
-      if (goalDrafts[draftKey]) {
-        await client.prepareGoals();
-        if (connectionVersion.current !== epoch)
-          throw new Error(
-            t("The connection changed. Your message was not sent."),
+      try {
+        const epoch = connectionVersion.current;
+        if (goalDrafts[draftKey]) {
+          await client.prepareGoals();
+          if (connectionVersion.current !== epoch)
+            throw new Error(
+              t("The connection changed. Your message was not sent."),
+            );
+        }
+        if (!target || target === index.mainId) {
+          const session = await client.openConversation(
+            route.newSide ? "side" : "main",
+            route.newSide ? text.slice(0, 60) : t("Main chat"),
           );
+          target = session.id;
+          const opened = target;
+          setOutgoing((old) =>
+            old?.event.id === local.id
+              ? { ...old, keys: [...old.keys, opened] }
+              : old,
+          );
+          setIndex(await client.conversationIndex());
+          if (!inspirationPage)
+            navigate(route.newSide ? `/chat/${target}` : "/");
+        }
+        await client.send(target, {
+          type: "user.message",
+          text: message,
+          ...(files.length ? { attachments: files } : {}),
+        });
+      } catch (failure) {
+        // Nothing is resent: the text and files go back to the composer, and
+        // the conversation is read again in case the message did arrive.
+        settle();
+        const back = target ?? sentKey;
+        setDrafts((old) => ({ ...old, [back]: old[back] || text }));
+        setStagedBy((old) => ({
+          ...old,
+          [back]: old[back]?.length ? old[back] : sentStaged,
+        }));
+        void refreshTask.current().catch(() => {});
+        throw failure;
       }
-      let target = id;
-      if (!target || target === index.mainId) {
-        const session = await client.openConversation(
-          route.newSide ? "side" : "main",
-          route.newSide ? text.slice(0, 60) : t("Main chat"),
-        );
-        target = session.id;
-        setIndex(await client.conversationIndex());
-        // Keep an unconfirmed message with its exact conversation, even across route changes.
-        setDrafts((old) => ({ ...old, [draftKey]: "", [target!]: text }));
-        if (!inspirationPage) navigate(route.newSide ? `/chat/${target}` : "/");
-      }
-      await client.send(target, {
-        type: "user.message",
-        text: message,
-        ...(files.length ? { attachments: files } : {}),
-      });
-      setStagedBy((old) => ({ ...old, [draftKey]: [], [target!]: [] }));
       if (quote) setQuotedPost(undefined);
-      setDrafts((old) => ({ ...old, [target!]: "" }));
       setGoalDrafts((old) => ({ ...old, [draftKey]: false, [target!]: false }));
-      setAway(false);
       await task.refresh();
-      await reload();
+      settle();
+      // The conversation list catches up in the background.
+      void reload();
     });
   }
   const openDocument = (name: IdentityDocumentName) =>
@@ -1014,7 +1073,20 @@ export function DesktopApp({ client }: { client: Client }) {
     settleDrawer();
     setQuery("");
   };
-  const messages = chatMessages(events);
+  const pendingEvent =
+    outgoing && outgoing.keys.includes(draftKey) ? outgoing.event : undefined;
+  const echo =
+    pendingEvent &&
+    events.find(
+      (event) =>
+        event.type === "user.message" &&
+        !outgoing!.before.has(event.id) &&
+        eventText(event) === eventText(pendingEvent),
+    );
+  if (echo && pendingEvent) echoKeys.current.set(echo.id, pendingEvent.id);
+  const shownEvents =
+    pendingEvent && !echo ? [...events, pendingEvent] : events;
+  const messages = chatMessages(shownEvents);
   useUnreadBadge(id, messages);
   const readAloud = useReadAloud();
   const companionState: CompanionState = running
@@ -1040,7 +1112,7 @@ export function DesktopApp({ client }: { client: Client }) {
   // Moving to another conversation hangs up.
   useEffect(() => () => endVoice(), [draftKey, endVoice]);
   const voiceAvailable = dictationAvailable() && speechAvailable();
-  const parts = messageParts(messages, events);
+  const parts = messageParts(messages, shownEvents);
   const links = groupLinks(
     parts.map(({ event, part }) => ({
       side: event.type === "user.message" ? "user" : "agent",
@@ -1483,9 +1555,10 @@ export function DesktopApp({ client }: { client: Client }) {
               <div className="message-stack">
                 {parts.map(({ event, part }, index) => (
                   <article
-                    key={`${event.id}:${part}`}
+                    key={`${echoKeys.current.get(event.id) ?? event.id}:${part}`}
                     data-part={partKey({ event, part })}
-                    className={`message ${event.type === "user.message" ? "from-user" : "from-assistant"}${links[index].prev ? " grouped-prev" : ""}${links[index].next ? " grouped-next" : ""}${found.includes(partKey({ event, part })) ? " found" : ""}${current === partKey({ event, part }) ? " current" : ""}`}
+                    aria-busy={event.id === pendingEvent?.id || undefined}
+                    className={`message ${event.type === "user.message" ? "from-user" : "from-assistant"}${event.id === pendingEvent?.id ? " sending" : ""}${links[index].prev ? " grouped-prev" : ""}${links[index].next ? " grouped-next" : ""}${found.includes(partKey({ event, part })) ? " found" : ""}${current === partKey({ event, part }) ? " current" : ""}`}
                   >
                     <div className="message-bubble">
                       {event.type === "agent.message" ? (
