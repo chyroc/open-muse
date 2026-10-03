@@ -15,7 +15,11 @@ npx vitest run --config macos/vitest.config.ts
 ```
 
 The signed local app is `.build/macos/Open Muse.app`. The build type-checks
-`macos/tsconfig.json`, builds only `macos/ui`, and compiles the native host.
+`macos/tsconfig.json`, builds only `macos/ui`, and compiles the native host. It
+is always an Open Muse account build: the account service values come from
+`VITE_MUSE_BACKGROUND_URL`, `VITE_MUSE_SUPABASE_URL` and
+`VITE_MUSE_SUPABASE_ANON_KEY`, or are read with the Volcengine CLI (see
+[Account builds](../docs/development.md#account-builds)).
 `npm run macos:build` also runs the repository's shared web build before the
 Mac-specific build. No iOS or Android build is needed.
 

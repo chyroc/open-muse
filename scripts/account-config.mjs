@@ -1,5 +1,5 @@
 // The three public values that make a Muse-account build, shared by the
-// iPhone install and the Mac account build.
+// iPhone install and the Mac build.
 //
 // They come from the environment when all of them are set
 // (VITE_MUSE_BACKGROUND_URL, VITE_MUSE_SUPABASE_URL,

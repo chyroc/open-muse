@@ -13,7 +13,15 @@ import os from "node:os";
 import { editorLicenseNotices } from "../macos/tools/licenses.mjs";
 import path from "node:path";
 import sharp from "sharp";
+import { accountConfig } from "./account-config.mjs";
 const root = path.resolve(import.meta.dirname, "..");
+// The Mac app is always an Open Muse account build: people sign in with their
+// account's email and password, as on the iPhone. The three public values come
+// from the environment or the Volcengine CLI; see scripts/account-config.mjs.
+const account = accountConfig();
+process.env.VITE_MUSE_BACKGROUND_URL = account.background;
+process.env.VITE_MUSE_SUPABASE_URL = account.auth;
+process.env.VITE_MUSE_SUPABASE_ANON_KEY = account.anonKey;
 // Install the isolated editor dependencies with `npm ci --prefix macos`.
 // The Mac workspace has its own entry point and never packages the mobile UI.
 execFileSync(
@@ -35,6 +43,12 @@ execFileSync(
   ],
   { stdio: "inherit" },
 );
+if (
+  !readFileSync(path.join(root, ".build/macos-ui/index.html"), "utf8").includes(
+    new URL(account.auth).origin,
+  )
+)
+  throw new Error("The Mac bundle does not include the account service.");
 const output = path.join(root, ".build/macos");
 await mkdir(output, { recursive: true });
 const staging = await mkdtemp(path.join(output, "direct-build-"));
