@@ -1,7 +1,6 @@
 import { t } from "../../shared/i18n";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  Archive,
   Keyboard,
   Lightbulb,
   Menu,
@@ -257,29 +256,5 @@ export function Empty({
       <h3>{title}</h3>
       {children && <div>{children}</div>}
     </div>
-  );
-}
-
-export function ArchiveToggle({
-  archived,
-  onChange,
-}: {
-  archived: boolean;
-  onChange: () => void;
-}) {
-  return (
-    <button
-      className="icon-button"
-      title={
-        archived ? t("Show active side chats") : t("Show archived side chats")
-      }
-      aria-label={
-        archived ? t("Show active side chats") : t("Show archived side chats")
-      }
-      aria-pressed={archived}
-      onClick={onChange}
-    >
-      <Archive size={17} />
-    </button>
   );
 }

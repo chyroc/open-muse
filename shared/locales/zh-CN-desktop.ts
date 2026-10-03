@@ -304,4 +304,16 @@ export const zhDesktop: Record<string, string> = {
   "Browse documents, media, and more": "浏览文档、影音内容等",
   "Send message to {name}": "发消息给{name}",
   "Send in the main chat": "在主要聊天中发送",
+  // Side chats panel.
+  "Side chat options": "旁聊选项",
+  "Keep chat panel visible": "保持显示聊天面板",
+  "Back to chat list": "返回聊天列表",
+  "Archived chats": "归档的对话",
+  "Side chats you archive will appear here.": "你归档的旁聊会显示在这里。",
+  "Resize or close the chat panel": "调整大小或关闭聊天面板",
+  "Unarchive {title}": "取消归档{title}",
+  "Start a side chat in the drawer": "发起旁聊",
+  "Side chats organize conversations by topic, in the drawer":
+    "旁聊是按主题整理对话的可选方式。",
+  "New side chat in the drawer": "新旁聊",
 };

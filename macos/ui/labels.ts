@@ -33,3 +33,17 @@ export function statusTabLabel(tab: "activity" | "approvals") {
   if (tab === "activity") return chinese ? t("Activity tab") : t("Activity");
   return chinese ? t("Approvals tab") : t("Approvals");
 }
+
+// The side-chat drawer's empty state, in the desktop app's Chinese wording.
+export function sideChatDrawerCopy() {
+  const chinese = systemLanguage() === "zh-CN";
+  return {
+    title: chinese
+      ? t("Start a side chat in the drawer")
+      : t("Start a side chat"),
+    body: chinese
+      ? t("Side chats organize conversations by topic, in the drawer")
+      : t("Side chats are an optional way to organize conversations by topic."),
+    action: chinese ? t("New side chat in the drawer") : t("New side chat"),
+  };
+}

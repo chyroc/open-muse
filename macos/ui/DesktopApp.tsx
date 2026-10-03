@@ -14,11 +14,9 @@ import {
   AudioLines,
   Menu,
   MessageCircle,
-  MessagesSquare,
   Mic,
   MoreHorizontal,
   Plus,
-  Search,
   ShieldCheck,
   Square,
   X,
@@ -91,7 +89,14 @@ import {
   type Session,
 } from "../../shared/types";
 import { canAutoApprove } from "../../shared/approval-policy";
-import { ArchiveToggle, Avatar, Empty, Modal, Rail } from "./Chrome";
+import { Avatar, Empty, Modal, Rail } from "./Chrome";
+import {
+  SideChatsPanel,
+  keepChatPanelVisible,
+  setKeepChatPanelVisible,
+  storeChatPanelWidth,
+  storedChatPanelWidth,
+} from "./SideChats";
 import { ShortcutsDialog } from "./Shortcuts";
 import { groupLinks } from "./messageGroups";
 import { droppedFiles, droppedFilesEvent } from "./dropped";
@@ -150,7 +155,16 @@ export function DesktopApp({ client }: { client: Client }) {
   );
   const [index, setIndex] = useState(emptyConversations);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [drawer, setDrawer] = useState(false);
+  // A pinned panel opens with the app and stays open while moving around.
+  const [keepPanel, setKeepPanel] = useState(keepChatPanelVisible);
+  const [drawer, setDrawer] = useState(keepChatPanelVisible);
+  const [drawerWidth, setDrawerWidth] = useState(storedChatPanelWidth);
+  const keepPanelRef = useRef(keepPanel);
+  keepPanelRef.current = keepPanel;
+  // Choosing something from the panel closes it unless it is pinned.
+  const settleDrawer = () => {
+    if (!keepPanelRef.current) setDrawer(false);
+  };
   const [statusOpen, setStatusOpen] = useState(true);
   const [statusTab, setStatusTab] = useState<StatusTab>("activity");
   // Dragging the status panel's edge, and settling it after a release.
@@ -218,7 +232,6 @@ export function DesktopApp({ client }: { client: Client }) {
   const [settings, setSettings] = useState(false);
   const [search, setSearch] = useState(false);
   const [query, setQuery] = useState("");
-  const [archived, setArchived] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
@@ -280,7 +293,11 @@ export function DesktopApp({ client }: { client: Client }) {
     (event) =>
       !canAutoApprove(event) || task.autoApprovalFailures.includes(event.id),
   );
-  const chats = sideChats(sessions, index, query, archived);
+  const panelRow = (session: Session) => ({
+    id: session.id,
+    title: index.entries[session.id]?.title ?? session.title,
+    updatedAt: Date.parse(session.updated_at) || undefined,
+  });
   // This Mac answers only its own tools; another device answers the rest.
   const deviceCalls = pendingCustomTools(currentEvents);
   const macCalls = deviceCalls.filter((call) => isMacTool(call.name));
@@ -356,11 +373,11 @@ export function DesktopApp({ client }: { client: Client }) {
       !feedEditorOpen.current
     ) {
       setSplitChat(false);
-      setDrawer(false);
+      settleDrawer();
       return;
     }
     navigate(page === "chat" ? "/" : `/${page}`);
-    setDrawer(false);
+    settleDrawer();
     setQuery("");
   };
   useEffect(() => {
@@ -390,7 +407,7 @@ export function DesktopApp({ client }: { client: Client }) {
       if (action === "search") setSearch(true);
       if (action === "new-chat") {
         navigate("/new");
-        setDrawer(false);
+        settleDrawer();
       }
       if (action === "main-chat") navigate("/");
       if (action === "shortcuts") setShortcutsOpen(true);
@@ -889,7 +906,7 @@ export function DesktopApp({ client }: { client: Client }) {
       setDropped(files);
       setStatusOpen(true);
       navigate("/");
-      setDrawer(false);
+      settleDrawer();
     };
     window.addEventListener(droppedFilesEvent, receive);
     return () => window.removeEventListener(droppedFilesEvent, receive);
@@ -975,7 +992,7 @@ export function DesktopApp({ client }: { client: Client }) {
       const current = await client.companionIdentity();
       setIdentity(current);
       setDocument(current.documents[name]);
-      setDrawer(false);
+      settleDrawer();
     });
   const confirm = (result: "allow" | "deny", event: AgentEvent) =>
     void action(async () => {
@@ -990,7 +1007,7 @@ export function DesktopApp({ client }: { client: Client }) {
   const openChat = (session: Session) => {
     navigate(`/chat/${session.id}`);
     setSearch(false);
-    setDrawer(false);
+    settleDrawer();
     setQuery("");
   };
   const messages = chatMessages(events);
@@ -1091,79 +1108,56 @@ export function DesktopApp({ client }: { client: Client }) {
         }
       />
       {drawer && !document && (
-        <aside className="chat-drawer" aria-label={t("Side chats")}>
-          <header>
-            <label className="search-field">
-              <Search size={16} />
-              <input
-                aria-label={t("Search side chats")}
-                placeholder={t("Search")}
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-              />
-            </label>
-            <ArchiveToggle
-              archived={archived}
-              onChange={() => setArchived((value) => !value)}
-            />
-          </header>
-          <button
-            className="main-chat-link"
-            onClick={() => {
-              navigate("/");
-              setDrawer(false);
-            }}
-          >
-            <MessageCircle size={17} /> {t("Main chat")}
-          </button>
-          <div className="side-chat-list">
-            {chats.map((session) => (
-              <button
-                key={session.id}
-                aria-current={session.id === id ? "page" : undefined}
-                onClick={() => openChat(session)}
-              >
-                {index.entries[session.id]?.title ?? session.title}
-              </button>
-            ))}
-            {!chats.length && (
-              <Empty
-                title={
-                  query
-                    ? t("No matching chats")
-                    : archived
-                      ? t("No archived chats")
-                      : t("Start a side chat")
-                }
-                icon={<MessagesSquare size={29} strokeWidth={1.4} />}
-              >
-                <p>
-                  {t(
-                    "Side chats are an optional way to organize conversations by topic.",
-                  )}
-                </p>
-                <button
-                  className="pill-button"
-                  onClick={() => {
-                    navigate("/new");
-                    setDrawer(false);
-                  }}
-                >
-                  {t("New side chat")}
-                </button>
-              </Empty>
-            )}
-          </div>
-          <button
-            className="drawer-new"
-            onClick={() => {
-              navigate("/new");
-              setDrawer(false);
-            }}
-          >
-            <Plus size={17} /> {t("New side chat")}
-          </button>
-        </aside>
+        <SideChatsPanel
+          chats={sideChats(sessions, index, "").map(panelRow)}
+          archivedChats={sideChats(sessions, index, "", true).map(panelRow)}
+          main={(() => {
+            const session = sessions.find((item) => item.id === index.mainId);
+            return session ? { updatedAt: panelRow(session).updatedAt } : {};
+          })()}
+          activeId={id}
+          mainActive={
+            route.page === "chat" &&
+            !route.newSide &&
+            (!id || id === index.mainId)
+          }
+          drafting={route.page === "chat" && Boolean(route.newSide)}
+          query={query}
+          onQuery={setQuery}
+          keepVisible={keepPanel}
+          onKeepVisible={(value) => {
+            setKeepChatPanelVisible(value);
+            setKeepPanel(value);
+          }}
+          width={drawerWidth}
+          onWidth={(value, done) => {
+            setDrawerWidth(value);
+            if (done) storeChatPanelWidth(value);
+          }}
+          onClose={() => {
+            setKeepChatPanelVisible(false);
+            setKeepPanel(false);
+            setDrawer(false);
+          }}
+          onOpenMain={() => {
+            navigate("/");
+            settleDrawer();
+          }}
+          onOpenChat={(chat) => {
+            const session = sessions.find((item) => item.id === chat);
+            if (session) openChat(session);
+          }}
+          onNewChat={() => {
+            navigate("/new");
+            settleDrawer();
+          }}
+          onUnarchive={(chat) =>
+            void action(async () => {
+              await client.archiveConversation(chat, false);
+              await reload();
+            })
+          }
+        />
       )}
       {document && (
         <Suspense
@@ -1327,15 +1321,18 @@ export function DesktopApp({ client }: { client: Client }) {
         {route.page === "chat" || (inspirationPage && splitChat) ? (
           <>
             <header className="chat-toolbar">
-              <button
-                className="glass-pill"
-                aria-label={t("Open chats and side chats")}
-                aria-expanded={drawer}
-                onClick={() => setDrawer((value) => !value)}
-              >
-                <Menu size={19} />
-                <span className="glass-pill-label">{chatTitle}</span>
-              </button>
+              {/* A pinned panel stands in for its own toggle. */}
+              {!(drawer && keepPanel) && (
+                <button
+                  className="glass-pill"
+                  aria-label={t("Open chats and side chats")}
+                  aria-expanded={drawer}
+                  onClick={() => setDrawer((value) => !value)}
+                >
+                  <Menu size={19} />
+                  <span className="glass-pill-label">{chatTitle}</span>
+                </button>
+              )}
               <div className="toolbar-spacer" />
               {route.page === "chat" && !statusOpen && (
                 // With the status panel closed, the companion sits at the top
