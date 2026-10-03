@@ -160,6 +160,28 @@ describe("Mac settings model", () => {
     });
     expect(openNativeSettings()).toBe(false);
   });
+  it("names email as the sign-in method of an account build", () => {
+    expect(
+      connectionSummary({
+        loggedIn: true,
+        ready: true,
+        method: "api_key",
+        account: { signedIn: true },
+      }).method,
+    ).toBe("Email");
+    expect(
+      connectionSummary({ loggedIn: true, ready: true, method: "api_key" })
+        .method,
+    ).toBe("API Key");
+    expect(
+      connectionSummary({
+        loggedIn: false,
+        ready: false,
+        account: { signedIn: false },
+      }).method,
+    ).toBe("");
+    expect(zhCN.Email).toBe("邮箱");
+  });
   it("separates a signed-in account without an Ark key from a signed-out one", () => {
     expect(connectionSummary(undefined).state).toBe("Not signed in");
     expect(

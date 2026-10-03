@@ -173,7 +173,13 @@ export function connectionSummary(status: ConnectionStatus | undefined) {
       : status.ready
         ? "Connected"
         : "Choose a project",
-    method: status?.method === "api_key" ? "API Key" : "",
+    // An account build signs the person in with the account's email; the Ark
+    // API key behind it is the model credential, not how they signed in.
+    method: status?.account?.signedIn
+      ? "Email"
+      : status?.method === "api_key" && !status.account
+        ? "API Key"
+        : "",
     project: status?.project ?? "",
   };
 }

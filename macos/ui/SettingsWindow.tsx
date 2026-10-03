@@ -382,7 +382,7 @@ export function SettingsWindow({ client }: { client: Client }) {
             <div className="settings-group">
               <Row title={t("Status")} value={t(summary.state)} />
               {Boolean(summary.method) && (
-                <Row title={t("Sign-in method")} value={summary.method} />
+                <Row title={t("Sign-in method")} value={t(summary.method)} />
               )}
               {Boolean(summary.project) && (
                 <Row title={t("Project")} value={summary.project} />

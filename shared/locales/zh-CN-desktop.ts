@@ -315,4 +315,6 @@ export const zhDesktop: Record<string, string> = {
   "Side chats organize conversations by topic, in the drawer":
     "旁聊是按主题整理对话的可选方式。",
   "New side chat in the drawer": "新旁聊",
+  // Sign-in method in Settings.
+  Email: "邮箱",
 };
