@@ -30,4 +30,11 @@ describe("Turn context", () => {
     );
     expect(turnContext(now, "UTC", "web")).toContain("web app");
   });
+  it("keeps progress notes in the person's language", () => {
+    // A new chapter starts with notes about reading its history; they follow
+    // the person's language too.
+    expect(turnContext(now, "Asia/Shanghai", "iphone")).toContain(
+      "in the language of their message, including short notes before or between tool calls",
+    );
+  });
 });
