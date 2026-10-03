@@ -11,6 +11,32 @@ const idle = { running: false, approval: false, mac: false };
 const running = { ...idle, running: true };
 
 describe("Companion activity", () => {
+  it("says it is planning while answering a goal category's message", () => {
+    const planning = [
+      event("user.message", {
+        content: [{ type: "text", text: "我想设定一个health目标" }],
+      }),
+      event("agent.thinking"),
+    ];
+    expect(companionActivity(planning, running)).toEqual({
+      label: "💪 Start planning",
+      working: true,
+    });
+    expect(t("💪 Start planning", {}, "zh-CN")).toBe("💪 开始规划");
+    // Idle again once the reply is done, and other turns read as before.
+    expect(companionActivity(planning, idle)).toBeUndefined();
+    expect(
+      companionActivity(
+        [
+          event("user.message", {
+            content: [{ type: "text", text: "hello" }],
+          }),
+          event("agent.thinking"),
+        ],
+        running,
+      )?.label,
+    ).toBe("Thinking");
+  });
   it("is quiet while idle and says when the connection dropped", () => {
     expect(companionActivity([], idle)).toBeUndefined();
     expect(companionActivity([], { ...idle, interrupted: true })).toEqual({

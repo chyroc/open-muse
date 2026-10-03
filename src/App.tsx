@@ -42,7 +42,12 @@ import type { WelcomeState } from "./direct/welcome";
 import { isWelcomeReply } from "../shared/welcome";
 import { currentChoiceEvent } from "../shared/chat-choices";
 import { digest, uuid } from "../shared/crypto";
-import { goalPrompt, goalStarter, type GoalCategory } from "../shared/goals";
+import {
+  goalPlanningMessage,
+  goalPrompt,
+  goalStarter,
+  type GoalCategory,
+} from "../shared/goals";
 import { Markdown, PermissionCard } from "./components";
 import type {
   AgentEvent,
@@ -843,6 +848,27 @@ function Workspace({
         await task.refresh();
       }
     });
+  // Sends one message to the main chat and opens it there, as a goal
+  // category's + does. The main chat is created when there is none yet.
+  const sendToMain = (text: string, { goals = false } = {}) => {
+    navigate("/");
+    return action(async () => {
+      if (goals) await client.prepareGoals();
+      let sessionId = index.mainId;
+      if (!sessionId) {
+        const session = await client.openConversation(
+          "main",
+          t("Main chat"),
+          "general",
+        );
+        if (!alive.current) return;
+        sessionId = session.id;
+        setIndex(await client.conversationIndex());
+      }
+      await client.send(sessionId, { type: "user.message", text });
+      if (alive.current) setAwayFromBottom(false);
+    });
+  };
   const stop = () =>
     action(async () => {
       if (activeId) {
@@ -1500,6 +1526,13 @@ function Workspace({
                 optionsOpen={goalOptions}
                 onOptionsClose={() => setGoalOptions(false)}
                 onCategory={(category: GoalCategory, parent?: Goal) => {
+                  // A category starts planning in the main chat at once.
+                  if (!parent) {
+                    void sendToMain(goalPlanningMessage(category), {
+                      goals: true,
+                    });
+                    return;
+                  }
                   setGoalDraft(undefined);
                   setGoalInitiation(true);
                   setInspirationDraft(undefined);

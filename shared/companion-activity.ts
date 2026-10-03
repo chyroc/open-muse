@@ -1,4 +1,5 @@
-import type { AgentEvent } from "./types";
+import { eventText, type AgentEvent } from "./types";
+import { isGoalPlanningMessage } from "./goals";
 
 // A short line under the companion's name saying what it is doing, from the
 // newest step of the current turn: the tool it is using, or that it is
@@ -59,6 +60,9 @@ export function companionActivity(
         : undefined;
   let start = events.length;
   while (start > 0 && events[start - 1].type !== "user.message") start--;
+  // A turn started from a goal category's + is the companion planning it.
+  if (start > 0 && isGoalPlanningMessage(eventText(events[start - 1])))
+    return { label: "💪 Start planning", working: true };
   const turn = events.slice(start);
   const answered = new Set(
     turn

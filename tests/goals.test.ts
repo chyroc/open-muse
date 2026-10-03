@@ -4,7 +4,9 @@ import { digest, uuid } from "../shared/crypto";
 import {
   emptyGoalsDocument,
   goalInstructions,
+  goalPlanningMessage,
   goalStarter,
+  isGoalPlanningMessage,
   parseGoals,
   serializeGoals,
 } from "../shared/goals";
@@ -94,6 +96,26 @@ describe("Cloud goal documents", () => {
     if (kind === "invalid-date") row.created_at = "tomorrow";
     expect(() => serializeGoals(goals)).toThrow("No goals were replaced");
   });
+  it.each([
+    ["en", "I want to set a health goal", "I want to set a goal"],
+    ["zh-Hans", "我想设定一个health目标", "我想设定一个目标"],
+  ])(
+    "starts planning a category's goal with one message in %s",
+    (language, health, custom) => {
+      vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", [language]);
+      try {
+        expect(goalPlanningMessage("health")).toBe(health);
+        expect(goalPlanningMessage("custom")).toBe(custom);
+        // Recognized in either language, so every device shows the planning.
+        for (const text of [health, custom, ` ${health} `])
+          expect(isGoalPlanningMessage(text)).toBe(true);
+        expect(isGoalPlanningMessage("我想设定一个health目标吧")).toBe(false);
+        expect(isGoalPlanningMessage("I want to set a hobby goal")).toBe(false);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    },
+  );
   it("requires clarification before goal creation and never promises background scheduling", () => {
     expect(goalStarter("health")).toContain("before saving");
     expect(goalStarter("custom")).toContain("start a goal");

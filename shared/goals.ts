@@ -95,6 +95,30 @@ export function goalStarter(category: GoalCategory, parent?: Goal) {
         "I want to start a goal. Help me clarify what I want to achieve before saving a plan.",
       );
 }
+// The message a category's + sends to the main chat to start planning a goal.
+// It names the category by its id in every language.
+export function goalPlanningMessage(category: GoalCategory) {
+  return category === "custom"
+    ? t("I want to set a goal")
+    : t("I want to set a {category} goal", { category });
+}
+// Whether a message started goal planning, in either app language.
+export function isGoalPlanningMessage(text: string) {
+  const trimmed = text.trim();
+  return goalCategories.some((category) =>
+    (["en", "zh-CN"] as const).some(
+      (language) =>
+        trimmed ===
+        (category.id === "custom"
+          ? t("I want to set a goal", {}, language)
+          : t(
+              "I want to set a {category} goal",
+              { category: category.id },
+              language,
+            )),
+    ),
+  );
+}
 export function goalPrompt(goal: Goal) {
   return [
     t("Please help me work toward this goal: {title}", { title: goal.title }),
