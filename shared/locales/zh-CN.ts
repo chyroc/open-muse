@@ -1246,4 +1246,5 @@ export const zhCN: Record<string, string> = {
     "分享一篇长文、报告或 PDF。我会提炼要点、说明对你意味着什么、下一步该做什么，两分钟就能读完。",
   "I’ll share something long to read; give me a one-page brief with the main points and next steps.":
     "我会分享一篇很长的内容，请给我一页摘要，包括要点和下一步。",
+  Connecting: "正在连接",
 };

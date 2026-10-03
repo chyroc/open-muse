@@ -16,6 +16,18 @@ describe("Companion activity", () => {
     expect(companionActivity([], { ...idle, interrupted: true })).toEqual({
       label: "Connection interrupted",
     });
+    expect(companionActivity([], { ...idle, connecting: true })).toEqual({
+      label: "Connecting",
+    });
+    // A running turn or a dropped connection says more than "connecting".
+    expect(
+      companionActivity([], { ...idle, connecting: true, interrupted: true })
+        ?.label,
+    ).toBe("Connection interrupted");
+    expect(companionActivity([], { ...running, connecting: true })?.label).toBe(
+      "Working hard",
+    );
+    expect(t("Connecting", {}, "zh-CN")).toBe("正在连接");
   });
   it("asks for review in the accent color without the working pose", () => {
     expect(companionActivity([], { ...running, approval: true })).toEqual({

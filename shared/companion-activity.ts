@@ -42,6 +42,8 @@ export function companionActivity(
     // Health reads answered without asking, once Health is connected.
     health?: "ask" | "auto";
     interrupted?: boolean;
+    // The live connection to the conversation is not up yet.
+    connecting?: boolean;
   },
 ): CompanionActivity | undefined {
   if (state.approval) return { label: "Review needed", attention: true };
@@ -50,7 +52,11 @@ export function companionActivity(
     return { label: "Reading Health", working: true };
   if (state.mac) return { label: "Waiting for your Mac", attention: true };
   if (!state.running)
-    return state.interrupted ? { label: "Connection interrupted" } : undefined;
+    return state.interrupted
+      ? { label: "Connection interrupted" }
+      : state.connecting
+        ? { label: "Connecting" }
+        : undefined;
   let start = events.length;
   while (start > 0 && events[start - 1].type !== "user.message") start--;
   const turn = events.slice(start);

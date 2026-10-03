@@ -843,6 +843,16 @@ function Workspace({
       setActionError((error as Error).message);
     }
   }
+  // A connection that drops for a moment and comes back is not shown.
+  const [connecting, setConnecting] = useState(false);
+  useEffect(() => {
+    if (task.connected) {
+      setConnecting(false);
+      return;
+    }
+    const timer = setTimeout(() => setConnecting(true), 1500);
+    return () => clearTimeout(timer);
+  }, [task.connected]);
   const sideTitle =
     taskRoute && activeId !== index.mainId
       ? (index.entries[taskRoute]?.title ?? task.session?.title)
@@ -871,6 +881,7 @@ function Workspace({
               : "ask"
             : undefined,
           interrupted: Boolean(task.error || loadError),
+          connecting: Boolean(activeId) && connecting,
         })
       : undefined;
   // A task's narration is folded into one card per turn.
