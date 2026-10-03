@@ -1478,6 +1478,30 @@ export class Client {
       ? { ...original, approval_source: "automatic" }
       : original;
   }
+  // A conversation's latest events as last read on this device, so it opens
+  // at once; the cloud read follows. Kept for the most recent conversations
+  // only, under the identity's own key.
+  async cachedEvents(id: string): Promise<AgentEvent[]> {
+    if (!this.signedIn()) return [];
+    validId(id);
+    return (
+      (await this.db.get<AgentEvent[]>(`${this.context().key}:events:${id}`)) ??
+      []
+    );
+  }
+  async keepEvents(id: string, events: AgentEvent[]) {
+    if (!this.signedIn()) return;
+    validId(id);
+    const r = this.context();
+    await this.db.set(`${r.key}:events:${id}`, events.slice(-300));
+    let evicted: string[] = [];
+    await this.db.update<string[]>(`${r.key}:events-index`, (current = []) => {
+      const next = [id, ...current.filter((item) => item !== id)];
+      evicted = next.slice(12);
+      return next.slice(0, 12);
+    });
+    for (const old of evicted) await this.db.set(`${r.key}:events:${old}`, null);
+  }
   async events(id: string, signal?: AbortSignal) {
     const r = this.context();
     const index = await this.conversations(r).index();

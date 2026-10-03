@@ -474,13 +474,17 @@ function Workspace({
         setLoadError("");
         return;
       }
-      const [result, conversations] = await Promise.all([
-        client.sessions(),
-        client.conversationIndex(),
-      ]);
+      // The conversation index is on this device, so the chat can show its
+      // kept history at once; the session list follows from the cloud.
+      const listed = client.sessions();
+      listed.catch(() => {}); // Reported when awaited below.
+      const conversations = await client.conversationIndex();
+      if (!alive.current) return;
+      setIndex(conversations);
+      setLoading(false);
+      const result = await listed;
       if (!alive.current) return;
       setSessions(result.data);
-      setIndex(conversations);
       setLoadError("");
     } catch (error) {
       if (alive.current) setLoadError((error as Error).message);
@@ -505,8 +509,12 @@ function Workspace({
   async function beginWelcome(retry = false) {
     if (welcomeJob.current) return;
     welcomeJob.current = true;
-    setWelcomeBusy(true);
     setWelcomeError("");
+    // Once the welcome is settled, checking it again runs quietly and never
+    // holds back the chat.
+    const known = await client.welcomeState().catch(() => undefined);
+    if (!known || !["confirmed", "skipped"].includes(known.phase))
+      setWelcomeBusy(true);
     try {
       const value = await client.startWelcome(systemLanguage(), retry);
       if (alive.current) setWelcome(value);

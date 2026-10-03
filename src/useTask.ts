@@ -64,6 +64,7 @@ export function useTask(client: Client, id?: string) {
         receive(mergeHistorySnapshot(beforeRead, knownEvents, history));
         setSession(remote);
         setError("");
+        void client.keepEvents(id, knownEvents).catch(() => {});
       } catch (err) {
         if (signal.aborted) return;
         // A request the system cut off, as when the app was in the
@@ -103,6 +104,17 @@ export function useTask(client: Client, id?: string) {
         reconnect = setTimeout(connect, Math.min(1000 * 2 ** retry++, 15000));
       }
     };
+    // What this device last saw shows at once; history replaces it. Nothing
+    // is approved from it: approvals wait for the history read.
+    void client
+      .cachedEvents(id)
+      .then((cached) => {
+        if (signal.aborted || historyLoaded || !cached.length) return;
+        knownEvents = mergeEvents(cached, knownEvents);
+        setEvents(knownEvents);
+        setLoading(false);
+      })
+      .catch(() => {});
     void connect();
     void sync();
     const interval = setInterval(sync, 6000);
