@@ -110,11 +110,14 @@ export function needsPromptRefresh(
 export function refreshedAgentSystem(
   snapshot: AgentSnapshot,
   versioned: AgentSnapshot,
+  // The person chose the model for new conversations, so the next chapter
+  // runs on that choice whatever the previous one used.
+  modelChosen = false,
 ) {
   if (snapshot.id !== versioned.id || snapshot.version !== versioned.version)
     throw new IncompatibleConversation();
   for (const field of [
-    "model",
+    ...(modelChosen ? [] : (["model"] as const)),
     "tools",
     "mcp_servers",
     "skills",

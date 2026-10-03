@@ -1069,7 +1069,11 @@ export class Client {
             );
           try {
             const system = sourceAgent
-              ? refreshedAgentSystem(sourceAgent, agent)
+              ? refreshedAgentSystem(
+                  sourceAgent,
+                  agent,
+                  Boolean(await this.chosenModel(r)),
+                )
               : agent.system;
             if (sourceAgent) selection.agent_version = sourceAgent.version;
             selection.system = withConversationHistory(

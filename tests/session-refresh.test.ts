@@ -82,6 +82,23 @@ describe("Main-conversation instruction refresh", () => {
       refreshed,
     );
   });
+  it("continues a chat on a chosen model only when the person chose one", () => {
+    const source = {
+      ...snapshot(),
+      model: { id: "chosen-model", reasoning_effort: "low" },
+    };
+    const base = snapshot();
+    expect(() => refreshedAgentSystem(source, base)).toThrow(
+      "history is intact",
+    );
+    expect(refreshedAgentSystem(source, base, true)).toContain(
+      identityInstructions,
+    );
+    // Other pinned configuration still has to match.
+    expect(() =>
+      refreshedAgentSystem({ ...source, tools: [] }, base, true),
+    ).toThrow("history is intact");
+  });
   it("adds app rules to a known owned legacy snapshot without erasing custom text", () => {
     const source = { ...snapshot(), system: "Legacy custom instructions." };
     expect(needsPromptRefresh(session(source), "owner", source.id)).toBe(true);
