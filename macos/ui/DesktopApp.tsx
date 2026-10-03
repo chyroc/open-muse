@@ -1681,7 +1681,11 @@ export function DesktopApp({ client }: { client: Client }) {
                   {approvals.length || macCalls.length
                     ? t("Waiting for your approval")
                     : elsewhere.length
-                      ? elsewhere.every((call) => call.name === healthToolName)
+                      ? elsewhere.every(
+                          (call) =>
+                            call.name === healthToolName ||
+                            call.name?.startsWith("iphone_"),
+                        )
                         ? t("Waiting for your iPhone")
                         : t("Waiting for another device")
                       : t("{name} is working…", { name })}

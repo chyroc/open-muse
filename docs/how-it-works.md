@@ -454,6 +454,21 @@ its version (with "-modified" when the build had uncommitted changes); tap it
 to copy. The Mac shows the same version in Settings > General and in the
 About Open Muse window.
 
+### Data on your iPhone
+
+The iPhone app answers two device tools. `health_read` reads one Apple Health
+metric over a time range; once the person connects Apple Health (from the
+first request or Connectors), reads are answered without asking each time,
+and **Disconnect** in Connectors returns to asking. `iphone_personal` reads
+calendar events (a range of up to 92 days), open reminders, or contacts
+matching a name, phone number, or email. It only reads, and every call shows
+a card in the chat naming what it reads; nothing is read until the person
+taps **Share**, and **Don't share** tells the companion not to try another
+way. Calendar, Reminders, and Contacts are listed in Connectors: connecting
+one explains it in a sheet and then asks iOS for access, and iOS Settings >
+Open Muse changes that access. Both tools wait while the iPhone app is
+closed; the Mac and web apps say they are waiting for the iPhone.
+
 ## Personal identity and memory
 
 Tap the companion avatar to open Activity, Approvals, Desktop, Recent, or

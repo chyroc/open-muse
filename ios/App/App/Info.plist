@@ -31,6 +31,16 @@
 	<string>Open Muse uses the camera when you take a photo or record a video to send to your companion.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Open Muse records sound with a video you take to send to your companion.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Open Muse reads your calendar events when you approve a request from your companion, such as when you ask what's on your schedule.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Open Muse reads your open reminders when you approve a request from your companion, such as when you ask what's on your to-do list.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Open Muse looks up the people you mention when you approve a request from your companion, such as finding a phone number or email address.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Open Muse reads your calendar events when you approve a request from your companion, such as when you ask what's on your schedule.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>Open Muse reads your open reminders when you approve a request from your companion, such as when you ask what's on your to-do list.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Open Muse reads the Health data you choose to share when you ask your companion about your activity, workouts, sleep, heart rate, or weight.</string>
 	<key>LSRequiresIPhoneOS</key>

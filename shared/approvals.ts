@@ -1,3 +1,4 @@
+import { iphoneDeclined } from "./iphone-tools";
 import { stepTarget } from "./activity";
 import {
   healthDeclined,
@@ -11,7 +12,7 @@ import { eventText, type AgentEvent } from "./types";
 // and when. These titles are UI labels; t() translates them where shown.
 export interface ApprovalRecord {
   id: string;
-  kind: "web" | "health" | "mac" | "tool";
+  kind: "web" | "health" | "mac" | "iphone" | "tool";
   title: string;
   // The tool's own name, for titles that name it.
   tool: string;
@@ -57,6 +58,12 @@ function summary(event: AgentEvent) {
       title: "Use your Mac",
       detail: stepTarget(event),
     };
+  if (name.startsWith("iphone_"))
+    return {
+      kind: "iphone" as const,
+      title: "Use your iPhone",
+      detail: stepTarget(event),
+    };
   return {
     kind: "tool" as const,
     title: "Use {tool}",
@@ -67,9 +74,11 @@ function summary(event: AgentEvent) {
 // Device requests the person answers themselves: Apple Health reads on the
 // iPhone and Mac actions on the Mac. A decline is reported to the agent with
 // one of these openings.
-const declined = [healthDeclined, "The user declined"];
+const declined = [healthDeclined, iphoneDeclined, "The user declined"];
 const reviewed = (name = "") =>
-  name === "health_read" || name.startsWith("mac_");
+  name === "health_read" ||
+  name.startsWith("mac_") ||
+  name.startsWith("iphone_");
 
 // Every answered request in a conversation, newest first: tool confirmations
 // and the person's answers to device requests.

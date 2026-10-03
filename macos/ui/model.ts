@@ -58,6 +58,7 @@ const activityLabels: Record<string, string> = {
   mac_calendar: "Read your calendar",
   mac_location: "Check your location",
   health_read: "Read Apple Health",
+  iphone_personal: "Read from your iPhone",
 };
 
 export function activityLabel(name: string | undefined) {

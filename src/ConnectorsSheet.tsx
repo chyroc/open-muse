@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import {
+  BookUser,
   Brain,
+  CalendarDays,
   ChevronRight,
   Globe,
   HeartPulse,
+  ListTodo,
   LoaderCircle,
   MessagesSquare,
   Search,
@@ -12,6 +15,13 @@ import {
 import { t } from "../shared/i18n";
 import type { Client } from "./api";
 import { connectHealth, healthAccess } from "./health";
+import { PersonalConnectSheet } from "./PersonalConnectSheet";
+import {
+  connectPersonal,
+  personalAccess,
+  type PersonalAccess,
+} from "./personal";
+import type { IphoneSource } from "../shared/iphone-tools";
 import { Sheet } from "./MusePages";
 import "./connectors.css";
 
@@ -72,6 +82,36 @@ const lark = (): Connector => ({
   ),
   Icon: MessagesSquare,
 });
+// Calendar, Reminders, and Contacts on this iPhone. Each read is approved in
+// the chat; connecting only asks iOS for access ahead of the first one.
+const personal = (source: IphoneSource): Connector =>
+  ({
+    calendar: {
+      id: "calendar",
+      name: t("Calendar"),
+      detail: t(
+        "Your assistant asks before reading the events on your iPhone. Change access in iOS Settings > Open Muse.",
+      ),
+      Icon: CalendarDays,
+    },
+    reminders: {
+      id: "reminders",
+      name: t("Reminders"),
+      detail: t(
+        "Your assistant asks before reading your open reminders. Change access in iOS Settings > Open Muse.",
+      ),
+      Icon: ListTodo,
+    },
+    contacts: {
+      id: "contacts",
+      name: t("Contacts"),
+      detail: t(
+        "Your assistant asks before looking up the people you mention. Change access in iOS Settings > Open Muse.",
+      ),
+      Icon: BookUser,
+    },
+  })[source];
+const personalSources: IphoneSource[] = ["calendar", "reminders", "contacts"];
 const larkSignedIn = (kept: boolean): Connector => ({
   ...lark(),
   detail: kept
@@ -88,9 +128,12 @@ const larkSignOut = "Sign me out of Lark with lark-cli.";
 
 export function ConnectorsSheet({
   client,
+  name,
   onClose,
   onDraft,
 }: {
+  // The companion's name, for the connect sheets.
+  name?: string;
   // Whether this identity connected Apple Health on this device.
   // and whether the assistant is signed in to Lark in the main chat.
   client: Pick<
@@ -113,6 +156,16 @@ export function ConnectorsSheet({
   const [error, setError] = useState("");
   const [linked, setLinked] = useState(false);
   const [larkLinked, setLarkLinked] = useState(false);
+  // iOS access for Calendar, Reminders, and Contacts, once read.
+  const [personalState, setPersonalState] =
+    useState<Partial<Record<IphoneSource, PersonalAccess>>>();
+  const [connecting, setConnecting] = useState<IphoneSource>();
+  const readPersonal = () =>
+    Promise.all(
+      personalSources.map(
+        async (source) => [source, await personalAccess(source)] as const,
+      ),
+    ).then((entries) => setPersonalState(Object.fromEntries(entries)));
   useEffect(() => {
     let active = true;
     // What this device kept answers at once; the conversation's history
@@ -131,6 +184,7 @@ export function ConnectorsSheet({
       (value) => active && setLinked(value),
       () => {},
     );
+    void readPersonal().catch(() => {});
     void healthAccess()
       .then((value) => {
         if (active) setAccess(value);
@@ -146,6 +200,10 @@ export function ConnectorsSheet({
     setError("");
     if (id === "lark") {
       onDraft(t(larkSignIn));
+      return;
+    }
+    if ((personalSources as string[]).includes(id)) {
+      setConnecting(id as IphoneSource);
       return;
     }
     setBusy(true);
@@ -164,17 +222,46 @@ export function ConnectorsSheet({
   const matches = (item: Connector) =>
     !term || `${item.name} ${item.detail}`.toLocaleLowerCase().includes(term);
   const healthItem = access && access !== "unavailable" ? [health()] : [];
+  // Sources iOS has not refused yet can be connected; allowed ones are.
+  const allowed = personalSources.filter(
+    (source) => personalState?.[source] === "allowed",
+  );
+  const askable = personalSources.filter((source) =>
+    ["not-asked", "denied"].includes(personalState?.[source] ?? ""),
+  );
   const connected = [
     ...included(),
     ...(linked ? healthItem : []),
+    ...allowed.map(personal),
     ...(larkLinked ? [larkSignedIn(client.larkKept())] : []),
   ].filter(matches);
   const available = [
     ...(linked ? [] : healthItem),
+    ...askable.map(personal),
     ...(larkLinked ? [] : [lark()]),
   ].filter(matches);
   return (
     <Sheet title={t("Connectors")} onClose={onClose} grouped>
+      {connecting && (
+        <PersonalConnectSheet
+          source={connecting}
+          name={name ?? t("Your assistant")}
+          onClose={() => setConnecting(undefined)}
+          onContinue={() =>
+            void connectPersonal(connecting)
+              .then((state) => {
+                if (state === "denied")
+                  setError(
+                    t(
+                      "iOS did not allow access. Turn it on in iOS Settings > Open Muse.",
+                    ),
+                  );
+                return readPersonal();
+              })
+              .catch((reason: Error) => setError(reason.message))
+          }
+        />
+      )}
       <div className="connectors">
         <label className="connector-search">
           <Search size={18} aria-hidden="true" />

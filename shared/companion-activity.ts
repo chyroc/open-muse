@@ -20,6 +20,7 @@ export function toolLabel(event: AgentEvent): string {
   if (name === "web_search") return "Searching the web";
   if (name === "web_fetch") return "Reading the web";
   if (name === "health_read") return "Reading Health";
+  if (name.startsWith("iphone_")) return "Using your iPhone";
   if (name.startsWith("mac_")) return "Using your Mac";
   if (name === "bash")
     return browserCommand.test(String(input.command ?? ""))

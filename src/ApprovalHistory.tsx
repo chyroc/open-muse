@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Globe2, HeartPulse, Monitor, Wrench, X } from "lucide-react";
+import {
+  Globe2,
+  HeartPulse,
+  Monitor,
+  Smartphone,
+  Wrench,
+  X,
+} from "lucide-react";
 import { formatLocale, t } from "../shared/i18n";
 import { approvalHistory, type ApprovalRecord } from "../shared/approvals";
 import type { AgentEvent } from "../shared/types";
@@ -8,7 +15,13 @@ import { ContinuousSurface } from "./ContinuousSurface";
 import { animateAway, useDragToDismiss } from "./gesture";
 import "./activity-detail.css";
 
-const icons = { web: Globe2, health: HeartPulse, mac: Monitor, tool: Wrench };
+const icons = {
+  web: Globe2,
+  health: HeartPulse,
+  mac: Monitor,
+  iphone: Smartphone,
+  tool: Wrench,
+};
 
 // "9 hours ago", in the selected language.
 export function timeAgo(at: string, now = Date.now()) {

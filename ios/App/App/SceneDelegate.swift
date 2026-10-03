@@ -165,6 +165,7 @@ class MuseBridgeViewController: CAPBridgeViewController {
     private let credentialsHandler = MuseCredentialsHandler()
     private lazy var filesHandler = MuseFilesHandler(presenter: self)
     private let healthHandler = MuseHealthHandler()
+    private let personalHandler = MusePersonalHandler()
     private let hapticsHandler = MuseHapticsHandler()
     private let remindersHandler = MuseRemindersHandler()
 
@@ -209,6 +210,7 @@ class MuseBridgeViewController: CAPBridgeViewController {
         webView?.configuration.userContentController.addScriptMessageHandler(credentialsHandler, contentWorld: .page, name: "museCredentials")
         webView?.configuration.userContentController.addScriptMessageHandler(filesHandler, contentWorld: .page, name: "museFiles")
         webView?.configuration.userContentController.addScriptMessageHandler(healthHandler, contentWorld: .page, name: "museHealth")
+        webView?.configuration.userContentController.addScriptMessageHandler(personalHandler, contentWorld: .page, name: "musePersonal")
         webView?.configuration.userContentController.add(hapticsHandler, contentWorld: .page, name: "museHaptics")
         webView?.configuration.userContentController.add(remindersHandler, contentWorld: .page, name: "museReminders")
         #if DEBUG && targetEnvironment(simulator)

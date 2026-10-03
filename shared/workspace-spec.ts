@@ -2,6 +2,7 @@ import { environmentWithTools, systemWithTools } from "./tooling";
 import { systemWithIdentity } from "./identity";
 import { macTools } from "./mac-tools";
 import { healthToolSpec } from "./health";
+import { iphoneToolSpecs } from "./iphone-tools";
 import { arkProvider, type MAProvider } from "./ma-provider";
 
 // The personal workspace every Open Muse client provisions. The Worker creates
@@ -22,10 +23,12 @@ export const environmentSpec = () => ({
   }),
 });
 // Custom tools answered by the person's own devices: the Mac app runs mac_*,
-// the iPhone app answers health_read. MA waits for that device's result.
+// the iPhone app answers health_read and iphone_*. MA waits for that
+// device's result.
 export const deviceTools = [
   ...macTools,
   { type: "custom", ...healthToolSpec },
+  ...iphoneToolSpecs,
 ] as const;
 export const agentSpec = (
   model: string,

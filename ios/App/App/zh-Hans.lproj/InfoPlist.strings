@@ -4,3 +4,9 @@
 "NSCameraUsageDescription" = "当你拍照或录像发送给伙伴时，Open Muse 会使用相机。";
 /* Shown by iOS when a video recorded for an attachment first uses the microphone. */
 "NSMicrophoneUsageDescription" = "当你录像发送给伙伴时，Open Muse 会同时录制声音。";
+/* Shown by iOS when Open Muse first asks to read Calendar, Reminders, or Contacts after the person approved a request. */
+"NSCalendarsFullAccessUsageDescription" = "在你批准伙伴的请求后，Open Muse 会读取你的日历日程，例如当你询问自己的安排时。";
+"NSRemindersFullAccessUsageDescription" = "在你批准伙伴的请求后，Open Muse 会读取你未完成的提醒事项，例如当你询问待办清单时。";
+"NSContactsUsageDescription" = "在你批准伙伴的请求后，Open Muse 会查找你提到的联系人，例如他们的电话号码或邮箱。";
+"NSCalendarsUsageDescription" = "在你批准伙伴的请求后，Open Muse 会读取你的日历日程，例如当你询问自己的安排时。";
+"NSRemindersUsageDescription" = "在你批准伙伴的请求后，Open Muse 会读取你未完成的提醒事项，例如当你询问待办清单时。";

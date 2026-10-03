@@ -6,8 +6,8 @@ export type Surface = "iphone" | "mac" | "web";
 
 const surfaceNotes: Record<Surface, string> = {
   iphone:
-    "They are writing from the Open Muse iPhone app, which answers health_read. The mac_* tools are answered only by the Open Muse Mac app, which may not be running; use them only when the person asks for something on their Mac.",
-  mac: "They are writing from the Open Muse Mac app, which answers the mac_* tools. health_read is answered by their Open Muse iPhone app, which may not be open.",
+    "They are writing from the Open Muse iPhone app, which answers health_read and the iphone_* tools. The mac_* tools are answered only by the Open Muse Mac app, which may not be running; use them only when the person asks for something on their Mac.",
+  mac: "They are writing from the Open Muse Mac app, which answers the mac_* tools. health_read and the iphone_* tools are answered by their Open Muse iPhone app, which may not be open.",
   web: "They are writing from the Open Muse web app. Device tools are answered only by their Open Muse iPhone or Mac app, which may not be open; use them only when the request needs that device.",
 };
 

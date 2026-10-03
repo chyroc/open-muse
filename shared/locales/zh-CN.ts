@@ -10,6 +10,7 @@ import { zhHealth } from "./zh-CN-health";
 import { zhConnectors } from "./zh-CN-connectors";
 import { zhSettingsHome } from "./zh-CN-settings-home";
 import { zhSettingsPages } from "./zh-CN-settings-pages";
+import { zhIphoneTools } from "./zh-CN-iphone-tools";
 import { zhReactions } from "./zh-CN-reactions";
 import { zhWebhooks } from "./zh-CN-webhooks";
 import { zhProactive } from "./zh-CN-proactive";
@@ -31,6 +32,7 @@ export const zhCN: Record<string, string> = {
   ...zhHealth,
   ...zhConnectors,
   ...zhSettingsPages,
+  ...zhIphoneTools,
   ...zhSettingsHome,
   ...zhReactions,
   ...zhWebhooks,

@@ -63,6 +63,8 @@ import {
 } from "../shared/types";
 import { canAutoApprove } from "../shared/approval-policy";
 import { HealthRequestCard } from "./HealthRequestCard";
+import { PersonalRequestCard } from "./PersonalRequestCard";
+import { isIphoneTool } from "../shared/iphone-tools";
 import { isHealthRequest } from "../shared/health";
 import { SettingsHome } from "./SettingsHome";
 import { PageSheet } from "./PageSheet";
@@ -433,6 +435,10 @@ function Workspace({
   );
   // Apple Health reads wait for the person to share them on the iPhone.
   const healthRequests = customTools.filter(isHealthRequest);
+  // Calendar, Reminders, and Contacts reads wait for the person's approval.
+  const personalRequests = customTools.filter((event) =>
+    isIphoneTool(event.name),
+  );
   // Whether Health is connected, so its reads run without asking.
   const [healthLinked, setHealthLinked] = useState(false);
   useEffect(() => {
@@ -943,7 +949,9 @@ function Workspace({
       ? t("Not connected")
       : state === "running"
         ? t("Replying")
-        : permissions.length || healthRequests.length
+        : permissions.length ||
+            healthRequests.length ||
+            personalRequests.length
           ? t("Waiting for approval")
           : macTools.length
             ? t("Waiting for your Mac")
@@ -954,7 +962,7 @@ function Workspace({
     config?.mode === "ark"
       ? companionActivity(currentEvents, {
           running: state === "running",
-          approval: permissions.length > 0,
+          approval: permissions.length + personalRequests.length > 0,
           mac: macTools.length > 0,
           health: healthRequests.length
             ? healthLinked
@@ -1346,6 +1354,17 @@ function Workspace({
                     onAnswered={() => void task.refresh()}
                   />
                 ))}
+              {activeId &&
+                personalRequests.map((event) => (
+                  <PersonalRequestCard
+                    key={event.id}
+                    client={client}
+                    session={activeId}
+                    event={event}
+                    name={companion.name}
+                    onAnswered={() => void task.refresh()}
+                  />
+                ))}
               {state === "running" && (
                 <div
                   className="chat-typing"
@@ -1611,6 +1630,7 @@ function Workspace({
         <PageSheet title={t("Settings")} onClose={() => navigate(pageRoute)}>
           <SettingsHome
             client={client}
+            name={companion.name}
             onConnection={onConnection}
             onDraft={(text) => {
               setDrafts((current) => ({

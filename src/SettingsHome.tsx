@@ -50,10 +50,13 @@ const languageNames = { en: "English", "zh-CN": "简体中文" } as const;
 // Until the app is connected, sign-in stays on the page itself.
 export function SettingsHome({
   client,
+  name,
   onConnection,
   onDraft,
 }: {
   client: Client;
+  // The companion's name, for copy that names it.
+  name?: string;
   onConnection: () => void;
   onDraft: (text: string) => void;
 }) {
@@ -238,6 +241,7 @@ export function SettingsHome({
       {section === "connectors" && (
         <ConnectorsSheet
           client={client}
+          name={name}
           onClose={close}
           onDraft={(text) => {
             close();
