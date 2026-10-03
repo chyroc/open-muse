@@ -177,6 +177,13 @@ export function InspirationPage({
   useRefreshHandler(refresh);
   useEffect(() => {
     alive.current = true;
+    // Show what this device already has while the cloud is read.
+    void client
+      .cachedInspiration()
+      .then((cached) => {
+        if (alive.current) setData((current) => current ?? cached);
+      })
+      .catch(() => {});
     void refresh();
     const foreground = () => {
       if (!document.hidden) void refresh();
@@ -236,7 +243,7 @@ export function InspirationPage({
           {error}
         </p>
       )}
-      {loading && !starters && (
+      {loading && !starters && !items.length && (
         <p className="inspiration-status" role="status">
           <LoaderCircle size={19} className="spin" />
           {t("Loading…")}

@@ -709,6 +709,11 @@ export class Client {
       };
     return this.inspirationService(this.context()).snapshot();
   }
+  // This device's posts and ideas at once, before the cloud is read.
+  async cachedInspiration(): Promise<InspirationSnapshot> {
+    if (!this.signedIn()) return this.inspiration();
+    return this.inspirationService(this.context()).cached();
+  }
   async refreshInspiration(kind: InspirationKind) {
     const service = this.inspirationService(this.context());
     await service.refresh(z.enum(["feed", "ideas"]).parse(kind));

@@ -73,6 +73,32 @@ describe("Personalized feed and ideas", () => {
     expect(f.remote.create).not.toHaveBeenCalled();
     expect(f.remote.send).not.toHaveBeenCalled();
   });
+  it("shows this identity's own posts and last read instructions without the cloud", async () => {
+    const f = fixture();
+    await f.client.generate("feed");
+    await f.complete();
+    f.remote.instructions.mockResolvedValueOnce({
+      content: "Only climbing news.",
+      revision: "custom",
+    });
+    await f.client.snapshot();
+    f.remote.instructions.mockClear();
+    const cached = await new DirectInspiration(
+      "owner",
+      f.db,
+      f.remote,
+    ).cached();
+    expect(f.remote.instructions).not.toHaveBeenCalled();
+    expect(cached.items).toHaveLength(1);
+    expect(cached.instructions).toEqual({
+      content: "Only climbing news.",
+      revision: "custom",
+    });
+    // Another identity on the same device sees none of it.
+    const other = await new DirectInspiration("other", f.db, f.remote).cached();
+    expect(other.items).toEqual([]);
+    expect(other.instructions.content).toBe(defaultFeedInstructions);
+  });
   it("persists real completed results with source event provenance, once", async () => {
     const f = fixture();
     await f.client.generate("feed");
@@ -335,8 +361,12 @@ describe("Generated content boundaries", () => {
     const python = `{'items': [{'title': "Runner's warmup", 'body': 'Line one\\nSee [UCLA](https://example.com/a) \\u2014 ok', 'emoji': '\u{1F3C3}', 'reason': 'Saved topic', 'category': 'Running', 'prompt': 'Want a plan?', 'sources': [{'title': 'UCLA', 'url': 'https://example.com/a'}]}]}`;
     const [post] = parseInspiration(python);
     expect(post.title).toBe("Runner's warmup");
-    expect(post.body).toBe("Line one\nSee [UCLA](https://example.com/a) \u2014 ok");
-    expect(post.sources).toEqual([{ title: "UCLA", url: "https://example.com/a" }]);
+    expect(post.body).toBe(
+      "Line one\nSee [UCLA](https://example.com/a) \u2014 ok",
+    );
+    expect(post.sources).toEqual([
+      { title: "UCLA", url: "https://example.com/a" },
+    ]);
     expect(() => parseInspiration("{'items': [__import__('os')]}")).toThrow(
       "not a valid set of posts",
     );

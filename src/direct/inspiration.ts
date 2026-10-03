@@ -1,6 +1,6 @@
 import { t } from "../../shared/i18n";
 import { ApiError } from "../../shared/ark";
-import { uuid } from "../../shared/crypto";
+import { digest, uuid } from "../../shared/crypto";
 import {
   eventText,
   pendingPermissions,
@@ -8,6 +8,7 @@ import {
   type Session,
 } from "../../shared/types";
 import {
+  defaultFeedInstructions,
   parseInspiration,
   type InspirationItem,
   type InspirationKind,
@@ -68,7 +69,10 @@ export class DirectInspiration {
     private remote: Remote,
   ) {
     this.key = `${owner}:inspiration:v1`;
+    this.instructionsKey = `${owner}:inspiration:instructions:v1`;
   }
+  // The feed instructions as last read, so the page can show at once.
+  private instructionsKey: string;
   private async state() {
     return (await this.db.get<State>(this.key)) ?? empty();
   }
@@ -101,7 +105,22 @@ export class DirectInspiration {
   }
   async snapshot(): Promise<InspirationSnapshot> {
     const instructions = await this.remote.instructions();
+    await this.db.set(this.instructionsKey, instructions);
     return { ...(await this.state()), instructions };
+  }
+  // What this device already has: its posts and ideas, with the
+  // instructions as last read. The cloud read follows with snapshot().
+  async cached(): Promise<InspirationSnapshot> {
+    const instructions = await this.db.get<InspirationSnapshot["instructions"]>(
+      this.instructionsKey,
+    );
+    return {
+      ...(await this.state()),
+      instructions: instructions ?? {
+        content: defaultFeedInstructions,
+        revision: digest(defaultFeedInstructions),
+      },
+    };
   }
   async dismissInstructions() {
     await this.update((state) => {
