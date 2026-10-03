@@ -114,8 +114,6 @@ export const zhDesktop: Record<string, string> = {
     "登录 Mac 时自动打开 Open Muse。",
   "Reach Open Muse from the menu bar at the top of the screen.":
     "从屏幕顶部的菜单栏使用 Open Muse。",
-  "Build a feed around my interests. Keep it concise, direct, and easy to scan. Avoid clickbait. Include useful sources when available.":
-    "围绕我的兴趣生成动态。内容简洁直接、便于浏览，不要标题党，有可用来源时附上。",
   "During dictation": "听写时",
   "Dictation listens to this microphone.": "听写时使用这个麦克风。",
   "System default": "系统默认",
