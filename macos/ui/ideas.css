@@ -104,17 +104,11 @@
   color: var(--success);
   padding-top: 3px;
 }
+/* The options button stays visible on every row, as in the reference app. */
 .idea-options {
   position: relative;
   flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.15s;
   z-index: 2;
-}
-.idea-row:hover .idea-options,
-.idea-options:focus-within,
-.idea-options[open] {
-  opacity: 1;
 }
 .idea-options summary {
   list-style: none;
