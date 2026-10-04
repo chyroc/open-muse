@@ -971,21 +971,30 @@ function Workspace({
   // category's + does. The main chat is created when there is none yet.
   const sendToMain = (text: string, { goals = false } = {}) => {
     navigate("/");
+    // Shown in the main chat at once, as a message typed there is.
+    setOutgoing({ view: index.mainId ?? "new-main", text, at: Date.now() });
+    setAwayFromBottom(false);
     return action(async () => {
-      if (goals) await client.prepareGoals();
-      let sessionId = index.mainId;
-      if (!sessionId) {
-        const session = await client.openConversation(
-          "main",
-          t("Main chat"),
-          "general",
-        );
-        if (!alive.current) return;
-        sessionId = session.id;
-        setIndex(await client.conversationIndex());
+      try {
+        if (goals) await client.prepareGoals();
+        let sessionId = index.mainId;
+        if (!sessionId) {
+          const session = await client.openConversation(
+            "main",
+            t("Main chat"),
+            "general",
+          );
+          if (!alive.current) return;
+          sessionId = session.id;
+          setOutgoing((current) => current && { ...current, view: session.id });
+          setIndex(await client.conversationIndex());
+        }
+        await client.send(sessionId, { type: "user.message", text });
+        if (alive.current) setAwayFromBottom(false);
+      } catch (error) {
+        if (alive.current) setOutgoing(undefined);
+        throw error;
       }
-      await client.send(sessionId, { type: "user.message", text });
-      if (alive.current) setAwayFromBottom(false);
     });
   };
   const stop = () =>
@@ -1483,8 +1492,11 @@ function Workspace({
               })}
               {pendingSend && (
                 <div className="chat-message-group from-user arriving pending">
+                  {splitQuote(pendingSend.text).quote && (
+                    <MessageQuote text={splitQuote(pendingSend.text).quote!} />
+                  )}
                   <MessageBubble label={t("Sending")} onOptions={() => {}}>
-                    <Markdown text={pendingSend.text} />
+                    <Markdown text={splitQuote(pendingSend.text).text} />
                   </MessageBubble>
                 </div>
               )}

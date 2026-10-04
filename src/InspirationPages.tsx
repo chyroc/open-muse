@@ -182,7 +182,7 @@ export function InspirationPage({
   client: Client;
   kind: InspirationKind;
   onDiscuss: (item: InspirationItem) => void;
-  // Sends a catalog idea to the main chat as a message from the person.
+  // Sends an idea to the main chat as a message from the person.
   onStart?: (text: string) => void;
   editInstructions?: boolean;
   onEditorClose?: () => void;
@@ -328,9 +328,12 @@ export function InspirationPage({
       .then((state) => alive.current && setCatalogState(state))
       .catch((e) => alive.current && setError((e as Error).message));
   }
+  // Get started sends a short go-ahead quoting the idea's title to the main
+  // chat, for a catalog idea and one made for this person alike; without a
+  // main chat to send to, a made-for-you idea opens as a draft.
   function startIdea(shown: ShownIdea) {
-    if (shown.generated) onDiscuss(shown.generated);
-    else onStart?.(ideaStartMessage(shown));
+    if (onStart) onStart(ideaStartMessage(shown));
+    else if (shown.generated) onDiscuss(shown.generated);
   }
   function likeIdea(shown: ShownIdea) {
     if (shown.generated)
