@@ -15,6 +15,7 @@ import {
 } from "../ui/shortcut";
 import { DictationSettings } from "../ui/DictationSettings";
 import { QuickChat } from "../ui/QuickChat";
+import { vaultAccount } from "./account";
 
 vi.mock("../../src/useTask", () => ({
   useTask: () => ({
@@ -172,15 +173,13 @@ describe("Mac dictation shortcuts", () => {
       fetcher: vi.fn(async () => {
         throw new Error("This test must not reach the cloud");
       }),
-      vault: {
-        read: async () =>
-          JSON.stringify({
-            kind: "api_key",
-            apiKey: `quick-${crypto.randomUUID()}`,
-            project: "test",
-          }),
-        write: async () => {},
-      },
+      account: vaultAccount(async () =>
+        JSON.stringify({
+          kind: "api_key",
+          apiKey: `quick-${crypto.randomUUID()}`,
+          project: "test",
+        }),
+      ),
     });
     await client.restore();
     vi.spyOn(client, "config").mockResolvedValue({
@@ -230,7 +229,6 @@ describe("Mac dictation shortcuts", () => {
       fetcher: vi.fn(async () => {
         throw new Error("This test must not reach the cloud");
       }),
-      vault: { read: async () => "", write: async () => {} },
     });
     await client.restore();
     await mount(<QuickChat client={client} />);

@@ -626,25 +626,6 @@ describe("Client account sync", () => {
     expect(changed).toHaveBeenCalled();
   });
 
-  it("does not sync in local mode", async () => {
-    const db = new LocalDatabase(`c-${uuid()}`);
-    const client = new Client({
-      vault: {
-        read: async () =>
-          JSON.stringify({ kind: "api_key", apiKey, project: "" }),
-        write: async () => {},
-      },
-      database: db,
-      fetcher: vi.fn<typeof fetch>(),
-    });
-    await client.restore();
-    await client.setModelChoice({
-      model: "doubao-seed-2-1-pro-260915",
-      effort: "low",
-    });
-    expect(client.syncAccountData()).toBeUndefined();
-  });
-
   it("starts a separate sync after switching accounts", async () => {
     const server = service();
     const who = { owner: "muse_user_one" };

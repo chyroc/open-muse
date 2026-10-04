@@ -17,6 +17,7 @@ import {
 } from "../ui/appearance";
 import { SettingsWindow } from "../ui/SettingsWindow";
 import { contrast, paintedRules, themeTokens } from "./contrast";
+import { vaultAccount } from "./account";
 
 let root: Root | undefined;
 let host: HTMLDivElement | undefined;
@@ -54,15 +55,13 @@ async function fixture() {
     fetcher: vi.fn(async () => {
       throw new Error("Appearance must not contact the cloud");
     }),
-    vault: {
-      read: async () =>
-        JSON.stringify({
-          kind: "api_key",
-          apiKey: `appearance-${crypto.randomUUID()}`,
-          project: "test",
-        }),
-      write: async () => {},
-    },
+    account: vaultAccount(async () =>
+      JSON.stringify({
+        kind: "api_key",
+        apiKey: `appearance-${crypto.randomUUID()}`,
+        project: "test",
+      }),
+    ),
   });
   await client.restore();
   return client;

@@ -308,17 +308,6 @@ class MuseBridgeViewController: CAPBridgeViewController {
         webView?.configuration.userContentController.add(appearanceHandler, contentWorld: .page, name: "museAppearance")
         webView?.configuration.userContentController.addScriptMessageHandler(notificationsHandler, contentWorld: .page, name: "museNotifications")
         webView?.configuration.userContentController.add(remindersHandler, contentWorld: .page, name: "museReminders")
-        #if DEBUG && targetEnvironment(simulator)
-        // Real-MA acceptance uses separate mappings/resources without changing
-        // the user's normal main chat or personal memory. No credential is injected.
-        if let profile = ProcessInfo.processInfo.environment["MUSE_UI_TEST_PROFILE"],
-           profile.range(of: "^welcome-[a-z0-9-]{1,60}$", options: .regularExpression) != nil {
-            webView?.configuration.userContentController.addUserScript(WKUserScript(
-                source: "Object.defineProperty(globalThis, '__MUSE_TEST_PROFILE__', { value: '\(profile)' });",
-                injectionTime: .atDocumentStart, forMainFrameOnly: true
-            ))
-        }
-        #endif
         // Keep the composer above the keyboard without spending the reduced
         // viewport on the bottom navigation. No third-party app is inspected.
         for (notification, visible) in [

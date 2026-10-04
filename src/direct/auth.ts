@@ -16,7 +16,6 @@ import type {
   SyncPushResponse,
 } from "../../shared/account-sync";
 import type { ClaimInput, ClaimResult } from "../../shared/proactive";
-import { credentials as defaultVault, type CredentialStore } from "./storage";
 import { MA, MA_BASE_URL, directFetch } from "./transport";
 
 const projectName = z
@@ -30,26 +29,10 @@ const apiKey = z
   .min(16)
   .max(1024)
   .regex(/^[\x21-\x7e]+$/);
-const apiKeyLogin = z.object({
-  kind: z.literal("api_key"),
-  apiKey,
-  project: projectName.optional(),
-});
-// Earlier releases could also save a Volcano SSO session. Sign-in is API-key
-// only now: such a record is kept untouched on this device but is never used.
-function retiredSSO(value: unknown) {
-  if (typeof value !== "object" || value === null) return false;
-  const { accessKeyId, secretKey, sessionToken } = value as Record<
-    string,
-    unknown
-  >;
-  return (
-    typeof accessKeyId === "string" &&
-    typeof secretKey === "string" &&
-    typeof sessionToken === "string"
-  );
-}
-export type APIKeyLogin = z.infer<typeof apiKeyLogin> & {
+export type APIKeyLogin = {
+  kind: "api_key";
+  apiKey: string;
+  project?: string;
   // Set for keys stored in an Open Muse account: the verified owner and the stored
   // credential revision they were read at.
   owner?: string;
@@ -132,18 +115,20 @@ export interface AccountProvider {
   ): Promise<AccountWorkspaceResponse>;
 }
 
+// Open Muse needs an Open Muse account: the signed-in account is the user's
+// identity, and the Ark key is only the model-service credential, stored with
+// the account by the service and held here in memory. A key that an earlier
+// device-only release saved on this device is left untouched and never used.
 export class DirectAuth {
   value?: APIKeyLogin;
   private revision = 0;
   private owner?: string;
   private busy = false;
   constructor(
-    private vault: CredentialStore = defaultVault,
     private fetcher: typeof fetch = directFetch,
     readonly account?: AccountProvider,
   ) {}
-  // Builds configured with an Open Muse account service use the account as the
-  // user's identity; the Ark key is only the model-service credential.
+  // Whether this build has an Open Muse account service to sign in to.
   accountMode() {
     return Boolean(this.account?.accountConfigured());
   }
@@ -158,22 +143,7 @@ export class DirectAuth {
     return this.revision;
   }
   async restore() {
-    const raw = await this.vault.read();
     this.value = undefined;
-    if (raw) {
-      const saved = JSON.parse(raw);
-      const login = apiKeyLogin.safeParse(saved);
-      // In account builds the key comes from the account. A key saved on this
-      // device by a local build is left untouched and never used.
-      if (login.success) {
-        if (!this.accountMode()) this.value = login.data;
-      } else if (!retiredSSO(saved))
-        throw new Error(
-          t(
-            "Saved login is invalid. Clear this app's credentials and sign in again.",
-          ),
-        );
-    }
     if (this.accountMode()) await this.sync();
   }
   // Reads the signed-in account's key from the service. Called on launch and
@@ -208,14 +178,8 @@ export class DirectAuth {
       ready: Boolean(c),
       method: c ? ("api_key" as const) : undefined,
       project: c?.project,
-      ...(this.accountMode()
-        ? { account: { signedIn: Boolean(this.accountOwner()) } }
-        : {}),
+      account: { signedIn: Boolean(this.accountOwner()) },
     };
-  }
-  private async save(value: APIKeyLogin | undefined) {
-    await this.vault.write(value ? JSON.stringify(value) : "");
-    this.value = value;
   }
   private async serial<T>(fn: () => Promise<T>) {
     if (this.busy)
@@ -271,19 +235,19 @@ export class DirectAuth {
     if (path === "status") return this.status();
     const confirmed = z.object({ confirm: z.literal(true) }).strict();
     return this.serial(async () => {
-      if (this.accountMode()) {
-        if (path === "logout") {
-          confirmed.parse(body);
-          this.signedInOwner();
-          const result = await this.account!.removeAccountCredential(
-            this.revision,
-          );
-          this.revision = result.revision;
-          this.value = undefined;
-          return { ok: true };
-        }
-      } else if (path === "logout") {
-        await this.save(undefined);
+      if (!this.accountMode())
+        throw new ApiError(
+          503,
+          t("This build has no Open Muse account service to sign in to."),
+        );
+      if (path === "logout") {
+        confirmed.parse(body);
+        this.signedInOwner();
+        const result = await this.account!.removeAccountCredential(
+          this.revision,
+        );
+        this.revision = result.revision;
+        this.value = undefined;
         return { ok: true };
       }
       if (path !== "api-key")
@@ -296,21 +260,7 @@ export class DirectAuth {
         })
         .strict()
         .parse(body);
-      if (this.accountMode())
-        return this.store({ apiKey: input.apiKey, project: input.project });
-      if (this.value)
-        throw new ApiError(
-          409,
-          t("Sign out before connecting another account."),
-        );
-      const value = {
-        kind: "api_key" as const,
-        apiKey: input.apiKey,
-        project: input.project,
-      };
-      await this.verify(value);
-      await this.save(value);
-      return { ready: true };
+      return this.store({ apiKey: input.apiKey, project: input.project });
     });
   }
 }

@@ -37,8 +37,8 @@ conversations, memory, and the agent stay in the person's Ark account.
 **Export my data** saves a JSON copy of everything the service keeps for the
 account, with the Ark API key shown only by its last four characters.
 
-Builds without these values run in single-user local mode: the API key is kept
-on the device and no account or service request is made.
+Open Muse needs an Open Muse account: there is no single-user or device-key
+mode, and a build without the account service cannot connect.
 
 ## Connect to Ark
 
@@ -51,11 +51,10 @@ separate workspace and stops background work tied to the old key; removing it
 applies to all of the account's devices. Volcano SSO sign-in is not supported,
 and console-only (TOP) actions are not offered.
 
-After an upgrade, a Volcano SSO sign-in saved on the device by an earlier
-release is kept untouched and never used. An account build likewise leaves an
-API key saved on the device by a local build untouched and never uses or
-uploads it; conversations and data from that setup stay on the device without
-being attributed to the account.
+After an upgrade, a Volcano SSO sign-in or an API key saved on the device by an
+earlier release is kept untouched and never used or uploaded; conversations and
+data from that setup stay on the device without being attributed to the
+account.
 
 On first use, Muse prepares an agent and environment automatically. In an
 account build the Open Muse service creates the account's agent, environment,
@@ -67,9 +66,10 @@ resources, even if resource labels are changed outside Open Muse. Resource
 labels and every IndexedDB record are scoped by
 `accountWorkspaceKey(apiKey, project, owner)`. A holder of the same Ark key can
 still reach any resource directly at Ark; use separate keys when accounts must
-not reach each other's data. Local builds create and discover resources on the
-device, scoped by API-key digest and project. Uncertain creation results are
-checked before another write; they are never blindly retried or adopted.
+not reach each other's data. The service creates the account's agent,
+environment, and memory store and records them; apps never create or discover
+them. Uncertain creation results are checked before another write; they are
+never blindly retried or adopted.
 
 ### What an account stores
 
@@ -137,8 +137,7 @@ per original session and event, so saving the same reply on two devices keeps
 one), Feed and Ideas posts with their likes and discussion links, the Feed
 instructions dismissal, which side chats are archived, and the main chat with
 its earlier chapters. The side-chat list, reactions, approvals, check-in and
-reminder receipts, and pending generation runs are not synced. Local builds
-never upload any of it.
+reminder receipts, and pending generation runs are not synced.
 
 Every device of the account opens the same main chat. A device without one
 syncs before starting a main chat and opens the account's instead; a device
@@ -157,8 +156,8 @@ an interrupted send is repeated with the same ID and written once. The
 workspace key includes the signed-in account, so signing out or switching
 accounts never sends the previous account's pending changes. Records saved
 under the account's workspace before sync existed already belong to that
-account and are uploaded on the first sync; records from a local build or
-another account are not.
+account and are uploaded on the first sync; records from an earlier device-key
+release or another account are not.
 
 The service writes an item only at the revision the device last saw. When
 another device changed it first, the device merges the two field by field
@@ -175,8 +174,7 @@ the chat list and main chat update as soon as a change arrives.
 
 ## Storage and security
 
-- iOS and macOS keep API keys (local builds) and Open Muse account sessions in
-  Keychain. Android encrypts credentials with an Android Keystore-backed
+- iOS and macOS keep Open Muse account sessions in Keychain. Android encrypts credentials with an Android Keystore-backed
   AES-GCM key and disables backup; Open Muse accounts are not supported on Android.
 - The web app keeps credentials in `sessionStorage`, not persistent local
   storage. A page reload preserves the browser session; signing out clears it.
@@ -198,8 +196,8 @@ the chat list and main chat update as soon as a change arrives.
   only after that short restore, not instantly. This is the cost of keeping
   the key out of device storage, not a defect to optimize away.
 - Signing out of an Open Muse account ends that session and drops the in-memory key
-  and runtime; nothing is deleted. In local builds, signing out removes the
-  device's key. Neither revokes the key at Ark; do that in the Ark console.
+  and runtime; nothing is deleted and the key is not revoked at Ark; do that in
+  the Ark console.
 - **Reset this device** (iOS Settings, macOS Settings > Data controls) asks for
   confirmation, then removes the saved API key and every sign-in from
   Keychain, deletes all local databases and preferences, and restarts the app
@@ -314,11 +312,10 @@ edge: the page slides aside as a darkening card and follows the finger while
 the sidebar grows into place beneath it, opening past a third of the way or on
 a flick; swiping the sidebar back closes it the same way.
 
-Main-chat selection is isolated by API key and project. In an account build,
-the main chat and its chapters are shared by the account's devices, and
-archiving or restoring a side chat syncs to them; the main chat and its earlier
-chapters never take an archive state from another device. In a local build the
-main chat belongs to the device. Creation attempts are
+Main-chat selection is isolated by account, API key, and project. The main chat
+and its chapters are shared by the account's devices, and archiving or
+restoring a side chat syncs to them; the main chat and its earlier chapters
+never take an archive state from another device. Creation attempts are
 recorded before submission and recovered by a random marker after ambiguous
 failures, rather than creating another session automatically.
 
@@ -364,7 +361,7 @@ With an Open Muse account, the app first claims the day's check-in (its local
 date) with the Open Muse service, and only the device or service that claims
 it first sends it. When the claim is lost, nothing is sent and the day is not
 asked about again; when the service cannot be reached, nothing is sent and the
-claim is tried the next time. Local mode has no claim.
+claim is tried the next time.
 
 Once delivery while closed is on in Upcoming, **Check-ins** also offers **Check
 in even when Open Muse is closed**, an account setting that is off by default.
@@ -401,10 +398,8 @@ rejected result. Only the latest occurrence from the last 36 hours is
 delivered; older misses are not replayed. A device delivers only occurrences
 after it first ran this feature, so a new device does not repeat earlier
 reminders. Before sending, it also skips occurrences another device already
-delivered to the main chat. In local mode, two devices sending in the same
-moment can still both deliver one; with an Open Muse account, each device
-claims every occurrence with the service first and delivers only the ones it
-won. An occurrence another device or the service claimed is left to it; when
+delivered to the main chat, and each device claims every occurrence with the
+service first and delivers only the ones it won. An occurrence another device or the service claimed is left to it; when
 the service cannot be reached, the occurrence stays due and nothing is sent
 for it until a claim succeeds. Resuming or changing an item does not replay
 occurrences that passed in the meantime.
@@ -487,9 +482,11 @@ token when it is within five minutes of expiry, and passes it to lark-cli
 through its environment credentials (`LARKSUITE_CLI_APP_ID`,
 `LARKSUITE_CLI_USER_ACCESS_TOKEN`, user identity only). The assistant then
 works in Lark as the person in every conversation without signing in.
-**Disconnect** removes the connection and the saved sign-in at once. Builds
-without an account keep the earlier flow, where the assistant runs lark-cli's
-own setup in the chat.
+**Disconnect** removes the connection and the saved sign-in at once. The Mac
+connects Lark the same way in Settings > **Connectors**: the Lark row expands
+to show the two steps, opens each Lark page in the browser, and follows along
+until Lark confirms. Asking the assistant to sign in with lark-cli in a chat
+still works; the account keeps that sign-in for new conversations too.
 
 ### Lark message channel
 
@@ -655,9 +652,8 @@ Feed instructions are editable through the top-right control and saved to
 `FEED.md` in personal MA memory with conflict checks and readback verification.
 Changes affect future posts only. Likes, generated-post indexes, dismissed
 instructions, and discussion links are scoped to the active connection. In
-account builds they sync across the account's devices (see
-[Sync across devices](#sync-across-devices)); in local builds they stay on the
-device. Opening Discuss or an idea prepares an editable side-chat draft;
+they sync across the account's devices (see
+[Sync across devices](#sync-across-devices)). Opening Discuss or an idea prepares an editable side-chat draft;
 it does not send a message until the user presses Send. Existing discussions
 reopen their linked conversation.
 

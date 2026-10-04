@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 import { DirectAuth, type AccountProvider } from "../src/direct/auth";
-import type { CredentialStore } from "../src/direct/storage";
 
 // An account whose session is renewing when the app reads it: it has no
 // owner until the renewal settles.
@@ -27,12 +26,11 @@ function renewingAccount() {
     },
   };
 }
-const vault: CredentialStore = { read: async () => "", write: async () => {} };
 
 describe("Account key during a session renewal", () => {
   it("waits for the renewal instead of treating the account as signed out", async () => {
     const { account, finish } = renewingAccount();
-    const auth = new DirectAuth(vault, vi.fn<typeof fetch>(), account);
+    const auth = new DirectAuth(vi.fn<typeof fetch>(), account);
     const synced = auth.sync();
     finish();
     await synced;

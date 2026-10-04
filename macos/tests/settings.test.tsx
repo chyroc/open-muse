@@ -21,6 +21,7 @@ import {
 import { SettingsWindow } from "../ui/SettingsWindow";
 import { backgroundClient } from "../../src/background-client";
 import { restoreInBackground } from "../ui/startup";
+import { vaultAccount } from "./account";
 
 let root: Root | undefined;
 let host: HTMLDivElement | undefined;
@@ -43,17 +44,15 @@ async function fixture(signedIn = true) {
     fetcher: vi.fn(async () => {
       throw new Error("Settings must not contact the cloud");
     }),
-    vault: {
-      read: async () =>
-        signedIn
-          ? JSON.stringify({
-              kind: "api_key",
-              apiKey: `settings-${crypto.randomUUID()}`,
-              project: "test",
-            })
-          : "",
-      write: async () => {},
-    },
+    account: vaultAccount(async () =>
+      signedIn
+        ? JSON.stringify({
+            kind: "api_key",
+            apiKey: `settings-${crypto.randomUUID()}`,
+            project: "test",
+          })
+        : "",
+    ),
   });
   await client.restore();
   return client;
@@ -160,7 +159,7 @@ describe("Mac settings model", () => {
     });
     expect(openNativeSettings()).toBe(false);
   });
-  it("names email as the sign-in method of an account build", () => {
+  it("names email as the sign-in method", () => {
     expect(
       connectionSummary({
         loggedIn: true,
@@ -169,10 +168,6 @@ describe("Mac settings model", () => {
         account: { signedIn: true },
       }).method,
     ).toBe("Email");
-    expect(
-      connectionSummary({ loggedIn: true, ready: true, method: "api_key" })
-        .method,
-    ).toBe("API Key");
     expect(
       connectionSummary({
         loggedIn: false,
@@ -309,23 +304,15 @@ describe("Mac settings window", () => {
       "persistentDomain(forName: UserDefaults.globalDomain)",
     );
   });
-  it("says what the Open Muse service keeps only when the build has one", async () => {
-    const configured = vi
-      .spyOn(backgroundClient, "configured")
-      .mockReturnValue(false);
+  it("says what the Open Muse service keeps", async () => {
     await mount(<SettingsWindow client={await fixture()} />);
     await click("Data controls");
-    expect(host!.textContent).toContain("Open Muse has no server of its own.");
-    expect(host!.textContent).not.toContain("With the Open Muse service");
-    await act(async () => root!.unmount());
-    root = undefined;
-    configured.mockReturnValue(true);
-    await mount(<SettingsWindow client={await fixture()} />);
-    await click("Data controls");
-    expect(host!.textContent).not.toContain("has no server of its own");
+    expect(host!.textContent).toContain(
+      "Chats go straight to your Ark project.",
+    );
     expect(host!.textContent).toContain("With the Open Muse service");
     expect(host!.textContent).toContain("your Ark key encrypted");
-    configured.mockRestore();
+    expect(host!.textContent).not.toContain("has no server of its own");
   });
   it("matches the reference on the section names it leaves in English", async () => {
     for (const label of ["Computer use", "File system access", "Dictation"])
@@ -349,7 +336,9 @@ describe("Mac settings window", () => {
       expect(host!.querySelectorAll("input")).toHaveLength(0);
     }
     await click("Data controls");
-    expect(host!.textContent).toContain("no server of its own");
+    expect(host!.textContent).toContain(
+      "Chats go straight to your Ark project",
+    );
   });
   it("keeps the connection summary, language and about groups on the first screen", async () => {
     const client = await fixture();
@@ -360,7 +349,7 @@ describe("Mac settings window", () => {
     ).toBe(6);
     expect(host!.querySelector(".settings-auth")).toBeNull();
     expect(host!.textContent).toContain("Connected");
-    expect(host!.textContent).toContain("API Key");
+    expect(host!.textContent).toContain("Email");
     expect(host!.textContent).toContain("Language");
     expect(host!.textContent).toContain("Version");
     // Outside the Mac app the desktop group explains who controls it.
@@ -432,34 +421,16 @@ describe("Mac settings window", () => {
     expect(reads()).toBeGreaterThan(before);
     vi.useRealTimers();
   });
-  it("confirms a sign-out started by the shared connection panel", async () => {
+  it("asks before removing the Ark key from the account", async () => {
     const client = await fixture();
     const auth = vi.spyOn(client, "auth");
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal("confirm", confirm);
     await mount(<SettingsWindow client={client} />);
     await click("Manage connection");
-    await click("Sign out of this login");
-    expect(host!.querySelector("dialog")?.textContent).toContain(
-      "does not revoke the cloud API Key",
-    );
-    expect(auth).not.toHaveBeenCalledWith("logout", {});
-    await act(async () =>
-      host!
-        .querySelector<HTMLButtonElement>(
-          "dialog .feed-dialog-actions button:first-child",
-        )!
-        .click(),
-    );
-    expect(auth).not.toHaveBeenCalledWith("logout", {});
-    expect(host!.querySelector("dialog")).toBeNull();
-    await click("Sign out of this login");
-    await act(async () =>
-      host!
-        .querySelector<HTMLButtonElement>(
-          "dialog .feed-dialog-actions button:last-child",
-        )!
-        .click(),
-    );
-    expect(auth).toHaveBeenCalledWith("logout", {});
+    await click("Remove API key from my account");
+    expect(confirm).toHaveBeenCalled();
+    expect(auth).not.toHaveBeenCalledWith("logout", { confirm: true });
   });
   it("starts the section list below the window's traffic lights", () => {
     const css = readFileSync("macos/ui/settings.css", "utf8");
@@ -468,13 +439,17 @@ describe("Mac settings window", () => {
     // The reference fills its groups rather than outlining them.
     expect(css).toMatch(/\.settings-group \{[^}]*background: var\(--fill\)/);
   });
-  it("requires confirmation before signing this Mac out", async () => {
+  it("requires confirmation before signing this Mac out of the account", async () => {
     const client = await fixture();
     const auth = vi.spyOn(client, "auth");
+    const signOut = vi
+      .spyOn(backgroundClient, "signOutAccount")
+      .mockResolvedValue({ revoked: true });
+    const changed = vi.spyOn(client, "accountChanged");
     await mount(<SettingsWindow client={client} />);
     await click("Sign out");
     expect(host!.querySelector("dialog")?.textContent).toContain(
-      "does not revoke the cloud API Key",
+      "Other devices stay signed in. Nothing is deleted.",
     );
     await act(async () =>
       host!
@@ -483,7 +458,7 @@ describe("Mac settings window", () => {
         )!
         .click(),
     );
-    expect(auth).not.toHaveBeenCalledWith("logout", {});
+    expect(signOut).not.toHaveBeenCalled();
     await click("Sign out");
     await act(async () =>
       host!
@@ -492,7 +467,11 @@ describe("Mac settings window", () => {
         )!
         .click(),
     );
-    expect(auth).toHaveBeenCalledWith("logout", {});
+    expect(signOut).toHaveBeenCalled();
+    expect(changed).toHaveBeenCalled();
+    // Signing out never removes the account's Ark key.
+    expect(auth).not.toHaveBeenCalledWith("logout", expect.anything());
+    signOut.mockRestore();
   });
   it("renders before the Keychain login is restored and refreshes after it", async () => {
     let settle: (value: string) => void = () => {};

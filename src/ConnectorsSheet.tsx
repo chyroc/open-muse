@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ConnectorIcon } from "./AppIcons";
 import {
   BookUser,
   Brain,
@@ -114,15 +115,13 @@ const personal = (source: IphoneSource): Connector =>
     },
   })[source];
 const personalSources: IphoneSource[] = ["calendar", "reminders", "contacts"];
-const larkSignedIn = (kept: boolean): Connector => ({
+// Signed in from a conversation with lark-cli: the account keeps that
+// sign-in for new conversations.
+const larkSignedIn = (): Connector => ({
   ...lark(),
-  detail: kept
-    ? t(
-        "Signed in to your Lark account. Your assistant keeps this sign-in for new conversations.",
-      )
-    : t(
-        "Signed in to your Lark account in your assistant's cloud environment. When the main chat continues into a new chapter, sign in again.",
-      ),
+  detail: t(
+    "Signed in to your Lark account. Your assistant keeps this sign-in for new conversations.",
+  ),
 });
 // Connected in the app: the service keeps the person's authorization.
 const larkAuthorized = (name?: string): Connector => ({
@@ -136,8 +135,6 @@ const larkAuthorized = (name?: string): Connector => ({
         "Connected. Your assistant works in Lark as you in every conversation.",
       ),
 });
-const larkSignIn =
-  "Help me sign in to Lark with lark-cli so you can work in my Lark account.";
 const larkSignOut = "Sign me out of Lark with lark-cli.";
 
 export function ConnectorsSheet({
@@ -153,11 +150,7 @@ export function ConnectorsSheet({
   // and whether the assistant is signed in to Lark in the main chat.
   client: Pick<
     Client,
-    | "healthConnected"
-    | "setHealthConnected"
-    | "larkConnected"
-    | "larkKept"
-    | "forgetLark"
+    "healthConnected" | "setHealthConnected" | "larkConnected" | "forgetLark"
   >;
   onClose: () => void;
   // Puts text in the main chat composer for the person to review and send.
@@ -200,15 +193,14 @@ export function ConnectorsSheet({
         (value) => active && setLarkLinked(value),
         () => {},
       );
-    if (client.larkKept())
-      void service.larkConnection().then(
-        (value) =>
-          active &&
-          setLarkAccount(
-            value.phase === "connected" ? { name: value.name } : undefined,
-          ),
-        () => {},
-      );
+    void service.larkConnection().then(
+      (value) =>
+        active &&
+        setLarkAccount(
+          value.phase === "connected" ? { name: value.name } : undefined,
+        ),
+      () => {},
+    );
     void client.healthConnected().then(
       (value) => active && setLinked(value),
       () => {},
@@ -228,9 +220,7 @@ export function ConnectorsSheet({
   async function connect(id: string) {
     setError("");
     if (id === "lark") {
-      // Accounts connect in the app; a device-only setup asks the assistant.
-      if (client.larkKept()) setLarkSetup(true);
-      else onDraft(t(larkSignIn));
+      setLarkSetup(true);
       return;
     }
     if ((personalSources as string[]).includes(id)) {
@@ -267,7 +257,7 @@ export function ConnectorsSheet({
     ...(larkAccount
       ? [larkAuthorized(larkAccount.name)]
       : larkLinked
-        ? [larkSignedIn(client.larkKept())]
+        ? [larkSignedIn()]
         : []),
   ].filter(matches);
   const available = [
@@ -331,9 +321,7 @@ export function ConnectorsSheet({
                     aria-expanded={open === id}
                     onClick={() => setOpen(open === id ? undefined : id)}
                   >
-                    <span className="connector-icon" data-id={id}>
-                      <Icon size={20} aria-hidden="true" />
-                    </span>
+                    <ConnectorIcon id={id} Icon={Icon} />
                     <span className="connector-name">{name}</span>
                     <ChevronRight
                       size={18}
@@ -397,9 +385,7 @@ export function ConnectorsSheet({
               {available.map(({ id, name, detail, Icon }) => (
                 <li key={id}>
                   <div className="connector-row">
-                    <span className="connector-icon" data-id={id}>
-                      <Icon size={20} aria-hidden="true" />
-                    </span>
+                    <ConnectorIcon id={id} Icon={Icon} />
                     <span className="connector-name" title={detail}>
                       {name}
                     </span>

@@ -33,9 +33,10 @@ Account builds set three public values at build time: `VITE_MUSE_BACKGROUND_URL`
 (the Open Muse service origin), `VITE_MUSE_SUPABASE_URL` (the Auth origin), and
 `VITE_MUSE_SUPABASE_ANON_KEY` (the anon or publishable key; secret and
 service-role keys are rejected). Both origins are pinned in the app's CSP.
-Builds without these values run in single-user local mode: the API key is kept
-on the device and no account or service request is made. See [Open Muse accounts](how-it-works.md#open-muse-accounts)
-for what an account does.
+Every app build is an account build; there is no single-user mode. A build
+without these values cannot connect and says so in Settings. See
+[Open Muse accounts](how-it-works.md#open-muse-accounts) for what an account
+does.
 
 `VITE_MUSE_MA_PROVIDER` selects the Managed Agents backend: `ark` (default) or
 `claude`. It sets the API the apps call and the origin their connection policy
@@ -48,9 +49,10 @@ CLI from the Supabase workspace named `open-muse` (override with
 Apple Development team, installs, and launches the app. `OPEN_MUSE_DEVICE`
 selects a device when several are paired.
 
-`npm run macos:build` always makes such a build: it takes the three values from
-the environment or reads them with the Volcengine CLI like `ios:install`, so the
-Mac app signs in with an Open Muse account's email and password.
+`npm run macos:build` and `npm run ios:build` (the Simulator app) make such a
+build the same way: they take the three values from the environment or read
+them with the Volcengine CLI like `ios:install`, so both apps sign in with an
+Open Muse account's email and password.
 
 The Open Muse service itself is documented in [server/README](../server/README.md).
 
@@ -58,7 +60,7 @@ The Open Muse service itself is documented in [server/README](../server/README.m
 
 **iOS:** `ios/App/App.xcodeproj`, scheme `App`, bundle ID
 `app.openmuse.mobile`. Run `npm run ios` to open Xcode. The app needs only
-internet access, not a reachable Mac or service URL. Simulator builds use ad-hoc
+internet access and the Open Muse service, not a reachable Mac. Simulator builds use ad-hoc
 signing for Keychain access. Physical-device builds require a local development
 identity and provisioning profile; keep team/device identifiers untracked.
 A free Apple Developer team allows only three installed development apps per

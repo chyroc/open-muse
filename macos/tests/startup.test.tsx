@@ -7,6 +7,7 @@ import { LocalDatabase } from "../../src/direct/storage";
 import { defaultIdentity } from "../../src/direct/identity";
 import { DesktopApp } from "../ui/DesktopApp";
 import { restoreInBackground } from "../ui/startup";
+import { vaultAccount } from "./account";
 
 vi.mock("../../src/useTask", () => ({
   useTask: () => ({
@@ -44,15 +45,13 @@ async function fixture() {
     fetcher: vi.fn(async () => {
       throw new Error("Startup must not contact the cloud");
     }),
-    vault: {
-      read: async () =>
-        JSON.stringify({
-          kind: "api_key",
-          apiKey: `startup-${crypto.randomUUID()}`,
-          project: "test",
-        }),
-      write: async () => {},
-    },
+    account: vaultAccount(async () =>
+      JSON.stringify({
+        kind: "api_key",
+        apiKey: `startup-${crypto.randomUUID()}`,
+        project: "test",
+      }),
+    ),
   });
   vi.spyOn(client, "sessions").mockResolvedValue({ data: [] });
   vi.spyOn(client, "conversationIndex").mockResolvedValue({

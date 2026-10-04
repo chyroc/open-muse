@@ -275,8 +275,8 @@ Configure the app build with `VITE_MUSE_BACKGROUND_URL`,
 API origin, a public Auth origin, and an anon/publishable key; service-role JWTs
 and secret keys are rejected. The exact Auth origin is added to both Apple
 clients' connection policies. Do not put credentials in URLs or tracked files.
-Builds without Auth configuration run in single-user local mode, make no
-Supabase requests, and do not use this service.
+Every app build needs this configuration: there is no single-user mode, and a
+build without it cannot connect.
 
 The **Open Muse account** settings card supports email/password signup and login.
 Signup requires explicit confirmation and does not count as a confirmed login;
@@ -328,7 +328,7 @@ Signup failures use one generic message and do not surface provider status
 codes, so the form does not reveal whether an email is registered. Live use
 requires an authorized Supabase workspace, the correct public endpoint and key,
 provider signup/email policy, and native-to-Auth plus service-to-Auth
-connectivity. Local builds do not change any cloud settings.
+connectivity. Building the apps does not change any cloud settings.
 
 ## Local development
 
@@ -708,7 +708,8 @@ caches and pending actions with `accountWorkspaceKey(apiKey, project, owner)`.
 Two accounts using the same key/project therefore get separate MA resources,
 and the service refuses to bind a resource not recorded for the requesting
 account. Legacy records are preserved and never assigned to a newly signed-in
-account, and an account build never uses or uploads a device-held key. A
+account, and the apps never use or upload a key an earlier release kept on the
+device. A
 shared Ark key can grant direct upstream access to both users' resources:
 application partitioning is not an Ark authorization boundary. Use separately
 scoped Ark credentials if the users must not be able to access one another's

@@ -14,7 +14,6 @@ import { LocalDatabase } from "./storage";
 import { defaultFeedInstructions } from "../../shared/inspiration";
 import { emptyGoalsDocument, parseGoals } from "../../shared/goals";
 import { emptyUpcomingDocument, parseUpcoming } from "../../shared/upcoming";
-import { memoryStoreName } from "../../shared/workspace-spec";
 import { avatarStyles } from "../../shared/avatar";
 
 type Store = { id: string; metadata?: Record<string, string> };
@@ -134,7 +133,8 @@ export class DirectIdentity {
         );
       return validId(store.id);
     }
-    // Unreachable for accounts: their store comes only from the service.
+    // The store comes from the service; a reader without the service's
+    // record finds it by its owner label and never creates one.
     if (this.resolve) return;
     const rows = await this.collect<Store>("/memory_stores?limit=100");
     const owned = rows.filter(
@@ -147,41 +147,10 @@ export class DirectIdentity {
           "Multiple personal memory stores were found. No store was selected or changed.",
         ),
       );
-    if (owned[0]) {
-      const id = validId(owned[0].id);
-      await this.db.set<Mapping>(this.key, { store_id: id });
-      return id;
-    }
-    if (!create) return;
-    const token = uuid();
-    await this.db.update<Mapping>(this.key, (old) => {
-      if (old?.pending || old?.store_id)
-        throw new ApiError(
-          409,
-          t(
-            "Memory setup is unconfirmed or running in another window. Refresh before trying again.",
-          ),
-        );
-      return { pending: token };
-    });
-    try {
-      const store = await this.ark.request<Store>("/memory_stores", {
-        method: "POST",
-        body: JSON.stringify({
-          name: memoryStoreName,
-          metadata: { open_muse_identity: this.owner },
-        }),
-      });
-      const id = validId(store.id);
-      await this.db.set<Mapping>(this.key, { store_id: id });
-      return id;
-    } catch (error) {
-      if (definitelyRejected(error))
-        await this.db.update<Mapping>(this.key, (old) =>
-          old?.pending === token ? {} : (old ?? {}),
-        );
-      throw error;
-    }
+    if (!owned[0]) return;
+    const id = validId(owned[0].id);
+    await this.db.set<Mapping>(this.key, { store_id: id });
+    return id;
   }
   private path(store: string) {
     return `/memory_stores/${validId(store)}/memories`;

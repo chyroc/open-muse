@@ -18,6 +18,7 @@ import { goalCategories, goalStarter } from "../shared/goals";
 import { ChatComposer } from "../src/ChatUI";
 import { PermissionCard } from "../src/PermissionCard";
 import { AuthPanel } from "../src/AuthPanel";
+import type { BackgroundClient } from "../src/background-client";
 import { Markdown } from "../src/components";
 import { Client } from "../src/api";
 
@@ -93,21 +94,36 @@ describe("Localized mobile UI", () => {
           : 'aria-label="Send message" disabled',
       );
       expect(html).toContain("Settings 我的原文");
-      const auth = renderToStaticMarkup(
+      // A build without the account service cannot connect at all.
+      const missing = renderToStaticMarkup(
         <AuthPanel client={new Client()} onChanged={() => {}} />,
       );
-      expect(auth).toContain(
-        chinese ? "使用 API Key 连接" : "Connect with API Key",
+      expect(missing).toContain(
+        chinese
+          ? "这个版本没有 Open Muse 账号服务"
+          : "This build has no Open Muse account service",
+      );
+      // With it, the account comes first and only the Ark key is asked for.
+      const service = {
+        accountConfigured: () => true,
+        accountOwner: () => undefined,
+        accountSessionUnconfirmed: () => false,
+        retiredConnection: () => undefined,
+        configured: () => true,
+        connected: () => false,
+      } as unknown as BackgroundClient;
+      const auth = renderToStaticMarkup(
+        <AuthPanel
+          client={new Client({ account: service as never })}
+          onChanged={() => {}}
+          service={service}
+        />,
       );
       expect(auth).toContain(chinese ? "未连接" : "Not connected");
       expect(auth).not.toContain("SSO");
-      // Only the Ark API key is asked for, without a project or a long note.
-      expect(auth.match(/<input/g)).toHaveLength(1);
-      expect(auth).toContain('type="password"');
       expect(auth).not.toMatch(
         chinese ? /项目|直接连接火山/ : /Project|Volcano Ark/,
       );
-      expect(auth).not.toContain("auth-consent-note");
     },
   );
 

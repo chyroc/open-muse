@@ -10,6 +10,7 @@ import { zhCN } from "../../shared/locales/zh-CN";
 import { DesktopApp } from "../ui/DesktopApp";
 import { DictationSettings } from "../ui/DictationSettings";
 import { joinDictation, parseDictationState } from "../ui/dictation";
+import { vaultAccount } from "./account";
 
 vi.mock("../../src/useTask", () => {
   const refresh = async () => {};
@@ -69,15 +70,13 @@ async function workspace() {
     fetcher: vi.fn(async () => {
       throw new Error("This test must not reach the cloud");
     }),
-    vault: {
-      read: async () =>
-        JSON.stringify({
-          kind: "api_key",
-          apiKey: `dictation-${crypto.randomUUID()}`,
-          project: "test",
-        }),
-      write: async () => {},
-    },
+    account: vaultAccount(async () =>
+      JSON.stringify({
+        kind: "api_key",
+        apiKey: `dictation-${crypto.randomUUID()}`,
+        project: "test",
+      }),
+    ),
   });
   await client.restore();
   vi.spyOn(client, "config").mockResolvedValue({

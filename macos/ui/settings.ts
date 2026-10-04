@@ -177,38 +177,9 @@ export function connectionSummary(status: ConnectionStatus | undefined) {
       : status.ready
         ? "Connected"
         : "Choose a project",
-    // An account build signs the person in with the account's email; the Ark
-    // API key behind it is the model credential, not how they signed in.
-    method: status?.account?.signedIn
-      ? "Email"
-      : status?.method === "api_key" && !status.account
-        ? "API Key"
-        : "",
+    // People sign in with their account's email; the Ark API key behind it
+    // is the model credential, not how they signed in.
+    method: status?.account?.signedIn ? "Email" : "",
     project: status?.project ?? "",
   };
-}
-
-// The shared sign-in panel signs out as soon as its button is pressed. The Mac
-// settings window must confirm first, so it hands that panel a client whose
-// sign-out is routed through the window instead of editing shared code.
-export function clientWithConfirmedSignOut<T extends object>(
-  client: T,
-  confirm: () => Promise<boolean>,
-): T {
-  return new Proxy(client, {
-    get(target, property, receiver) {
-      const value = Reflect.get(target, property, receiver);
-      if (property !== "auth" || typeof value !== "function") {
-        return typeof value === "function" ? value.bind(target) : value;
-      }
-      return async (path: string, body?: object) => {
-        if (path === "logout" && !(await confirm())) return { ok: false };
-        return (value as (path: string, body?: object) => unknown).call(
-          target,
-          path,
-          body,
-        );
-      };
-    },
-  });
 }

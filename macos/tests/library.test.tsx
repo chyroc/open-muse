@@ -22,6 +22,7 @@ import {
 import { LibraryPage } from "../ui/LibraryPage";
 import { DesktopApp } from "../ui/DesktopApp";
 import { parseRoute } from "../ui/model";
+import { vaultAccount } from "./account";
 
 vi.mock("../../src/useTask", () => ({
   useTask: () => ({
@@ -56,11 +57,9 @@ async function fixture(
     fetcher: vi.fn(async () => {
       throw new Error("Library must not contact the cloud");
     }),
-    vault: {
-      read: async () =>
-        JSON.stringify({ kind: "api_key", apiKey: key, project: "test" }),
-      write: async () => {},
-    },
+    account: vaultAccount(async () =>
+      JSON.stringify({ kind: "api_key", apiKey: key, project: "test" }),
+    ),
   });
   await client.restore();
   const owner = goalOwner(client);

@@ -18,6 +18,7 @@ import {
 } from "../ui/computer";
 import { ComputerSettings } from "../ui/ComputerSettings";
 import { DesktopApp } from "../ui/DesktopApp";
+import { vaultAccount } from "./account";
 
 const fixtureTask = vi.hoisted(() => ({ events: [] as AgentEvent[] }));
 vi.mock("../../src/useTask", () => {
@@ -90,15 +91,13 @@ async function client() {
     fetcher: vi.fn(async () => {
       throw new Error("This test must not reach the cloud");
     }),
-    vault: {
-      read: async () =>
-        JSON.stringify({
-          kind: "api_key",
-          apiKey: `computer-${crypto.randomUUID()}`,
-          project: "test",
-        }),
-      write: async () => {},
-    },
+    account: vaultAccount(async () =>
+      JSON.stringify({
+        kind: "api_key",
+        apiKey: `computer-${crypto.randomUUID()}`,
+        project: "test",
+      }),
+    ),
   });
   await value.restore();
   vi.spyOn(value, "config").mockResolvedValue({
@@ -288,9 +287,9 @@ describe("Mac computer use", () => {
     // Accessibility is granted; Screen Recording is not, so the controls wait.
     expect(toggle.disabled).toBe(true);
     expect(
-      host!.querySelector(".permission-settings-controls")!.getAttribute(
-        "data-disabled",
-      ),
+      host!
+        .querySelector(".permission-settings-controls")!
+        .getAttribute("data-disabled"),
     ).toBe("true");
     expect(host!.textContent).toContain("Turn off in System Settings");
     expect(host!.textContent).toContain("Accessibility granted");

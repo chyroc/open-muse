@@ -29,7 +29,7 @@ export async function diagnosticReport({ signedIn }: { signedIn: boolean }) {
     `Open Muse ${appVersion() || "development build"}`,
     systemVersion(),
     `Language: ${language} (system: ${preferred.slice(0, 3).join(", ") || "unknown"})`,
-    `Build: ${backgroundClient.configured() ? "account service" : "local only"}`,
+    `Account service: ${backgroundClient.configured() ? "configured" : "missing"}`,
     `Connected: ${signedIn ? "yes" : "no"}`,
   ];
   if (computerAvailable()) {

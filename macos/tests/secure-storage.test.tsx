@@ -7,6 +7,7 @@ import { Client } from "../../src/api";
 import { LocalDatabase } from "../../src/direct/storage";
 import { zhCN } from "../../shared/locales/zh-CN";
 import { SecureStorage } from "../ui/SecureStorage";
+import { vaultAccount } from "./account";
 
 let root: Root | undefined;
 let host: HTMLDivElement | undefined;
@@ -22,15 +23,13 @@ async function client() {
     fetcher: vi.fn(async () => {
       throw new Error("This test must not reach the cloud");
     }),
-    vault: {
-      read: async () =>
-        JSON.stringify({
-          kind: "api_key",
-          apiKey: `secrets-${crypto.randomUUID()}`,
-          project: "test",
-        }),
-      write: async () => {},
-    },
+    account: vaultAccount(async () =>
+      JSON.stringify({
+        kind: "api_key",
+        apiKey: `secrets-${crypto.randomUUID()}`,
+        project: "test",
+      }),
+    ),
   });
   await value.restore();
   return value;

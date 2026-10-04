@@ -57,15 +57,7 @@ describe("Mac theme color", () => {
     document.body.append(host);
     const root: Root = createRoot(host);
     await act(async () =>
-      root.render(
-        <SettingsWindow
-          client={
-            new Client({
-              vault: { read: async () => "", write: async () => {} },
-            })
-          }
-        />,
-      ),
+      root.render(<SettingsWindow client={new Client({})} />),
     );
     const group = host.querySelector(
       '[role=radiogroup][aria-label="Theme color"]',

@@ -10,6 +10,7 @@ import { zhCN } from "../../shared/locales/zh-CN";
 import type { UpcomingItem } from "../../shared/upcoming";
 import { UpcomingTab, editDraft, upcomingRows } from "../ui/UpcomingTab";
 import { DesktopApp } from "../ui/DesktopApp";
+import { vaultAccount } from "./account";
 
 vi.mock("../../src/useTask", () => {
   const refresh = async () => {};
@@ -63,15 +64,13 @@ async function client() {
     fetcher: vi.fn(async () => {
       throw new Error("This test must not reach the cloud");
     }),
-    vault: {
-      read: async () =>
-        JSON.stringify({
-          kind: "api_key",
-          apiKey: `upcoming-${crypto.randomUUID()}`,
-          project: "test",
-        }),
-      write: async () => {},
-    },
+    account: vaultAccount(async () =>
+      JSON.stringify({
+        kind: "api_key",
+        apiKey: `upcoming-${crypto.randomUUID()}`,
+        project: "test",
+      }),
+    ),
   });
   await value.restore();
   vi.spyOn(value, "upcoming").mockResolvedValue({ items, revision: "r1" });

@@ -20,6 +20,7 @@ import type { AgentEvent } from "../shared/types";
 import { identityInstructions } from "../shared/identity";
 import { canonicalJson } from "../shared/session-refresh";
 import { deviceTools } from "../shared/workspace-spec";
+import { testAccount } from "./account-fixture";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -185,13 +186,35 @@ function fixture() {
         : Response.json({}, { status: 404 });
     return Response.json({ data: resources[group] });
   });
-  const client = new Client({ vault, database: db, fetcher });
-  const login = () =>
-    client.auth("api-key", { apiKey: key, project: "", confirm: true });
+  const account = testAccount(fetcher);
+  const client = new Client({
+    vault,
+    database: db,
+    fetcher,
+    account: account.account,
+  });
+  // Signs in as the app does: the account session is read first, then the
+  // Ark key is saved to the account.
+  const login = async () => {
+    await client.restore();
+    return client.auth("api-key", { apiKey: key, project: "", confirm: true });
+  };
+  // Switches to another Open Muse account, as signing in to it in the app
+  // does, and saves the Ark key to it when it has none yet.
+  const switchAccount = async (
+    owner: string,
+    apiKey = "test-other-account-key-123456789",
+  ) => {
+    account.signIn(owner);
+    await client.accountChanged();
+    if (!client.signedIn())
+      await client.auth("api-key", { apiKey, project: "", confirm: true });
+  };
   return {
     client,
     vault,
     db,
+    switchAccount,
     resources,
     events,
     sessionEvents,
@@ -199,6 +222,7 @@ function fixture() {
     mounts,
     fetcher,
     login,
+    account,
   };
 }
 function pending(): AgentEvent[] {
@@ -266,7 +290,9 @@ describe("Direct MA client", () => {
     expect(later.find((e) => e.id === "elsewhere")?.app_initiation).toBe(
       "welcome",
     );
-    expect(later.find((e) => e.id === "quoted")?.app_initiation).toBeUndefined();
+    expect(
+      later.find((e) => e.id === "quoted")?.app_initiation,
+    ).toBeUndefined();
     await f.client.startWelcome("en-US");
     expect(f.events).toHaveLength(5);
     expect(String(f.resources.agents[0].system)).toContain(
@@ -350,23 +376,6 @@ describe("Direct MA client", () => {
       }),
     ).rejects.toThrow("welcome is unconfirmed");
     expect(f.events).toHaveLength(0);
-  });
-  it("keeps simulator acceptance mappings separate without changing the authorized key", async () => {
-    const f = fixture();
-    await f.login();
-    const actual = await f.client.openConversation("main");
-    const isolated = new Client({
-      vault: f.vault,
-      database: f.db,
-      fetcher: f.fetcher,
-      scope: "welcome-acceptance",
-    });
-    await isolated.restore();
-    await isolated.startWelcome("en");
-    expect((await isolated.conversationIndex()).mainId).not.toBe(actual.id);
-    expect((await f.client.conversationIndex()).mainId).toBe(actual.id);
-    expect(f.resources.memory_stores).toHaveLength(2);
-    expect(() => new Client({ scope: "invalid profile" })).toThrow();
   });
   it("sends verified choice labels as real messages and strips forged answer receipts", async () => {
     const f = fixture();
@@ -529,6 +538,7 @@ describe("Direct MA client", () => {
     ).toHaveLength(3);
     expect((await f.client.openConversation("main")).id).toBe(next.id);
     const restored = new Client({
+      account: f.account.account,
       vault: f.vault,
       database: f.db,
       fetcher: f.fetcher,
@@ -685,20 +695,15 @@ describe("Direct MA client", () => {
     const f = fixture();
     await f.login();
     const session = await f.client.openConversation("side", "Lark");
-    // Stand in for an account build whose service keeps the Lark sign-in.
-    const identity = (
-      f.client as unknown as { identity: Record<string, unknown> }
-    ).identity;
+    // The account service issues each conversation its Lark token.
     const issueLarkToken = vi
       .fn()
       .mockRejectedValueOnce(new Error("offline"))
       .mockResolvedValue({ token: "t".repeat(43), expires_at: 0 });
-    identity.account = {
+    Object.assign(f.account.account, {
       issueLarkToken,
       larkStateUrl: () => "https://svc.example/v1/lark/sandbox/state",
-      accountOwner: () => undefined,
-      accountConfigured: () => false,
-    };
+    });
     const notes = () =>
       f.events
         .filter((event) => event.type === "system.message")
@@ -825,6 +830,7 @@ describe("Direct MA client", () => {
     const side = await f.client.openConversation("side", "A separate topic");
     await f.client.archiveConversation(side.id, true);
     const restored = new Client({
+      account: f.account.account,
       vault: f.vault,
       database: f.db,
       fetcher: f.fetcher,
@@ -871,37 +877,50 @@ describe("Direct MA client", () => {
         op.transport === "rest" &&
         !["UploadFile", "CreateSkill", "StreamSessionEvents"].includes(op.id),
     ),
-  )("calls $id directly using the catalog method and fields", async (op) => {
-    const f = fixture();
-    await f.login();
-    f.fetcher.mockImplementation(async () => Response.json({ data: [] }));
-    const params = Object.fromEntries(
-      op.fields
-        .filter((field) => field.in === "path")
-        .map((field) => [field.name, "resource-123"]),
-    );
-    const body = Object.fromEntries(
-      op.fields
-        .filter((field) => field.in === "body" && field.required)
-        .map((field) => [
-          field.name,
-          field.type === "array" ? [] : field.type === "integer" ? 1 : "test",
-        ]),
-    );
-    const query = op.fields.some(
-      (field) => field.name === "page" && field.in === "query",
-    )
-      ? { page: "opaque+/=" }
-      : {};
-    const input = { params, body, query, confirm: true };
-    await f.client.ma(op.id, input);
-    const [url, request] = f.fetcher.mock.calls.at(-1)!;
-    expect(url).toBe(ARK_BASE_URL + buildRequest(op, input));
-    expect(request?.method).toBe(op.method);
-    expect(request?.body).toBe(
-      op.method === "POST" ? JSON.stringify(body) : undefined,
-    );
-  });
+  )(
+    "calls $id directly using the catalog method and fields, within the account",
+    async (op) => {
+      const f = fixture();
+      await f.login();
+      await f.client.prepareWorkspace();
+      f.fetcher.mockImplementation(async () => Response.json({ data: [] }));
+      const params = Object.fromEntries(
+        op.fields
+          .filter((field) => field.in === "path")
+          .map((field) => [field.name, "resource-123"]),
+      );
+      const body = Object.fromEntries(
+        op.fields
+          .filter((field) => field.in === "body" && field.required)
+          .map((field) => [
+            field.name,
+            field.type === "array" ? [] : field.type === "integer" ? 1 : "test",
+          ]),
+      );
+      const query = op.fields.some(
+        (field) => field.name === "page" && field.in === "query",
+      )
+        ? { page: "opaque+/=" }
+        : {};
+      const input = { params, body, query, confirm: true };
+      // An account reaches only its own agent, environment, memory store and
+      // sessions; anything else is refused before any request.
+      const refused = await f.client.ma(op.id, input).then(
+        () => undefined,
+        (error: Error) => error.message,
+      );
+      if (refused) {
+        expect(refused).toContain("Studio reaches only");
+        return;
+      }
+      const [url, request] = f.fetcher.mock.calls.at(-1)!;
+      expect(url).toBe(ARK_BASE_URL + buildRequest(op, input));
+      expect(request?.method).toBe(op.method);
+      expect(request?.body).toBe(
+        op.method === "POST" ? JSON.stringify(body) : undefined,
+      );
+    },
+  );
   it("has no backend dependency while signed out", async () => {
     const f = fixture();
     await f.client.restore();
@@ -917,11 +936,14 @@ describe("Direct MA client", () => {
     ).rejects.toThrow("Add an Ark API key");
     expect(f.fetcher).not.toHaveBeenCalled();
   });
-  it("verifies keys directly and restores them without app session tokens", async () => {
+  it("verifies keys directly and restores them from the account, never this device", async () => {
     const f = fixture();
     await f.login();
+    // The key is kept with the account, not on this device.
+    expect(await f.vault.read()).toBe("");
     expect(f.fetcher.mock.calls[0][0]).toBe(`${ARK_BASE_URL}/agents?limit=1`);
     const next = new Client({
+      account: f.account.account,
       vault: f.vault,
       database: f.db,
       fetcher: f.fetcher,
@@ -931,8 +953,8 @@ describe("Direct MA client", () => {
       ready: true,
       method: "api_key",
     });
-    await next.auth("logout", {});
-    expect(await f.vault.read()).toBe("");
+    await next.auth("logout", { confirm: true });
+    expect(next.signedIn()).toBe(false);
   });
   it("does not save invalid keys or hide upstream failures", async () => {
     const f = fixture();
@@ -946,15 +968,26 @@ describe("Direct MA client", () => {
     expect(await f.vault.read()).toBe("");
     expect(f.client.signedIn()).toBe(false);
   });
-  it("rejects switching identities without signing out", async () => {
+  it("replaces the account's key when another one is saved", async () => {
     const f = fixture();
     await f.login();
-    await expect(f.login()).rejects.toThrow("Sign out");
+    await f.client.auth("api-key", {
+      apiKey: "test-replacement-key-123456789",
+      project: "",
+      confirm: true,
+    });
+    expect(f.client.signedIn()).toBe(true);
+    expect((await f.account.account.accountCredential()).credential).toEqual({
+      apiKey: "test-replacement-key-123456789",
+      project: "",
+    });
   });
-  it("does not claim login success when secure storage fails", async () => {
+  it("does not claim login success when the account cannot save the key", async () => {
     const f = fixture();
-    vi.mocked(f.vault.write).mockRejectedValue(new Error("locked"));
-    await expect(f.login()).rejects.toThrow("locked");
+    vi.spyOn(f.account.account, "saveAccountCredential").mockRejectedValue(
+      new Error("service unavailable"),
+    );
+    await expect(f.login()).rejects.toThrow("service unavailable");
     expect(f.client.signedIn()).toBe(false);
   });
   it("creates and reuses automatic workspaces with Chrome/CDP/Lark and always_allow", async () => {
@@ -990,11 +1023,7 @@ describe("Direct MA client", () => {
     };
     const toolset = (agent.tools as Record<string, unknown>[])[0];
     // An agent from before device tools, with an older mac_open definition.
-    agent.tools = [
-      toolset,
-      foreign,
-      { ...deviceTools[2], description: "old" },
-    ];
+    agent.tools = [toolset, foreign, { ...deviceTools[2], description: "old" }];
     const updates = () =>
       f.fetcher.mock.calls.filter(
         ([url, init]) =>
@@ -1026,43 +1055,16 @@ describe("Direct MA client", () => {
     await f.login();
     await f.client.prepareWorkspace();
     const next = new Client({
+      account: f.account.account,
       vault: f.vault,
       database: new LocalDatabase(`other-${uuid()}`),
       fetcher: f.fetcher,
     });
     await next.restore();
     await next.prepareWorkspace();
+    // The account's workspace is reused, as the service recorded it.
     expect(f.resources.agents).toHaveLength(1);
     expect(f.resources.environments).toHaveLength(1);
-  });
-  it("does not adopt a similarly named foreign resource", async () => {
-    const f = fixture();
-    f.resources.environments.push({
-      id: "foreign",
-      name: "open-muse-environment",
-      metadata: { open_muse_workspace: "someone-else" },
-    });
-    await f.login();
-    await f.client.prepareWorkspace();
-    expect(f.resources.environments).toHaveLength(2);
-  });
-  it("records uncertain creation before sending and never blindly retries", async () => {
-    const f = fixture();
-    await f.login();
-    const base = f.fetcher.getMockImplementation()!;
-    f.fetcher.mockImplementation(async (url, init) => {
-      if (String(url).endsWith("/environments") && init?.method === "POST")
-        throw new Error("lost response");
-      return base(url, init);
-    });
-    await expect(f.client.prepareWorkspace()).rejects.toThrow("lost response");
-    await expect(f.client.prepareWorkspace()).rejects.toThrow("unconfirmed");
-    expect(
-      f.fetcher.mock.calls.filter(
-        ([url, init]) =>
-          String(url).endsWith("/environments") && init?.method === "POST",
-      ),
-    ).toHaveLength(1);
   });
   it("persists real replies locally, preserves context history and isolates account data", async () => {
     const f = fixture();
@@ -1092,15 +1094,10 @@ describe("Direct MA client", () => {
       session_id: session.id,
     });
     expect((await f.client.goals()).data[0].status).toBe("completed");
-    await f.client.auth("logout", {});
-    await f.client.auth("api-key", {
-      apiKey: "test-other-account-key-123456789",
-      confirm: true,
-    });
+    await f.switchAccount("muse_user_other");
     expect((await f.client.library()).data).toHaveLength(0);
     expect((await f.client.goals()).data).toHaveLength(0);
-    await f.client.auth("logout", {});
-    await f.login();
+    await f.switchAccount("muse_user_test");
     expect((await f.client.library()).data).toHaveLength(1);
   });
   it("lists session outputs only from this identity's Open Muse sessions", async () => {
@@ -1146,11 +1143,7 @@ describe("Direct MA client", () => {
     await expect(
       f.client.libraryFileDownload("file-foreign"),
     ).rejects.toMatchObject({ status: 404 });
-    await f.client.auth("logout", {});
-    await f.client.auth("api-key", {
-      apiKey: "test-other-account-key-123456789",
-      confirm: true,
-    });
+    await f.switchAccount("muse_user_other");
     expect((await f.client.libraryFiles()).data).toEqual([]);
   });
   it("uploads images as user data and sends text documents inline", async () => {
@@ -1226,11 +1219,7 @@ describe("Direct MA client", () => {
         attachments: Array(5).fill(image),
       }),
     ).rejects.toThrow();
-    await f.client.auth("logout", {});
-    await f.client.auth("api-key", {
-      apiKey: "test-other-account-key-123456789",
-      confirm: true,
-    });
+    await f.switchAccount("muse_user_other");
     expect(await f.client.attachmentNames()).toEqual({});
   });
   it("lists and opens only this identity's sessions under a shared key", async () => {
@@ -1313,11 +1302,7 @@ describe("Direct MA client", () => {
     expect(await f.client.healthConnected()).toBe(false);
     await f.client.setHealthConnected(true);
     expect(await f.client.healthConnected()).toBe(true);
-    await f.client.auth("logout", {});
-    await f.client.auth("api-key", {
-      apiKey: "test-other-account-key-123456789",
-      confirm: true,
-    });
+    await f.switchAccount("muse_user_other");
     // Another identity on this device has not connected Health.
     expect(await f.client.healthConnected()).toBe(false);
   });
@@ -1341,11 +1326,7 @@ describe("Direct MA client", () => {
     expect(await f.client.devicePermission("contacts")).toBe("deny");
     await f.client.setDevicePermission("contacts", "ask");
     expect(await f.client.devicePermission("contacts")).toBe("ask");
-    await f.client.auth("logout", {});
-    await f.client.auth("api-key", {
-      apiKey: "test-other-account-key-123456789",
-      confirm: true,
-    });
+    await f.switchAccount("muse_user_other");
     expect(await f.client.devicePermission("health")).toBe("ask");
   });
   it("keeps reactions on this device for the signed-in identity only", async () => {
@@ -1359,11 +1340,7 @@ describe("Direct MA client", () => {
     expect(await f.client.reactions()).toEqual({ evt_2: "🔥" });
     // Reactions are local marks; nothing is sent to Ark.
     expect(f.events).toHaveLength(before);
-    await f.client.auth("logout", {});
-    await f.client.auth("api-key", {
-      apiKey: "test-other-account-key-123456789",
-      confirm: true,
-    });
+    await f.switchAccount("muse_user_other");
     expect(await f.client.reactions()).toEqual({});
   });
   it("serializes concurrent cloud goal updates without losing records", async () => {
@@ -1446,6 +1423,7 @@ describe("Direct MA client", () => {
     };
     await expect(f.client.send("session", body)).rejects.toThrow("lost");
     const next = new Client({
+      account: f.account.account,
       vault: f.vault,
       database: f.db,
       fetcher: f.fetcher,
@@ -1508,35 +1486,30 @@ describe("Direct MA client", () => {
     await expect(f.client.ma("Unregistered", {})).rejects.toThrow(
       "Unregistered",
     );
+    await f.client.prepareWorkspace();
     await expect(
-      f.client.ma("DeleteAgent", { params: { agent_id: "agent" } }),
+      f.client.ma("UpdateAgent", {
+        params: { id: f.resources.agents[0].id as string },
+        body: { description: "x" },
+      }),
     ).rejects.toThrow("Confirm");
     const top = operations.find(
       (o) => o.transport === "top" && o.id.startsWith("List"),
     )!;
-    await expect(f.client.ma(top.id)).rejects.toThrow("console-only");
+    // Console-only operations are out of an account's reach as well.
+    await expect(f.client.ma(top.id)).rejects.toThrow("Studio reaches only");
     expect(f.fetcher).not.toHaveBeenCalledWith(
       expect.stringContaining("volcengineapi.com"),
       expect.anything(),
     );
-    expect(await f.client.ma("ListAgents")).toEqual({ data: [] });
-  });
-  it("uploads files directly as multipart, never through an app server", async () => {
-    const f = fixture();
-    await f.login();
-    await f.client.ma("UploadFile", {
-      body: { purpose: "user_data" },
-      file: { name: "hello.txt", base64: btoa("hello") },
-      confirm: true,
-    });
-    const [, init] = f.fetcher.mock.calls.at(-1)!;
-    expect(init?.body).toBeInstanceOf(FormData);
-    expect(new Headers(init?.headers).get("Content-Type")).toBeNull();
+    expect(
+      (await f.client.ma<{ data: unknown[] }>("ListAgents")).data,
+    ).toHaveLength(1);
   });
 });
 
 describe("Direct credentials and origin boundaries", () => {
-  it("ignores an earlier Volcano SSO sign-in; only the API key connects", async () => {
+  it("leaves an earlier Volcano SSO sign-in on this device untouched and unused", async () => {
     const f = fixture();
     const legacy = JSON.stringify({
       accessKeyId: "test-legacy-ak",
@@ -1548,6 +1521,7 @@ describe("Direct credentials and origin boundaries", () => {
       project: "legacy-project",
     });
     await f.vault.write(legacy);
+    vi.mocked(f.vault.write).mockClear();
     await f.client.restore();
     expect(f.client.signedIn()).toBe(false);
     expect(await f.client.auth("status")).toMatchObject({
@@ -1560,15 +1534,13 @@ describe("Direct credentials and origin boundaries", () => {
     for (const path of ["begin", "complete", "projects", "project"])
       await expect(f.client.auth(path, {})).rejects.toThrow("Unknown");
     expect(f.fetcher).not.toHaveBeenCalled();
-    // The retired record stays untouched until the user connects a key.
-    expect(await f.vault.read()).toBe(legacy);
+    // The retired record stays untouched; the key goes to the account.
     await f.login();
     expect(f.client.signedIn()).toBe(true);
-    expect(await f.vault.read()).not.toBe(legacy);
-    await f.client.auth("logout", {});
-    expect(await f.vault.read()).toBe("");
+    expect(await f.vault.read()).toBe(legacy);
+    expect(f.vault.write).not.toHaveBeenCalled();
   });
-  it("leaves a device-held API key untouched and unused in an account build", async () => {
+  it("leaves an API key an earlier release saved on this device untouched and unused", async () => {
     const saved = JSON.stringify({
       kind: "api_key",
       apiKey: "test-local-build-key-123456",
@@ -1589,7 +1561,7 @@ describe("Direct credentials and origin boundaries", () => {
       saveAccountCredential: vi.fn(),
       removeAccountCredential: vi.fn(),
     } as unknown as AccountProvider;
-    const auth = new DirectAuth(vault, fetcher, account);
+    const auth = new DirectAuth(fetcher, account);
     await auth.restore();
     expect(auth.status()).toEqual({
       loggedIn: false,
@@ -1684,7 +1656,10 @@ describe("Direct credentials and origin boundaries", () => {
           },
         }),
       );
-    vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => broken()));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async () => broken()),
+    );
     const read = (await directFetch(url)).json();
     await expect(read).rejects.toMatchObject({ name: "NetworkError" });
     await expect(read).rejects.not.toThrow("Load failed");
@@ -1702,14 +1677,16 @@ describe("Direct credentials and origin boundaries", () => {
     const timing = boundedSignal([], 10);
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockImplementation(
-        (_url, init: RequestInit) =>
-          new Promise((_, reject) =>
-            init.signal!.addEventListener("abort", () =>
-              reject(new DOMException("Fetch is aborted", "AbortError")),
+      vi
+        .fn()
+        .mockImplementation(
+          (_url, init: RequestInit) =>
+            new Promise((_, reject) =>
+              init.signal!.addEventListener("abort", () =>
+                reject(new DOMException("Fetch is aborted", "AbortError")),
+              ),
             ),
-          ),
-      ),
+        ),
     );
     await expect(
       directFetch(url, { signal: timing.signal }),

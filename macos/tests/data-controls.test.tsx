@@ -11,6 +11,7 @@ import type { AgentEvent } from "../../shared/types";
 import { agentDataMarkdown, memoryImportDraft } from "../ui/dataExport";
 import { DataControls } from "../ui/DataControls";
 import { DesktopApp } from "../ui/DesktopApp";
+import { vaultAccount } from "./account";
 
 vi.mock("../../src/useTask", () => {
   const refresh = async () => {};
@@ -52,15 +53,13 @@ async function signedIn() {
     fetcher: vi.fn(async () => {
       throw new Error("This test must not reach the cloud");
     }),
-    vault: {
-      read: async () =>
-        JSON.stringify({
-          kind: "api_key",
-          apiKey: `data-${crypto.randomUUID()}`,
-          project: "test",
-        }),
-      write: async () => {},
-    },
+    account: vaultAccount(async () =>
+      JSON.stringify({
+        kind: "api_key",
+        apiKey: `data-${crypto.randomUUID()}`,
+        project: "test",
+      }),
+    ),
   });
   await client.restore();
   vi.spyOn(client, "companionIdentity").mockResolvedValue(defaultIdentity());

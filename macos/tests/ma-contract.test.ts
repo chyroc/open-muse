@@ -6,6 +6,7 @@ import { eventText, type AgentEvent } from "../../shared/types";
 import { defaultFeedInstructions } from "../../shared/inspiration";
 import { MacGoals } from "../ui/goals";
 import { MacIdeas } from "../ui/ideas";
+import { vaultAccount } from "./account";
 
 async function fixture() {
   const db = new LocalDatabase(`mac-contract-${crypto.randomUUID()}`);
@@ -15,6 +16,9 @@ async function fixture() {
     expect(url.origin).toBe("https://ark.cn-beijing.volces.com");
     if (url.pathname === "/api/v3/agents" && !init.method)
       return Response.json({ data: [] });
+    // The session belongs to the account's own agent.
+    if (url.pathname === "/api/v3/sessions/isolated-session" && !init.method)
+      return Response.json({ id: "isolated-session", agent: "agent-own" });
     if (
       url.pathname === "/api/v3/sessions/isolated-session/events" &&
       init.method === "POST"
@@ -32,15 +36,22 @@ async function fixture() {
       `Unexpected isolated request: ${init.method ?? "GET"} ${url.pathname}`,
     );
   });
-  const client = new Client({
-    database: db,
-    fetcher,
-    vault: { read: async () => "", write: async () => {} },
+  // The account's workspace, as the service recorded it.
+  const account = vaultAccount(async () =>
+    JSON.stringify({ apiKey: "test-only-mac-contract-key" }),
+  );
+  account.accountWorkspace = async () => ({
+    revision: 1,
+    unconfirmed: false,
+    workspace: {
+      agentId: "agent-own",
+      environmentId: "environment-own",
+      memoryStoreId: "store-own",
+      model: "model",
+    },
   });
-  await client.auth("api-key", {
-    apiKey: "test-only-mac-contract-key",
-    confirm: true,
-  });
+  const client = new Client({ database: db, fetcher, account });
+  await client.restore();
   // Only setup/context readers are isolated. Sending uses the real Client,
   // operation schema, request builder, ArkClient and fetch transport.
   vi.spyOn(client, "prepareWorkspace").mockResolvedValue({} as never);

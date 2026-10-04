@@ -2,6 +2,7 @@ import "fake-indexeddb/auto";
 import { describe, expect, it, vi } from "vitest";
 import { Client, type CustomToolResult } from "../src/api";
 import { LocalDatabase } from "../src/direct/storage";
+import { testAccount } from "./account-fixture";
 import { uuid } from "../shared/crypto";
 import {
   pendingCustomTools,
@@ -41,18 +42,16 @@ async function fixture(history: AgentEvent[]) {
       return Response.json({ data: history });
     return Response.json({}, { status: 404 });
   });
+  // An Open Muse account that already has its Ark key.
+  const { account } = testAccount(fetcher);
+  await account.saveAccountCredential(
+    { apiKey: `test-${uuid()}`, project: "" },
+    0,
+  );
   const client = new Client({
     database: new LocalDatabase(`custom-tools-${uuid()}`),
     fetcher,
-    vault: {
-      read: async () =>
-        JSON.stringify({
-          kind: "api_key",
-          apiKey: `test-${uuid()}`,
-          project: "",
-        }),
-      write: async () => {},
-    },
+    account,
   });
   await client.restore();
   return { client, posts };

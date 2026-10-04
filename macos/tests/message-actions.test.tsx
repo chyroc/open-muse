@@ -8,6 +8,7 @@ import { defaultIdentity } from "../../src/direct/identity";
 import type { AgentEvent } from "../../shared/types";
 import { DesktopApp } from "../ui/DesktopApp";
 import { readReactions, setReaction } from "../ui/reactions";
+import { vaultAccount } from "./account";
 
 const fixtureTask = vi.hoisted(() => ({ events: [] as AgentEvent[] }));
 vi.mock("../../src/useTask", () => {
@@ -45,11 +46,9 @@ async function signedIn(apiKey = `actions-${crypto.randomUUID()}`) {
     fetcher: vi.fn(async () => {
       throw new Error("This test must not reach the cloud");
     }),
-    vault: {
-      read: async () =>
-        JSON.stringify({ kind: "api_key", apiKey, project: "test" }),
-      write: async () => {},
-    },
+    account: vaultAccount(async () =>
+      JSON.stringify({ kind: "api_key", apiKey, project: "test" }),
+    ),
   });
   await client.restore();
   return client;

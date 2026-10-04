@@ -6,6 +6,7 @@ import { Client } from "../../src/api";
 import { LocalDatabase } from "../../src/direct/storage";
 import { defaultIdentity } from "../../src/direct/identity";
 import { DesktopApp } from "../ui/DesktopApp";
+import { vaultAccount } from "./account";
 
 vi.mock("../../src/useTask", () => ({
   useTask: () => ({
@@ -36,15 +37,13 @@ async function fixture() {
     fetcher: vi.fn(async () => {
       throw new Error("The avatar menu must not contact the cloud");
     }),
-    vault: {
-      read: async () =>
-        JSON.stringify({
-          kind: "api_key",
-          apiKey: `avatar-${crypto.randomUUID()}`,
-          project: "test",
-        }),
-      write: async () => {},
-    },
+    account: vaultAccount(async () =>
+      JSON.stringify({
+        kind: "api_key",
+        apiKey: `avatar-${crypto.randomUUID()}`,
+        project: "test",
+      }),
+    ),
   });
   await client.restore();
   vi.spyOn(client, "sessions").mockResolvedValue({ data: [] });

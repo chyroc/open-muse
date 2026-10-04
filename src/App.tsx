@@ -130,9 +130,6 @@ export default function App() {
   const client = useMemo(
     () =>
       new Client({
-        scope: (
-          globalThis as typeof globalThis & { __MUSE_TEST_PROFILE__?: string }
-        ).__MUSE_TEST_PROFILE__,
         account: backgroundClient,
         surface: appSurface(),
       }),
@@ -1214,8 +1211,7 @@ function Workspace({
             <a className="connect-notice" href="#/settings">
               <Unplug size={16} />
               <span>
-                {client.identity.accountMode() &&
-                !client.identity.accountOwner()
+                {!client.identity.accountOwner()
                   ? t("Sign in to your Open Muse account to start chatting")
                   : t("Add an Ark API key to start chatting")}
               </span>

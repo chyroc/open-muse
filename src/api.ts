@@ -232,7 +232,6 @@ export class Client {
   private runtime?: Runtime;
   private vault: CredentialStore;
   private sends = new Set<string>();
-  private scope?: string;
   // Account builds re-verify the session and key revision with the service
   // before Ark requests, so a revoked session or a key removed elsewhere stops
   // this device instead of continuing with the key held in memory.
@@ -250,8 +249,6 @@ export class Client {
       vault?: CredentialStore;
       database?: LocalDatabase;
       fetcher?: typeof fetch;
-      // Isolated simulator acceptance profile; does not change credentials.
-      scope?: string;
       // The Open Muse account service. When the build configures it, the signed-in
       // account is the user identity and owns the Ark key and workspace.
       account?: AccountProvider;
@@ -277,16 +274,7 @@ export class Client {
       options.timeZone ??
       (() => Intl.DateTimeFormat().resolvedOptions().timeZone);
     this.vault = options.vault ?? credentials;
-    this.identity = new DirectAuth(
-      options.vault,
-      this.fetcher,
-      options.account,
-    );
-    if (options.scope !== undefined)
-      this.scope = z
-        .string()
-        .regex(/^welcome-[a-z0-9-]{1,60}$/)
-        .parse(options.scope);
+    this.identity = new DirectAuth(this.fetcher, options.account);
   }
   async restore() {
     if (this.identity.accountMode()) await this.identity.account!.restore();
@@ -385,11 +373,7 @@ export class Client {
   }
   signedIn() {
     const c = this.identity.value;
-    return Boolean(
-      c &&
-      (!this.identity.accountMode() ||
-        c.owner === this.identity.accountOwner()),
-    );
+    return Boolean(c && c.owner === this.identity.accountOwner());
   }
   accountCredentialRevision() {
     return this.identity.value?.revision;
@@ -412,7 +396,7 @@ export class Client {
   private context() {
     const c = this.identity.value;
     const owner = this.identity.accountOwner();
-    if (this.identity.accountMode() && (!owner || c?.owner !== owner)) {
+    if (!owner || c?.owner !== owner || !c.apiKey) {
       this.reset();
       throw new ApiError(
         401,
@@ -421,67 +405,47 @@ export class Client {
           : t("Sign in to your Open Muse account first."),
       );
     }
-    if (!c?.apiKey)
-      throw new ApiError(401, t("Add an Ark API key in Settings first."));
     // Account workspaces include the verified owner, so accounts sharing one
     // Ark key never adopt each other's agent, memory, or local records.
-    const base = owner
-      ? accountWorkspaceKey(c.apiKey, c.project ?? "", owner, MA)
-      : undefined;
-    // Simulator acceptance profiles apply to local builds only: an account's
-    // workspace key must match the one the service labels its resources with.
-    const key =
-      base ??
-      digest(
-        JSON.stringify([
-          MA_BASE_URL,
-          c.apiKey,
-          c.project ?? "",
-          ...(this.scope ? [this.scope] : []),
-        ]),
-      );
+    const key = accountWorkspaceKey(c.apiKey, c.project ?? "", owner, MA);
     if (this.runtime?.key !== key) {
       const apiKey = c.apiKey;
       this.reset();
       const abort = new AbortController();
       const revision = c.revision;
-      const fetcher: typeof fetch = owner
-        ? async (input, init) => {
-            if (this.stale(owner, revision)) {
-              this.reset();
-              throw this.changedError();
-            }
-            await this.verifyAccount(
-              (init?.method ?? "GET").toUpperCase() !== "GET",
-            );
-            // Verification may have switched accounts or keys meanwhile.
-            abort.signal.throwIfAborted();
-            if (this.stale(owner, revision)) throw this.changedError();
-            return this.fetcher(input, init);
-          }
-        : this.fetcher;
-      if (owner) {
-        // Long-lived streams and idle windows are re-checked as well; a
-        // failed check resets the runtime, which aborts its requests.
-        // Each tick checks with the service regardless of the request window,
-        // so a change known only there stops open streams and idle runtimes
-        // within one interval. An unreachable service also stops them.
-        const timer = setInterval(() => {
-          if (this.stale(owner, revision)) return this.reset();
-          if (this.verifying) return;
-          this.verifying = this.syncAccount()
-            .then(() => {
-              if (this.stale(owner, revision)) this.reset();
-            })
-            .catch(() => {
-              if (this.runtime?.abort === abort) this.reset();
-            })
-            .finally(() => {
-              this.verifying = undefined;
-            });
-        }, this.accountCheck.interval);
-        abort.signal.addEventListener("abort", () => clearInterval(timer));
-      }
+      const fetcher: typeof fetch = async (input, init) => {
+        if (this.stale(owner, revision)) {
+          this.reset();
+          throw this.changedError();
+        }
+        await this.verifyAccount(
+          (init?.method ?? "GET").toUpperCase() !== "GET",
+        );
+        // Verification may have switched accounts or keys meanwhile.
+        abort.signal.throwIfAborted();
+        if (this.stale(owner, revision)) throw this.changedError();
+        return this.fetcher(input, init);
+      };
+      // Long-lived streams and idle windows are re-checked as well; a
+      // failed check resets the runtime, which aborts its requests.
+      // Each tick checks with the service regardless of the request window,
+      // so a change known only there stops open streams and idle runtimes
+      // within one interval. An unreachable service also stops them.
+      const timer = setInterval(() => {
+        if (this.stale(owner, revision)) return this.reset();
+        if (this.verifying) return;
+        this.verifying = this.syncAccount()
+          .then(() => {
+            if (this.stale(owner, revision)) this.reset();
+          })
+          .catch(() => {
+            if (this.runtime?.abort === abort) this.reset();
+          })
+          .finally(() => {
+            this.verifying = undefined;
+          });
+      }, this.accountCheck.interval);
+      abort.signal.addEventListener("abort", () => clearInterval(timer));
       const ark = new ArkClient(
         {
           arkBaseUrl: MA_BASE_URL,
@@ -495,53 +459,49 @@ export class Client {
       const account = this.identity.account;
       // Account workspaces are created and recorded by the service; the
       // client only receives their IDs.
-      const provision = owner
-        ? async (options: {
-            replaceUnconfirmed: boolean;
-            resetSettings: boolean;
-          }) => {
-            const request = () =>
-              account!.provisionAccountWorkspace(
-                c.revision!,
-                options.replaceUnconfirmed,
-                options.resetSettings,
-              );
-            // A pending settings change blocks setup before anything is
-            // created; it is checked read-only first, then setup is asked again.
-            const { workspace } = await request().catch(async (error) => {
-              if ((error as { code?: string }).code !== "settings_pending")
-                throw error;
-              await this.checkWorkspaceSettings();
-              return request();
-            });
-            if (
-              !workspace?.agentId ||
-              !workspace.environmentId ||
-              !workspace.memoryStoreId
-            )
-              throw new ApiError(
-                502,
-                t("The workspace setup did not finish. Continue setup."),
-              );
-            return {
-              agentId: workspace.agentId,
-              environmentId: workspace.environmentId,
-              memoryStoreId: workspace.memoryStoreId,
-              model: workspace.model,
-            };
-          }
-        : undefined;
-      const resolve = provision
-        ? async (create: boolean) =>
-            create
-              ? (
-                  await provision({
-                    replaceUnconfirmed: false,
-                    resetSettings: false,
-                  })
-                ).memoryStoreId
-              : (await account!.accountWorkspace()).workspace?.memoryStoreId
-        : undefined;
+      const provision = async (options: {
+        replaceUnconfirmed: boolean;
+        resetSettings: boolean;
+      }) => {
+        const request = () =>
+          account!.provisionAccountWorkspace(
+            c.revision!,
+            options.replaceUnconfirmed,
+            options.resetSettings,
+          );
+        // A pending settings change blocks setup before anything is
+        // created; it is checked read-only first, then setup is asked again.
+        const { workspace } = await request().catch(async (error) => {
+          if ((error as { code?: string }).code !== "settings_pending")
+            throw error;
+          await this.checkWorkspaceSettings();
+          return request();
+        });
+        if (
+          !workspace?.agentId ||
+          !workspace.environmentId ||
+          !workspace.memoryStoreId
+        )
+          throw new ApiError(
+            502,
+            t("The workspace setup did not finish. Continue setup."),
+          );
+        return {
+          agentId: workspace.agentId,
+          environmentId: workspace.environmentId,
+          memoryStoreId: workspace.memoryStoreId,
+          model: workspace.model,
+        };
+      };
+      const resolve = async (create: boolean) =>
+        create
+          ? (
+              await provision({
+                replaceUnconfirmed: false,
+                resetSettings: false,
+              })
+            ).memoryStoreId
+          : (await account!.accountWorkspace()).workspace?.memoryStoreId;
       const companion = new DirectIdentity(
         key,
         ark,
@@ -558,14 +518,10 @@ export class Client {
           ark,
           this.db,
           provision,
-          provision
-            ? async () => (await account!.accountWorkspace()).workspace
-            : undefined,
-          provision
-            ? async (kind, changes) => {
-                await this.applyWorkspace(kind, changes);
-              }
-            : undefined,
+          async () => (await account!.accountWorkspace()).workspace,
+          async (kind, changes) => {
+            await this.applyWorkspace(kind, changes);
+          },
         ),
         companion,
         goals: new DirectGoals(key, this.db, companion),
@@ -2424,13 +2380,6 @@ export class Client {
     const shown = larkSignedIn(events);
     if (shown !== undefined) return shown;
     return false;
-  }
-  // Whether a Lark sign-in carries over to new conversations.
-  larkKept() {
-    return (
-      this.identity.accountMode() &&
-      Boolean(this.identity.account?.issueLarkToken)
-    );
   }
   // Removes the account's saved Lark sign-in, so later conversations start
   // signed out. The current one signs out when the person asks it to.

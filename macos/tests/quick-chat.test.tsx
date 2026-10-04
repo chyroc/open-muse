@@ -15,6 +15,7 @@ import {
   quickHeight,
 } from "../ui/QuickChat";
 import { quickChatPlaceholder } from "../ui/labels";
+import { vaultAccount } from "./account";
 
 vi.mock("../../src/useTask", () => ({
   useTask: () => ({
@@ -55,17 +56,15 @@ async function fixture(signedIn: boolean) {
     fetcher: vi.fn(async () => {
       throw new Error("Quick chat must not reach the cloud in this test");
     }),
-    vault: {
-      read: async () =>
-        signedIn
-          ? JSON.stringify({
-              kind: "api_key",
-              apiKey: `quick-${crypto.randomUUID()}`,
-              project: "test",
-            })
-          : "",
-      write: async () => {},
-    },
+    account: vaultAccount(async () =>
+      signedIn
+        ? JSON.stringify({
+            kind: "api_key",
+            apiKey: `quick-${crypto.randomUUID()}`,
+            project: "test",
+          })
+        : "",
+    ),
   });
   await client.restore();
   vi.spyOn(client, "config").mockResolvedValue({

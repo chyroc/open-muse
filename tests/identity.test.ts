@@ -66,10 +66,46 @@ function fixture() {
     { arkBaseUrl: "https://example.test", arkKey: "test-key", project: "" },
     fetcher,
   );
-  const client = new DirectIdentity("owner", ark, db, { wait: async () => {} });
+  // The Open Muse service's record of each owner's memory store: it creates
+  // the store in Ark when asked to, labelled with the owner, and returns it.
+  const recorded = new Map<string, string>();
+  const service =
+    (owner: string) =>
+    async (create: boolean): Promise<string | undefined> => {
+      if (recorded.has(owner) || !create) return recorded.get(owner);
+      const store = await ark.request<{ id: string }>("/memory_stores", {
+        method: "POST",
+        body: JSON.stringify({
+          name: "Open Muse personal memory",
+          metadata: { open_muse_identity: owner },
+        }),
+      });
+      recorded.set(owner, store.id);
+      return store.id;
+    };
+  const identity = (owner: string) =>
+    new DirectIdentity(
+      owner,
+      ark,
+      db,
+      { wait: async () => {} },
+      service(owner),
+    );
+  const client = identity("owner");
   const writes = () =>
     fetcher.mock.calls.filter(([, init]) => init?.method === "POST");
-  return { client, db, ark, fetcher, handler, stores, docs, writes };
+  return {
+    client,
+    identity,
+    recorded,
+    db,
+    ark,
+    fetcher,
+    handler,
+    stores,
+    docs,
+    writes,
+  };
 }
 
 describe("Personal identity documents", () => {
@@ -198,39 +234,22 @@ describe("Personal identity documents", () => {
       identity.documents["MEMORY.md"].revision,
     );
     expect(result.documents["MEMORY.md"].content).toContain("A durable fact.");
-    const restored = new DirectIdentity("owner", f.ark, f.db);
+    const restored = f.identity("owner");
     expect(await restored.read()).toEqual(result);
     expect(f.writes()).toHaveLength(5);
   });
-  it("discovers only metadata-owned stores, including after an uncertain creation", async () => {
+  it("finds the store by its owner label only when read without the service's record", async () => {
     const f = fixture();
-    f.stores.push({
-      id: "other",
-      metadata: { open_muse_identity: "someone-else" },
+    f.stores.push(
+      { id: "other", metadata: { open_muse_identity: "someone-else" } },
+      { id: "mine", metadata: { open_muse_identity: "owner" } },
+    );
+    const reader = new DirectIdentity("owner", f.ark, f.db, {
+      wait: async () => {},
     });
-    let lost = true;
-    f.fetcher.mockImplementation(async (input, init) => {
-      const result = await f.handler(input, init);
-      if (lost && init?.method === "POST") {
-        lost = false;
-        throw new TypeError("Network lost");
-      }
-      return result;
-    });
-    await expect(f.client.ensure()).rejects.toThrow("Network lost");
-    await f.client.ensure();
-    expect(f.stores).toHaveLength(2);
-    expect((await f.client.read()).store_id).toBe("store-2");
-  });
-  it("does not duplicate a store whose creation remains unconfirmed", async () => {
-    const f = fixture();
-    f.fetcher.mockImplementation(async (input, init) => {
-      if (init?.method === "POST") throw new TypeError("Network lost");
-      return f.handler(input, init);
-    });
-    await expect(f.client.ensure()).rejects.toThrow("Network lost");
-    await expect(f.client.ensure()).rejects.toThrow("unconfirmed");
-    expect(f.writes()).toHaveLength(1);
+    expect((await reader.read()).store_id).toBe("mine");
+    // It never creates one.
+    expect(f.writes()).toHaveLength(0);
   });
   it("recovers partial default-document provisioning without overwriting user edits", async () => {
     const f = fixture();
@@ -418,13 +437,14 @@ describe("Personal identity documents", () => {
       { id: "one", metadata: { open_muse_identity: "owner" } },
       { id: "two", metadata: { open_muse_identity: "owner" } },
     );
-    await expect(f.client.ensure()).rejects.toThrow("Multiple personal");
+    const reader = new DirectIdentity("owner", f.ark, f.db, {
+      wait: async () => {},
+    });
+    await expect(reader.read()).rejects.toThrow("Multiple personal");
     f.fetcher.mockImplementation(async () =>
       Response.json({ data: [], next_page: "loop" }),
     );
-    await expect(f.client.ensure()).rejects.toThrow(
-      "pagination did not finish",
-    );
+    await expect(reader.read()).rejects.toThrow("pagination did not finish");
     expect(f.writes()).toHaveLength(0);
   });
   it("does not recreate a deleted mapped store or write to one with changed ownership", async () => {
@@ -439,7 +459,7 @@ describe("Personal identity documents", () => {
   it("separates identities even on the same local database", async () => {
     const f = fixture();
     await f.client.ensure();
-    const other = new DirectIdentity("other", f.ark, f.db);
+    const other = f.identity("other");
     expect((await other.read()).store_id).toBeUndefined();
     await other.ensure();
     expect((await other.read()).store_id).not.toBe(

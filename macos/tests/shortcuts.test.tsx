@@ -9,6 +9,7 @@ import { zhCN } from "../../shared/locales/zh-CN";
 import type { AgentEvent } from "../../shared/types";
 import { DesktopApp } from "../ui/DesktopApp";
 import { shortcuts } from "../ui/Shortcuts";
+import { vaultAccount } from "./account";
 
 const fixtureTask = vi.hoisted(() => ({ events: [] as AgentEvent[] }));
 vi.mock("../../src/useTask", () => {
@@ -43,15 +44,13 @@ async function mount() {
     fetcher: vi.fn(async () => {
       throw new Error("This test must not reach the cloud");
     }),
-    vault: {
-      read: async () =>
-        JSON.stringify({
-          kind: "api_key",
-          apiKey: `shortcuts-${crypto.randomUUID()}`,
-          project: "test",
-        }),
-      write: async () => {},
-    },
+    account: vaultAccount(async () =>
+      JSON.stringify({
+        kind: "api_key",
+        apiKey: `shortcuts-${crypto.randomUUID()}`,
+        project: "test",
+      }),
+    ),
   });
   await client.restore();
   vi.spyOn(client, "config").mockResolvedValue({

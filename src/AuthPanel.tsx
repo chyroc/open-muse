@@ -12,8 +12,7 @@ interface Status {
   ready: boolean;
   project?: string;
   method?: "api_key";
-  // Present in builds with an Open Muse account service.
-  account?: { signedIn: boolean };
+  account: { signedIn: boolean };
 }
 function ArkAuthPanel({
   client,
@@ -48,11 +47,11 @@ function ArkAuthPanel({
       setBusy(false);
     }
   }
-  const account = status?.account;
-  const signedOut = Boolean(account && !account.signedIn);
-  const showForm =
-    !signedOut &&
-    (account ? !status?.ready || replacing : !status?.loggedIn);
+  // Known at once from the account, before the status has been read.
+  const signedOut = status
+    ? !status.account.signedIn
+    : !client.identity.accountOwner();
+  const showForm = !signedOut && (!status?.ready || replacing);
   return (
     <section className="settings-card auth-card">
       <div className="settings-card-heading">
@@ -78,7 +77,9 @@ function ArkAuthPanel({
       )}
       {signedOut && (
         <p className="auth-consent-note" role="status">
-          {t("Sign in to your Open Muse account above to add your Ark API key.")}
+          {t(
+            "Sign in to your Open Muse account above to add your Ark API key.",
+          )}
         </p>
       )}
       {showForm && (
@@ -122,9 +123,7 @@ function ArkAuthPanel({
               className="button primary"
               disabled={busy || !apiKey.trim()}
             >
-              {account
-                ? t("Save API key to my account")
-                : t("Connect with API Key")}
+              {t("Save API key to my account")}
             </button>
             {replacing && (
               <button
@@ -142,9 +141,7 @@ function ArkAuthPanel({
       {status?.ready && (
         <div className="auth-connected">
           <p>
-            {account
-              ? t("Saved in your Open Muse account")
-              : t("Connected with API Key")}
+            {t("Saved in your Open Muse account")}
             {status.project && (
               <>
                 {" "}
@@ -155,7 +152,7 @@ function ArkAuthPanel({
           <WorkspacePanel client={client} />
         </div>
       )}
-      {account && status?.ready ? (
+      {status?.ready && (
         <div className="logout-row">
           {!replacing && (
             <button
@@ -189,31 +186,6 @@ function ArkAuthPanel({
             {t("Remove API key from my account")}
           </button>
         </div>
-      ) : (
-        !account &&
-        (status?.loggedIn || client.signedIn()) && (
-          <div className="logout-row">
-            <button
-              className="button secondary"
-              disabled={busy}
-              onClick={() =>
-                void run(async () => {
-                  await client.auth("logout", {});
-                  await refresh();
-                  onChanged();
-                })
-              }
-            >
-              <LogOut size={15} />
-              {t("Sign out of this login")}
-            </button>
-            <small>
-              {t(
-                "Removing the login deletes this device's saved credentials but does not revoke the cloud API Key. You can revoke it in the Ark console.",
-              )}
-            </small>
-          </div>
-        )
       )}
       {busy && (
         <p className="muted" role="status">
@@ -236,6 +208,18 @@ export function AuthPanel({
 }) {
   // Remount the account-dependent cards whenever the signed-in account changes.
   const [account, setAccount] = useState(0);
+  // Open Muse works only through an Open Muse account; a build without the
+  // account service cannot connect at all.
+  if (!client.identity.accountMode())
+    return (
+      <section className="settings-card auth-card">
+        <p className="error-text" role="alert">
+          {t(
+            "This build has no Open Muse account service, so it cannot connect. Use a build that includes one.",
+          )}
+        </p>
+      </section>
+    );
   return (
     <>
       <AccountPanel

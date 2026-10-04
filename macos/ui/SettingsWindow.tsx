@@ -70,7 +70,6 @@ import {
   activeLanguage,
   chooseLanguage,
   appVersion,
-  clientWithConfirmedSignOut,
   connectionSummary,
   isConnectionRoute,
   settingsPath,
@@ -154,7 +153,7 @@ export function SettingsWindow({ client }: { client: Client }) {
   const [section, setSection] = useState<SettingsSectionId>(() =>
     settingsRouteSection(location.hash),
   );
-  const [signOut, setSignOut] = useState<{ resolve?: (ok: boolean) => void }>();
+  const [signOut, setSignOut] = useState(false);
   const [connection, setConnection] = useState<ConnectionStatus>();
   // A "Connect to Ark MA" button elsewhere opens the connection controls
   // expanded; each such request moves focus to them again.
@@ -197,20 +196,6 @@ export function SettingsWindow({ client }: { client: Client }) {
       if (alive.current) setError((failure as Error).message);
     }
   }, [client]);
-  // The shared panel's own sign-out button must stop at the same confirmation
-  // as the sidebar, so it runs against a client that asks this window first.
-  const guarded = useMemo(
-    () =>
-      clientWithConfirmedSignOut(
-        client,
-        () =>
-          new Promise<boolean>((resolve) => {
-            if (!alive.current) return resolve(false);
-            setSignOut({ resolve });
-          }),
-      ),
-    [client],
-  );
   useEffect(() => {
     alive.current = true;
     const route = () => {
@@ -279,10 +264,6 @@ export function SettingsWindow({ client }: { client: Client }) {
     });
     return () => cancelAnimationFrame(frame);
   }, [connectRequest]);
-  function resolveSignOut(confirmed: boolean) {
-    signOut?.resolve?.(confirmed);
-    setSignOut(undefined);
-  }
 
   return (
     <div className="settings-window">
@@ -302,7 +283,7 @@ export function SettingsWindow({ client }: { client: Client }) {
             );
           })}
         </div>
-        <button className="settings-sign-out" onClick={() => setSignOut({})}>
+        <button className="settings-sign-out" onClick={() => setSignOut(true)}>
           <LogOut size={15} strokeWidth={1.75} />
           {t("Sign out")}
         </button>
@@ -404,7 +385,7 @@ export function SettingsWindow({ client }: { client: Client }) {
             {manage && (
               <div className="settings-group settings-auth" ref={auth}>
                 <AuthPanel
-                  client={guarded}
+                  client={client}
                   onChanged={() => void readStatus()}
                 />
               </div>
@@ -646,13 +627,9 @@ export function SettingsWindow({ client }: { client: Client }) {
                 <div>
                   <strong>{t("We care about your privacy")}</strong>
                   <p>
-                    {backgroundClient.configured()
-                      ? t(
-                          "Chats go straight to your Ark project. No analytics or crash reports leave this Mac.",
-                        )
-                      : t(
-                          "Open Muse has no server of its own. Nothing is collected, and no analytics or crash reports leave this Mac.",
-                        )}
+                    {t(
+                      "Chats go straight to your Ark project. No analytics or crash reports leave this Mac.",
+                    )}
                   </p>
                 </div>
               </div>
@@ -672,18 +649,16 @@ export function SettingsWindow({ client }: { client: Client }) {
                   "Sessions, events, memory documents and agent configuration stay in the cloud project you connected, under its own retention rules.",
                 )}
               />
-              {backgroundClient.configured() && (
-                <Row
-                  title={t("With the Open Muse service")}
-                  detail={t(
-                    "Your Open Muse account sign-in, your Ark key encrypted for that account, the devices you use, and the Upcoming items you let run while you are away.",
-                  )}
-                />
-              )}
+              <Row
+                title={t("With the Open Muse service")}
+                detail={t(
+                  "Your Open Muse account sign-in, your Ark key encrypted for that account, the devices you use, and the Upcoming items you let run while you are away.",
+                )}
+              />
               <Row
                 title={t("Signing out")}
                 detail={t(
-                  "Removes this Mac's credentials. Local records are preserved and are unreadable without the same connection.",
+                  "Signs this Mac out of your Open Muse account. Local records are preserved and are unreadable without the same account.",
                 )}
               />
             </div>
@@ -705,19 +680,19 @@ export function SettingsWindow({ client }: { client: Client }) {
       </main>
       {signOut && (
         <Modal
-          title={t("Sign out of this Mac?")}
-          onClose={() => !busy && resolveSignOut(false)}
+          title={t("Sign out of Open Muse on this Mac?")}
+          onClose={() => !busy && setSignOut(false)}
         >
           <p>
             {t(
-              "Removing the login deletes this device's saved credentials but does not revoke the cloud API Key. You can revoke it in the Ark console.",
+              "Signs out this Mac and ends this session at the account service. Other devices stay signed in. Nothing is deleted.",
             )}
           </p>
           <div className="feed-dialog-actions">
             <button
               className="pill-button"
               disabled={busy}
-              onClick={() => resolveSignOut(false)}
+              onClick={() => setSignOut(false)}
             >
               {t("Cancel")}
             </button>
@@ -726,20 +701,14 @@ export function SettingsWindow({ client }: { client: Client }) {
               disabled={busy}
               onClick={() => {
                 if (busy) return;
-                // A request from the shared panel is waiting on this answer;
-                // the sidebar entry has no waiter and signs out here.
-                const waiter = signOut.resolve;
-                if (waiter) {
-                  resolveSignOut(true);
-                  return;
-                }
                 setBusy(true);
                 setError("");
-                void client
-                  .auth("logout", {})
+                void backgroundClient
+                  .signOutAccount()
+                  .finally(() => client.accountChanged())
                   .then(() => {
                     if (!alive.current) return;
-                    resolveSignOut(false);
+                    setSignOut(false);
                     setSection("general");
                     void readStatus();
                   })

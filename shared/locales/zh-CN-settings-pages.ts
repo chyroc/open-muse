@@ -102,4 +102,13 @@ export const zhSettingsPages: Record<string, string> = {
   "Open Muse calls Volcano Ark with your own API key. What you send to your assistant is processed under these policies and kept in your Ark account.":
     "Open Muse 使用你自己的 API Key 调用火山方舟。你发给助手的内容按以上政策处理，并保存在你的方舟账号中。",
   "Volcano Engine": "火山引擎",
+  "This build has no Open Muse account service, so it cannot connect. Use a build that includes one.":
+    "这个版本没有 Open Muse 账号服务，无法连接。请使用包含账号服务的版本。",
+  "This build has no Open Muse account service to sign in to.":
+    "这个版本没有可登录的 Open Muse 账号服务。",
+  "Sign out of Open Muse on this Mac?": "在这台 Mac 上退出 Open Muse？",
+  "Signs out this Mac and ends this session at the account service. Other devices stay signed in. Nothing is deleted.":
+    "在这台 Mac 上退出登录，并在账号服务中结束本次会话。其他设备保持登录，不会删除任何内容。",
+  "Signs this Mac out of your Open Muse account. Local records are preserved and are unreadable without the same account.":
+    "让这台 Mac 退出你的 Open Muse 账号。本地记录会保留，但不登录同一账号就无法读取。",
 };

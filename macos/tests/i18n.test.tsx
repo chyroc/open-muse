@@ -29,7 +29,9 @@ describe("Apple UI localization", () => {
       expect(activityLabel("mac_screenshot")).toBe(
         zh ? "查看屏幕" : "Look at the screen",
       );
-      expect(activityLabel("web_search")).toBe(zh ? "搜索网页" : "Search the web");
+      expect(activityLabel("web_search")).toBe(
+        zh ? "搜索网页" : "Search the web",
+      );
       // A person's own tools keep their protocol name.
       expect(activityLabel("crm_lookup")).toBe("crm_lookup");
       expect(activityLabel(undefined)).toBe(zh ? "工具调用" : "Tool call");
