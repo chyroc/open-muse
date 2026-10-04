@@ -242,6 +242,9 @@
     color: #ffffff;
     background: #2c2c2e;
   }
+  .page-sheet.scrolled .page-sheet-header {
+    background: rgb(44 44 46 / 82%);
+  }
   .page-sheet-close {
     border: 1px solid rgb(209 209 214 / 8%);
     color: #ffffff;

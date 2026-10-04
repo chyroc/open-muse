@@ -7,7 +7,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // A shake opens Report a problem (see MuseWindow), so it is not also
+        // an undo gesture in text fields.
+        application.applicationSupportsShakeToEdit = false
         return true
     }
 

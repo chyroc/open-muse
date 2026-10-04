@@ -79,6 +79,8 @@ import {
 } from "./reminderNotifications";
 import { listenForEdgePull, type EdgePull } from "./gesture";
 import { notifyReply } from "./notifications";
+import { listenForShake } from "./shake";
+import { ReportSheet } from "./ReportSheet";
 import { backgroundClient } from "./background-client";
 import { registerThisIPhone } from "./iphone-device";
 import { ensureBackgroundWork } from "./background-default";
@@ -276,6 +278,15 @@ function Workspace({
   // header's sidebar button shows and nothing is open above the page.
   const pullAllowed = useRef(false);
   pullAllowed.current = tab !== "studio" && !sidebarOpen;
+  // A shake opens Report a problem, unless a sheet is already up.
+  const [shakeReport, setShakeReport] = useState(false);
+  useEffect(
+    () =>
+      listenForShake(() => {
+        if (!document.querySelector("dialog[open]")) setShakeReport(true);
+      }),
+    [],
+  );
   // A pull belongs to one opening; any later one slides in by itself.
   useEffect(() => {
     if (!sidebarOpen) setSidebarPull(undefined);
@@ -1699,6 +1710,7 @@ function Workspace({
           />
         </PageSheet>
       )}
+      {shakeReport && <ReportSheet onClose={() => setShakeReport(false)} />}
       {sidebarOpen && (
         <ConversationSidebar
           pull={sidebarPull}

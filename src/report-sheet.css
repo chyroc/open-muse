@@ -1,0 +1,160 @@
+/* Settings > Report a problem, laid out like a system feedback form. */
+.report-sheet {
+  display: flex;
+  flex-direction: column;
+}
+.report-heading {
+  margin: 8px 0 8px;
+  font-size: 17px;
+  font-weight: 600;
+  color: inherit;
+}
+.report-text {
+  min-height: 120px;
+  padding: 10px 12px;
+  border: 1px solid #e5e5ea;
+  border-radius: 14px;
+  background: #fff;
+  font: inherit;
+  font-size: 17px;
+  color: inherit;
+  resize: vertical;
+}
+.report-count {
+  margin: 4px 2px 12px;
+  font-size: 13px;
+  text-align: right;
+  color: #8e8e93;
+}
+.report-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.report-add,
+.report-thumb {
+  position: relative;
+  width: 92px;
+  height: 200px;
+  margin: 0;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.report-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1.5px dashed #d1d1d6;
+  background: transparent;
+  color: #4a9ff5;
+  font-size: 15px;
+  transition: transform var(--motion-press-duration) ease-out;
+}
+.report-add:active,
+.report-area:active,
+.report-submit:active {
+  transform: scale(var(--motion-press-scale));
+}
+.report-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.report-thumb button {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 55%);
+  color: #fff;
+}
+.report-areas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.report-area {
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 20px;
+  background: #e9e9ee;
+  font: inherit;
+  font-size: 16px;
+  color: inherit;
+  transition:
+    background-color var(--motion-fade-duration) ease-out,
+    transform var(--motion-press-duration) ease-out;
+}
+.report-area[aria-pressed="true"] {
+  background: #0064d0;
+  color: #fff;
+}
+.report-submit {
+  height: 52px;
+  margin-top: 16px;
+  border: 0;
+  border-radius: 26px;
+  background: #0a7cff;
+  color: #fff;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  transition: transform var(--motion-press-duration) ease-out;
+}
+.report-submit:disabled {
+  opacity: 0.4;
+}
+@media (prefers-color-scheme: dark) {
+  .report-text {
+    border-color: #38383a;
+    background: #1c1c1e;
+  }
+  .report-area {
+    background: #2c2c2e;
+  }
+  .report-area[aria-pressed="true"] {
+    background: #0a84ff;
+  }
+  .report-add {
+    border-color: #48484a;
+  }
+}
+/* Help and support, Legal: text rows with a trailing link or chevron. */
+.settings-list-row.help-row > span:first-child {
+  display: block;
+  flex: 1;
+  color: inherit;
+}
+.settings-list-row.help-row {
+  text-decoration: none;
+  color: inherit;
+}
+.settings-list-row.help-row > svg {
+  flex: 0 0 auto;
+  color: #8e8e93;
+}
+.settings-list-row.legal-note {
+  align-items: flex-start;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+.help-heading {
+  margin: 20px 12px 8px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #8e8e93;
+}
+.report-text:focus {
+  outline: none;
+  border-color: #0064d0;
+}

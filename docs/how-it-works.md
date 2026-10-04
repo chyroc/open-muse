@@ -501,6 +501,23 @@ messages sent to the bot. **Get a new address** replaces the address, and
 **Disconnect Lark** revokes the hook at once. The same delivery conditions
 and limits as other webhooks apply.
 
+### Report a problem, help, and legal
+
+Settings > **Report a problem** on iPhone takes a description, up to four
+screenshots, and which parts of the app it concerns. Open Muse has no support
+service, so **Submit** hands the report to the system share sheet and the
+person chooses where it goes (Mail, Lark, or elsewhere); it carries only what
+they wrote and attached, the app's commit and version, and the system
+version. Shaking the iPhone opens the same form, unless another sheet is up;
+**Help and support** turns that off on the device, offers **Ask your
+assistant** (drafts a question about the app in the main chat) and **Send
+feedback**. **Legal** notes that replies are AI-generated and may be wrong,
+and links to Volcano Engine's privacy policy and terms of service, under
+which Ark processes what the person sends with their own key.
+
+Settings and the pages within it use a large title that scrolls away with
+the content; a small centered title over a frosted bar takes its place.
+
 ### Devices and About
 
 Settings > **Devices** on iPhone lists this iPhone and the account's other

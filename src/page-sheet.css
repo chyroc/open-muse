@@ -36,12 +36,46 @@
   opacity: 0;
   transition: opacity var(--motion-sheet-dismiss-duration) ease-in;
 }
+/* The header floats over the content: the close button, and a small
+   centered title that fades in, over a frosted bar, once the large title has
+   scrolled away beneath it, as system navigation bars do. */
 .page-sheet-header {
-  flex: 0 0 auto;
-  padding: 20px 20px 0 16px;
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  padding: 20px 20px 8px 16px;
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
+  transition: background-color var(--motion-fade-duration) ease-out;
+}
+.page-sheet.scrolled .page-sheet-header {
+  background: rgb(243 244 246 / 82%);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+.page-sheet-inline-title {
+  position: absolute;
+  left: 72px;
+  right: 72px;
+  top: 20px;
+  height: 36px;
+  line-height: 36px;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transition: opacity var(--motion-fade-duration) ease-out;
+}
+.page-sheet.scrolled .page-sheet-inline-title {
+  opacity: 1;
 }
 .page-sheet-close {
   display: grid;
@@ -65,8 +99,8 @@
 .page-sheet-close:focus-visible {
   outline: none;
 }
-.page-sheet-header h1 {
-  margin: 20px 0 0;
+.page-sheet-title {
+  margin: 0 0 16px;
   font-size: 34px;
   line-height: 39px;
   font-weight: 700;
@@ -76,7 +110,9 @@
   flex: 1;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 16px 20px calc(30px + env(safe-area-inset-bottom));
+  /* Clear of the header: its 20pt top, 36pt close button and the 20pt gap
+     the large title used to have. */
+  padding: 76px 20px calc(30px + env(safe-area-inset-bottom));
   -webkit-overflow-scrolling: touch;
 }
 

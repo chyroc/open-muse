@@ -12,6 +12,10 @@ import { t } from "../shared/i18n";
 import { animateAway, useDragToDismiss } from "./gesture";
 import "./page-sheet.css";
 
+// How far the content scrolls before the large title gives way to the small
+// one, in points: about the large title's height.
+const TITLE_SCROLL = 34;
+
 // The page sheet a sheet is opened from, if any; sheets opened inside it are
 // pushed as pages within it instead of stacking another sheet.
 const PageSheetHost = createContext<HTMLElement | null>(null);
@@ -64,11 +68,13 @@ export function PageSheet({
     direction: 1,
     onDismiss: dismiss,
   });
+  // Whether the large title has scrolled under the header.
+  const [scrolled, setScrolled] = useState(false);
 
   return (
     <dialog
       ref={ref}
-      className={`page-sheet ${className}`}
+      className={`page-sheet ${scrolled ? "scrolled " : ""}${className}`}
       tabIndex={-1}
       aria-label={title}
       onCancel={(event) => {
@@ -100,9 +106,18 @@ export function PageSheet({
             />
           </svg>
         </button>
-        <h1>{title}</h1>
+        {/* Once the large title scrolls away, a small one shows here. */}
+        <span className="page-sheet-inline-title" aria-hidden="true">
+          {title}
+        </span>
       </header>
-      <div className="page-sheet-body">
+      <div
+        className="page-sheet-body"
+        onScroll={(event) =>
+          setScrolled(event.currentTarget.scrollTop > TITLE_SCROLL)
+        }
+      >
+        <h1 className="page-sheet-title">{title}</h1>
         <PageSheetHost.Provider value={host}>{children}</PageSheetHost.Provider>
       </div>
     </dialog>

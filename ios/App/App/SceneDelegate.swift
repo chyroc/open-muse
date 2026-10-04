@@ -281,6 +281,16 @@ class MuseBridgeViewController: CAPBridgeViewController {
                 injectionTime: .atDocumentStart, forMainFrameOnly: true
             ))
         }
+        // The system version, which WebKit's user agent no longer reports.
+        if let data = try? JSONSerialization.data(
+               withJSONObject: "\(UIDevice.current.systemName) \(UIDevice.current.systemVersion)",
+               options: .fragmentsAllowed),
+           let json = String(data: data, encoding: .utf8) {
+            webView?.configuration.userContentController.addUserScript(WKUserScript(
+                source: "window.__OPEN_MUSE_SYSTEM__ = \(json);",
+                injectionTime: .atDocumentStart, forMainFrameOnly: true
+            ))
+        }
         // Floating sheets keep their corners concentric with the display's,
         // which the web view cannot read.
         let corner = (UIScreen.main.value(forKey: "_displayCornerRadius") as? CGFloat) ?? 0
@@ -339,8 +349,28 @@ class MuseBridgeViewController: CAPBridgeViewController {
         webView?.hideInputAccessoryBar()
     }
 
+    // A shake opens Report a problem when the page allows it (see shake.ts).
+    func shaken() {
+        webView?.evaluateJavaScript("window.dispatchEvent(new Event('muse-shake'))")
+    }
+
     deinit {
         keyboardObservers.forEach { NotificationCenter.default.removeObserver($0) }
+    }
+}
+
+// The app's window sees a shake before the web view, whose own shake-to-undo
+// would otherwise keep it from the page.
+final class MuseWindow: UIWindow {
+    private var lastShake = Date.distantPast
+
+    override func sendEvent(_ event: UIEvent) {
+        super.sendEvent(event)
+        guard event.type == .motion, event.subtype == .motionShake,
+              Date().timeIntervalSince(lastShake) > 1
+        else { return }
+        lastShake = Date()
+        (rootViewController as? MuseBridgeViewController)?.shaken()
     }
 }
 
@@ -350,7 +380,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = scene as? UIWindowScene else { return }
 
-        window = UIWindow(windowScene: windowScene)
+        window = MuseWindow(windowScene: windowScene)
         window?.overrideUserInterfaceStyle = MuseAppearanceHandler.style(
             UserDefaults.standard.string(forKey: MuseAppearanceHandler.key))
         window?.rootViewController = MuseBridgeViewController()

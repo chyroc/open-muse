@@ -1,7 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
   Bell,
+  CircleAlert,
+  CircleHelp,
   Cpu,
+  FileText,
   Info,
   Check,
   KeyRound,
@@ -31,6 +34,9 @@ import { backgroundClient } from "./background-client";
 import { ChannelsSheet } from "./ChannelsSheet";
 import { DevicesSheet } from "./DevicesSheet";
 import { PermissionsSheet } from "./PermissionsSheet";
+import { ReportSheet } from "./ReportSheet";
+import { HelpSheet, LegalSheet } from "./HelpSheets";
+import { nativeMobile } from "./platform";
 import { NotificationsSheet } from "./NotificationsSheet";
 import { notificationsSupported } from "./notifications";
 import { Sheet } from "./MusePages";
@@ -51,6 +57,9 @@ type Section =
   | "language"
   | "account"
   | "about"
+  | "report"
+  | "help"
+  | "legal"
   | "reset";
 
 // Each language is named in itself, as system language pickers do.
@@ -184,19 +193,36 @@ export function SettingsHome({
         />
       </ul>
       <ul className="settings-list">
-        {signedIn && (
-          <Row
-            icon={<KeyRound size={22} strokeWidth={2} />}
-            label={t("Account and workspace")}
-            onClick={() => setSection("account")}
-          />
-        )}
+        <Row
+          icon={<CircleAlert size={22} strokeWidth={2} />}
+          label={t("Report a problem")}
+          onClick={() => setSection("report")}
+        />
+        <Row
+          icon={<CircleHelp size={22} strokeWidth={2} />}
+          label={t("Help and support")}
+          onClick={() => setSection("help")}
+        />
+        <Row
+          icon={<FileText size={22} strokeWidth={2} />}
+          label={t("Legal")}
+          onClick={() => setSection("legal")}
+        />
         <Row
           icon={<Info size={22} strokeWidth={2} />}
           label={t("About")}
           onClick={() => setSection("about")}
         />
       </ul>
+      {signedIn && (
+        <ul className="settings-list">
+          <Row
+            icon={<KeyRound size={22} strokeWidth={2} />}
+            label={t("Account and workspace")}
+            onClick={() => setSection("account")}
+          />
+        </ul>
+      )}
       <ul className="settings-list">
         <li>
           <button
@@ -302,6 +328,18 @@ export function SettingsHome({
           </Sheet>
         ))}
       {section === "about" && <AboutSheet onClose={close} />}
+      {section === "report" && <ReportSheet onClose={close} />}
+      {section === "help" && (
+        <HelpSheet
+          onClose={close}
+          shakeSupported={nativeMobile()}
+          onDraft={(text) => {
+            close();
+            onDraft(text);
+          }}
+        />
+      )}
+      {section === "legal" && <LegalSheet onClose={close} />}
       {section === "appearance" && (
         <AppearanceSheet name={name ?? t("Your assistant")} onClose={close} />
       )}
