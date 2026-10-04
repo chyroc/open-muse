@@ -495,6 +495,15 @@
   width: 32px;
   height: 32px;
 }
+/* A drawn icon sits inside the same margin a macOS icon keeps. */
+.connector-app-icon.drawn {
+  padding: 3px;
+}
+.connector-app-icon.drawn > svg {
+  display: block;
+  border-radius: 22.5%;
+  box-shadow: 0 0.5px 1.5px #0000002e;
+}
 .connector-row {
   align-items: center;
 }

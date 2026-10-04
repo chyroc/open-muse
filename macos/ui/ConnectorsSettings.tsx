@@ -12,6 +12,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { t } from "../../shared/i18n";
+import { AppIcon, hasAppIcon } from "../../src/AppIcons";
 import { backgroundClient } from "../../src/background-client";
 import { LarkSetupPanel, useLarkAccount } from "./LarkSetup";
 import { Switch } from "./SettingsSwitch";
@@ -41,42 +42,8 @@ function useAppIcons() {
   return icons;
 }
 
-// Apple Health has no Mac app to take an icon from: a white tile with a
-// pink heart, the way the iPhone shows it.
-function HealthIcon() {
-  return (
-    <svg
-      className="connector-app-icon"
-      viewBox="0 0 32 32"
-      width="32"
-      height="32"
-      aria-hidden="true"
-    >
-      <defs>
-        <linearGradient id="connector-health" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#ff6b8e" />
-          <stop offset="1" stopColor="#ff2d55" />
-        </linearGradient>
-      </defs>
-      <rect
-        x="2.5"
-        y="2.5"
-        width="27"
-        height="27"
-        rx="6.5"
-        fill="#fff"
-        stroke="#0000001f"
-      />
-      <path
-        d="M16 23.4c-.3 0-.6-.1-.8-.3-3.8-3.2-6.7-5.8-6.7-9 0-2.2 1.7-3.9 3.8-3.9 1.5 0 2.8.8 3.7 2.1.9-1.3 2.2-2.1 3.7-2.1 2.1 0 3.8 1.7 3.8 3.9 0 3.2-2.9 5.8-6.7 9-.2.2-.5.3-.8.3z"
-        fill="url(#connector-health)"
-      />
-    </svg>
-  );
-}
-
-// A connector's icon: the app it stands for when this Mac has it, otherwise
-// a glyph on a plain tile.
+// A connector's icon: the app it stands for, from this Mac when it is
+// installed, otherwise a glyph on a plain tile.
 export function ConnectorIcon({
   id,
   Icon,
@@ -86,7 +53,6 @@ export function ConnectorIcon({
   Icon?: typeof Globe;
   icons: Record<string, string>;
 }) {
-  if (id === "health") return <HealthIcon />;
   if (icons[id])
     return (
       <img
@@ -97,6 +63,14 @@ export function ConnectorIcon({
         width={32}
         height={32}
       />
+    );
+  // Not installed here, or with no Mac app at all, such as Apple Health: the
+  // same drawing the iPhone shows.
+  if (hasAppIcon(id))
+    return (
+      <span className="connector-app-icon drawn" aria-hidden="true">
+        <AppIcon id={id} />
+      </span>
     );
   return (
     <span className="connector-tile" aria-hidden="true">

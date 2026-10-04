@@ -130,11 +130,17 @@ describe("Mac connectors", () => {
     expect(row("This Mac").querySelector("img")?.getAttribute("src")).toBe(
       icon,
     );
-    // Only image data is used; anything else keeps the plain glyph.
+    // Only image data is used; otherwise the app is drawn, and a connector
+    // with no app keeps its glyph.
     expect(row("Browser").querySelector("img")).toBeNull();
-    expect(row("Browser").querySelector(".connector-tile svg")).toBeTruthy();
     expect(
-      row("Apple Health").querySelector("svg.connector-app-icon"),
+      row("Browser").querySelector(".connector-app-icon.drawn svg"),
+    ).toBeTruthy();
+    expect(
+      row("Web search and pages").querySelector(".connector-tile svg"),
+    ).toBeTruthy();
+    expect(
+      row("Apple Health").querySelector(".connector-app-icon.drawn svg"),
     ).toBeTruthy();
   });
 });
