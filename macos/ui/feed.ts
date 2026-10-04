@@ -4,6 +4,8 @@ import type { InspirationItem } from "../../shared/inspiration";
 import { LocalDatabase } from "../../src/direct/storage";
 import { macOwner } from "./owner";
 
+// `order` is kept for records written by earlier versions; posts are shown
+// newest first.
 export type FeedPresentation = {
   hidden: string[];
   order: Record<string, string[]>;
@@ -12,84 +14,55 @@ export const emptyFeedPresentation = (): FeedPresentation => ({
   hidden: [],
   order: {},
 });
-export type FeedMove = "up" | "down" | "top";
 const presentationDatabase = new LocalDatabase();
+const timeOf = (item: InspirationItem) => Date.parse(item.created_at) || 0;
 
-export function editionKey(item: InspirationItem) {
-  const date = new Date(item.created_at);
-  if (!Number.isFinite(date.getTime())) return "undated";
-  const day = [date.getFullYear(), date.getMonth() + 1, date.getDate()].join(
-    "-",
-  );
-  const hour = date.getHours();
-  return `${day}:${hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening"}`;
-}
-
-export function feedEditions(
+// The posts shown on the page, newest first, without the ones removed on this
+// Mac. Ideas and other kinds stay on their own pages.
+export function feedPosts(
   items: InspirationItem[],
   presentation: FeedPresentation,
 ) {
-  const groups = new Map<
-    string,
-    { key: string; label: string; items: InspirationItem[] }
-  >();
-  const sorted = items
+  return items
     .filter(
       (item) => item.kind === "feed" && !presentation.hidden.includes(item.id),
     )
-    .sort(
-      (a, b) =>
-        (Date.parse(b.created_at) || 0) - (Date.parse(a.created_at) || 0),
-    );
-  for (const item of sorted) {
-    const key = editionKey(item);
-    let group = groups.get(key);
-    if (!group) {
-      const date = new Date(item.created_at);
-      const period = key.split(":")[1];
-      group = {
-        key,
-        label:
-          key === "undated"
-            ? t("Earlier posts")
-            : `${date.toLocaleDateString(formatLocale(), { weekday: "long", month: "short", day: "numeric" })} ${t(period)}`,
-        items: [],
-      };
-      groups.set(key, group);
-    }
-    group.items.push(item);
-  }
-  for (const group of groups.values()) {
-    const order = presentation.order[group.key] ?? [];
-    const rank = (id: string) =>
-      order.includes(id) ? order.indexOf(id) : Number.MAX_SAFE_INTEGER;
-    group.items.sort((a, b) => rank(a.id) - rank(b.id));
-  }
-  return [...groups.values()];
+    .sort((a, b) => timeOf(b) - timeOf(a));
 }
 
-export function moveFeedItem(
-  state: FeedPresentation,
-  items: InspirationItem[],
-  id: string,
-  direction: FeedMove,
-): FeedPresentation {
-  const group = feedEditions(items, state).find((group) =>
-    group.items.some((item) => item.id === id),
-  );
-  if (!group) return state;
-  const order = group.items.map((item) => item.id);
-  const current = order.indexOf(id);
-  const next =
-    direction === "top"
-      ? 0
-      : Math.max(
-          0,
-          Math.min(order.length - 1, current + (direction === "up" ? -1 : 1)),
-        );
-  order.splice(current, 1);
-  order.splice(next, 0, id);
-  return { ...state, order: { ...state.order, [group.key]: order } };
+// "just now", "5m ago", "9h ago", "4d ago", then a short date.
+export function postAge(at: number, now = Date.now()) {
+  const minutes = Math.floor((now - at) / 60_000);
+  if (minutes < 1) return t("just now");
+  if (minutes < 60) return t("{count}m ago", { count: minutes });
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return t("{count}h ago", { count: hours });
+  const days = Math.floor(hours / 24);
+  if (days < 7) return t("{count}d ago", { count: days });
+  return new Date(at).toLocaleDateString(formatLocale(), {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+// The full moment a post was written, for the top of its options menu. The
+// year appears only when it is not the current one.
+export function postMoment(at: number, now = Date.now()) {
+  const date = new Date(at);
+  const locale = formatLocale();
+  const sameYear = date.getFullYear() === new Date(now).getFullYear();
+  return t("{date} at {time}", {
+    date: date.toLocaleDateString(locale, {
+      weekday: "long",
+      month: "short",
+      day: "numeric",
+      ...(sameYear ? {} : { year: "numeric" }),
+    }),
+    time: date.toLocaleTimeString(locale, {
+      hour: "numeric",
+      minute: "2-digit",
+    }),
+  });
 }
 
 // This is a Mac-only presentation overlay. It never edits generated MA events.

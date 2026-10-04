@@ -117,7 +117,7 @@ async function mount(service: BackgroundClient, discuss = vi.fn()) {
   });
 }
 const titles = () =>
-  [...host.querySelectorAll("article h3")].map((h) => h.textContent);
+  [...host.querySelectorAll("article h2")].map((h) => h.textContent);
 
 describe("Mac feed with scheduled posts", () => {
   it.each(["en", "zh-CN"])(
@@ -136,11 +136,6 @@ describe("Mac feed with scheduled posts", () => {
       const [mine, away] = [...host.querySelectorAll("article")];
       expect(mine.querySelector(`[aria-label="${tr("Love")}"]`)).not.toBeNull();
       expect(away.querySelector(".feed-love")).toBeNull();
-      expect(host.textContent).toContain(
-        tr(
-          "Generated with MA when you ask. Posts prepared on your account's schedule appear here too.",
-        ),
-      );
       const button = [...away.querySelectorAll("button")].find(
         (item) => item.textContent === tr("Discuss"),
       )!;

@@ -20,6 +20,7 @@ import { zhGoalPlanning } from "./zh-CN-goal-planning";
 import { zhIdeaCatalog } from "./zh-CN-idea-catalog";
 import { zhMacShell } from "./zh-CN-mac-shell";
 import { zhMacGoals } from "./zh-CN-mac-goals";
+import { zhMacFeed } from "./zh-CN-mac-feed";
 
 // English source messages are stable keys. Keep protocol names and user data out.
 export const zhCN: Record<string, string> = {
@@ -45,6 +46,7 @@ export const zhCN: Record<string, string> = {
   ...zhIdeaCatalog,
   ...zhMacShell,
   ...zhMacGoals,
+  ...zhMacFeed,
   "Restoring connection…": "正在恢复连接…",
   Retry: "重试",
   "If submission is unconfirmed, refresh history before trying again.":

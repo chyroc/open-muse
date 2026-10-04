@@ -11,10 +11,11 @@ import {
 import { zhCN } from "../../shared/locales/zh-CN";
 import { LocalDatabase } from "../../src/direct/storage";
 import {
-  feedEditions,
+  feedPosts,
   feedPresentationStore,
   emptyFeedPresentation,
-  moveFeedItem,
+  postAge,
+  postMoment,
 } from "../ui/feed";
 import { FeedInstructions } from "../ui/FeedInstructions";
 import { FeedPage } from "../ui/FeedPage";
@@ -122,24 +123,43 @@ const asClient = (client: ReturnType<typeof clientStub>) =>
   client as unknown as Client;
 
 describe("Mac feed presentation", () => {
-  it("groups chronological editions without mutating cloud content", () => {
+  it("lists feed posts newest first without mutating cloud content", () => {
     const items = [
       post("old", "2026-09-29T20:00:00"),
-      post("a"),
-      post("b"),
+      post("a", "2026-09-30T09:00:00"),
+      post("b", "2026-09-30T10:00:00"),
       { ...post("idea"), kind: "ideas" as const },
     ];
-    const state = moveFeedItem(emptyFeedPresentation(), items, "b", "top");
-    const groups = feedEditions(items, state);
-    expect(groups[0].items.map((item) => item.id)).toEqual(["b", "a"]);
-    expect(groups[1].label).toContain("evening");
+    const state = emptyFeedPresentation();
+    expect(feedPosts(items, state).map((item) => item.id)).toEqual([
+      "b",
+      "a",
+      "old",
+    ]);
     expect(items[1].id).toBe("a");
     expect(
-      feedEditions(items, { ...state, hidden: ["b"] })[0].items[0].id,
-    ).toBe("a");
-    expect(feedEditions([post("invalid", "invalid")], state)[0].label).toBe(
-      "Earlier posts",
+      feedPosts(items, { ...state, hidden: ["b"] }).map((item) => item.id),
+    ).toEqual(["a", "old"]);
+    expect(feedPosts([post("invalid", "invalid")], state)).toHaveLength(1);
+  });
+  it("labels a post's age and full moment in both languages", () => {
+    const now = Date.parse("2026-10-04T12:00:00");
+    expect(postAge(now - 30_000, now)).toBe("just now");
+    expect(postAge(now - 9 * 3_600_000, now)).toBe("9h ago");
+    expect(postAge(now - 4 * 86_400_000, now)).toBe("4d ago");
+    expect(postMoment(Date.parse("2026-10-03T09:05:00"), now)).toMatch(
+      /^Saturday, Oct 3 at 9:05\sAM$/,
     );
+    expect(postMoment(Date.parse("2025-10-03T09:05:00"), now)).toContain(
+      "2025",
+    );
+    vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", ["zh-CN"]);
+    try {
+      expect(postAge(now - 9 * 3_600_000, now)).toBe("9小时前");
+      expect(postAge(now - 4 * 86_400_000, now)).toBe("4天前");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
   it("persists moves/removals only within the current account and project", async () => {
     const db = new LocalDatabase(`feed-test-${crypto.randomUUID()}`);
@@ -176,7 +196,10 @@ describe("Mac feed presentation", () => {
     expect(client.send).not.toHaveBeenCalled();
     await click("Discuss");
     expect(discuss).toHaveBeenCalledWith(post());
+    await click("Post options");
+    expect(host.querySelector('[role="menu"]')).not.toBeNull();
     await click("Why I created this");
+    expect(host.querySelector('[role="menu"]')).toBeNull();
     expect(host.textContent).toContain("You asked about gardens.");
     expect(
       host.querySelector('a[href="https://example.com/source"]'),
@@ -198,15 +221,66 @@ describe("Mac feed presentation", () => {
       />,
     );
     await settle();
-    await click("Generate");
+    await click("Generate now");
     await settle();
     expect(client.generateInspiration).toHaveBeenCalledExactlyOnceWith("feed");
     expect(host.textContent).toContain("Submission unconfirmed");
-    await click("Refresh feed");
+    await act(async () =>
+      document.dispatchEvent(new Event("visibilitychange")),
+    );
     await settle();
     expect(client.generateInspiration).toHaveBeenCalledTimes(1);
   });
-  it("removes a post locally only after confirmation and supports Undo", async () => {
+  it("keeps the built-in prompt on a card and shows the setup state", async () => {
+    const client = clientStub();
+    const empty: InspirationSnapshot = {
+      ...snapshot(),
+      items: [],
+      instructions: { content: defaultFeedInstructions, revision: "default" },
+    };
+    client.refreshInspiration.mockResolvedValue(empty);
+    client.inspiration.mockResolvedValue(empty);
+    await mount(
+      <FeedPage
+        client={asClient(client)}
+        onDiscuss={vi.fn()}
+        onConnect={vi.fn()}
+        onEditorChange={vi.fn()}
+        split={false}
+        onToggleChat={vi.fn()}
+      />,
+    );
+    await settle();
+    expect(host.textContent).toContain("Your feed prompt");
+    expect(host.textContent).toContain(defaultFeedInstructions);
+    expect(host.textContent).toContain("Getting your feed ready");
+    expect(button("Edit feed instructions")).toBeUndefined();
+    expect(button("Generate now")).toBeUndefined();
+    await click("Generate");
+    await settle();
+    expect(client.generateInspiration).toHaveBeenCalledExactlyOnceWith("feed");
+  });
+  it("offers Generate now in the setup state once the prompt is edited", async () => {
+    const client = clientStub();
+    const empty: InspirationSnapshot = { ...snapshot(), items: [] };
+    client.refreshInspiration.mockResolvedValue(empty);
+    await mount(
+      <FeedPage
+        client={asClient(client)}
+        onDiscuss={vi.fn()}
+        onConnect={vi.fn()}
+        onEditorChange={vi.fn()}
+        split={false}
+        onToggleChat={vi.fn()}
+      />,
+    );
+    await settle();
+    expect(host.textContent).not.toContain("Your feed prompt");
+    expect(button("Edit feed instructions")).toBeDefined();
+    expect(host.textContent).toContain("Getting your feed ready");
+    expect(button("Generate now")).toBeDefined();
+  });
+  it("removes a post on this Mac from its menu and supports Undo", async () => {
     const client = clientStub();
     await mount(
       <FeedPage
@@ -219,11 +293,12 @@ describe("Mac feed presentation", () => {
       />,
     );
     await settle();
-    await click("Delete");
     expect(host.querySelectorAll("article")).toHaveLength(2);
-    await click("Delete post");
+    await click("Post options");
+    await click("Delete");
     await settle();
     expect(host.querySelectorAll("article")).toHaveLength(1);
+    expect(host.textContent).toContain("Post removed from this Mac.");
     await click("Undo");
     await settle();
     expect(host.querySelectorAll("article")).toHaveLength(2);

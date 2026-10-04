@@ -102,30 +102,40 @@ export function FeedInstructions({
     if (!guard.current) dirty ? setConfirmClose(true) : onClose();
   };
   return (
-    <Modal title={t("Feed instructions")} onClose={close}>
-      <p>
+    <Modal
+      title={t("Feed instructions")}
+      onClose={close}
+      className="feed-instructions-dialog"
+    >
+      <p id="feed-instructions-hint" className="feed-instructions-hint">
         {t(
-          "Your feed is powered by the instructions below. Any edits you make will apply to future feed posts.",
+          "These instructions decide what your feed brings you. Changes apply to the next posts.",
         )}
       </p>
       <form
         className="feed-instructions-form"
+        aria-busy={busy}
         onSubmit={(event) => {
           event.preventDefault();
           void save();
         }}
       >
-        <label htmlFor="feed-instructions">
+        <label htmlFor="feed-instructions" className="feed-sr-only">
           {t("What should your feed cover?")}
         </label>
         <textarea
           id="feed-instructions"
+          aria-describedby="feed-instructions-hint"
           autoFocus
-          rows={7}
+          rows={12}
           maxLength={4000}
           value={draft}
           disabled={busy || !client.signedIn()}
           placeholder={t("Add instructions…")}
+          onFocus={(event) => {
+            const end = event.currentTarget.value.length;
+            event.currentTarget.setSelectionRange(end, end);
+          }}
           onChange={(event) => setDraft(event.target.value)}
         />
         {error && (
@@ -157,17 +167,17 @@ export function FeedInstructions({
             </p>
           </aside>
         )}
-        <footer>
+        <footer className="feed-instructions-actions">
           <button
             type="button"
-            className="pill-button"
+            className="feed-button flat"
             disabled={busy}
             onClick={close}
           >
             {t("Cancel")}
           </button>
           <button
-            className="pill-button primary"
+            className="feed-button primary"
             disabled={busy || !dirty || !draft.trim() || !client.signedIn()}
           >
             {busy ? t("Saving…") : t("Save")}

@@ -1,22 +1,11 @@
 import { t } from "../../shared/i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouteHeader } from "./routeHeader";
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpToLine,
-  Heart,
-  Info,
-  MessageCircle,
-  MoreHorizontal,
-  RefreshCw,
-  SlidersHorizontal,
-  Trash2,
-} from "lucide-react";
 import type { Client } from "../../src/api";
-import type {
-  InspirationItem,
-  InspirationSnapshot,
+import {
+  defaultFeedInstructions,
+  type InspirationItem,
+  type InspirationSnapshot,
 } from "../../shared/inspiration";
 import { Markdown } from "../../src/components";
 import { useTask } from "../../src/useTask";
@@ -29,146 +18,210 @@ import {
   mergeBackgroundFeed,
   useBackgroundFeed,
 } from "../../src/background-feed";
-import { Empty, Modal, SplitChatIcon } from "./Chrome";
+import { FeedIcon, Modal, SplitChatIcon } from "./Chrome";
 import { FeedInstructions, shownInstructions } from "./FeedInstructions";
+import { FeedMedia } from "./FeedMedia";
 import {
   emptyFeedPresentation,
-  feedEditions,
+  feedPosts,
   feedPresentationStore,
-  moveFeedItem,
-  type FeedMove,
+  postAge,
+  postMoment,
 } from "./feed";
+import {
+  ReviseIcon,
+  InfoIcon,
+  EllipsisIcon,
+  HeartFilledIcon,
+  HeartIcon,
+  PencilIcon,
+  SlidersIcon,
+  BubbleIcon,
+  TrashIcon,
+} from "./icons";
 
-export function FeedPost({
+// Drawn when a post has no emoji of its own.
+function FeedPostGlyph() {
+  return <FeedIcon size="1em" strokeWidth={1.75} aria-hidden="true" />;
+}
+
+function Spinner() {
+  return <span className="feed-spinner" aria-hidden="true" />;
+}
+
+// A post's options: when it was written, why it was made, and removal.
+function FeedPostMenu({
   item,
-  first,
-  last,
   busy,
-  onLove,
-  onDiscuss,
-  onMove,
+  onWhy,
   onDelete,
 }: {
   item: InspirationItem;
-  first: boolean;
-  last: boolean;
+  busy: boolean;
+  onWhy: () => void;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const anchor = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const outside = (event: PointerEvent) => {
+      if (!anchor.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const key = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.stopPropagation();
+      setOpen(false);
+      trigger.current?.focus();
+    };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", key, true);
+    anchor.current
+      ?.querySelector<HTMLButtonElement>("[role=menuitem]")
+      ?.focus({ preventScroll: true });
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", key, true);
+    };
+  }, [open]);
+  const at = Date.parse(item.created_at);
+  const choose = (fn: () => void) => {
+    setOpen(false);
+    fn();
+  };
+  return (
+    <div className="feed-post-options" ref={anchor}>
+      <button
+        ref={trigger}
+        type="button"
+        className="feed-icon-button"
+        aria-label={t("Post options")}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <EllipsisIcon />
+      </button>
+      {open && (
+        <div className="feed-menu" role="menu" aria-label={t("Post options")}>
+          {Number.isFinite(at) && (
+            <div className="feed-menu-time">
+              <time dateTime={new Date(at).toISOString()}>
+                {postMoment(at)}
+              </time>
+            </div>
+          )}
+          <button role="menuitem" onClick={() => choose(onWhy)}>
+            <span className="feed-menu-icon">
+              <InfoIcon />
+            </span>
+            <span>{t("Why I created this")}</span>
+          </button>
+          <hr />
+          <button
+            role="menuitem"
+            className="destructive"
+            disabled={busy}
+            onClick={() => choose(onDelete)}
+          >
+            <span className="feed-menu-icon">
+              <TrashIcon />
+            </span>
+            <span>{t("Delete")}</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function FeedPost({
+  item,
+  busy,
+  onLove,
+  onDiscuss,
+  onDelete,
+}: {
+  item: InspirationItem;
   busy: boolean;
   onLove: () => void;
   onDiscuss: () => void;
-  onMove: (direction: FeedMove) => void;
   onDelete: () => void;
 }) {
   const [why, setWhy] = useState(false);
-  const menu = useRef<HTMLDetailsElement>(null);
-  const choose = (fn: () => void) => {
-    if (menu.current) menu.current.open = false;
-    fn();
-  };
-  useEffect(() => {
-    const outside = (event: PointerEvent) => {
-      if (!menu.current?.contains(event.target as Node) && menu.current)
-        menu.current.open = false;
-    };
-    const key = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && menu.current?.open) {
-        menu.current.open = false;
-        menu.current.querySelector("summary")?.focus();
-      }
-    };
-    document.addEventListener("pointerdown", outside);
-    document.addEventListener("keydown", key);
-    return () => {
-      document.removeEventListener("pointerdown", outside);
-      document.removeEventListener("keydown", key);
-    };
-  }, []);
+  const at = Date.parse(item.created_at);
   return (
     <article className="feed-post" aria-label={item.title}>
-      <span className="feed-post-icon" aria-hidden="true">
-        {item.emoji || "✦"}
-      </span>
-      <div className="feed-post-content">
-        <header>
-          <h3>{item.title}</h3>
-          <details className="feed-post-options" ref={menu}>
-            <summary
-              aria-label={t("Options for {title}", { title: item.title })}
-            >
-              <MoreHorizontal size={18} />
-            </summary>
-            <div className="feed-post-menu">
-              {!first && (
-                <button
-                  disabled={busy}
-                  onClick={() => choose(() => onMove("up"))}
-                >
-                  <ArrowUp size={16} />
-                  {t("Move up")}
-                </button>
-              )}
-              {!last && (
-                <button
-                  disabled={busy}
-                  onClick={() => choose(() => onMove("down"))}
-                >
-                  <ArrowDown size={16} />
-                  {t("Move down")}
-                </button>
-              )}
-              {!first && (
-                <button
-                  disabled={busy}
-                  onClick={() => choose(() => onMove("top"))}
-                >
-                  <ArrowUpToLine size={16} />
-                  {t("Move to top")}
-                </button>
-              )}
-              <button onClick={() => choose(() => setWhy(true))}>
-                <Info size={16} />
-                {t("Why I created this")}
-              </button>
-              <button disabled={busy} onClick={() => choose(onDelete)}>
-                <Trash2 size={16} />
-                {t("Delete")}
-              </button>
+      <div className="feed-post-row">
+        <span className="feed-post-icon" aria-hidden="true">
+          {item.emoji ? <span>{item.emoji}</span> : <FeedPostGlyph />}
+        </span>
+        <div className="feed-post-content">
+          <div className="feed-post-text">
+            <div className="feed-post-title">
+              <h2>{item.title}</h2>
+              <div className="feed-post-meta">
+                {Number.isFinite(at) && (
+                  <time
+                    dateTime={new Date(at).toISOString()}
+                    title={postMoment(at)}
+                  >
+                    {postAge(at)}
+                  </time>
+                )}
+                <FeedPostMenu
+                  item={item}
+                  busy={busy}
+                  onWhy={() => setWhy(true)}
+                  onDelete={onDelete}
+                />
+              </div>
             </div>
-          </details>
-        </header>
-        <Markdown text={item.body} />
-        {item.sources.length > 0 && (
-          <ul className="feed-sources" aria-label={t("Sources")}>
-            {item.sources.map((source) => (
-              <li key={source.url}>
-                <a href={source.url} target="_blank" rel="noopener noreferrer">
-                  {source.title}
-                </a>
-              </li>
-            ))}
-          </ul>
-        )}
-        <footer>
-          {/* Posts the service prepared on a schedule have no love here. */}
-          {!isBackgroundPost(item) && (
+            <Markdown text={item.body} />
+            {item.sources.length > 0 && (
+              <ul className="feed-post-sources" aria-label={t("Sources")}>
+                {item.sources.map((source) => (
+                  <li key={source.url}>
+                    <a
+                      href={source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {source.title}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <FeedMedia item={item} />
+          <div className="feed-post-spacer" aria-hidden="true" />
+          <footer>
+            {/* Posts the service prepared on a schedule have no love here. */}
+            {!isBackgroundPost(item) && (
+              <button
+                type="button"
+                className={`feed-action feed-love ${item.liked ? "loved" : ""}`}
+                disabled={busy}
+                aria-label={item.liked ? t("Remove love") : t("Love")}
+                aria-pressed={item.liked}
+                onClick={onLove}
+              >
+                {item.liked ? <HeartFilledIcon /> : <HeartIcon />}
+              </button>
+            )}
             <button
-              className={`feed-love ${item.liked ? "loved" : ""}`}
+              type="button"
+              className="feed-action labeled"
               disabled={busy}
-              aria-label={item.liked ? t("Remove love") : t("Love")}
-              aria-pressed={item.liked}
-              onClick={onLove}
+              onClick={onDiscuss}
             >
-              <Heart
-                size={23}
-                fill={item.liked ? "currentColor" : "none"}
-                strokeWidth={1.6}
-              />
+              <BubbleIcon />
+              {t("Discuss")}
             </button>
-          )}
-          <button disabled={busy} onClick={onDiscuss}>
-            <MessageCircle size={23} strokeWidth={1.6} />
-            {t("Discuss")}
-          </button>
-        </footer>
+          </footer>
+        </div>
       </div>
       {why && (
         <Modal
@@ -180,6 +233,57 @@ export function FeedPost({
       )}
     </article>
   );
+}
+
+function FeedPostSkeleton() {
+  return (
+    <div className="feed-post feed-skeleton" aria-hidden="true">
+      <div className="feed-post-row">
+        <span className="feed-post-icon feed-bone" />
+        <div className="feed-post-content">
+          <div className="feed-post-text">
+            <div className="feed-post-title">
+              <span className="feed-bone line" style={{ width: "66%" }} />
+              <span className="feed-bone dot" />
+            </div>
+            <span className="feed-bone line" />
+            <span className="feed-bone line" style={{ width: "92%" }} />
+          </div>
+          <div className="feed-media">
+            <span className="feed-bone picture" />
+          </div>
+          <div className="feed-post-spacer" />
+          <footer>
+            <span className="feed-bone dot start" />
+            <span className="feed-bone pill" />
+          </footer>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GenerateLabel({
+  signedIn,
+  resumable,
+  generating,
+  idle,
+}: {
+  signedIn: boolean;
+  resumable: boolean;
+  generating: boolean;
+  idle: string;
+}) {
+  if (!signedIn) return <>{t("Connect to MA")}</>;
+  if (resumable) return <>{t("Continue generation")}</>;
+  if (generating)
+    return (
+      <span className="feed-button-busy">
+        <Spinner />
+        {t("Generating…")}
+      </span>
+    );
+  return <>{idle}</>;
 }
 
 export function FeedPage({
@@ -205,9 +309,9 @@ export function FeedPage({
   const [presentation, setPresentation] = useState(emptyFeedPresentation);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(false);
-  const [deleting, setDeleting] = useState<InspirationItem>();
   const [removed, setRemoved] = useState<InspirationItem>();
   const alive = useRef(true);
   const lock = useRef(false);
@@ -216,7 +320,7 @@ export function FeedPage({
   const store = useMemo(() => feedPresentationStore(client), [client]);
   const run = data?.runs.feed;
   const pending = Boolean(run && !["complete", "failed"].includes(run.phase));
-  const resumable = run && ["preparing", "ready"].includes(run.phase);
+  const resumable = Boolean(run && ["preparing", "ready"].includes(run.phase));
   const generation = useTask(client, pending ? run?.session_id : undefined);
   const away = useBackgroundFeed(background);
   const refresh = useCallback(async () => {
@@ -292,12 +396,56 @@ export function FeedPage({
         if (alive.current) setError((error as Error).message);
       }
       lock.current = false;
-      if (alive.current) setBusy(false);
+      if (alive.current) {
+        setBusy(false);
+        setStarting(false);
+      }
     }
   }
+  const signedIn = client.signedIn();
+  const generating = starting || (pending && !resumable);
+  const generate = () => {
+    if (!signedIn) return onConnect();
+    if (generating || busy) return;
+    setStarting(true);
+    void action(() => client.generateInspiration("feed"));
+  };
+  const remove = (item: InspirationItem) =>
+    void action(async () => {
+      await store.update((state) => ({
+        ...state,
+        hidden: [...new Set([...state.hidden, item.id])],
+      }));
+      setRemoved(item);
+    });
   const items = mergeBackgroundFeed(data?.items ?? [], away.posts);
-  const editions = feedEditions(items, presentation);
-  const hasPosts = Boolean(editions.length);
+  const posts = feedPosts(items, presentation);
+  const hasPosts = posts.length > 0;
+  // The built-in prompt sits on the page as a card until someone edits it;
+  // after that it is changed from the header.
+  const untouched = Boolean(
+    data && data.instructions.content.trim() === defaultFeedInstructions,
+  );
+  const custom = Boolean(data && !untouched);
+  const problems = [error, run?.error, generation.error].filter(
+    (value): value is string => Boolean(value),
+  );
+  const generateButton = (idle: string, variant: "primary" | "flat") => (
+    <button
+      type="button"
+      className={`feed-button ${variant}`}
+      aria-busy={generating}
+      aria-disabled={generating || busy || !data}
+      onClick={generate}
+    >
+      <GenerateLabel
+        signedIn={signedIn}
+        resumable={resumable}
+        generating={generating}
+        idle={idle}
+      />
+    </button>
+  );
   return (
     <section
       className="desktop-feed route-scroller"
@@ -317,165 +465,136 @@ export function FeedPage({
       <div className="feed-column">
         <header className="feed-heading route-heading">
           <h1>{t("Feed")}</h1>
-          <button
-            className="feed-settings"
-            aria-label={t("Edit feed instructions")}
-            disabled={!data}
-            onClick={() => setEditing(true)}
-          >
-            <SlidersHorizontal size={22} />
-          </button>
-        </header>
-        {error && (
-          <div className="feed-error" role="alert">
-            {error}
-            <button disabled={busy} onClick={() => void refresh()}>
-              {t("Refresh")}
+          {custom && (
+            <button
+              type="button"
+              className="feed-icon-button flat"
+              aria-label={t("Edit feed instructions")}
+              onClick={() => setEditing(true)}
+            >
+              <SlidersIcon />
             </button>
-          </div>
-        )}
-        {loading && (
-          <p className="feed-status" role="status">
-            {t("Loading your feed…")}
-          </p>
-        )}
-        {!loading && data && !hasPosts && (
-          <>
-            <Empty title={t("Your personal feed")}>
-              <p>
-                {t(
-                  "Useful discoveries and thoughtful updates, shaped by your conversations, interests, and goals.",
-                )}
+          )}
+        </header>
+        {untouched && data && (
+          <div className="feed-prompt-slot">
+            <section
+              className="feed-prompt-card"
+              aria-labelledby="feed-prompt-heading"
+            >
+              <h2 id="feed-prompt-heading">{t("Your feed prompt")}</h2>
+              <p title={shownInstructions(data.instructions.content)}>
+                {shownInstructions(data.instructions.content)}
               </p>
-            </Empty>
-            <aside className="feed-prompt-card">
-              <h2>{t("Your feed prompt")}</h2>
-              <p>{shownInstructions(data.instructions.content)}</p>
-              <footer>
+              <div className="feed-prompt-actions">
                 <button
-                  className="pill-button"
+                  type="button"
+                  className="feed-button flat with-icon"
                   onClick={() => setEditing(true)}
                 >
+                  <PencilIcon />
                   {t("Edit")}
                 </button>
-              </footer>
-            </aside>
-          </>
-        )}
-        <div aria-label={t("Feed editions")}>
-          {editions.map((edition) => (
-            <section
-              className="feed-edition"
-              key={edition.key}
-              aria-label={edition.label}
-            >
-              <h2>{edition.label}</h2>
-              {edition.items.map((item, index) => (
-                <FeedPost
-                  key={item.id}
-                  item={item}
-                  first={index === 0}
-                  last={index === edition.items.length - 1}
-                  busy={busy}
-                  onLove={() =>
-                    void action(() =>
-                      client.likeInspiration(item.id, !item.liked),
-                    )
-                  }
-                  onDiscuss={() => onDiscuss(item)}
-                  onMove={(direction) =>
-                    void action(() =>
-                      store.update((state) =>
-                        moveFeedItem(state, items, item.id, direction),
-                      ),
-                    )
-                  }
-                  onDelete={() => setDeleting(item)}
-                />
-              ))}
+                {generateButton(t("Generate"), "primary")}
+              </div>
             </section>
-          ))}
-        </div>
-        {removed && (
-          <div className="feed-undo" role="status">
-            {t("Post removed from this Mac.")}
-            <button
-              disabled={busy}
-              onClick={() =>
-                void action(async () => {
-                  await store.update((state) => ({
-                    ...state,
-                    hidden: state.hidden.filter((id) => id !== removed.id),
-                  }));
-                  setRemoved(undefined);
-                })
-              }
-            >
-              {t("Undo")}
-            </button>
           </div>
         )}
-        {run?.error && (
-          <p className="feed-error" role="alert">
-            {run.error}
-          </p>
-        )}
-        {generation.error && (
-          <p className="feed-error" role="alert">
-            {generation.error}
-          </p>
-        )}
-        {pending && (
-          <p className="feed-status" role="status">
-            {run?.phase === "creating" || run?.phase === "sending"
-              ? t("Checking submission…")
-              : resumable
-                ? t("Ready to continue generation")
-                : t("Finding something worth sharing…")}
-          </p>
-        )}
-        {!loading && (
-          <footer className="feed-generation">
-            <button
-              className="pill-button"
-              disabled={busy || !data || (pending && !resumable)}
-              onClick={() =>
-                client.signedIn()
-                  ? void action(() => client.generateInspiration("feed"))
-                  : onConnect()
-              }
+        <div className="feed-list">
+          {loading ? (
+            <div
+              className="feed-loading"
+              role="status"
+              aria-busy="true"
+              aria-label={t("Loading feed")}
             >
-              {busy
-                ? t("Working…")
-                : !client.signedIn()
-                  ? t("Connect to MA")
-                  : resumable
-                    ? t("Continue generation")
-                    : t("Generate")}
-            </button>
-            <button
-              className="icon-button"
-              aria-label={t("Refresh feed")}
-              disabled={busy}
-              onClick={() => {
-                void refresh();
-                void away.reload();
-              }}
-            >
-              <RefreshCw size={17} />
-            </button>
-            <p>
-              {background.configured()
-                ? t(
-                    "Generated with MA when you ask. Posts prepared on your account's schedule appear here too.",
-                  )
-                : t(
-                    "Generated with MA when you ask. Automatic background editions are not connected yet.",
-                  )}
-            </p>
-          </footer>
-        )}
+              <FeedPostSkeleton />
+              <FeedPostSkeleton />
+              <FeedPostSkeleton />
+            </div>
+          ) : !data ? (
+            <div className="feed-alert" role="alert">
+              <p className="feed-alert-title">{t("The feed didn't load.")}</p>
+              {error && <p className="feed-alert-detail">{error}</p>}
+              <button
+                type="button"
+                className="feed-button flat"
+                onClick={() => void refresh()}
+              >
+                {t("Try again")}
+              </button>
+            </div>
+          ) : (
+            <>
+              {problems.map((problem, index) => (
+                <div className="feed-alert" role="alert" key={index}>
+                  <p className="feed-alert-detail">{problem}</p>
+                </div>
+              ))}
+              {!hasPosts && (
+                <div className="feed-empty">
+                  <div className="feed-empty-content">
+                    <ReviseIcon className="feed-empty-icon" />
+                    <h2>{t("Getting your feed ready")}</h2>
+                    <p>
+                      {t(
+                        "Posts chosen for you will show up here as your companion learns what you care about.",
+                      )}
+                    </p>
+                    {custom && generateButton(t("Generate now"), "primary")}
+                  </div>
+                </div>
+              )}
+              <div
+                className="feed-posts"
+                role="log"
+                aria-live="polite"
+                aria-label={t("Feed editions")}
+              >
+                {posts.map((item) => (
+                  <FeedPost
+                    key={item.id}
+                    item={item}
+                    busy={busy}
+                    onLove={() =>
+                      void action(() =>
+                        client.likeInspiration(item.id, !item.liked),
+                      )
+                    }
+                    onDiscuss={() => onDiscuss(item)}
+                    onDelete={() => remove(item)}
+                  />
+                ))}
+              </div>
+              {custom && hasPosts && (
+                <div className="feed-more">
+                  {generateButton(t("Generate now"), "flat")}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
+      {removed && (
+        <div className="feed-undo" role="status">
+          <span>{t("Post removed from this Mac.")}</span>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() =>
+              void action(async () => {
+                await store.update((state) => ({
+                  ...state,
+                  hidden: state.hidden.filter((id) => id !== removed.id),
+                }));
+                setRemoved(undefined);
+              })
+            }
+          >
+            {t("Undo")}
+          </button>
+        </div>
+      )}
       {editing && data && (
         <FeedInstructions
           client={client}
@@ -485,47 +604,6 @@ export function FeedPage({
           }
           onClose={() => setEditing(false)}
         />
-      )}
-      {deleting && (
-        <Modal
-          title={t("Delete this post?")}
-          onClose={() => {
-            if (!busy) setDeleting(undefined);
-          }}
-        >
-          <p>
-            {t(
-              "Remove “{title}” from this Mac’s feed? The original MA conversation stays unchanged. You can undo this removal.",
-              { title: deleting.title },
-            )}
-          </p>
-          <div className="feed-dialog-actions">
-            <button
-              className="pill-button"
-              disabled={busy}
-              onClick={() => setDeleting(undefined)}
-            >
-              {t("Cancel")}
-            </button>
-            <button
-              className="pill-button"
-              disabled={busy}
-              onClick={() =>
-                void action(async () => {
-                  const item = deleting;
-                  await store.update((state) => ({
-                    ...state,
-                    hidden: [...new Set([...state.hidden, item.id])],
-                  }));
-                  setRemoved(item);
-                  setDeleting(undefined);
-                })
-              }
-            >
-              {t("Delete post")}
-            </button>
-          </div>
-        </Modal>
       )}
     </section>
   );
