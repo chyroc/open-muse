@@ -130,6 +130,23 @@ export async function readComputer() {
     ? parseComputerState(await native.postMessage({ operation: "status" }))
     : undefined;
 }
+// The installed apps' own icons for the connectors in Settings, as image data
+// keyed by connector. Anything malformed or missing is left out.
+export async function readAppIcons(): Promise<Record<string, string>> {
+  const native = bridge();
+  if (!native) return {};
+  const value = await native
+    .postMessage({ operation: "app-icons" })
+    .catch(() => undefined);
+  if (!value || typeof value !== "object") return {};
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      (entry): entry is [string, string] =>
+        typeof entry[1] === "string" &&
+        entry[1].startsWith("data:image/png;base64,"),
+    ),
+  );
+}
 export async function enableComputer(value: boolean) {
   const native = bridge();
   return native

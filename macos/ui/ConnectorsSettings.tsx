@@ -1,7 +1,9 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
 import {
   Brain,
+  CalendarDays,
   Globe,
+  MapPin,
   HeartPulse,
   Laptop,
   MessagesSquare,
@@ -18,6 +20,7 @@ import {
   computerChanged,
   enableCalendar,
   enableLocation,
+  readAppIcons,
   readComputer,
   requestCalendar,
   requestLocation,
@@ -25,10 +28,88 @@ import {
   type ComputerState,
 } from "./computer";
 
+// The installed apps' own icons; the Mac app keeps them once it has drawn them.
+function useAppIcons() {
+  const [icons, setIcons] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let alive = true;
+    void readAppIcons().then((value) => alive && setIcons(value));
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return icons;
+}
+
+// Apple Health has no Mac app to take an icon from: a white tile with a
+// pink heart, the way the iPhone shows it.
+function HealthIcon() {
+  return (
+    <svg
+      className="connector-app-icon"
+      viewBox="0 0 32 32"
+      width="32"
+      height="32"
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id="connector-health" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ff6b8e" />
+          <stop offset="1" stopColor="#ff2d55" />
+        </linearGradient>
+      </defs>
+      <rect
+        x="2.5"
+        y="2.5"
+        width="27"
+        height="27"
+        rx="6.5"
+        fill="#fff"
+        stroke="#0000001f"
+      />
+      <path
+        d="M16 23.4c-.3 0-.6-.1-.8-.3-3.8-3.2-6.7-5.8-6.7-9 0-2.2 1.7-3.9 3.8-3.9 1.5 0 2.8.8 3.7 2.1.9-1.3 2.2-2.1 3.7-2.1 2.1 0 3.8 1.7 3.8 3.9 0 3.2-2.9 5.8-6.7 9-.2.2-.5.3-.8.3z"
+        fill="url(#connector-health)"
+      />
+    </svg>
+  );
+}
+
+// A connector's icon: the app it stands for when this Mac has it, otherwise
+// a glyph on a plain tile.
+export function ConnectorIcon({
+  id,
+  Icon,
+  icons,
+}: {
+  id: string;
+  Icon?: typeof Globe;
+  icons: Record<string, string>;
+}) {
+  if (id === "health") return <HealthIcon />;
+  if (icons[id])
+    return (
+      <img
+        className="connector-app-icon"
+        src={icons[id]}
+        alt=""
+        aria-hidden="true"
+        width={32}
+        height={32}
+      />
+    );
+  return (
+    <span className="connector-tile" aria-hidden="true">
+      {Icon && <Icon size={18} strokeWidth={1.7} />}
+    </span>
+  );
+}
+
 // Local connectors on this Mac: Calendar and Reminders, and Location. Each is
 // off until turned on here, only reads, and every read still waits for
 // approval in the conversation.
 function LocalConnectors({ term }: { term: string }) {
+  const icons = useAppIcons();
   const [state, setState] = useState<ComputerState>();
   const [error, setError] = useState("");
   const refresh = useCallback(
@@ -98,6 +179,13 @@ function LocalConnectors({ term }: { term: string }) {
             <Switch
               label={calendar.name}
               detail={calendar.detail}
+              icon={
+                <ConnectorIcon
+                  id="calendar"
+                  Icon={CalendarDays}
+                  icons={icons}
+                />
+              }
               checked={state?.calendar.enabled ?? false}
               disabled={!state}
               onChange={(value) => change(enableCalendar(value))}
@@ -119,6 +207,7 @@ function LocalConnectors({ term }: { term: string }) {
             <Switch
               label={location.name}
               detail={location.detail}
+              icon={<ConnectorIcon id="location" Icon={MapPin} icons={icons} />}
               checked={state?.location.enabled ?? false}
               disabled={!state}
               onChange={(value) => change(enableLocation(value))}
@@ -224,6 +313,7 @@ export function ConnectorsSettings({
 }) {
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
+  const icons = useAppIcons();
   // Lark is connected through the Open Muse service, as on iPhone.
   const lark = useLarkAccount(service);
   const [larkSetup, setLarkSetup] = useState(false);
@@ -282,9 +372,7 @@ export function ConnectorsSettings({
                   ({ id, name: title, detail, Icon, connect, section }) => (
                     <Fragment key={id}>
                       <div className="settings-row settings-device-row connector-row">
-                        <span className="connector-tile" aria-hidden="true">
-                          <Icon size={18} strokeWidth={1.7} />
-                        </span>
+                        <ConnectorIcon id={id} Icon={Icon} icons={icons} />
                         <div>
                           <strong>{title}</strong>
                           <p>{detail}</p>

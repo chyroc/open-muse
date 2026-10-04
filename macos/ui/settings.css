@@ -488,8 +488,19 @@
   box-shadow: inset 0 0 0 1px var(--line);
   color: var(--text);
 }
+/* An installed app's own icon, drawn at tile size; macOS icons carry their
+   own margin and shadow, so they stand without a tile. */
+.connector-app-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+}
 .connector-row {
   align-items: center;
+}
+.settings-switch-row.connector-row > div {
+  flex: 1;
+  min-width: 0;
 }
 .connector-row > .settings-link,
 .connector-row > .connector-open {

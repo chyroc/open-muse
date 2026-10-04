@@ -109,4 +109,32 @@ describe("Mac connectors", () => {
     ).matchAll(/\bt\(\s*"([^"]+)"/g))
       expect(zhCN[key], key).toBeTruthy();
   });
+  it("shows the installed apps' own icons and keeps a glyph otherwise", async () => {
+    const icon = "data:image/png;base64,AAAA";
+    const postMessage = vi.fn(async (body: { operation: string }) =>
+      body.operation === "app-icons"
+        ? { lark: icon, mac: icon, browser: "javascript:alert(1)" }
+        : undefined,
+    );
+    Object.defineProperty(window, "webkit", {
+      configurable: true,
+      value: { messageHandlers: { museComputer: { postMessage } } },
+    });
+    await mount();
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+    const row = (name: string) =>
+      [...host!.querySelectorAll(".connector-row")].find((item) =>
+        item.textContent?.includes(name),
+      )!;
+    expect(row("Lark").querySelector("img")?.getAttribute("src")).toBe(icon);
+    expect(row("This Mac").querySelector("img")?.getAttribute("src")).toBe(
+      icon,
+    );
+    // Only image data is used; anything else keeps the plain glyph.
+    expect(row("Browser").querySelector("img")).toBeNull();
+    expect(row("Browser").querySelector(".connector-tile svg")).toBeTruthy();
+    expect(
+      row("Apple Health").querySelector("svg.connector-app-icon"),
+    ).toBeTruthy();
+  });
 });

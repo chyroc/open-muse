@@ -719,10 +719,46 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         if let host = sender?.window { panel.beginSheetModal(for: host, completionHandler: finish) }
         else { finish(panel.runModal()) }
     }
+    // The real icons of the apps behind the connectors in Settings, from the
+    // apps installed on this Mac. Only this fixed list is looked up, and an app
+    // that is not installed is left out so the page keeps its own glyph.
+    private static let connectorApps: [String: [String]] = [
+        "lark": ["com.electron.lark", "com.larksuite.larkApp", "com.bytedance.lark"],
+        "browser": ["com.google.Chrome"],
+        "files": ["com.apple.Terminal"],
+        "calendar": ["com.apple.iCal"],
+        "location": ["com.apple.Maps"],
+    ]
+    private var connectorIcons: [String: String]?
+    private func appIcons() -> [String: String] {
+        if let cached = connectorIcons { return cached }
+        var icons: [String: String] = [:]
+        func encode(_ image: NSImage) -> String? {
+            let side = 64
+            guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: side, pixelsHigh: side, bitsPerSample: 8,
+                                             samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                             colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else { return nil }
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+            image.draw(in: NSRect(x: 0, y: 0, width: side, height: side))
+            NSGraphicsContext.restoreGraphicsState()
+            return rep.representation(using: .png, properties: [:]).map { "data:image/png;base64," + $0.base64EncodedString() }
+        }
+        for (id, bundles) in Self.connectorApps {
+            guard let url = bundles.lazy.compactMap({ NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }).first
+            else { continue }
+            icons[id] = encode(NSWorkspace.shared.icon(forFile: url.path))
+        }
+        if let mac = NSImage(named: NSImage.computerName) { icons["mac"] = encode(mac) }
+        connectorIcons = icons
+        return icons
+    }
     private func computerUse(_ body: [String: String], from sender: WKWebView?, replyHandler: @escaping (Any?, String?) -> Void) {
         switch body["operation"] {
         case "status":
             replyHandler(computerState(), nil)
+        case "app-icons":
+            replyHandler(appIcons(), nil)
         case "enable":
             guard let value = body["value"], value == "true" || value == "false"
             else { replyHandler(nil, "Invalid computer use value"); return }
