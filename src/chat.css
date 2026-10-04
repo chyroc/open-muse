@@ -684,6 +684,49 @@ html.sidebar-dragging .sidebar-panel {
 .chat-bubble .markdown td:first-child {
   min-width: 5.5em;
 }
+/* Tables read like the reply around them: the same size of text, no grid,
+   only a hairline between rows, with the header row and the first column in
+   bold. */
+.muse-shell .chat-bubble .markdown table {
+  margin: 4px 0;
+  /* Separate borders keep a hairline at one device pixel; collapsed ones
+     round it away. */
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: inherit;
+}
+.muse-shell .chat-bubble .markdown th,
+.muse-shell .chat-bubble .markdown td {
+  min-width: 8em;
+  max-width: 13em;
+  padding: 11px 16px 11px 0;
+  border: 0;
+  border-top: 0.5px solid rgb(0 0 0 / 22%);
+  background: none;
+  font-weight: 400;
+}
+.muse-shell .chat-bubble .markdown th {
+  border-top: 0;
+  font-weight: 600;
+}
+.muse-shell .chat-bubble .markdown th:first-child,
+.muse-shell .chat-bubble .markdown td:first-child {
+  min-width: 3em;
+  font-weight: 600;
+}
+.muse-shell .chat-bubble .markdown th:last-child,
+.muse-shell .chat-bubble .markdown td:last-child {
+  padding-right: 0;
+}
+@media (prefers-color-scheme: dark) {
+  .muse-shell .chat-bubble .markdown th,
+  .muse-shell .chat-bubble .markdown td {
+    border-top-color: rgb(255 255 255 / 22%);
+  }
+  .muse-shell .chat-bubble .markdown th {
+    border-top: 0;
+  }
+}
 /* A reaction sits on the bubble's lower trailing corner (leading for the
    person's own messages), ringed in the page color, and the bubble makes
    room beneath it. */

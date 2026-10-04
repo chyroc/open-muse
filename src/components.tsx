@@ -193,11 +193,25 @@ export function Composer({
   );
 }
 
+// A line break written as <br>, as models do inside table cells, becomes a
+// real break; every other piece of HTML is still shown as text, never run.
+type MarkdownNode = { type: string; value?: string; children?: MarkdownNode[] };
+function remarkLineBreaks() {
+  const visit = (node: MarkdownNode) => {
+    node.children?.forEach((child, index) => {
+      if (child.type === "html" && /^<br\s*\/?>$/i.test(child.value ?? ""))
+        node.children![index] = { type: "break" };
+      else visit(child);
+    });
+  };
+  return visit;
+}
+
 export function Markdown({ text }: { text: string }) {
   return (
     <div className="markdown">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={[remarkGfm, remarkLineBreaks]}
         components={{
           a: ({ children, href }) => (
             <a href={href} target="_blank" rel="noopener noreferrer">
