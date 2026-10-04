@@ -43,6 +43,9 @@ import { isWelcomeReply } from "../shared/welcome";
 import { currentChoiceEvent } from "../shared/chat-choices";
 import { digest, uuid } from "../shared/crypto";
 import { isEcho, pendingOutgoing, type Outgoing } from "./outgoing";
+import { remindersByReply } from "./reminder-cards";
+import type { UpcomingItem } from "../shared/upcoming";
+import { ReminderCard } from "./ReminderCard";
 import {
   goalPlanningMessage,
   goalPrompt,
@@ -731,17 +734,25 @@ function Workspace({
   // Upcoming reminders are handed to the system to announce while the app is
   // closed: refreshed on launch, after each change in the conversation (the
   // companion may have just set one), and when the app goes to the background.
+  // The same list also puts a reminder the companion just set up under its
+  // reply.
   const signedIn = config?.mode === "ark";
+  const [upcoming, setUpcoming] = useState<UpcomingItem[]>([]);
   useEffect(() => {
-    if (!reminderNotificationsSupported()) return;
+    const notify = reminderNotificationsSupported();
     if (!signedIn) {
-      announceReminders([]);
+      setUpcoming([]);
+      if (notify) announceReminders([]);
       return;
     }
     let active = true;
     const refresh = () =>
       void client.upcoming().then(
-        ({ items }) => active && announceReminders(items),
+        ({ items }) => {
+          if (!active) return;
+          setUpcoming(items);
+          if (notify) announceReminders(items);
+        },
         () => {},
       );
     refresh();
@@ -1113,6 +1124,7 @@ function Workspace({
   );
   // The message being sent in this chat, until its history has it.
   const pendingSend = pendingOutgoing(outgoing, draftKey, messageEvents);
+  const reminders = remindersByReply(upcoming, messageEvents);
   // A sent message stays shown until the history has it, which can be a
   // poll or two after the send returns; a minute later it gives way anyway.
   useEffect(() => {
@@ -1429,6 +1441,9 @@ function Workspace({
                           </MessageBubble>
                         </>
                       )}
+                      {reminders.get(event.id)?.map((item) => (
+                        <ReminderCard key={item.id} item={item} />
+                      ))}
                       {outputs.get(event.id) && (
                         <TurnOutputs
                           files={outputs.get(event.id)!}
