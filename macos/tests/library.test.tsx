@@ -354,7 +354,6 @@ function page(
     onView: vi.fn(),
     onDraft: vi.fn(),
     onConnect: vi.fn(),
-    onToggleChat: vi.fn(),
     onOpenChat: vi.fn(),
     onDocument: vi.fn(),
   };

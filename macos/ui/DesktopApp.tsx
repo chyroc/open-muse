@@ -1392,7 +1392,6 @@ export function DesktopApp({ client }: { client: Client }) {
                 split={splitChat}
                 onView={(view) => navigate(libraryPath(view))}
                 onConnect={openConnection}
-                onToggleChat={() => setSplitChat((value) => !value)}
                 onOpenChat={(id) => navigate(`/chat/${id}`)}
                 onDocument={openDocument}
                 onDraft={(text) => {

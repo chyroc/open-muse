@@ -125,15 +125,30 @@
   width: 36px;
   height: 36px;
 }
+/* The create button: 36 points tall, a slightly deepened accent, and a
+   brightness change on hover and press. */
 .library-header .library-create {
-  background: var(--accent);
-  color: var(--surface);
+  height: 36px;
+  padding: 0 14px;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  background: var(--accent-hover);
+  color: var(--accent-text);
+  transition: filter 0.15s ease-out;
 }
 .library-header .library-create:hover {
-  background: var(--accent-hover);
+  filter: brightness(0.95);
 }
-.library-chat-toggle {
-  color: var(--muted);
+.library-header .library-create:active {
+  filter: brightness(0.9);
+}
+:root[data-appearance="dark"] .library-header .library-create:hover {
+  filter: brightness(1.1);
+}
+:root[data-appearance="dark"] .library-header .library-create:active {
+  filter: brightness(0.95);
 }
 .library-content {
   flex: 1;

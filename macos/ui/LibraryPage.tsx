@@ -82,7 +82,6 @@ export function LibraryPage({
   onView,
   onDraft,
   onConnect,
-  onToggleChat,
   onOpenChat,
   onDocument,
 }: {
@@ -93,7 +92,6 @@ export function LibraryPage({
   onView: (view: LibraryView) => void;
   onDraft: (text: string) => void;
   onConnect: () => void;
-  onToggleChat: () => void;
   onOpenChat: (id: string) => void;
   onDocument: (name: IdentityDocumentName) => void;
 }) {
@@ -594,18 +592,6 @@ export function LibraryPage({
                       <span>{t(config.create)}</span>
                     </button>
                   )}
-                  <button
-                    className="icon-button library-chat-toggle"
-                    aria-label={
-                      split
-                        ? t("Close side-by-side chat")
-                        : t("Open side-by-side chat")
-                    }
-                    aria-pressed={split}
-                    onClick={onToggleChat}
-                  >
-                    <MessageCircle size={19} />
-                  </button>
                 </>
               )}
             </header>
