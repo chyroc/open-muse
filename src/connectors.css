@@ -66,6 +66,17 @@ button.connector-row:active {
 .connector-icon[data-id="lark"] {
   color: #3370ff;
 }
+/* A connector that stands for an app shows that app's icon, which keeps its
+   own colors in both appearances. */
+.connector-icon.app-icon {
+  overflow: hidden;
+  border-radius: 22.5%;
+  background: none;
+  box-shadow: 0 0 0 0.5px rgb(0 0 0 / 12%);
+}
+.connector-icon.app-icon > svg {
+  display: block;
+}
 .connector-name {
   display: flex;
   flex: 1;

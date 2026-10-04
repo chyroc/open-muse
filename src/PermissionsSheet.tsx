@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ConnectorIcon } from "./AppIcons";
 import {
   BookUser,
   CalendarDays,
@@ -112,9 +113,7 @@ function ConnectorPermissions({
                     className="settings-list-row permissions-row"
                     onClick={() => setOpen(source)}
                   >
-                    <span className="connector-icon" data-id={source}>
-                      <Icon size={18} aria-hidden="true" />
-                    </span>
+                    <ConnectorIcon id={source} Icon={Icon} size={18} />
                     <span>{t(name)}</span>
                     <RowChevron />
                   </button>
