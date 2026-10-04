@@ -629,8 +629,15 @@
 .muse-shell .markdown blockquote {
   font-size: 13px;
 }
+/* Links in replies and posts read as blue words, with no underline; a
+   press dims them. */
 .muse-shell .markdown a {
   color: #0064d4;
+  text-decoration: none;
+  transition: opacity var(--motion-press-duration) ease-out;
+}
+.muse-shell .markdown a:active {
+  opacity: 0.5;
 }
 .muse-shell .task-state,
 .muse-shell .stream-status {
