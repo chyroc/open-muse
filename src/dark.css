@@ -360,6 +360,14 @@
   .post-actions {
     color: #aeaeb2;
   }
+  .post-actions .post-discuss,
+  .post-actions button[aria-pressed="false"],
+  .post-actions time + svg {
+    color: #ffffff;
+  }
+  .post-actions time {
+    color: #8e8e93;
+  }
   .post-information {
     background: #2c2c2e;
   }

@@ -4,6 +4,7 @@ import {
   ArrowUpRight,
   Check,
   Heart,
+  Info,
   Lightbulb,
   LoaderCircle,
   MessageCircle,
@@ -78,11 +79,11 @@ export function InspirationPost({
               disabled={busy}
               onClick={onLike}
             >
-              <Heart size={20} fill={item.liked ? "currentColor" : "none"} />
+              <Heart size={22} fill={item.liked ? "currentColor" : "none"} />
             </button>
           )}
           <button className="post-discuss" onClick={onDiscuss}>
-            <MessageCircle size={19} />
+            <MessageCircle size={21} />
             {t("Discuss")}
           </button>
           <button
@@ -91,6 +92,7 @@ export function InspirationPost({
             onClick={() => setInfo(!info)}
           >
             <time dateTime={item.created_at}>{dateLabel(item.created_at)}</time>
+            <Info size={20} aria-hidden="true" />
           </button>
         </footer>
         {info && (
@@ -118,15 +120,18 @@ export function InspirationIdea({
   return <IdeaRow idea={shownGeneratedIdea(item)} onOpen={onOpen} />;
 }
 
-// A post's pictures in a row that scrolls sideways; one that fails to load
+// A post's pictures: one fills the text column at its own shape, held
+// between portrait and wide; several scroll sideways. One that fails to load
 // is dropped rather than left as a blank card.
 function PostImages({ item }: { item: InspirationItem }) {
   const [failed, setFailed] = useState<string[]>([]);
+  const [shape, setShape] = useState<number>();
   const images = (item.images ?? []).filter(
     (image) => !failed.includes(image.url),
   );
+  const single = images.length === 1;
   return images.length ? (
-    <div className="post-images">
+    <div className={`post-images${single ? " single" : ""}`}>
       {images.map((image) => (
         <img
           key={image.url}
@@ -134,6 +139,13 @@ function PostImages({ item }: { item: InspirationItem }) {
           alt={image.alt}
           loading="lazy"
           referrerPolicy="no-referrer"
+          style={single && shape ? { aspectRatio: String(shape) } : undefined}
+          onLoad={(event) => {
+            const { naturalWidth: width, naturalHeight: height } =
+              event.currentTarget;
+            if (single && width && height)
+              setShape(Math.min(Math.max(width / height, 0.8), 2));
+          }}
           onError={() => setFailed((current) => [...current, image.url])}
         />
       ))}
