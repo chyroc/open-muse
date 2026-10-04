@@ -74,7 +74,7 @@ button.connector-row:active {
   background: none;
   box-shadow: 0 0 0 0.5px rgb(0 0 0 / 12%);
 }
-.connector-icon.app-icon > svg {
+.connector-icon.app-icon > img {
   display: block;
 }
 .connector-name {

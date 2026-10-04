@@ -496,11 +496,11 @@
   width: 32px;
   height: 32px;
 }
-/* A drawn icon sits inside the same margin a macOS icon keeps. */
-.connector-app-icon.drawn {
+/* A bundled icon sits inside the same margin a macOS icon keeps. */
+.connector-app-icon.bundled {
   padding: 3px;
 }
-.connector-app-icon.drawn > svg {
+.connector-app-icon.bundled > img {
   display: block;
   border-radius: 22.5%;
   box-shadow: 0 0.5px 1.5px #0000002e;

@@ -65,10 +65,10 @@ export function ConnectorIcon({
       />
     );
   // Not installed here, or with no Mac app at all, such as Apple Health: the
-  // same drawing the iPhone shows.
+  // app's official icon that the iPhone shows.
   if (hasAppIcon(id))
     return (
-      <span className="connector-app-icon drawn" aria-hidden="true">
+      <span className="connector-app-icon bundled" aria-hidden="true">
         <AppIcon id={id} />
       </span>
     );
