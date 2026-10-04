@@ -1,4 +1,4 @@
-import { t } from "../../shared/i18n";
+import { formatLocale, t } from "../../shared/i18n";
 import type { Client } from "../../src/api";
 import { LocalDatabase } from "../../src/direct/storage";
 import { DirectIdentity } from "../../src/direct/identity";
@@ -492,3 +492,57 @@ export class MacGoals {
   }
 }
 export type MacGoalsSnapshot = Awaited<ReturnType<MacGoals["snapshot"]>>;
+
+const goalTime = (goal: Goal) => {
+  for (const value of [goal.updated_at, goal.created_at]) {
+    const time = Date.parse(value);
+    if (!Number.isNaN(time)) return time;
+  }
+  return -Infinity;
+};
+// Most recently changed first; equal times keep a stable order by ID.
+export function sortGoalsByRecency(goals: Goal[]) {
+  return [...goals].sort(
+    (a, b) => goalTime(b) - goalTime(a) || a.id.localeCompare(b.id),
+  );
+}
+const startOfDay = (time: number) => new Date(time).setHours(0, 0, 0, 0);
+// "Today", "Yesterday", or a short calendar date in the app language.
+export function goalDayLabel(time: number, now = Date.now()) {
+  const day = startOfDay(time);
+  const today = startOfDay(now);
+  if (day === today) return t("Today");
+  if (day === startOfDay(today - 86_400_000)) return t("Yesterday");
+  const date = new Date(time);
+  return date.toLocaleDateString(formatLocale(), {
+    month: "short",
+    day: "numeric",
+    ...(date.getFullYear() === new Date(now).getFullYear()
+      ? {}
+      : { year: "numeric" }),
+  });
+}
+// Completed goals grouped by the month they last changed, newest first.
+export function completedGoalGroups(goals: Goal[]) {
+  const groups = new Map<string, { time: number; goals: Goal[] }>();
+  for (const goal of sortGoalsByRecency(goals)) {
+    const time = goalTime(goal);
+    const date = new Date(time);
+    const key = Number.isFinite(time)
+      ? `${date.getFullYear()}-${date.getMonth()}`
+      : "undated";
+    const group = groups.get(key) ?? { time, goals: [] };
+    group.goals.push(goal);
+    groups.set(key, group);
+  }
+  return [...groups.entries()].map(([key, group]) => ({
+    key,
+    label: Number.isFinite(group.time)
+      ? new Date(group.time).toLocaleDateString(formatLocale(), {
+          month: "long",
+          year: "numeric",
+        })
+      : "—",
+    goals: group.goals,
+  }));
+}

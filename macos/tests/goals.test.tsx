@@ -25,6 +25,9 @@ import {
   goalStatusChange,
   goalActivityLabel,
   goalChatTitle,
+  goalDayLabel,
+  completedGoalGroups,
+  sortGoalsByRecency,
 } from "../ui/goals";
 
 vi.mock("../../src/useTask", () => ({
@@ -683,7 +686,12 @@ describe("Mac Goals desktop UI", () => {
     await click("Cancel");
     expect(f.cloud()).toHaveLength(2);
     await click("Delete");
-    await click("Delete goal");
+    await act(async () =>
+      host
+        .querySelector<HTMLButtonElement>(".goal-delete-dialog .destructive")!
+        .click(),
+    );
+    await settle();
     expect(f.cloud()).toHaveLength(0);
     expect(f.histories.get("existing")).toHaveLength(1);
   });
@@ -761,13 +769,55 @@ describe("Mac Goals desktop UI", () => {
     ).toBeNull();
     await click("Expand subgoals for Goal root");
     expect(button("Open goal: Goal child")).toBeDefined();
-    await click("Hide");
+    expect(button("Show subtitles").getAttribute("aria-checked")).toBe("true");
+    await click("Show subtitles");
     expect(host.querySelector(".goal-row-open span")).toBeNull();
-    await click("View completed goals");
+    expect(button("Show subtitles").getAttribute("aria-checked")).toBe("false");
+    await click("Completed goals");
     expect(host.querySelector(".goal-completed-dialog")?.textContent).toContain(
       "Goal finished",
     );
     expect(f.stub.prepareGoals).not.toHaveBeenCalled();
     expect(f.stub.ma).not.toHaveBeenCalled();
+  });
+  it("shows the goal list with a live section and the category list", async () => {
+    vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", ["zh-CN"]);
+    const f = fixture([goal()]);
+    await mount(page(f).element);
+    expect(host.querySelector("#goals-user")?.textContent).toBe("目标");
+    expect(host.querySelector(".goals-pulse")).not.toBeNull();
+    expect(host.querySelector("#goals-create")?.textContent).toBe("创建目标");
+    expect(host.querySelector(".goals-description")).toBeNull();
+    expect(
+      host.querySelectorAll('[aria-label="目标类别"] .goal-category'),
+    ).toHaveLength(7);
+  });
+});
+
+describe("Mac Goals presentation helpers", () => {
+  it("orders by most recent change and groups completed goals by month", () => {
+    const a = { ...goal("a"), updated_at: "2026-08-01T09:00:00Z" };
+    const b = { ...goal("b"), updated_at: "2026-10-01T09:00:00Z" };
+    const c = { ...goal("c"), updated_at: "2026-10-03T09:00:00Z" };
+    expect(sortGoalsByRecency([a, b, c]).map((item) => item.id)).toEqual([
+      "c",
+      "b",
+      "a",
+    ]);
+    const groups = completedGoalGroups([a, b, c]);
+    expect(groups.map((group) => group.goals.map((item) => item.id))).toEqual([
+      ["c", "b"],
+      ["a"],
+    ]);
+  });
+  it("labels activity days relative to today in the app language", () => {
+    vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", ["en"]);
+    const now = new Date(2026, 9, 4, 12).getTime();
+    expect(goalDayLabel(new Date(2026, 9, 4, 8).getTime(), now)).toBe("Today");
+    expect(goalDayLabel(new Date(2026, 9, 3, 23).getTime(), now)).toBe(
+      "Yesterday",
+    );
+    vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", ["zh-CN"]);
+    expect(goalDayLabel(new Date(2026, 9, 3, 23).getTime(), now)).toBe("昨天");
   });
 });

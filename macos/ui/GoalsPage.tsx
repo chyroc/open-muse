@@ -1,69 +1,89 @@
 import { formatLocale, t } from "../../shared/i18n";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouteHeader } from "./routeHeader";
 import {
-  BriefcaseBusiness,
-  Check,
-  CheckSquare,
-  ChevronDown,
-  ChevronRight,
-  CircleCheck,
-  DollarSign,
-  Heart,
-  Laptop,
-  MessageCircle,
-  MoreHorizontal,
-  Palette,
-  Pencil,
-  Plus,
-  RefreshCw,
-  Square,
-  Trash2,
-  Users,
-  WandSparkles,
-  SquareCheck,
-} from "lucide-react";
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+  type ReactNode,
+} from "react";
+import { useRouteHeader } from "./routeHeader";
 import type { Client } from "../../src/api";
 import type { Goal } from "../../shared/types";
 import { goalCategories, type GoalCategory } from "../../shared/goals";
 import { Markdown } from "../../src/components";
 import { Modal, SplitChatIcon } from "./Chrome";
 import {
+  RefreshIcon,
+  SquareCheckIcon,
+  SquarePlusIcon,
+  SquareIcon,
+  BriefcaseIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  CircleAlertIcon,
+  CircleCheckIcon,
+  DollarIcon,
+  EllipsisIcon,
+  HeartIcon,
+  LaptopIcon,
+  ListCheckIcon,
+  PaletteIcon,
+  PencilIcon,
+  TrashIcon,
+  PeopleIcon,
+  WandIcon,
+  type IconProps,
+} from "./icons";
+import { SquareCheckFilledIcon, GoalBoxIcon, GripIcon } from "./icons";
+import {
   MacGoals,
+  completedGoalGroups,
   goalActivityLabel,
+  goalDayLabel,
   goalDescendants,
   macGoalStarter,
   type MacGoalsSnapshot,
 } from "./goals";
 
-const categoryIcons = {
-  health: Heart,
-  relationships: Users,
-  finance: DollarSign,
-  career: BriefcaseBusiness,
-  interests: Palette,
-  productivity: Laptop,
-  custom: SquareCheck,
+type Glyph = ComponentType<IconProps>;
+const categoryIcons: Record<GoalCategory, Glyph> = {
+  health: HeartIcon,
+  relationships: PeopleIcon,
+  finance: DollarIcon,
+  career: BriefcaseIcon,
+  interests: PaletteIcon,
+  productivity: LaptopIcon,
+  custom: GoalBoxIcon,
 };
-function GoalMenu({
-  goal,
-  busy,
-  canAdd,
-  onComplete,
-  onAdd,
-  onRename,
-  onDelete,
+const categoryDialogTitle = (category: GoalCategory) =>
+  ({
+    health: t("Create a health goal"),
+    relationships: t("Create a relationships goal"),
+    finance: t("Create a finance goal"),
+    career: t("Create a career goal"),
+    interests: t("Create an interests goal"),
+    productivity: t("Create a productivity goal"),
+    custom: t("Create a new goal"),
+  })[category];
+// Rows revealed per "Show more" step.
+const revealStep = 10;
+
+// A popover menu anchored to an icon button. It stays in the document so its
+// items remain reachable to assistive technology while closed.
+function GoalPopover({
+  label,
+  className,
+  children,
 }: {
-  goal: Goal;
-  busy: boolean;
-  canAdd: boolean;
-  onComplete: () => void;
-  onAdd: () => void;
-  onRename: () => void;
-  onDelete: () => void;
+  label: string;
+  className: string;
+  children: (close: (fn: () => void) => () => void) => ReactNode;
 }) {
   const menu = useRef<HTMLDetailsElement>(null);
-  const choose = (fn: () => void) => {
+  const choose = (fn: () => void) => () => {
     if (menu.current) menu.current.open = false;
     fn();
   };
@@ -86,40 +106,176 @@ function GoalMenu({
     };
   }, []);
   return (
-    <details className="goal-options" ref={menu}>
-      <summary aria-label={t("Options for {title}", { title: goal.title })}>
-        <MoreHorizontal size={18} />
+    <details className={className} ref={menu}>
+      <summary aria-label={label} aria-haspopup="menu">
+        <EllipsisIcon />
       </summary>
-      <div className="goal-menu">
-        <button disabled={busy} onClick={() => choose(onComplete)}>
-          <CheckSquare size={16} />
-          {goal.status === "completed"
-            ? t("Mark as not complete")
-            : t("Complete")}
-        </button>
-        {canAdd && (
-          <button disabled={busy} onClick={() => choose(onAdd)}>
-            <Plus size={16} />
-            {t("Add subgoal")}
-          </button>
-        )}
-        <button disabled={busy} onClick={() => choose(onRename)}>
-          <Pencil size={16} />
-          {t("Rename")}
-        </button>
-        <hr />
-        <button
-          disabled={busy}
-          className="danger"
-          onClick={() => choose(onDelete)}
-        >
-          <Trash2 size={16} />
-          {t("Delete")}
-        </button>
+      <div className="goal-menu" role="menu">
+        {children(choose)}
       </div>
     </details>
   );
 }
+
+function MenuItem({
+  icon: Icon,
+  label,
+  danger = false,
+  disabled,
+  onSelect,
+}: {
+  icon: Glyph;
+  label: string;
+  danger?: boolean;
+  disabled?: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      role="menuitem"
+      className={danger ? "danger" : ""}
+      disabled={disabled}
+      onClick={onSelect}
+    >
+      <span className="goal-menu-icon" aria-hidden="true">
+        <Icon />
+      </span>
+      <span className="goal-menu-label">{label}</span>
+    </button>
+  );
+}
+
+function MenuCheckbox({
+  label,
+  checked,
+  disabled,
+  onSelect,
+}: {
+  label: string;
+  checked: boolean;
+  disabled?: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      role="menuitemcheckbox"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={onSelect}
+    >
+      <span className="goal-menu-check" aria-hidden="true">
+        {checked && <CheckIcon />}
+      </span>
+      <span className="goal-menu-label">{label}</span>
+    </button>
+  );
+}
+
+function GoalMenu({
+  goal,
+  busy,
+  canAdd,
+  className = "goal-options",
+  onComplete,
+  onAdd,
+  onRename,
+  onDelete,
+}: {
+  goal: Goal;
+  busy: boolean;
+  canAdd: boolean;
+  className?: string;
+  onComplete: () => void;
+  onAdd: () => void;
+  onRename: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <GoalPopover
+      className={className}
+      label={t("Options for {title}", { title: goal.title })}
+    >
+      {(choose) => (
+        <>
+          <MenuItem
+            icon={SquareCheckIcon}
+            disabled={busy}
+            label={
+              goal.status === "completed"
+                ? t("Mark as not complete")
+                : t("Complete")
+            }
+            onSelect={choose(onComplete)}
+          />
+          {canAdd && (
+            <MenuItem
+              icon={SquarePlusIcon}
+              disabled={busy}
+              label={t("Add subgoal")}
+              onSelect={choose(onAdd)}
+            />
+          )}
+          <MenuItem
+            icon={PencilIcon}
+            disabled={busy}
+            label={t("Rename")}
+            onSelect={choose(onRename)}
+          />
+          <hr />
+          <MenuItem
+            icon={TrashIcon}
+            danger
+            disabled={busy}
+            label={t("Delete")}
+            onSelect={choose(onDelete)}
+          />
+        </>
+      )}
+    </GoalPopover>
+  );
+}
+
+function GoalCheck({
+  goal,
+  busy,
+  onToggle,
+}: {
+  goal: Goal;
+  busy: boolean;
+  onToggle: () => void;
+}) {
+  const complete = goal.status === "completed";
+  return (
+    <button
+      className="goal-check"
+      role="checkbox"
+      aria-label={t(
+        complete ? "Mark {title} not complete" : "Mark {title} complete",
+        { title: goal.title },
+      )}
+      aria-checked={complete}
+      disabled={busy}
+      onClick={onToggle}
+    >
+      {complete ? (
+        <SquareCheckFilledIcon className="goal-check-done" />
+      ) : (
+        <>
+          <SquareIcon className="goal-check-empty" />
+          <SquareCheckIcon className="goal-check-preview" />
+        </>
+      )}
+    </button>
+  );
+}
+
+type RowHandlers = {
+  onSelect: (goal: Goal) => void;
+  onComplete: (goal: Goal) => void;
+  onAdd: (goal: Goal) => void;
+  onRename: (goal: Goal) => void;
+  onDelete: (goal: Goal) => void;
+};
 
 function GoalRow({
   goal,
@@ -127,102 +283,284 @@ function GoalRow({
   subtitles,
   busy,
   depth = 0,
-  onSelect,
-  onComplete,
-  onAdd,
-  onRename,
-  onDelete,
+  handlers,
 }: {
   goal: Goal;
   all: Goal[];
   subtitles: boolean;
   busy: boolean;
   depth?: number;
-  onSelect: (goal: Goal) => void;
-  onComplete: (goal: Goal) => void;
-  onAdd: (goal: Goal) => void;
-  onRename: (goal: Goal) => void;
-  onDelete: (goal: Goal) => void;
+  handlers: RowHandlers;
 }) {
   const [expanded, setExpanded] = useState(false);
   const children = all.filter(
     (item) => item.parent_id === goal.id && item.status !== "completed",
   );
   const complete = goal.status === "completed";
+  const subtitle = goal.status === "paused" ? t("Paused") : goal.description;
+  const showSubtitle = subtitles && subtitle.trim().length > 0;
+  const nested = children.length > 0 && !complete;
   return (
-    <div className="desktop-goal-tree">
+    <div className="goal-tree">
       <div
-        className={`desktop-goal-row ${complete ? "completed" : ""}`}
-        style={{ marginLeft: depth * 32 }}
+        className={`goal-row${showSubtitle ? " has-subtitle" : ""}${complete ? " completed" : ""}`}
+        style={depth ? { marginInlineStart: depth * 32 } : undefined}
       >
-        {children.length > 0 && !complete && (
-          <button
-            className="goal-expand"
-            aria-label={t(
-              expanded
-                ? "Collapse subgoals for {title}"
-                : "Expand subgoals for {title}",
-              { title: goal.title },
-            )}
-            aria-expanded={expanded}
-            onClick={() => setExpanded((value) => !value)}
-          >
-            {expanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-          </button>
-        )}
-        <button
-          className="goal-check"
-          role="checkbox"
-          aria-label={t(
-            complete ? "Mark {title} not complete" : "Mark {title} complete",
-            { title: goal.title },
+        <span className="goal-row-lead">
+          <GoalCheck
+            goal={goal}
+            busy={busy}
+            onToggle={() => handlers.onComplete(goal)}
+          />
+          {nested && (
+            <button
+              className="goal-expand"
+              aria-label={t(
+                expanded
+                  ? "Collapse subgoals for {title}"
+                  : "Expand subgoals for {title}",
+                { title: goal.title },
+              )}
+              aria-expanded={expanded}
+              onClick={() => setExpanded((value) => !value)}
+            >
+              {expanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
+            </button>
           )}
-          aria-checked={complete}
-          disabled={busy}
-          onClick={() => onComplete(goal)}
-        >
-          {complete ? <CheckSquare size={24} /> : <Square size={24} />}
-        </button>
+        </span>
         <button
           className="goal-row-open"
           aria-label={t("Open goal: {title}", { title: goal.title })}
-          onClick={() => onSelect(goal)}
+          onClick={() => handlers.onSelect(goal)}
         >
-          <strong>{goal.title}</strong>
-          {subtitles && (goal.description || goal.status === "paused") && (
-            <span>
-              {goal.status === "paused" ? t("Paused") : goal.description}
-            </span>
-          )}
+          <strong title={goal.title}>{goal.title}</strong>
+          {showSubtitle && <span>{subtitle}</span>}
         </button>
         <GoalMenu
           goal={goal}
           busy={busy}
           canAdd={depth === 0 && !goal.parent_id}
-          onComplete={() => onComplete(goal)}
-          onAdd={() => onAdd(goal)}
-          onRename={() => onRename(goal)}
-          onDelete={() => onDelete(goal)}
+          onComplete={() => handlers.onComplete(goal)}
+          onAdd={() => handlers.onAdd(goal)}
+          onRename={() => handlers.onRename(goal)}
+          onDelete={() => handlers.onDelete(goal)}
         />
       </div>
-      {expanded &&
-        !complete &&
-        children.map((child) => (
-          <GoalRow
-            key={child.id}
-            goal={child}
-            all={all}
-            subtitles={subtitles}
-            busy={busy}
-            depth={depth + 1}
-            onSelect={onSelect}
-            onComplete={onComplete}
-            onAdd={onAdd}
-            onRename={onRename}
-            onDelete={onDelete}
-          />
-        ))}
+      {expanded && nested && (
+        <div className="goal-subtree">
+          {children.map((child) => (
+            <GoalRow
+              key={child.id}
+              goal={child}
+              all={all}
+              subtitles={subtitles}
+              busy={busy}
+              depth={depth + 1}
+              handlers={handlers}
+            />
+          ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+function CompletedGoalRow({
+  goal,
+  busy,
+  handlers,
+}: {
+  goal: Goal;
+  busy: boolean;
+  handlers: RowHandlers;
+}) {
+  return (
+    <div className="goal-row goal-completed-row completed">
+      <span className="goal-row-lead">
+        <GoalCheck
+          goal={goal}
+          busy={busy}
+          onToggle={() => handlers.onComplete(goal)}
+        />
+      </span>
+      <button
+        className="goal-row-open"
+        aria-label={t("Open goal: {title}", { title: goal.title })}
+        onClick={() => handlers.onSelect(goal)}
+      >
+        <strong title={goal.title}>{goal.title}</strong>
+      </button>
+      <GoalPopover
+        className="goal-options"
+        label={t("Options for {title}", { title: goal.title })}
+      >
+        {(choose) => (
+          <MenuItem
+            icon={TrashIcon}
+            danger
+            disabled={busy}
+            label={t("Delete")}
+            onSelect={choose(() => handlers.onDelete(goal))}
+          />
+        )}
+      </GoalPopover>
+    </div>
+  );
+}
+
+function GoalsSection({
+  id,
+  label,
+  accent = false,
+  children,
+}: {
+  id: string;
+  label: string;
+  accent?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <section className="goals-section" aria-labelledby={id}>
+      <div className={`goals-section-heading${accent ? " accent" : ""}`}>
+        {accent && (
+          <span className="goals-pulse-slot" aria-hidden="true">
+            <span className="goals-pulse">
+              <span className="goals-pulse-halo" />
+              <span className="goals-pulse-dot" />
+            </span>
+          </span>
+        )}
+        <h2 id={id}>{label}</h2>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+const skeletonCategoryWidths = [64, 128, 80, 64, 96, 112, 96];
+function GoalsSkeleton({ subtitles }: { subtitles: boolean }) {
+  return (
+    <div
+      className="goals-skeleton"
+      role="status"
+      aria-busy="true"
+      aria-label={t("Loading goals")}
+    >
+      <div aria-hidden="true">
+        <div className="goals-skeleton-heading">
+          <span className="goals-pulse-slot">
+            <span className="goals-skeleton-dot" />
+          </span>
+          <span className="goals-skeleton-bar heading" />
+        </div>
+        {[0, 1].map((row) => (
+          <div
+            className={`goals-skeleton-row${subtitles ? " has-subtitle" : ""}`}
+            key={row}
+          >
+            <span className="goals-skeleton-box" />
+            <span className="goals-skeleton-lines">
+              <span className="goals-skeleton-bar title" />
+              {subtitles && <span className="goals-skeleton-bar subtitle" />}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div aria-hidden="true">
+        <div className="goals-skeleton-heading">
+          <span className="goals-skeleton-bar heading" />
+        </div>
+        {skeletonCategoryWidths.map((width, row) => (
+          <div className="goals-skeleton-category" key={row}>
+            <span className="goals-skeleton-circle" />
+            <span className="goals-skeleton-bar" style={{ width }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GoalsErrorState({
+  connected,
+  detail,
+  busy,
+  onRetry,
+}: {
+  connected: boolean;
+  detail: string;
+  busy: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="goals-error-state" role="alert">
+      <div className="goals-error-title">
+        <CircleAlertIcon aria-hidden="true" />
+        <h2>{t("Couldn't load goals right now.")}</h2>
+      </div>
+      <p>
+        {connected
+          ? t("Please try again.")
+          : t("Reconnect and then try again.")}
+      </p>
+      {detail && <p className="goals-error-detail">{detail}</p>}
+      <button
+        className="goal-primary compact"
+        disabled={!connected || busy}
+        onClick={onRetry}
+      >
+        <RefreshIcon aria-hidden="true" />
+        {t("Try again")}
+      </button>
+    </div>
+  );
+}
+
+function GoalActivity({ goal, data }: { goal: Goal; data?: MacGoalsSnapshot }) {
+  const entries = [...(data?.activity[goal.id] ?? [])].sort(
+    (a, b) => Date.parse(b.at) - Date.parse(a.at),
+  );
+  if (!entries.length)
+    return (
+      <section
+        className="goal-timeline"
+        aria-label={t("Goal activity timeline")}
+      >
+        <p className="goal-timeline-empty">{t("No activity yet.")}</p>
+      </section>
+    );
+  const latest = Date.parse(entries[0].at);
+  return (
+    <section className="goal-timeline" aria-label={t("Goal activity timeline")}>
+      <h3>{t("Activity")}</h3>
+      {Number.isFinite(latest) && (
+        <h4 className="goal-timeline-day">{goalDayLabel(latest)}</h4>
+      )}
+      <ul>
+        {entries.map((activity) => (
+          <li key={activity.id}>
+            <span className="goal-timeline-rail" aria-hidden="true">
+              <CircleCheckIcon />
+              <span className="goal-timeline-line" />
+            </span>
+            <div>
+              <strong>{goalActivityLabel(activity.title)}</strong>
+              <time dateTime={activity.at}>
+                {new Date(activity.at).toLocaleString(formatLocale(), {
+                  month: "short",
+                  day: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+              </time>
+              {activity.observed && (
+                <small>{t("Change observed on this Mac")}</small>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -322,7 +660,7 @@ function RenameGoal({
   }
   return (
     <Modal
-      className="goal-rename-dialog"
+      className="goal-dialog goal-rename-dialog"
       title={t("Rename goal")}
       onClose={close}
     >
@@ -338,12 +676,13 @@ function RenameGoal({
           aria-label={t("Goal name")}
           autoFocus
           maxLength={160}
+          className="goal-input"
           value={draft}
           disabled={busy}
           onChange={(event) => setDraft(event.target.value)}
         />
         {error && (
-          <div className="feed-error" role="alert">
+          <div className="goals-alert" role="alert">
             {error}
             <button type="button" disabled={busy} onClick={() => void review()}>
               {t("Review cloud version")}
@@ -351,7 +690,7 @@ function RenameGoal({
           </div>
         )}
         {remote && (
-          <aside className="feed-cloud-copy">
+          <aside className="goal-cloud-copy">
             <strong>{t("Latest name")}</strong>
             <p>{remote.goal.title}</p>
             <button
@@ -379,17 +718,17 @@ function RenameGoal({
             </button>
           </aside>
         )}
-        <footer>
+        <footer className="goal-dialog-actions">
           <button
             type="button"
-            className="pill-button"
+            className="goal-button"
             disabled={busy}
             onClick={close}
           >
             {t("Cancel")}
           </button>
           <button
-            className="goal-primary"
+            className="goal-button primary"
             disabled={busy || !dirty || !draft.trim()}
           >
             {busy ? t("Saving…") : t("Save")}
@@ -399,14 +738,17 @@ function RenameGoal({
       {confirm && (
         <Modal
           title={t("Discard name changes?")}
+          className="goal-dialog"
           onClose={() => setConfirm(false)}
         >
-          <p>{t("The goal name has unsaved changes.")}</p>
-          <div className="feed-dialog-actions">
-            <button className="pill-button" onClick={() => setConfirm(false)}>
+          <p className="goal-dialog-text">
+            {t("The goal name has unsaved changes.")}
+          </p>
+          <div className="goal-dialog-actions">
+            <button className="goal-button" onClick={() => setConfirm(false)}>
               {t("Keep editing")}
             </button>
-            <button className="pill-button" onClick={onClose}>
+            <button className="goal-button destructive" onClick={onClose}>
               {t("Discard changes")}
             </button>
           </div>
@@ -453,12 +795,11 @@ export function GoalsPage({
     revision: string;
     count: number;
   }>();
-  const [shown, setShown] = useState(8);
+  const [shown, setShown] = useState(revealStep);
   const lock = useRef(false),
     alive = useRef(true),
     reading = useRef(false),
     sequence = useRef(0);
-  const menu = useRef<HTMLDetailsElement>(null);
   const refresh = useCallback(async () => {
     if (lock.current || reading.current) return;
     reading.current = true;
@@ -493,21 +834,6 @@ export function GoalsPage({
       service.dispose();
     };
   }, [refresh, service]);
-  useEffect(() => {
-    const outside = (event: PointerEvent) => {
-      if (menu.current && !menu.current.contains(event.target as Node))
-        menu.current.open = false;
-    };
-    const key = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && menu.current) menu.current.open = false;
-    };
-    document.addEventListener("pointerdown", outside);
-    document.addEventListener("keydown", key);
-    return () => {
-      document.removeEventListener("pointerdown", outside);
-      document.removeEventListener("keydown", key);
-    };
-  }, []);
   async function action(fn: () => Promise<unknown>) {
     if (lock.current) return;
     lock.current = true;
@@ -533,11 +859,13 @@ export function GoalsPage({
     }
   }
   const goals = data?.data ?? [];
+  const subtitles = data?.subtitles ?? true;
   const current = goals.find((goal) => goal.id === selectedId);
   const activeGoals = goals.filter((goal) => goal.status !== "completed");
   const roots = activeGoals.filter(
     (goal) => !activeGoals.some((parent) => parent.id === goal.parent_id),
   );
+  const finished = goals.filter((goal) => goal.status === "completed");
   const pending = data?.chats.find(
     (run) => !["confirmed", "failed"].includes(run.phase),
   );
@@ -558,43 +886,42 @@ export function GoalsPage({
         data!.revision,
       ),
     );
-  const requestRename = (goal: Goal) =>
-    setRename({ goal, revision: data!.revision });
-  const requestDelete = (goal: Goal) =>
-    setDeleting({
-      goal,
-      revision: data!.revision,
-      count: goalDescendants(goals, goal.id).size,
-    });
+  const handlers: RowHandlers = {
+    onSelect: (goal) => {
+      setCompleted(false);
+      onSelect(goal.id);
+    },
+    onComplete: complete,
+    onAdd: addSubgoal,
+    onRename: (goal) => setRename({ goal, revision: data!.revision }),
+    onDelete: (goal) =>
+      setDeleting({
+        goal,
+        revision: data!.revision,
+        count: goalDescendants(goals, goal.id).size,
+      }),
+  };
   const row = (goal: Goal) => (
     <GoalRow
       key={goal.id}
       goal={goal}
       all={goals}
-      subtitles={data?.subtitles ?? true}
+      subtitles={subtitles}
       busy={busy}
-      onSelect={(goal) => {
-        setCompleted(false);
-        onSelect(goal.id);
-      }}
-      onComplete={complete}
-      onAdd={addSubgoal}
-      onRename={requestRename}
-      onDelete={requestDelete}
+      handlers={handlers}
     />
   );
-  const errors = error ? (
-    <div className="feed-error" role="alert">
-      {error}
+  const alert = error ? (
+    <div className="goals-alert" role="alert">
+      <CircleAlertIcon aria-hidden="true" />
+      <span>{error}</span>
       <button disabled={busy} onClick={() => void refresh()}>
-        {t("Refresh goals")}
+        {t("Try again")}
       </button>
     </div>
   ) : null;
-  const chooseMenu = (fn: () => void) => {
-    if (menu.current) menu.current.open = false;
-    fn();
-  };
+  const unavailable = !data && !!error && !loading;
+  const empty = !!data && roots.length === 0;
   return (
     <section
       className="desktop-goals route-scroller"
@@ -615,178 +942,162 @@ export function GoalsPage({
         <header className="goals-heading route-heading">
           <h1>{t("Goals")}</h1>
           {goals.length > 0 && (
-            <details className="goals-header-options" ref={menu}>
-              <summary aria-label={t("Goals options")}>
-                <MoreHorizontal size={20} />
-              </summary>
-              <div className="goal-menu">
-                <p>{t("Subtitles")}</p>
-                <button
-                  role="menuitemradio"
-                  aria-checked={data?.subtitles ?? true}
-                  disabled={busy}
-                  onClick={() =>
-                    chooseMenu(() => void action(() => service.subtitles(true)))
-                  }
-                >
-                  <Check
-                    size={16}
-                    style={{
-                      visibility: data?.subtitles ? "visible" : "hidden",
-                    }}
+            <GoalPopover
+              className="goals-header-options"
+              label={t("Goals options")}
+            >
+              {(choose) => (
+                <>
+                  <MenuCheckbox
+                    label={t("Show subtitles")}
+                    checked={subtitles}
+                    disabled={busy}
+                    onSelect={choose(
+                      () => void action(() => service.subtitles(!subtitles)),
+                    )}
                   />
-                  {t("Show")}
-                </button>
-                <button
-                  role="menuitemradio"
-                  aria-checked={!data?.subtitles}
-                  disabled={busy}
-                  onClick={() =>
-                    chooseMenu(
-                      () => void action(() => service.subtitles(false)),
-                    )
-                  }
-                >
-                  <Check
-                    size={16}
-                    style={{
-                      visibility: data?.subtitles ? "hidden" : "visible",
-                    }}
+                  <hr />
+                  <MenuItem
+                    icon={ListCheckIcon}
+                    label={t("Completed goals")}
+                    onSelect={choose(() => setCompleted(true))}
                   />
-                  {t("Hide")}
-                </button>
-                <hr />
-                <button onClick={() => chooseMenu(() => setCompleted(true))}>
-                  <CheckSquare size={16} />
-                  {t("View completed goals")}
-                </button>
-              </div>
-            </details>
+                </>
+              )}
+            </GoalPopover>
           )}
         </header>
-        {!roots.length && !loading && !error && (
+        {empty && (
           <p className="goals-description route-description">
             {t(
               "Pick a category and tell me what you're after, and I'll build a personalized plan that evolves with you.",
             )}
           </p>
         )}
-        {errors}
-        {loading && (
-          <p className="feed-status" role="status">
-            {t("Loading goals…")}
-          </p>
-        )}
-        {roots.length > 0 && (
-          <section className="goals-list" aria-label={t("Personal goals")}>
-            <h2>
-              <span className="goals-dot" />
-              {t("Goals")}
-            </h2>
-            {roots.slice(0, shown).map(row)}
-            {roots.length > shown && (
-              <button
-                className="goals-show-more"
-                onClick={() => setShown((value) => value + 8)}
-              >
-                {t("Show {count} more", {
-                  count: Math.min(8, roots.length - shown),
-                })}
-                <ChevronDown size={18} />
-              </button>
-            )}
-          </section>
-        )}
-        <section className="goals-create" aria-label={t("Create a goal")}>
-          <h2>{t("Create a goal")}</h2>
-          <div role="group" aria-label={t("Goal categories")}>
-            {goalCategories.map((category) => {
-              const Icon = categoryIcons[category.id];
-              return (
-                <button
-                  className="goal-category"
-                  key={category.id}
-                  disabled={busy}
-                  onClick={() => setCategory(category.id)}
-                >
-                  <span className="goal-category-icon" aria-hidden="true">
-                    <Icon size={22} strokeWidth={1.5} />
-                  </span>
-                  <span>{t(category.label)}</span>
-                  <ChevronRight size={20} strokeWidth={1.5} />
-                </button>
-              );
-            })}
+        {!data && loading ? (
+          <GoalsSkeleton subtitles />
+        ) : unavailable ? (
+          <div className="goals-content">
+            <GoalsErrorState
+              connected={client.signedIn()}
+              detail={error}
+              busy={busy}
+              onRetry={() => void refresh()}
+            />
           </div>
-        </section>
-        {pending && (
-          <aside className="goal-pending" role="status">
-            <p>
-              {pending.phase === "creating" || pending.phase === "sending"
-                ? t("Checking goal submission…")
-                : t("Goal conversation ready to continue")}
-            </p>
-            {pending.error && <p>{pending.error}</p>}
-            {["preparing", "ready"].includes(pending.phase) && (
-              <button
-                className="pill-button"
-                disabled={busy}
-                onClick={() =>
-                  void action(() =>
-                    service.start(pending.category, onConversation),
-                  )
-                }
+        ) : (
+          <div className="goals-content">
+            {alert}
+            {roots.length > 0 && (
+              <GoalsSection id="goals-user" label={t("Goals")} accent>
+                <div className="goals-rows">
+                  {roots.slice(0, shown).map(row)}
+                  {roots.length > shown && (
+                    <button
+                      className="goals-show-more"
+                      onClick={() => setShown((value) => value + revealStep)}
+                    >
+                      <span aria-hidden="true">
+                        <GripIcon />
+                      </span>
+                      {t("Show {count} more", {
+                        count: Math.min(revealStep, roots.length - shown),
+                      })}
+                    </button>
+                  )}
+                </div>
+              </GoalsSection>
+            )}
+            <GoalsSection id="goals-create" label={t("Create a goal")}>
+              <div
+                className="goal-categories"
+                role="group"
+                aria-label={t("Goal categories")}
               >
-                {t("Continue {category} goal", {
-                  category: t(pending.category),
+                {goalCategories.map((category) => {
+                  const Icon = categoryIcons[category.id];
+                  return (
+                    <button
+                      className="goal-category"
+                      key={category.id}
+                      disabled={busy}
+                      onClick={() => setCategory(category.id)}
+                    >
+                      <span className="goal-category-icon" aria-hidden="true">
+                        <Icon />
+                      </span>
+                      <span className="goal-category-label">
+                        {t(category.label)}
+                      </span>
+                      <span
+                        className="goal-category-chevron"
+                        aria-hidden="true"
+                      >
+                        <ChevronRightIcon />
+                      </span>
+                    </button>
+                  );
                 })}
-              </button>
+              </div>
+            </GoalsSection>
+            {pending && (
+              <aside className="goal-pending" role="status">
+                <p>
+                  {pending.phase === "creating" || pending.phase === "sending"
+                    ? t("Checking goal submission…")
+                    : t("Goal conversation ready to continue")}
+                </p>
+                {pending.error && (
+                  <p className="goal-pending-error">{pending.error}</p>
+                )}
+                <div className="goal-pending-actions">
+                  {["preparing", "ready"].includes(pending.phase) && (
+                    <button
+                      className="goal-button primary"
+                      disabled={busy}
+                      onClick={() =>
+                        void action(() =>
+                          service.start(pending.category, onConversation),
+                        )
+                      }
+                    >
+                      {t("Continue {category} goal", {
+                        category: t(pending.category),
+                      })}
+                    </button>
+                  )}
+                  {pending.session && (
+                    <button
+                      className="goal-button"
+                      onClick={() => onOpenChat(pending.session!)}
+                    >
+                      {t("View goal conversation")}
+                    </button>
+                  )}
+                </div>
+              </aside>
             )}
-            {pending.session && (
-              <button
-                className="feed-text-button"
-                onClick={() => onOpenChat(pending.session!)}
-              >
-                {t("View goal conversation")}
-              </button>
-            )}
-          </aside>
+          </div>
         )}
-        <footer className="goals-footer">
-          <button
-            className="icon-button"
-            aria-label={t("Refresh goals")}
-            disabled={busy}
-            onClick={() => void refresh()}
-          >
-            <RefreshCw size={17} />
-          </button>
-          <span>
-            {t(
-              "Plans and progress are stored in personal MA memory. Automatic monitoring is not connected to this goal workflow yet.",
-            )}
-          </span>
-        </footer>
       </div>
       {category && (
         <Modal
-          title={t(
-            `Create ${category === "custom" ? "a new" : `${category === "interests" ? "an" : "a"} ${category}`} goal`,
-          )}
-          className="goal-intro-dialog"
+          title={categoryDialogTitle(category)}
+          className="goal-dialog goal-intro-dialog"
           onClose={() => {
             if (!busy) setCategory(undefined);
           }}
         >
-          <p>
+          <p className="goal-dialog-text">
             {t(
               "First, we'll refine the goal together in chat. I'll ask you a few questions to clarify what you're after. Once it's set, I'll track your progress here.",
             )}
           </p>
-          {errors}
+          {alert}
           <button
             className="goal-primary"
             disabled={busy}
+            aria-busy={busy || undefined}
             onClick={() => {
               if (!client.signedIn()) {
                 setCategory(undefined);
@@ -804,7 +1115,11 @@ export function GoalsPage({
               });
             }}
           >
-            <WandSparkles size={18} />
+            {busy ? (
+              <span className="goal-spinner" aria-hidden="true" />
+            ) : (
+              <WandIcon aria-hidden="true" />
+            )}
             {busy ? t("Starting…") : t("Let's do it")}
           </button>
         </Modal>
@@ -822,10 +1137,11 @@ export function GoalsPage({
               goal={current}
               busy={busy}
               canAdd={!current.parent_id}
+              className="goal-options elevated"
               onComplete={() => complete(current)}
               onAdd={() => addSubgoal(current)}
-              onRename={() => requestRename(current)}
-              onDelete={() => requestDelete(current)}
+              onRename={() => handlers.onRename(current)}
+              onDelete={() => handlers.onDelete(current)}
             />
           </div>
           {current.parent_id && (
@@ -833,19 +1149,19 @@ export function GoalsPage({
               className="goal-parent"
               onClick={() => onSelect(current.parent_id)}
             >
-              <ChevronRight size={16} />
               {goals.find((goal) => goal.id === current.parent_id)?.title ??
                 t("Parent goal")}
+              <ChevronRightIcon aria-hidden="true" />
             </button>
           )}
-          <span className={`goal-state ${current.status}`}>
-            {current.status === "completed"
-              ? t("Completed")
-              : current.status === "paused"
-                ? t("Paused")
-                : t("Active")}
-          </span>
-          {current.description && <Markdown text={current.description} />}
+          {current.status === "paused" && (
+            <p className="goal-detail-status">{t("Paused")}</p>
+          )}
+          {current.description && (
+            <div className="goal-detail-description">
+              <Markdown text={current.description} />
+            </div>
+          )}
           {current.steps.length > 0 && (
             <section className="goal-plan" aria-label={t("Plan steps")}>
               <h3>{t("Plan")}</h3>
@@ -885,38 +1201,8 @@ export function GoalsPage({
               {goals.filter((goal) => goal.parent_id === current.id).map(row)}
             </section>
           )}
-          {errors}
-          <section
-            className="goal-timeline"
-            aria-label={t("Goal activity timeline")}
-          >
-            <h3>{t("Activity")}</h3>
-            {data?.activity[current.id]?.length ? (
-              <ul>
-                {[...data.activity[current.id]].reverse().map((activity) => (
-                  <li key={activity.id}>
-                    <CircleCheck size={18} />
-                    <div>
-                      <strong>{goalActivityLabel(activity.title)}</strong>
-                      <time dateTime={activity.at}>
-                        {new Date(activity.at).toLocaleString(formatLocale(), {
-                          month: "short",
-                          day: "numeric",
-                          hour: "numeric",
-                          minute: "2-digit",
-                        })}
-                      </time>
-                      {activity.observed && (
-                        <small>{t("Change observed on this Mac")}</small>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>{t("No activity yet.")}</p>
-            )}
-          </section>
+          {alert}
+          <GoalActivity goal={current} data={data} />
           <button
             className="goal-talk"
             disabled={busy}
@@ -930,19 +1216,17 @@ export function GoalsPage({
                 );
             }}
           >
-            <MessageCircle size={18} />
             {t("Talk about this goal")}
           </button>
-          <p className="goal-sync-note">
-            {t(
-              "Completing or deleting a plan does not stop running tools or erase conversation history.",
-            )}
-          </p>
         </Modal>
       )}
       {selectedId && !current && !loading && !error && (
-        <Modal title={t("Goal unavailable")} onClose={() => onSelect()}>
-          <p>
+        <Modal
+          title={t("Goal unavailable")}
+          className="goal-dialog"
+          onClose={() => onSelect()}
+        >
+          <p className="goal-dialog-text">
             {t(
               "This goal is no longer in personal memory. No data was changed.",
             )}
@@ -952,13 +1236,29 @@ export function GoalsPage({
       {completed && (
         <Modal
           title={t("Completed goals")}
-          className="goal-completed-dialog"
+          className="goal-dialog goal-completed-dialog"
           onClose={() => setCompleted(false)}
         >
-          {goals.some((goal) => goal.status === "completed") ? (
-            goals.filter((goal) => goal.status === "completed").map(row)
+          {finished.length ? (
+            <div className="goal-completed-groups">
+              {completedGoalGroups(finished).map((group) => (
+                <section key={group.key} aria-label={group.label}>
+                  <h3>{group.label}</h3>
+                  {group.goals.map((goal) => (
+                    <CompletedGoalRow
+                      key={goal.id}
+                      goal={goal}
+                      busy={busy}
+                      handlers={handlers}
+                    />
+                  ))}
+                </section>
+              ))}
+            </div>
           ) : (
-            <p>{t("No completed goals yet.")}</p>
+            <p className="goal-completed-empty">
+              {t("No completed goals yet.")}
+            </p>
           )}
         </Modal>
       )}
@@ -976,12 +1276,12 @@ export function GoalsPage({
       {deleting && (
         <Modal
           title={t("Delete this goal?")}
-          className="goal-delete-dialog"
+          className="goal-dialog goal-delete-dialog"
           onClose={() => {
             if (!busy) setDeleting(undefined);
           }}
         >
-          <p>
+          <p className="goal-dialog-text">
             {t(
               deleting.count > 2
                 ? "“{title}” and its {count} subgoals will be removed from personal memory. This cannot be undone here. Conversation history is preserved."
@@ -991,17 +1291,17 @@ export function GoalsPage({
               { title: deleting.goal.title, count: deleting.count - 1 },
             )}
           </p>
-          {errors}
-          <div className="feed-dialog-actions">
+          {alert}
+          <div className="goal-dialog-actions">
             <button
-              className="pill-button"
+              className="goal-button"
               disabled={busy}
               onClick={() => setDeleting(undefined)}
             >
               {t("Cancel")}
             </button>
             <button
-              className="pill-button danger"
+              className="goal-button destructive"
               disabled={busy}
               onClick={() =>
                 void action(async () => {
@@ -1015,7 +1315,7 @@ export function GoalsPage({
                 })
               }
             >
-              {busy ? t("Deleting…") : t("Delete goal")}
+              {busy ? t("Deleting…") : t("Delete")}
             </button>
           </div>
         </Modal>

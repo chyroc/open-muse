@@ -51,6 +51,14 @@
   --search-shadow-far: #1111121f;
   --shadow: #0000001a;
   --pill: #fff;
+  --press: #0000000d;
+  --flat: #0000000d;
+  --blur-thick: #ffffffc2;
+  --divider-strong: #0000001a;
+  --elevation-1: 0 2px 8px 0 #11111214, 0 2px 16px 0 #1111120a;
+  --elevation-3: 0 6px 16px 0 #11111229, 0 8px 32px 0 #1111121f;
+  --placeholder: #f3f4f5;
+  --ease-pop: cubic-bezier(0.175, 0.885, 0.32, 1.275);
   --status-working: #08f;
   --blue: #cce6ff;
 }
@@ -103,6 +111,14 @@
   --shadow: #00000066;
   --blue: #005cff2b;
   --pill: #383b3d;
+  --press: #ffffff2e;
+  --flat: #ffffff1f;
+  --blur-thick: #383838cc;
+  --divider-strong: #ffffff1f;
+  --elevation-1: 0 2px 8px 0 #11111214, 0 2px 16px 0 #1111120a;
+  --elevation-3: 0 6px 16px 0 #11111229, 0 8px 32px 0 #1111121f;
+  --placeholder: #525456;
+  --ease-pop: cubic-bezier(0.175, 0.885, 0.32, 1.275);
   --status-working: #08f;
 }
 /* Theme colors: each replaces the accent, its hover and soft tints, and your
