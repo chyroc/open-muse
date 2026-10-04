@@ -97,6 +97,27 @@ describe("Companion activity", () => {
       companionActivity([...turn, event("agent.thinking")], running)?.label,
     ).toBe("Thinking");
   });
+  it("shows a command's own short description as the status", () => {
+    const step = (description: string) =>
+      companionActivity(
+        [
+          event("user.message"),
+          event("agent.tool_use", {
+            name: "bash",
+            input: { command: "python make.py", description },
+          }),
+        ],
+        running,
+      )?.label;
+    expect(step("📄 生成文档")).toBe("📄 生成文档");
+    expect(step("  📍  搜索\n攻略 ")).toBe("📍 搜索 攻略");
+    // A long one is cut to a short line.
+    expect(step("Print the itinerary HTML page to a PDF file")).toBe(
+      "Print the itinera…",
+    );
+    // Without one, the kind of command still names it.
+    expect(step("")).toBe("Running commands");
+  });
   it("ignores tools from earlier turns", () => {
     const old = event("agent.tool_use", { name: "web_fetch" });
     expect(

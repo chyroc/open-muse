@@ -22,10 +22,19 @@ export function toolLabel(event: AgentEvent): string {
   if (name === "health_read") return "Reading Health";
   if (name.startsWith("iphone_")) return "Using your iPhone";
   if (name.startsWith("mac_")) return "Using your Mac";
-  if (name === "bash")
+  if (name === "bash") {
+    // The companion's own words for the step, kept to a short line.
+    const description = String(input.description ?? "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (description)
+      return [...description].length > 18
+        ? `${[...description].slice(0, 17).join("")}…`
+        : description;
     return browserCommand.test(String(input.command ?? ""))
       ? "Using the browser"
       : "Running commands";
+  }
   if (name === "read") return "Looking at files";
   if (["write", "edit"].includes(name)) return "Putting files together";
   if (["glob", "grep"].includes(name)) return "Searching files";
@@ -49,7 +58,8 @@ export function companionActivity(
   },
 ): CompanionActivity | undefined {
   if (state.approval) return { label: "Review needed", attention: true };
-  if (state.health === "ask") return { label: "Review needed", attention: true };
+  if (state.health === "ask")
+    return { label: "Review needed", attention: true };
   if (state.health === "auto")
     return { label: "Reading Health", working: true };
   if (state.mac) return { label: "Waiting for your Mac", attention: true };
