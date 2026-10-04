@@ -101,7 +101,11 @@ button.connector-row:active {
   opacity: 0.6;
 }
 .connector-detail {
-  margin: -4px 0 12px 54px;
+  /* Padding, not margin: the row and card have no vertical padding, so a
+     bottom margin would collapse out of the card and leave the last row's
+     Disconnect button touching its edge. */
+  margin: -4px 0 0 54px;
+  padding-bottom: 14px;
   font-size: 14px;
   line-height: 1.5;
   color: #6c6c70;
