@@ -1137,7 +1137,7 @@ function Workspace({
   );
   // The message being sent in this chat, until its history has it.
   const pendingSend = pendingOutgoing(outgoing, draftKey, messageEvents);
-  const reminders = remindersByReply(upcoming, messageEvents);
+  const reminders = remindersByReply(upcoming, events);
   // A sent message stays shown until the history has it, which can be a
   // poll or two after the send returns; a minute later it gives way anyway.
   useEffect(() => {
