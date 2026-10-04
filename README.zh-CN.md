@@ -6,22 +6,6 @@
 
 <table>
   <tr>
-    <td width="16%"><img src="docs/images/memory.png" alt="一句话设置每周提醒并记住偏好，旁边是可编辑的 SOUL 和 MEMORY"></td>
-    <td width="16%"><img src="docs/images/approval.png" alt="助手使用 Mac 前的批准卡片"></td>
-    <td width="16%"><img src="docs/images/feed.png" alt="带来源的个人动态"></td>
-    <td width="16%"><img src="docs/images/declined.png" alt="拒绝后，助手改为在对话里直接回答"></td>
-    <td width="16%"><img src="docs/images/quick-chat.png" alt="浮在任意 App 上方的快速聊天"></td>
-    <td width="16%"><img src="docs/images/computer-use-settings.png" alt="Computer use 设置"></td>
-  </tr>
-  <tr>
-    <td align="center"><sub><b>记得住，会提醒。</b>一句话设好每周提醒，偏好存进你能打开查看的记忆。</sub></td>
-    <td align="center"><sub><b>会用你的 Mac，但先问你。</b>允许一次、在此对话中允许，或拒绝。</sub></td>
-    <td align="center"><sub><b>只属于你的动态。</b>按你选的主题每天更新，每条都附来源。</sub></td>
-    <td align="center"><sub><b>说不就是不。</b>你拒绝后，它不碰你的电脑，改在对话里帮你。</sub></td>
-    <td align="center"><sub><b>随叫随到。</b>不打断手头的事，小卡片直接聊。</sub></td>
-    <td align="center"><sub><b>边界由你定。</b>权限、屏蔽的 App 和文件夹，集中在一处管理。</sub></td>
-  </tr>
-  <tr>
     <td width="16%"><img src="docs/images/ios-chat.png" alt="旁聊里的周末计划，最后问一个问题"></td>
     <td width="16%"><img src="docs/images/ios-menu.png" alt="长按回复弹出的菜单：表情回应、回复、复制、选择、分享、存到资源库"></td>
     <td width="16%"><img src="docs/images/ios-ideas.png" alt="点子：可以直接交给助手的现成任务"></td>
@@ -36,6 +20,22 @@
     <td align="center"><sub><b>会成长的目标。</b>选个类别，得到一份持续改进的计划。</sub></td>
     <td align="center"><sub><b>连接你常用的。</b>Apple 健康、日历、提醒事项、通讯录和飞书。</sub></td>
     <td align="center"><sub><b>按你的喜好。</b>气泡颜色、形象大小、浅色或深色。</sub></td>
+  </tr>
+  <tr>
+    <td width="16%"><img src="docs/images/memory.png" alt="一句话设置每周提醒并记住偏好，旁边是可编辑的 SOUL 和 MEMORY"></td>
+    <td width="16%"><img src="docs/images/approval.png" alt="助手使用 Mac 前的批准卡片"></td>
+    <td width="16%"><img src="docs/images/feed.png" alt="带来源的个人动态"></td>
+    <td width="16%"><img src="docs/images/declined.png" alt="拒绝后，助手改为在对话里直接回答"></td>
+    <td width="16%"><img src="docs/images/quick-chat.png" alt="浮在任意 App 上方的快速聊天"></td>
+    <td width="16%"><img src="docs/images/computer-use-settings.png" alt="Computer use 设置"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>记得住，会提醒。</b>一句话设好每周提醒，偏好存进你能打开查看的记忆。</sub></td>
+    <td align="center"><sub><b>会用你的 Mac，但先问你。</b>允许一次、在此对话中允许，或拒绝。</sub></td>
+    <td align="center"><sub><b>只属于你的动态。</b>按你选的主题每天更新，每条都附来源。</sub></td>
+    <td align="center"><sub><b>说不就是不。</b>你拒绝后，它不碰你的电脑，改在对话里帮你。</sub></td>
+    <td align="center"><sub><b>随叫随到。</b>不打断手头的事，小卡片直接聊。</sub></td>
+    <td align="center"><sub><b>边界由你定。</b>权限、屏蔽的 App 和文件夹，集中在一处管理。</sub></td>
   </tr>
 </table>
 
