@@ -5,6 +5,7 @@
 - Keep repository documentation, code comments, identifiers, and commit messages in English. Do not translate existing documentation. The one exception is `README.zh-CN.md`, the Simplified Chinese counterpart of `README.md` (see README below).
 - iOS and macOS user-facing interfaces support English and Simplified Chinese. On launch, follow the system/app preferred-language list, select the first supported English or Chinese preference, and fall back to English if none matches. Chinese locale variants use Simplified Chinese. Do not hard-code an English UI or persist an independent language override by default.
 - Keep app-authored labels, accessibility text, empty states, confirmations, and errors in the shared localization catalog (`shared/locales/zh-CN.ts`) and use `shared/i18n.ts`. Native macOS menus and dialogs use the matching `macos/*.lproj/Localizable.strings` resources. Dates and times use the selected language's locale.
+- Text the app writes for the model on the user's behalf, such as the prompt an idea puts in the composer, follows the selected UI language like any other app-authored copy.
 - Chinese text is allowed in localization resources and localization tests. Keep protocol names, API fields, resource IDs, file names, and machine-readable values unchanged. Never translate user-authored content, chat history, model output, or raw upstream diagnostic payloads as UI copy.
 - Add matching translations and tests when introducing user-facing copy. Verify both languages and the system-language fallback in affected Apple clients.
 - When talking to the user, match the language they use in the conversation.
@@ -46,6 +47,7 @@ The account build is the default: build, run, and verify features as an account 
 - Keep development and implementation detail out of the READMEs. Building, running, account builds, native projects, and project layout belong in `docs/development.md`; detailed behavior (accounts, storage and security, conversations, memory, goals, reminders, Feed and Ideas) belongs in `docs/how-it-works.md`. The READMEs only link to them. Those docs stay in English.
 - Every capability a README claims must exist in the current code. Describe limits honestly; do not advertise unverified or unreleased features.
 - README screenshots live in `docs/images/`. Capture them from a real build with a test account and non-sensitive data, show only app windows (no terminal, desktop, personal paths, account IDs, keys, or other people's data), resize to at most 1600 px wide, and replace a screenshot when the screen it shows changes noticeably.
+- Keep the image count small: one row of six iOS screenshots and one row of six Mac screenshots. Replace an existing image rather than adding another, since every committed image stays in history.
 
 ## Commands
 
@@ -66,6 +68,8 @@ Requires Node.js 22.21+. Native Apple builds require Xcode. Account build values
 
 - Commit automatically: once a logical change is complete and its required checks pass, commit it without waiting to be asked. Do not push unless explicitly requested. If a required check fails or cannot be run, leave the change uncommitted and report why.
 - Run `npm run check` and `npm run build` before committing. When changing native bridges or assets, also verify the affected platform build; state explicitly which checks were not run.
+- Chain the checks and the commit so a failure stops the commit (`&&`), or confirm every exit code first. A partial test run does not replace the full gate.
+- Report verification by the evidence it rests on: unit tests or protocol doubles, a native build, Simulator or device UI, or real cloud calls. Do not present a lower level as a higher one, and do not describe a build from a dirty worktree as the build of a commit.
 - Use Conventional Commits (`feat`, `fix`, `refactor`, `test`, `docs`, `chore`), one logical change per commit.
 - Commit only source code, required build configuration, reproducible tests, and public documentation. Everything that enters the repository or its remote counts: code, comments, identifiers, strings, tests, fixtures, assets, docs, scripts, commit messages, branch names, tags, and PR text. None of it may contain:
   - Sensitive information of any kind: credentials, API keys, tokens, passwords, secrets, account or tenant IDs, databases, private hostnames or IPs, personal paths, real names or emails beyond the commit author, device logs, IPAs, or DMGs.
@@ -74,7 +78,8 @@ Requires Node.js 22.21+. Native Apple builds require Xcode. Account build values
 - If a change would need any of the above, keep it in ignored local files instead and leave it out of the commit. When such content is found in history, report it rather than working around it; removing it requires a history rewrite, which needs the user's explicit approval.
 - Keep generated artifacts and personal research in ignored local directories (`.build/`, `.data/`, `resources/`, `references/`).
 - Stage files selectively; review `git diff --cached` and `git diff --cached --check` before committing.
-- Docs describe current behavior and usage, not work history. Real cloud testing requires explicit authorization and non-destructive cases.
+- Docs describe current behavior and usage, not work history. Real cloud testing requires explicit authorization and non-destructive cases. After testing on a real account, list the test data left behind (side chats, reminders, documents) so the user can decide whether to delete it.
+- Work directly on `master`. Do not create branches or worktrees unless the user asks for them.
 
 ## Concurrent sessions
 
@@ -84,6 +89,7 @@ Requires Node.js 22.21+. Native Apple builds require Xcode. Account build values
 - If concurrent edits overlap and cannot be safely combined, pause work on that file and coordinate with the user or the other session. Continue independent work where possible.
 - Stage and commit only this session's changes, using selective hunks when a file contains shared edits. Inspect the shared index before staging and committing; never unstage or commit another session's changes. Branch switches and worktree-wide Git operations require explicit authorization and coordination.
 - Do not stop another session's processes. Use session-specific temporary and build paths where supported, and coordinate commands that overwrite shared generated output.
+- The screen, the Simulator, and running app instances are shared too. Run your own app instance with its own profile (`--open-muse-profile <name>` on the Mac), bring your own window to the front by process ID and confirm it is frontmost before every real click or keystroke, leave a Simulator another session is using alone, and avoid global shortcuts such as Option-Space while another session drives the screen.
 
 ## Interaction and motion
 
@@ -99,6 +105,7 @@ What "not stiff" means in practice:
 - Navigation and sheet transitions carry their content (shared-element feel where reasonable) and keep interactive pop/dismiss working.
 - Message streams animate insertion, updates, and loading as a continuous flow; typing/streaming state settles without jumps, and keyboard tracking never fights the scroll position.
 - Buttons and rows have press feedback (scale/opacity/highlight) that releases on touch-up; nothing should only react on tap-end.
+- Transient connection trouble (an aborted request, a dropped stream, a reconnect) recovers quietly in the background. Show an error only when something the person did, such as sending a message or saving a change, actually failed, and never show raw platform text such as `The operation was aborted`.
 - Respect the user's Reduce Motion setting: replace large movement with short opacity/scale crossfades instead of dropping animation entirely.
 - Match dark/light appearance and the localization catalog; motion and layout must hold up in both English and Simplified Chinese. Text keeps the reference type scale at every standard Dynamic Type size and grows only at the accessibility sizes, so layouts must hold up at those too.
 
