@@ -39,6 +39,18 @@ describe("Turn outputs", () => {
     ]);
     expect(outputs.get("b1")?.map((item) => item.id)).toEqual(["late"]);
   });
+  it("puts a file under the first reply after it, before a summary", () => {
+    const outputs = turnOutputs(
+      [
+        ev("u1", "user.message", 0),
+        ev("onIt", "agent.message", 1),
+        ev("hereItIs", "agent.message", 6),
+        ev("summary", "agent.message", 7),
+      ],
+      [file("plan", 5)],
+    );
+    expect([...outputs.keys()]).toEqual(["hereItIs"]);
+  });
   it("never anchors to a folded step, and skips turns without a reply", () => {
     const outputs = turnOutputs(
       [ev("u1", "user.message", 0), ev("step", "agent.message", 2)],

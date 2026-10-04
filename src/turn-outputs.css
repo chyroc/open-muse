@@ -32,6 +32,22 @@
   height: 100%;
   object-fit: cover;
 }
+/* A picture on its own: wide, at its own proportions, square until it
+   arrives. */
+.turn-output-images.single .turn-output-image {
+  width: min(260px, 72vw);
+  height: auto;
+  min-height: 0;
+  aspect-ratio: 1;
+  border-radius: 20px;
+}
+.turn-output-images.single .turn-output-image:has(img) {
+  aspect-ratio: auto;
+}
+.turn-output-images.single .turn-output-image img {
+  height: auto;
+  animation: turn-output-page-in var(--motion-fade-duration) ease-out;
+}
 .turn-output-file {
   display: flex;
   align-items: center;

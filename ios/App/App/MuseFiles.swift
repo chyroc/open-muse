@@ -218,7 +218,11 @@ final class MuseFilesHandler: NSObject, WKScriptMessageHandlerWithReply, QLPrevi
               url.user == nil, url.password == nil, url.port == nil, url.fragment == nil,
               let action = body["action"]
         else { replyHandler("unavailable", nil); return }
-        if action == "thumbnail" { thumbnail(url, reply: replyHandler); return }
+        if action == "thumbnail" {
+            // A picture shown on its own in the chat is drawn larger.
+            thumbnail(url, largest: body["size"] == "large" ? 960 : 480, reply: replyHandler)
+            return
+        }
         guard let name = body["name"], name.utf8.count <= 4096,
               action == "preview" || action == "share",
               let closeLabel = body["closeLabel"], !closeLabel.isEmpty, closeLabel.utf8.count <= 200,
@@ -275,7 +279,7 @@ final class MuseFilesHandler: NSObject, WKScriptMessageHandlerWithReply, QLPrevi
 
     // Thumbnails are decoded in memory and returned as re-encoded pixels, so
     // no signed URL, original bytes or temporary file reaches the page or disk.
-    private func thumbnail(_ url: URL, reply: @escaping (Any?, String?) -> Void) {
+    private func thumbnail(_ url: URL, largest: Int, reply: @escaping (Any?, String?) -> Void) {
         guard thumbnails < 2 else { reply("busy", nil); return }
         thumbnails += 1
         MuseFileDownload().start(url) { [weak self] result in
@@ -285,7 +289,7 @@ final class MuseFilesHandler: NSObject, WKScriptMessageHandlerWithReply, QLPrevi
                 return
             }
             DispatchQueue.global(qos: .utility).async {
-                let encoded = Self.encodedThumbnail(data)
+                let encoded = Self.encodedThumbnail(data, largest: largest)
                 DispatchQueue.main.async {
                     self?.thumbnails -= 1
                     reply(encoded ?? "unavailable", nil)
@@ -297,7 +301,7 @@ final class MuseFilesHandler: NSObject, WKScriptMessageHandlerWithReply, QLPrevi
     // ImageIO downsamples without decoding the full image, which bounds memory
     // for very large dimensions. SVG and other non-bitmap types are rejected.
     // A PDF shows its first page, wide enough for a document card.
-    private static func encodedThumbnail(_ data: Data) -> String? {
+    private static func encodedThumbnail(_ data: Data, largest: Int) -> String? {
         if data.starts(with: Array("%PDF-".utf8)) { return pdfThumbnail(data) }
         guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
               CGImageSourceGetCount(source) > 0,
@@ -305,7 +309,7 @@ final class MuseFilesHandler: NSObject, WKScriptMessageHandlerWithReply, QLPrevi
                   kCGImageSourceCreateThumbnailFromImageAlways: true,
                   kCGImageSourceCreateThumbnailWithTransform: true,
                   kCGImageSourceShouldCacheImmediately: true,
-                  kCGImageSourceThumbnailMaxPixelSize: 480,
+                  kCGImageSourceThumbnailMaxPixelSize: largest,
               ] as CFDictionary)
         else { return nil }
         let opaque = [.none, .noneSkipFirst, .noneSkipLast].contains(image.alphaInfo)

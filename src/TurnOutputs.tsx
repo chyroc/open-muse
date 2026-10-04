@@ -32,12 +32,16 @@ export function TurnOutputs({
   return (
     <div className="turn-outputs">
       {images.length > 0 && (
-        <ul className="turn-output-images" aria-label={t("Images")}>
+        <ul
+          className={`turn-output-images${images.length === 1 ? " single" : ""}`}
+          aria-label={t("Images")}
+        >
           {images.map((file) => (
             <OutputImage
               key={file.id}
               file={file}
               client={client}
+              large={images.length === 1}
               onOpen={() => void open(file)}
             />
           ))}
@@ -80,13 +84,17 @@ export function TurnOutputs({
   );
 }
 
+// One picture in a turn shows large, at its own proportions, as a picture
+// sent in a chat does; several sit in a row of square tiles.
 function OutputImage({
   file,
   client,
+  large = false,
   onOpen,
 }: {
   file: LibraryFile;
   client: Pick<Client, "libraryFileDownload">;
+  large?: boolean;
   onOpen: () => void;
 }) {
   const [thumbnail, setThumbnail] = useState<string>();
@@ -95,6 +103,7 @@ function OutputImage({
     let active = true;
     void libraryThumbnail(
       async () => (await client.libraryFileDownload(file.id)).url,
+      large ? "large" : undefined,
     ).then(
       (data) => active && setThumbnail(data),
       () => {},
@@ -102,7 +111,7 @@ function OutputImage({
     return () => {
       active = false;
     };
-  }, [file, client]);
+  }, [file, client, large]);
   return (
     <li>
       <button

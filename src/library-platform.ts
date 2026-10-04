@@ -58,7 +58,11 @@ async function thumbnailSlot<T>(work: () => Promise<T>) {
   }
 }
 
-export async function libraryThumbnail(signedURL: () => Promise<string>) {
+export async function libraryThumbnail(
+  signedURL: () => Promise<string>,
+  // "large" for a picture shown on its own, drawn at twice the size.
+  size?: "large",
+) {
   const native = nativeFiles();
   if (!native) return;
   return thumbnailSlot(async () => {
@@ -66,6 +70,7 @@ export async function libraryThumbnail(signedURL: () => Promise<string>) {
     const result = await native.postMessage({
       url: libraryDownloadURL(await signedURL()),
       action: "thumbnail",
+      ...(size ? { size } : {}),
     });
     return typeof result === "string" &&
       result.length <= 2 * 1024 * 1024 &&
