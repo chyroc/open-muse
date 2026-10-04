@@ -474,7 +474,8 @@
   background: var(--fill);
   font-size: 15px;
 }
-.settings-row > .connector-tile {
+.settings-row > .connector-tile,
+.settings-row > .connector-app-icon {
   margin-left: 0;
 }
 .connector-tile {
