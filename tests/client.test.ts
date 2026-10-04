@@ -1321,6 +1321,33 @@ describe("Direct MA client", () => {
     // Another identity on this device has not connected Health.
     expect(await f.client.healthConnected()).toBe(false);
   });
+  it("keeps each device source's read permission per identity", async () => {
+    const f = fixture();
+    await f.login();
+    expect(await f.client.devicePermission("health")).toBe("ask");
+    await f.client.setDevicePermission("health", "allow");
+    // Allowing Health is the same as connecting it.
+    expect(await f.client.healthConnected()).toBe(true);
+    expect(await f.client.devicePermission("health")).toBe("allow");
+    await f.client.setDevicePermission("health", "deny");
+    expect(await f.client.healthConnected()).toBe(false);
+    expect(await f.client.devicePermission("health")).toBe("deny");
+    // Calendar, Reminders and Contacts are only ever asked or declined.
+    await expect(
+      f.client.setDevicePermission("calendar", "allow"),
+    ).rejects.toThrow();
+    expect(await f.client.devicePermission("calendar")).toBe("ask");
+    await f.client.setDevicePermission("contacts", "deny");
+    expect(await f.client.devicePermission("contacts")).toBe("deny");
+    await f.client.setDevicePermission("contacts", "ask");
+    expect(await f.client.devicePermission("contacts")).toBe("ask");
+    await f.client.auth("logout", {});
+    await f.client.auth("api-key", {
+      apiKey: "test-other-account-key-123456789",
+      confirm: true,
+    });
+    expect(await f.client.devicePermission("health")).toBe("ask");
+  });
   it("keeps reactions on this device for the signed-in identity only", async () => {
     const f = fixture();
     await f.login();

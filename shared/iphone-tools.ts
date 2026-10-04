@@ -87,5 +87,8 @@ export const iphoneSource = (request: IphoneRequest): IphoneSource =>
 // The tool result when the person declines; the agent is told not to retry.
 export const iphoneDeclined =
   "The person declined this request in the Open Muse iPhone app. Do not try another way.";
+// Sent without asking when the person set this source to Deny.
+export const iphoneTurnedOff =
+  "The person turned off reading this on their iPhone in Open Muse Settings > Permissions, so the request was refused without asking. Do not try another way; if it matters, tell them they can change it there.";
 export const iphoneInvalid =
   "The Open Muse iPhone app could not read this request.";

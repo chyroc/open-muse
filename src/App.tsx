@@ -453,13 +453,13 @@ function Workspace({
   const personalRequests = customTools.filter((event) =>
     isIphoneTool(event.name),
   );
-  // Whether Health is connected, so its reads run without asking.
+  // Whether Health reads are answered without asking: allowed or declined.
   const [healthLinked, setHealthLinked] = useState(false);
   useEffect(() => {
     if (!healthRequests.length) return;
     let active = true;
-    void client.healthConnected().then(
-      (value) => active && setHealthLinked(value),
+    void client.devicePermission("health").then(
+      (value) => active && setHealthLinked(value !== "ask"),
       () => {},
     );
     return () => {

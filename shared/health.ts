@@ -119,5 +119,8 @@ export function healthRangeLabel(query: HealthQuery, locale = formatLocale()) {
 
 export const healthDeclined =
   "The person chose not to share this Apple Health data. Do not ask again unless they bring it up.";
+// Sent without asking when the person set Apple Health to Deny.
+export const healthTurnedOff =
+  "The person turned off Apple Health reads in Open Muse Settings > Permissions, so the request was refused without asking. Do not try another way; if it matters, tell them they can change it there.";
 export const healthInvalid =
   "The request was invalid and was not run. Use one supported metric and an ISO 8601 start and end with offset, at most 366 days apart (16 days for hourly).";

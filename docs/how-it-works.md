@@ -512,6 +512,16 @@ one explains it in a sheet and then asks iOS for access, and iOS Settings >
 Open Muse changes that access. Both tools wait while the iPhone app is
 closed; the Mac and web apps say they are waiting for the iPhone.
 
+Settings > **Permissions** > **Connectors** lists these sources on the
+iPhone and sets how each one's requests are answered, kept per identity on
+the device. Apple Health offers **Allow** (the same as connecting it),
+**Ask**, and **Deny**; Calendar, Reminders, and Contacts offer only **Ask**
+and **Deny**, so each of their reads is always approved in the chat. A source
+set to Deny shows no card: each request is refused at once, and the
+companion is told the source is turned off in Permissions and not to try
+another way. Each page links to the app's page in iOS Settings, where iOS's
+own access is changed.
+
 ## Personal identity and memory
 
 Tap the companion avatar to open Activity, Approvals, Desktop, Recent, or

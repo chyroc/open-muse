@@ -3,6 +3,7 @@ import { Check, HeartPulse, LoaderCircle, X } from "lucide-react";
 import { t } from "../shared/i18n";
 import {
   healthDeclined,
+  healthTurnedOff,
   healthInvalid,
   healthMetricLabel,
   healthRangeLabel,
@@ -37,7 +38,7 @@ export function HealthRequestCard({
   const id = useId();
   const query = parseHealthRequest(event);
   const supported = healthSupported();
-  const [busy, setBusy] = useState<"share" | "decline">();
+  const [busy, setBusy] = useState<"share" | "decline" | "off">();
   const [error, setError] = useState("");
   const [mode, setMode] = useState<"checking" | "sheet" | "card" | "auto">(
     supported && query ? "checking" : "card",
@@ -45,14 +46,15 @@ export function HealthRequestCard({
   useEffect(() => {
     if (!supported || !query) return;
     let active = true;
-    void client.healthConnected().then(
-      (connected) => {
+    void client.devicePermission("health").then(
+      (permission) => {
         if (!active) return;
-        if (!connected) return setMode("sheet");
+        if (permission === "ask") return setMode("sheet");
+        // Allowed reads are shared, declined ones refused, without asking.
         setMode("auto");
         if (answering.has(event.id)) return;
         answering.add(event.id);
-        void answer("share").then((ok) => {
+        void answer(permission === "allow" ? "share" : "off").then((ok) => {
           if (!ok) answering.delete(event.id);
           if (!ok && active) setMode("card");
         });
@@ -64,12 +66,18 @@ export function HealthRequestCard({
     };
     // One check per request.
   }, [event.id]);
-  async function answer(choice: "share" | "decline") {
+  // "off" refuses without asking: the person set Health to Deny.
+  async function answer(choice: "share" | "decline" | "off") {
     if (busy) return false;
     setBusy(choice);
     setError("");
     try {
-      let text = choice === "share" ? "" : healthDeclined;
+      let text =
+        choice === "share"
+          ? ""
+          : choice === "off"
+            ? healthTurnedOff
+            : healthDeclined;
       let failed = choice !== "share";
       if (!query) text = healthInvalid;
       else if (choice === "share") {

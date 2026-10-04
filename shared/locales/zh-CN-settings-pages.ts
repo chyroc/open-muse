@@ -50,4 +50,21 @@ export const zhSettingsPages: Record<string, string> = {
   "Extra large": "加大",
   Large: "大",
   Small: "小",
+  "Manage permissions": "管理权限",
+  "Read permission": "读取权限",
+  "View health data": "查看健康数据",
+  "View calendar events": "查看日历日程",
+  "View reminders": "查看提醒事项",
+  "Look up contacts": "查找联系人",
+  Ask: "询问",
+  Manage: "管理",
+  "Nothing on this device is connected.": "这台设备上还没有连接任何内容。",
+  "You can manage what Open Muse can access in the iPhone's Settings.":
+    "你可以在 iPhone 的“设置”中管理 Open Muse 的访问权限。",
+  "Allow shares what your assistant asks for without asking each time. Deny refuses every request.":
+    "“允许”会直接分享助手请求的数据，不再每次询问；“拒绝”会拒绝所有请求。",
+  "Your assistant asks before every read here. Deny refuses every request without asking.":
+    "助手每次读取这里的数据前都会先询问你；“拒绝”会直接拒绝所有请求，不再询问。",
+  "Only Apple Health reads can be allowed without asking.":
+    "只有 Apple 健康的读取可以设为无需询问。",
 };

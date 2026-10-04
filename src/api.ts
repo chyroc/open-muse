@@ -186,6 +186,11 @@ const customToolResults = z
   )
   .min(1)
   .max(8);
+// Sources on this device the companion asks to read, and how each request is
+// answered (see Client.devicePermission).
+export type DevicePermissionSource =
+  "health" | "calendar" | "reminders" | "contacts";
+export type DevicePermission = "allow" | "ask" | "deny";
 export type CustomToolResult = z.infer<typeof customToolResults>[number];
 type Approval = {
   state: "sending" | "failed" | "confirmed";
@@ -2447,6 +2452,33 @@ export class Client {
     await this.db.set(
       `${this.context().key}:health-connected`,
       z.boolean().parse(connected),
+    );
+  }
+  // How this identity's requests to read a source on this device are
+  // answered: Apple Health may be allowed (the same as connecting it);
+  // Calendar, Reminders and Contacts are only ever asked or declined. A
+  // declined source answers each request with a refusal without asking.
+  async devicePermission(source: DevicePermissionSource) {
+    if (!this.signedIn()) return "ask" as DevicePermission;
+    if (source === "health" && (await this.healthConnected())) return "allow";
+    const stored = await this.db.get<DevicePermission>(
+      `${this.context().key}:device-permission:${source}`,
+    );
+    return stored === "deny" ? "deny" : ("ask" as DevicePermission);
+  }
+  async setDevicePermission(
+    source: DevicePermissionSource,
+    permission: DevicePermission,
+  ) {
+    if (permission === "allow" && source !== "health")
+      throw new Error(
+        t("Only Apple Health reads can be allowed without asking."),
+      );
+    if (source === "health")
+      await this.setHealthConnected(permission === "allow");
+    await this.db.set(
+      `${this.context().key}:device-permission:${source}`,
+      permission === "deny" ? "deny" : "ask",
     );
   }
   // Reactions are this device's own marks on messages, kept beside the

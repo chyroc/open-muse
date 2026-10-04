@@ -10,6 +10,7 @@ import {
   MessageCircleHeart,
   MonitorSmartphone,
   Palette,
+  ShieldCheck,
 } from "lucide-react";
 import {
   deviceLanguage,
@@ -28,6 +29,7 @@ import { AccountSheet } from "./AccountSheet";
 import { backgroundClient } from "./background-client";
 import { ChannelsSheet } from "./ChannelsSheet";
 import { DevicesSheet } from "./DevicesSheet";
+import { PermissionsSheet } from "./PermissionsSheet";
 import { Sheet } from "./MusePages";
 import { effortLabels, ModelSheet } from "./ModelSheet";
 import { modelOption, type ModelChoice } from "../shared/models";
@@ -40,6 +42,7 @@ type Section =
   | "channels"
   | "checkins"
   | "appearance"
+  | "permissions"
   | "model"
   | "language"
   | "account"
@@ -127,6 +130,13 @@ export function SettingsHome({
             icon={<MessageCircle size={22} strokeWidth={2} />}
             label={t("Message channels")}
             onClick={() => setSection("channels")}
+          />
+        )}
+        {signedIn && (
+          <Row
+            icon={<ShieldCheck size={22} strokeWidth={2} />}
+            label={t("Permissions")}
+            onClick={() => setSection("permissions")}
           />
         )}
       </ul>
@@ -285,6 +295,9 @@ export function SettingsHome({
         <AppearanceSheet name={name ?? t("Your assistant")} onClose={close} />
       )}
       {section === "devices" && <DevicesSheet onClose={close} />}
+      {section === "permissions" && (
+        <PermissionsSheet client={client} onClose={close} />
+      )}
       {section === "channels" && (
         <ChannelsSheet
           client={client}

@@ -1,0 +1,65 @@
+/* Settings > Permissions: grouped rows under small gray headings. */
+.permissions-heading {
+  margin: 20px 12px 8px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #8e8e93;
+}
+.permissions-heading:first-child {
+  margin-top: 4px;
+}
+/* Rows that lead with text, not an icon, give it the row. */
+.settings-list-row.permissions-row > span:first-child:not(.connector-icon) {
+  display: block;
+  flex: 1;
+  color: inherit;
+}
+.settings-list-row.permissions-row > .connector-icon {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+}
+.settings-list-row.permissions-row > .connector-icon + span {
+  flex: 1;
+}
+.permissions-manage {
+  text-decoration: none;
+}
+.permissions-picker {
+  position: relative;
+}
+.permissions-picker > svg {
+  flex: 0 0 auto;
+  color: #8e8e93;
+}
+/* The native picker covers the row, so a tap opens the system menu. */
+.permissions-picker select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  font-size: 16px;
+}
+.settings-list-row.permissions-row > .settings-row-value {
+  flex: 0 0 auto;
+}
+.settings-list-row.permissions-manage {
+  color: #0064d0;
+}
+.settings-list-row.permissions-row > .connector-icon[data-id="health"] {
+  color: #ff2d55;
+}
+.settings-list-row.permissions-row > .connector-icon[data-id="calendar"] {
+  color: #ff3b30;
+}
+.settings-list-row.permissions-row > .connector-icon[data-id="reminders"] {
+  color: #007aff;
+}
+.settings-list-row.permissions-row > .connector-icon[data-id="contacts"] {
+  color: #8e8e93;
+}
+@media (prefers-color-scheme: dark) {
+  .settings-list-row.permissions-manage {
+    color: #0a84ff;
+  }
+}

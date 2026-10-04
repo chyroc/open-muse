@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import {
   BookUser,
   CalendarDays,
@@ -10,6 +10,7 @@ import {
 import { formatLocale, t } from "../shared/i18n";
 import {
   iphoneDeclined,
+  iphoneTurnedOff,
   iphoneInvalid,
   iphoneSource,
   parseIphoneRequest,
@@ -55,6 +56,9 @@ const titles = {
   contacts: "Share contact details?",
 };
 
+// Requests being declined because of the person's permission choice.
+const declining = new Set<string>();
+
 // One card per pending iphone_* call. The person approves each one; only
 // then is the source read on this iPhone and the result returned. Declining
 // tells the agent not to try another way.
@@ -74,16 +78,42 @@ export function PersonalRequestCard({
   const id = useId();
   const request = parseIphoneRequest(event);
   const supported = personalSupported();
-  const [busy, setBusy] = useState<"share" | "decline">();
+  const [busy, setBusy] = useState<"share" | "decline" | "off">();
   const [error, setError] = useState("");
   const source = request ? iphoneSource(request) : "calendar";
   const Icon = icons[source];
-  async function answer(choice: "share" | "decline") {
+  // A source the person declined in Settings > Permissions is refused
+  // without asking, once per request.
+  // Until the permission is known the card cannot be answered; a source
+  // set to Deny is refused without showing it.
+  const [permission, setPermission] = useState<"checking" | "ask" | "deny">(
+    request ? "checking" : "ask",
+  );
+  useEffect(() => {
+    if (!request) return;
+    let active = true;
+    void client.devicePermission(source).then(
+      (value) => {
+        if (!active) return;
+        if (value !== "deny") return setPermission("ask");
+        setPermission("deny");
+        if (declining.has(event.id)) return;
+        declining.add(event.id);
+        void answer("off");
+      },
+      () => active && setPermission("ask"),
+    );
+    return () => {
+      active = false;
+    };
+  }, [event.id]);
+  // "off" refuses without asking: the person set this source to Deny.
+  async function answer(choice: "share" | "decline" | "off") {
     if (busy) return;
     setBusy(choice);
     setError("");
     try {
-      let text = iphoneDeclined;
+      let text = choice === "off" ? iphoneTurnedOff : iphoneDeclined;
       let failed = true;
       if (!request) text = iphoneInvalid;
       else if (choice === "share") {
@@ -109,6 +139,7 @@ export function PersonalRequestCard({
       setBusy(undefined);
     }
   }
+  if (permission === "deny") return null;
   return (
     <section
       className="permission-card health-card"
@@ -149,7 +180,7 @@ export function PersonalRequestCard({
           <button
             type="button"
             className="button subtle"
-            disabled={Boolean(busy)}
+            disabled={Boolean(busy) || permission === "checking"}
             onClick={() => void answer("decline")}
           >
             {busy === "decline" ? (
@@ -163,7 +194,7 @@ export function PersonalRequestCard({
             <button
               type="button"
               className="button primary"
-              disabled={Boolean(busy)}
+              disabled={Boolean(busy) || permission === "checking"}
               onClick={() => void answer("share")}
             >
               {busy === "share" ? (
