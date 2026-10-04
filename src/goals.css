@@ -13,6 +13,65 @@
   font-weight: 600;
   margin: 0;
 }
+/* Tracking is titled in green beside a dot whose halo breathes out every
+   3.1s; with Reduce Motion the halo holds still. */
+.goal-tracking h2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 0 6px;
+  font-size: 20px;
+  line-height: 25px;
+  color: #22a35a;
+}
+.goal-pulse {
+  position: relative;
+  display: grid;
+  flex: 0 0 24px;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+}
+.goal-pulse > span {
+  position: absolute;
+  border-radius: 50%;
+  background: currentColor;
+}
+.goal-pulse > span:first-child {
+  width: 24px;
+  height: 24px;
+  opacity: 0.2;
+  animation: goal-pulse 3.1s linear infinite;
+}
+.goal-pulse > span:last-child {
+  width: 6px;
+  height: 6px;
+}
+@keyframes goal-pulse {
+  0% {
+    opacity: 0.2;
+    transform: scale(0.25);
+    animation-timing-function: ease-out;
+  }
+  45% {
+    opacity: 0.2;
+    transform: scale(1);
+  }
+  77% {
+    opacity: 0.2;
+    transform: scale(1);
+    animation-timing-function: ease-in;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .goal-pulse > span:first-child {
+    animation: none;
+  }
+}
 .goal-tracking > p,
 .goal-loading {
   color: #747477;
@@ -70,40 +129,79 @@
 .goal-categories button:active {
   opacity: 0.55;
 }
+/* A goal row: a 24pt check box, the title and up to three lines of detail,
+   and a trailing options button; the row highlights while pressed. */
 .tracked-goal-row {
+  position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   width: 100%;
-  min-height: 65px;
   gap: 12px;
-  padding: 12px 0;
-  text-align: left;
-  border-bottom: 1px solid #e9e9eb;
+  padding: 10px 0;
 }
-.tracked-goal-row > svg {
-  flex: 0 0 auto;
-  color: #8d8e93;
+.tracked-goal-row::before {
+  content: "";
+  position: absolute;
+  inset: 0 -8px;
+  border-radius: 12px;
+  background: transparent;
+  transition: background-color var(--motion-press-duration) ease-out;
+  pointer-events: none;
 }
-.tracked-goal-row > span {
+.tracked-goal-row:has(.goal-row-open:active)::before {
+  background: rgb(0 0 0 / 5%);
+}
+.goal-check,
+.goal-row-more {
+  position: relative;
+  display: grid;
+  flex: 0 0 24px;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+  color: #8e8e93;
+}
+.goal-check::after,
+.goal-row-more::after {
+  content: "";
+  position: absolute;
+  inset: -10px;
+}
+.tracked-goal-row.done .goal-check {
+  color: #086be5;
+}
+.goal-check:active,
+.goal-row-more:active {
+  opacity: 0.55;
+}
+.goal-row-more {
+  color: #a3a4a8;
+}
+.goal-row-open {
   flex: 1;
   min-width: 0;
+  text-align: left;
 }
 .tracked-goal-row strong {
   display: block;
-  font-size: 18px;
+  font-size: 17px;
   line-height: 1.4;
-  font-weight: 550;
+  font-weight: 600;
   overflow-wrap: anywhere;
+}
+.tracked-goal-row.done strong {
+  color: #8a8a8e;
 }
 .tracked-goal-row small {
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
   font-size: 15px;
   line-height: 1.4;
   color: #7b7b80;
-  margin-top: 3px;
+  margin-top: 2px;
 }
 .goal-chat-intro {
   text-align: center;

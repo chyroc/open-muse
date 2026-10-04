@@ -66,6 +66,7 @@ export const zhCN: Record<string, string> = {
   "Connection interrupted": "连接已中断",
   Connected: "已连接",
   "Goals options": "目标选项",
+  "Goal options": "目标选项",
   "Back to chat": "返回对话",
   Settings: "设置",
   "Add an Ark API key to start chatting": "添加 Ark API Key 后开始对话",
@@ -266,7 +267,6 @@ export const zhCN: Record<string, string> = {
   "Choose a category and tell me what you want to achieve. I’ll tailor a plan for you and keep improving it as you grow.":
     "选择一个类别，告诉我你想要的目标，我将为你量身定制一个计划，并随着你的成长不断改进。",
   Paused: "已暂停",
-  "Open your plan": "打开计划",
   "Refresh goals": "刷新目标",
   Goals: "目标",
   Tracking: "追踪",

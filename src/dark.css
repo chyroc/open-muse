@@ -268,10 +268,20 @@
   .goal-categories button > svg {
     color: #8e8e93;
   }
-  .tracked-goal-row {
-    border-bottom: 1px solid #38383a;
+  .goal-tracking h2 {
+    color: #30d158;
   }
-  .tracked-goal-row > svg {
+  .tracked-goal-row:has(.goal-row-open:active)::before {
+    background: rgb(255 255 255 / 8%);
+  }
+  .goal-check,
+  .goal-row-more {
+    color: #636366;
+  }
+  .tracked-goal-row.done .goal-check {
+    color: #1e8bff;
+  }
+  .tracked-goal-row.done strong {
     color: #8e8e93;
   }
   .tracked-goal-row small {

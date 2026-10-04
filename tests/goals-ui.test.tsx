@@ -57,4 +57,40 @@ describe("iOS goal navigation", () => {
     expect(hidden).not.toContain("After lunch");
     expect(hidden).toContain('aria-label="Open goal: Read a chapter"');
   });
+  it("completes a goal from its check box and offers row options", () => {
+    const goal = {
+      id: "one",
+      title: "Read a chapter",
+      description: "",
+      status: "active" as const,
+      steps: [],
+      created_at: "",
+      updated_at: "",
+    };
+    const html = renderToStaticMarkup(
+      <GoalRow
+        goal={goal}
+        subtitle
+        onOpen={() => {}}
+        onToggle={() => {}}
+        onMore={() => {}}
+      />,
+    );
+    expect(html).toContain('role="checkbox"');
+    expect(html).toContain('aria-checked="false"');
+    expect(html).toContain('aria-label="Mark Read a chapter complete"');
+    expect(html).toContain('aria-label="Goal options"');
+    expect(html).not.toContain("<small>");
+    const done = renderToStaticMarkup(
+      <GoalRow
+        goal={{ ...goal, status: "completed" }}
+        subtitle
+        onOpen={() => {}}
+        onToggle={() => {}}
+      />,
+    );
+    expect(done).toContain('aria-checked="true"');
+    expect(done).toContain('aria-label="Mark Read a chapter not complete"');
+    expect(done).not.toContain("Goal options");
+  });
 });

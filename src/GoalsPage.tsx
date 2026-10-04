@@ -1,18 +1,27 @@
 import { systemLanguage, t } from "../shared/i18n";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import {
   CircleDot,
   Building2,
-  Check,
   ChevronRight,
   Circle,
   DollarSign,
+  EllipsisVertical,
   Heart,
   Laptop,
   LoaderCircle,
   MessageCircle,
   Palette,
+  Pencil,
   Plus,
+  SquareCheck,
+  SquarePlus,
   Users,
 } from "lucide-react";
 import { goalCategories, type GoalCategory } from "../shared/goals";
@@ -90,39 +99,112 @@ export function GoalCategories({
   );
 }
 
+// A rounded square that fills with the accent and a checkmark once done.
+function GoalCheck({ done }: { done: boolean }) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+      {done ? (
+        <>
+          <rect
+            x="3"
+            y="3"
+            width="18"
+            height="18"
+            rx="4.5"
+            fill="currentColor"
+          />
+          <path
+            d="m8 12.2 2.7 2.7L16.2 9.3"
+            fill="none"
+            stroke="#fff"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </>
+      ) : (
+        <rect
+          x="2.75"
+          y="2.75"
+          width="18.5"
+          height="18.5"
+          rx="4.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+      )}
+    </svg>
+  );
+}
+
+// A goal as a checklist row: the check box completes it, the text opens the
+// plan, and the trailing button offers the row's options.
 export function GoalRow({
   goal,
   subtitle,
   onOpen,
+  onToggle,
+  onMore,
+  busy = false,
 }: {
   goal: Goal;
   subtitle: boolean;
   onOpen: () => void;
+  onToggle?: () => void;
+  onMore?: (button: HTMLButtonElement) => void;
+  busy?: boolean;
 }) {
-  const Icon = icons[goal.category ?? "custom"];
+  const done = goal.status === "completed";
+  const detail =
+    goal.status === "paused" ? t("Paused") : goal.description.trim();
   return (
-    <button
-      className="tracked-goal-row"
-      aria-label={t("Open goal: {title}", { title: goal.title })}
-      onClick={onOpen}
-    >
-      {goal.status === "completed" ? (
-        <Check size={24} />
-      ) : (
-        <Icon size={24} strokeWidth={1.7} />
-      )}
-      <span>
-        <strong>{goal.title}</strong>
-        {subtitle && (
-          <small>
-            {goal.status === "paused"
-              ? t("Paused")
-              : goal.description || t("Open your plan")}
-          </small>
+    <div className={`tracked-goal-row${done ? " done" : ""}`}>
+      <button
+        className="goal-check"
+        role="checkbox"
+        aria-checked={done}
+        aria-label={t(
+          done ? "Mark {title} not complete" : "Mark {title} complete",
+          {
+            title: goal.title,
+          },
         )}
-      </span>
-      <ChevronRight size={18} />
-    </button>
+        disabled={busy || !onToggle}
+        onClick={onToggle}
+      >
+        <GoalCheck done={done} />
+      </button>
+      <button
+        className="goal-row-open"
+        aria-label={t("Open goal: {title}", { title: goal.title })}
+        onClick={onOpen}
+      >
+        <strong>{goal.title}</strong>
+        {subtitle && detail && <small>{detail}</small>}
+      </button>
+      {onMore && (
+        <button
+          className="goal-row-more"
+          aria-label={t("Goal options")}
+          aria-haspopup="menu"
+          disabled={busy}
+          onClick={(event) => onMore(event.currentTarget)}
+        >
+          <EllipsisVertical size={20} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+// The pulsing marker beside a goal section's title.
+function GoalPulse() {
+  return (
+    <span className="goal-pulse" aria-hidden="true">
+      <span />
+      <span />
+    </span>
   );
 }
 
@@ -149,6 +231,10 @@ export function GoalsPage({
   const [completed, setCompleted] = useState(false);
   const [subtitles, setSubtitles] = useState(true);
   const [rename, setRename] = useState<string>();
+  const [rowMenu, setRowMenu] = useState<{
+    goal: Goal;
+    placement: CSSProperties;
+  }>();
   const renameRevision = useRef("");
   const alive = useRef(true),
     lock = useRef(false),
@@ -219,6 +305,38 @@ export function GoalsPage({
     setRename(undefined);
     setError("");
   };
+  const toggle = (goal: Goal) =>
+    void update(goal, {
+      status: goal.status === "completed" ? "active" : "completed",
+    });
+  // The row menu grows out of its button, downward unless the row sits low.
+  const openRowMenu = (goal: Goal, button: HTMLButtonElement) => {
+    const rect = button.getBoundingClientRect();
+    const right = window.innerWidth - rect.right;
+    const below = rect.bottom + 4 + 220 < window.innerHeight;
+    setRowMenu({
+      goal,
+      placement: below
+        ? { top: rect.bottom + 4, right, transformOrigin: "100% 0" }
+        : {
+            top: "auto",
+            bottom: window.innerHeight - rect.top + 4,
+            right,
+            transformOrigin: "100% 100%",
+          },
+    });
+  };
+  const row = (goal: Goal) => (
+    <GoalRow
+      key={goal.id}
+      goal={goal}
+      subtitle={subtitles}
+      busy={busy}
+      onOpen={() => show(goal)}
+      onToggle={() => toggle(goal)}
+      onMore={(button) => openRowMenu(goal, button)}
+    />
+  );
   const errors = error ? (
     <div className="inline-error" role="alert">
       <p>{error}</p>
@@ -231,7 +349,10 @@ export function GoalsPage({
     <section className="muse-page goals-page">
       <PageHeader title={t("Goals")} />
       <section className="goal-tracking" aria-label={t("Tracking")}>
-        <h2>{t("Tracking")}</h2>
+        <h2>
+          <GoalPulse />
+          {t("Tracking")}
+        </h2>
         {loading ? (
           <p className="goal-loading" role="status">
             <LoaderCircle size={20} className="spin" />
@@ -245,14 +366,7 @@ export function GoalsPage({
                   !goal.parent_id ||
                   !activeGoals.some((parent) => parent.id === goal.parent_id),
               )
-              .map((goal) => (
-                <GoalRow
-                  key={goal.id}
-                  goal={goal}
-                  subtitle={subtitles}
-                  onOpen={() => show(goal)}
-                />
-              ))}
+              .map(row)}
           </div>
         ) : (
           <p>{t("Nothing is being tracked yet")}</p>
@@ -333,20 +447,55 @@ export function GoalsPage({
           ]}
         />
       )}
+      {rowMenu && (
+        <PopoverMenu
+          label={t("Goal options")}
+          className="goal-row-menu"
+          placement={rowMenu.placement}
+          onClose={() => setRowMenu(undefined)}
+          items={[
+            {
+              kind: "item",
+              label: t(
+                rowMenu.goal.status === "completed"
+                  ? "Mark as not complete"
+                  : "Mark as completed",
+              ),
+              icon: <SquareCheck size={21} aria-hidden="true" />,
+              onSelect: () => toggle(rowMenu.goal),
+            },
+            ...(rowMenu.goal.parent_id
+              ? []
+              : [
+                  {
+                    kind: "item" as const,
+                    label: t("Add a subgoal"),
+                    icon: <SquarePlus size={21} aria-hidden="true" />,
+                    onSelect: () =>
+                      onCategory(
+                        rowMenu.goal.category ?? "custom",
+                        rowMenu.goal,
+                      ),
+                  },
+                ]),
+            {
+              kind: "item",
+              label: t("Rename goal"),
+              icon: <Pencil size={21} aria-hidden="true" />,
+              onSelect: () => {
+                show(rowMenu.goal);
+                renameRevision.current = revision;
+                setRename(rowMenu.goal.title);
+              },
+            },
+          ]}
+        />
+      )}
       {completed && !current && (
         <Sheet title={t("Completed goals")} onClose={() => setCompleted(false)}>
           <div className="completed-goals">
             {goals.some((goal) => goal.status === "completed") ? (
-              goals
-                .filter((goal) => goal.status === "completed")
-                .map((goal) => (
-                  <GoalRow
-                    key={goal.id}
-                    goal={goal}
-                    subtitle={subtitles}
-                    onOpen={() => show(goal)}
-                  />
-                ))
+              goals.filter((goal) => goal.status === "completed").map(row)
             ) : (
               <p>{t("No completed goals yet.")}</p>
             )}
@@ -411,16 +560,7 @@ export function GoalsPage({
             )}
             <section className="goal-subgoals">
               <h3>{t("Subgoals")}</h3>
-              {goals
-                .filter((goal) => goal.parent_id === current.id)
-                .map((goal) => (
-                  <GoalRow
-                    key={goal.id}
-                    goal={goal}
-                    subtitle={subtitles}
-                    onOpen={() => show(goal)}
-                  />
-                ))}
+              {goals.filter((goal) => goal.parent_id === current.id).map(row)}
               {!goals.some((goal) => goal.parent_id === current.id) && (
                 <p>{t("No subgoals yet.")}</p>
               )}
