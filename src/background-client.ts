@@ -505,6 +505,15 @@ export class BackgroundClient {
       return undefined;
     }
   }
+  // Resolves once a session renewal already in flight has finished, so a
+  // caller does not mistake a renewing session for a signed-out one.
+  async settled() {
+    if (typeof navigator === "undefined" || !navigator.locks) return;
+    await navigator.locks.request(
+      `muse-account-renew:${this.origin}`,
+      () => undefined,
+    );
+  }
   accountSessionUnconfirmed() {
     return Boolean(this.current?.account?.refreshPending);
   }

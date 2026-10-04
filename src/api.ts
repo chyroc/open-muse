@@ -303,6 +303,8 @@ export class Client {
   // account or key changed; otherwise running work is kept.
   async syncAccount() {
     if (!this.identity.accountMode()) return false;
+    // A session renewing right now is not a signed-out one.
+    await this.identity.account?.settled?.();
     const owner = this.identity.accountOwner();
     let stored: { revision: number } | undefined;
     if (owner)

@@ -99,6 +99,8 @@ export interface AccountProvider {
     mutations: SyncMutation[],
   ): Promise<SyncPushResponse>;
   accountOwner(): string | undefined;
+  // Waits for a session renewal in flight; absent where there is none.
+  settled?(): Promise<void>;
   restore(): Promise<void>;
   accountCredential(): Promise<AccountCredentialResponse>;
   saveAccountCredential(
@@ -179,6 +181,8 @@ export class DirectAuth {
   async sync() {
     this.value = undefined;
     this.revision = 0;
+    // A renewing session has no owner for a moment; wait it out.
+    await this.account?.settled?.();
     this.owner = this.accountOwner();
     if (!this.owner) return;
     const owner = this.owner;
