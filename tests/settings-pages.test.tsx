@@ -120,7 +120,10 @@ describe("Settings pages", () => {
     );
     expect(html).toContain("Message channels");
     expect(html).toContain("Lark");
-    expect(html).toContain("never your other Lark chats");
+    // Lark is listed as available and opens its own page, where it connects.
+    expect(html).toContain("Available");
+    expect(html).toContain('class="row-chevron"');
+    expect(html).not.toContain("never your other Lark chats");
     expect(larkChannelName).toBe("Lark message channel");
     expect(t("Disconnect Lark", {}, "zh-CN")).toBe("断开飞书");
   });

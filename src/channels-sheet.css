@@ -18,6 +18,16 @@
   flex: 0 0 30px;
   color: #fff;
 }
+/* The channel's own app icon, which keeps its colors in both appearances. */
+.channel-icon.app-icon {
+  overflow: hidden;
+  border-radius: 22.5%;
+  background: none;
+  box-shadow: 0 0 0 0.5px rgb(0 0 0 / 12%);
+}
+.channel-icon.app-icon > svg {
+  display: block;
+}
 .channel-setup {
   display: grid;
   gap: 12px;
