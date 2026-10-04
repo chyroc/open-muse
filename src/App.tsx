@@ -1093,7 +1093,12 @@ function Workspace({
         })
       : undefined;
   // A task's narration is folded into one card per turn.
-  const work = workCards(events, state === "running");
+  // While a message is being sent, the run under way is its own, not the
+  // previous turn's, so the previous reply is not folded into a work card.
+  const work = workCards(
+    events,
+    state === "running" && !pendingOutgoing(outgoing, draftKey, events),
+  );
   // Files the companion saved to the Library in this conversation, shown
   // under the reply of the turn that made them. Read again after each turn.
   const [savedFiles, setSavedFiles] = useState<LibraryFile[]>([]);
