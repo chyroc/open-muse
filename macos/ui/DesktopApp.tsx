@@ -1701,21 +1701,35 @@ export function DesktopApp({ client }: { client: Client }) {
                   </Fragment>
                 ))}
               </div>
-              {running && (
-                <p className="thinking" role="status">
-                  {approvals.length || macCalls.length
-                    ? t("Waiting for your approval")
-                    : elsewhere.length
-                      ? elsewhere.every(
-                          (call) =>
-                            call.name === healthToolName ||
-                            call.name?.startsWith("iphone_"),
-                        )
+              {running &&
+                (approvals.length || macCalls.length || elsewhere.length ? (
+                  <p className="thinking" role="status">
+                    {approvals.length || macCalls.length
+                      ? t("Waiting for your approval")
+                      : elsewhere.every(
+                            (call) =>
+                              call.name === healthToolName ||
+                              call.name?.startsWith("iphone_"),
+                          )
                         ? t("Waiting for your iPhone")
-                        : t("Waiting for another device")
-                      : t("{name} is working…", { name })}
-                </p>
-              )}
+                        : t("Waiting for another device")}
+                  </p>
+                ) : (
+                  parts.at(-1)?.event.type !== "agent.message" && (
+                    // Until the reply starts, three dots take turns in a
+                    // bubble of the companion's.
+                    <div className="typing" role="status">
+                      <span className="typing-bubble" aria-hidden="true">
+                        <i />
+                        <i />
+                        <i />
+                      </span>
+                      <span className="visually-hidden">
+                        {t("{name} is working…", { name })}
+                      </span>
+                    </div>
+                  )
+                ))}
             </div>
             {away && (
               <button

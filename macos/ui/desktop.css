@@ -338,10 +338,14 @@ h3 {
   opacity: 0.5;
   cursor: default;
 }
+/* The conversation rests on the composer: while it is shorter than the
+   window, the messages sit at the bottom. */
 .chat-scroll {
   flex: 1;
   overflow: auto;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
   padding: 74px 24px 8px;
   scrollbar-width: thin;
   overscroll-behavior: contain;
@@ -353,9 +357,11 @@ h3 {
 .message-stack {
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
+  width: 100%;
   /* One reading column, 768 points with its gutters, centred in the chat. */
   max-width: 720px;
-  margin: 0 auto;
+  margin: auto auto 0;
 }
 /* A message is one row: the bubble with its actions beside it, on the
    outer side, and a mood under the bubble. */
@@ -1192,6 +1198,85 @@ h3 {
 }
 .loading-label {
   text-align: center;
+}
+/* Waiting for a reply: three 8-point dots bounce in a bubble of the
+   companion's, and the darker one moves along every 400 ms. */
+.typing {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto 16px;
+  flex-shrink: 0;
+  animation: typing-in 0.3s ease-out both;
+}
+.typing-bubble {
+  display: inline-flex;
+  gap: 4px;
+  padding: 22px 16px;
+  border-radius: 22px;
+  background: var(--bubble);
+}
+.typing-bubble i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-3);
+  opacity: 0.5;
+  animation:
+    typing-bounce 1s infinite,
+    typing-turn 1.2s step-end infinite;
+}
+.typing-bubble i:nth-child(2) {
+  animation-delay: 0.15s, -0.8s;
+}
+.typing-bubble i:nth-child(3) {
+  animation-delay: 0.3s, -0.4s;
+}
+@keyframes typing-bounce {
+  0%,
+  100% {
+    transform: translateY(-2px);
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+  }
+  50% {
+    transform: none;
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
+}
+@keyframes typing-turn {
+  0% {
+    opacity: 1;
+  }
+  33.333% {
+    opacity: 0.5;
+  }
+}
+@keyframes typing-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .typing {
+    animation-name: rail-menu-fade;
+  }
+  .typing-bubble i {
+    animation: typing-turn 1.2s step-end infinite;
+  }
+  .typing-bubble i:nth-child(2) {
+    animation-delay: -0.8s;
+  }
+  .typing-bubble i:nth-child(3) {
+    animation-delay: -0.4s;
+  }
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .error-banner {
   margin: 0 16px 10px;

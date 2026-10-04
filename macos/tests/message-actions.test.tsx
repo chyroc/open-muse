@@ -154,4 +154,25 @@ describe("Mac message actions", () => {
     expect(await readReactions(first)).toEqual({ a: "👍" });
     expect(await readReactions(second)).toEqual({});
   });
+  it("shows typing dots until the reply starts", async () => {
+    fixtureTask.events = [
+      text("u", "user.message", "Plan my week"),
+      { id: "r", type: "session.status_running" },
+    ];
+    await mount();
+    const typing = host!.querySelector(".typing")!;
+    expect(typing.getAttribute("role")).toBe("status");
+    expect(typing.querySelectorAll(".typing-bubble i")).toHaveLength(3);
+    expect(typing.textContent).toContain("is working…");
+    await act(async () => root!.unmount());
+    root = undefined;
+    host?.remove();
+    fixtureTask.events = [
+      text("u", "user.message", "Plan my week"),
+      { id: "r", type: "session.status_running" },
+      text("a", "agent.message", "Here is"),
+    ];
+    await mount();
+    expect(host!.querySelector(".typing")).toBeNull();
+  });
 });
