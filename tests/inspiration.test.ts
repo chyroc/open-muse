@@ -374,6 +374,21 @@ describe("Generated content boundaries", () => {
       "not a valid set of posts",
     );
   });
+  it("asks Feed posts for pictures from their sources and Ideas for none", () => {
+    const context = {
+      instructions: "",
+      recent: "",
+      goals: "",
+      liked: [],
+      previous: [],
+    };
+    const feed = inspirationPrompt("feed", context);
+    const ideas = inspirationPrompt("ideas", context);
+    expect(feed).toContain("og:image");
+    expect(feed).toContain("Do not open, download or view those pictures");
+    expect(ideas).not.toContain("og:image");
+    expect(ideas).toContain("use an empty images array");
+  });
   it("includes real context and explicitly forbids invented capabilities and write actions", () => {
     const prompt = inspirationPrompt("feed", {
       instructions: "Local hikes",
