@@ -100,9 +100,6 @@ export function InspirationPost({
             {away && (
               <p>{t("Prepared while you were away, on your schedule.")}</p>
             )}
-            <a href={`#/task/${item.session_id}`}>
-              {t("View generation conversation")} <ArrowUpRight size={14} />
-            </a>
           </aside>
         )}
       </div>
@@ -506,11 +503,6 @@ export function InspirationPage({
               ? t("Find new posts")
               : t("Find new ideas")}
         </button>
-        {run?.session_id && (
-          <a href={`#/task/${run.session_id}`}>
-            {t("View generation conversation")}
-          </a>
-        )}
       </div>
       {kind === "feed" && data && (editing || editInstructions) && (
         <FeedInstructionsEditor

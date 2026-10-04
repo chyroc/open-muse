@@ -423,7 +423,6 @@ async function click(text: string) {
 const props = (stub: Stub) => ({
   client: asClient(stub),
   onMainChat: vi.fn(async () => {}),
-  onOpenChat: vi.fn(),
   onConnect: vi.fn(),
   onEditorChange: vi.fn(),
   split: false,

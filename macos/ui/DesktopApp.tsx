@@ -1274,7 +1274,6 @@ export function DesktopApp({ client }: { client: Client }) {
             onToggleChat={() => setSplitChat((value) => !value)}
             onEditorChange={onFeedEditorChange}
             onConnect={openConnection}
-            onOpenChat={(id) => navigate(`/chat/${id}`)}
             onDiscuss={(item) => {
               setQuotedPost(item);
               setSplitChat(true);
@@ -1292,7 +1291,6 @@ export function DesktopApp({ client }: { client: Client }) {
               onToggleChat={() => setSplitChat((value) => !value)}
               onEditorChange={onFeedEditorChange}
               onConnect={openConnection}
-              onOpenChat={(id) => navigate(`/chat/${id}`)}
               onMainChat={async (id) => {
                 const conversations = await client.conversationIndex();
                 if (

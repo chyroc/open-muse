@@ -299,7 +299,6 @@ export const zhCN: Record<string, string> = {
   Discuss: "讨论",
   "Post information": "动态信息",
   "Why this post": "为什么推荐这条动态",
-  "View generation conversation": "查看生成对话",
   Sources: "来源",
   "Reading personal memory": "正在读取个人记忆",
   "Searching the web": "正在搜索网页",

@@ -164,7 +164,6 @@ describe("Mac feed presentation", () => {
       <FeedPage
         client={asClient(client)}
         onDiscuss={discuss}
-        onOpenChat={vi.fn()}
         onConnect={vi.fn()}
         onEditorChange={vi.fn()}
         split={false}
@@ -192,7 +191,6 @@ describe("Mac feed presentation", () => {
       <FeedPage
         client={asClient(client)}
         onDiscuss={vi.fn()}
-        onOpenChat={vi.fn()}
         onConnect={vi.fn()}
         onEditorChange={vi.fn()}
         split={false}
@@ -214,7 +212,6 @@ describe("Mac feed presentation", () => {
       <FeedPage
         client={asClient(client)}
         onDiscuss={vi.fn()}
-        onOpenChat={vi.fn()}
         onConnect={vi.fn()}
         onEditorChange={vi.fn()}
         split={false}

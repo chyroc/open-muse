@@ -105,7 +105,6 @@ async function mount(service: BackgroundClient, discuss = vi.fn()) {
         client={clientStub()}
         background={service}
         onDiscuss={discuss}
-        onOpenChat={vi.fn()}
         onConnect={vi.fn()}
         onEditorChange={vi.fn()}
         split={false}

@@ -410,7 +410,6 @@ function FeedbackDialog({
 export function IdeasPage({
   client,
   onMainChat,
-  onOpenChat,
   onConnect,
   onEditorChange,
   split,
@@ -418,7 +417,6 @@ export function IdeasPage({
 }: {
   client: Client;
   onMainChat: (id: string) => Promise<void>;
-  onOpenChat: (id: string) => void;
   onConnect: () => void;
   onEditorChange: (open: boolean) => void;
   split: boolean;
@@ -642,14 +640,6 @@ export function IdeasPage({
                 ? t("Ready to continue generation")
                 : t("Thinking of new ways to help…")}
           </p>
-        )}
-        {run?.session_id && (pending || run.error) && (
-          <button
-            className="feed-text-button"
-            onClick={() => onOpenChat(run.session_id!)}
-          >
-            {t("View generation conversation")}
-          </button>
         )}
         {activationPending && (
           <p className="feed-status" role="status">

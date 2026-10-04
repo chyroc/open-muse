@@ -185,7 +185,6 @@ export function FeedPost({
 export function FeedPage({
   client,
   onDiscuss,
-  onOpenChat,
   onConnect,
   onEditorChange,
   split,
@@ -196,7 +195,6 @@ export function FeedPage({
   background?: BackgroundClient;
   client: Client;
   onDiscuss: (item: InspirationItem) => void;
-  onOpenChat: (id: string) => void;
   onConnect: () => void;
   onEditorChange: (open: boolean) => void;
   split: boolean;
@@ -435,14 +433,6 @@ export function FeedPage({
                 ? t("Ready to continue generation")
                 : t("Finding something worth sharing…")}
           </p>
-        )}
-        {run?.session_id && (pending || run.error) && (
-          <button
-            className="feed-text-button"
-            onClick={() => onOpenChat(run.session_id!)}
-          >
-            {t("View generation conversation")}
-          </button>
         )}
         {!loading && (
           <footer className="feed-generation">
