@@ -87,10 +87,37 @@ function appBlock(system: string, start: string, end: string) {
   return system.slice(first, last + end.length);
 }
 
+// The custom tools the person's own devices answer, as an agent lists them.
+const customToolNames = (tools: unknown) =>
+  Array.isArray(tools)
+    ? tools.flatMap((tool) =>
+        tool &&
+        typeof tool === "object" &&
+        (tool as { type?: unknown }).type === "custom" &&
+        typeof (tool as { name?: unknown }).name === "string"
+          ? [(tool as { name: string }).name]
+          : [],
+      )
+    : [];
+
+// Whether an agent with Open Muse device tools lacks one this app now
+// answers, so a new chapter should run on the current agent version.
+export function missingDeviceTools(
+  snapshot: Pick<AgentSnapshot, "tools">,
+  deviceTools: readonly string[],
+) {
+  const names = customToolNames(snapshot.tools);
+  return (
+    names.some((name) => deviceTools.includes(name)) &&
+    deviceTools.some((name) => !names.includes(name))
+  );
+}
+
 export function needsPromptRefresh(
   session: Session,
   owner: string,
   id: string,
+  deviceTools: readonly string[] = [],
 ) {
   const snapshot = agentSnapshot(session);
   if (snapshot?.id !== id || snapshot.metadata?.open_muse_workspace !== owner)
@@ -98,7 +125,8 @@ export function needsPromptRefresh(
   const tools = toolsBlock(snapshot.system);
   return (
     identityBlock(snapshot.system) !== identityInstructions ||
-    (tools !== "" && tools !== toolingInstructions)
+    (tools !== "" && tools !== toolingInstructions) ||
+    missingDeviceTools(snapshot, deviceTools)
   );
 }
 
@@ -113,9 +141,39 @@ export function refreshedAgentSystem(
   // The person chose the model for new conversations, so the next chapter
   // runs on that choice whatever the previous one used.
   modelChosen = false,
+  // Device tools the app answers. A later agent version is accepted when its
+  // only difference is gaining some of them; nothing else may change.
+  deviceTools: readonly string[] = [],
 ) {
-  if (snapshot.id !== versioned.id || snapshot.version !== versioned.version)
+  const upgrade =
+    versioned.version > snapshot.version &&
+    missingDeviceTools(snapshot, deviceTools);
+  if (
+    snapshot.id !== versioned.id ||
+    (snapshot.version !== versioned.version && !upgrade)
+  )
     throw new IncompatibleConversation();
+  // Device tools may only be added; every other tool stays as it was.
+  const withoutDevice = (tools: unknown) =>
+    Array.isArray(tools)
+      ? tools.filter(
+          (tool) =>
+            !(
+              tool &&
+              typeof tool === "object" &&
+              (tool as { type?: unknown }).type === "custom" &&
+              deviceTools.includes((tool as { name?: string }).name ?? "")
+            ),
+        )
+      : tools;
+  if (upgrade) {
+    const before = customToolNames(snapshot.tools).filter((name) =>
+      deviceTools.includes(name),
+    );
+    const after = customToolNames(versioned.tools);
+    if (before.some((name) => !after.includes(name)))
+      throw new IncompatibleConversation();
+  }
   for (const field of [
     ...(modelChosen ? [] : (["model"] as const)),
     "tools",
@@ -123,7 +181,11 @@ export function refreshedAgentSystem(
     "skills",
     "multiagent",
   ] as const) {
-    if (canonicalJson(snapshot[field]) !== canonicalJson(versioned[field]))
+    const pick = (value: AgentSnapshot) =>
+      field === "tools" && upgrade
+        ? withoutDevice(value.tools)
+        : value[field];
+    if (canonicalJson(pick(snapshot)) !== canonicalJson(pick(versioned)))
       throw new IncompatibleConversation();
   }
   identityBlock(snapshot.system);

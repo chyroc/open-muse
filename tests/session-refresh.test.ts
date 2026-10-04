@@ -5,6 +5,7 @@ import {
   agentSnapshot,
   continuationAgent,
   canonicalJson,
+  missingDeviceTools,
   needsPromptRefresh,
   refreshedAgentSystem,
   type AgentSnapshot,
@@ -182,6 +183,64 @@ describe("Main-conversation instruction refresh", () => {
       refreshedAgentSystem(source, { ...source, id: "other" }),
     ).toThrow("history is intact");
   });
+  it("moves to a newer agent version only to gain the app's device tools", () => {
+    const device = ["health_read", "iphone_personal"];
+    const custom = (name: string, extra = {}) => ({
+      type: "custom",
+      name,
+      ...extra,
+    });
+    const toolset = { type: "test-toolset", config: { a: 1 } };
+    const old = {
+      ...snapshot(),
+      system: `Custom.\n${identityInstructions}`,
+      tools: [toolset, custom("health_read")],
+    };
+    const latest = {
+      ...old,
+      version: 4,
+      tools: [
+        toolset,
+        custom("health_read", { v: 2 }),
+        custom("iphone_personal"),
+      ],
+    };
+    expect(missingDeviceTools(old, device)).toBe(true);
+    expect(missingDeviceTools(latest, device)).toBe(false);
+    // An agent without any of the app's device tools is not the app's.
+    expect(missingDeviceTools(snapshot(), device)).toBe(false);
+    expect(needsPromptRefresh(session(old), "owner", old.id, device)).toBe(
+      true,
+    );
+    expect(needsPromptRefresh(session(latest), "owner", old.id, device)).toBe(
+      false,
+    );
+    expect(refreshedAgentSystem(old, latest, false, device)).toContain(
+      "Custom.",
+    );
+    // Anything else that changed still refuses the newer version.
+    for (const changed of [
+      {
+        ...latest,
+        tools: [
+          { ...toolset, config: { a: 2 } },
+          custom("iphone_personal"),
+          custom("health_read"),
+        ],
+      },
+      { ...latest, tools: [toolset, custom("iphone_personal")] },
+      { ...latest, mcp_servers: [{ name: "x" }] },
+      { ...latest, model: { id: "other" } },
+    ])
+      expect(() => refreshedAgentSystem(old, changed, false, device)).toThrow(
+        "history is intact",
+      );
+    // Without missing device tools, the version stays pinned.
+    expect(() =>
+      refreshedAgentSystem(latest, { ...latest, version: 5 }, false, device),
+    ).toThrow("history is intact");
+  });
+
   it("ignores JSON object order but retains event order and all values", () => {
     const a = [{ id: "tool", input: { a: 1, b: 2 } }, { id: "reply" }];
     const b = [{ input: { b: 2, a: 1 }, id: "tool" }, { id: "reply" }];

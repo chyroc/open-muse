@@ -491,8 +491,12 @@ require care. Do not put passwords or API keys in personal memory.
 Older main conversations attach memory through the history-preserving
 continuation described above. An idle main conversation with outdated app
 instructions also continues into one linked chapter on the next submission,
-without repeating the welcome. The original agent version is pinned; custom
-session instructions and older visible turns remain available. This is a new
+without repeating the welcome. The original agent version is pinned, except
+that a chat whose agent version lacks a device tool the app now answers (such
+as `iphone_personal`) continues on the current version; then only the app's
+device tools may differ, and any other change to tools, model, MCP servers,
+or skills still stops the continuation. Custom session instructions and older
+visible turns remain available. This is a new
 MA session, not an in-place update or a transfer of sandbox files. Malformed
 snapshots, session-specific runtime overrides, extra resource mounts, or bound
 Vaults stop automatic continuation rather than discarding configuration. The

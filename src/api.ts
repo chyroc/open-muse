@@ -67,6 +67,10 @@ import {
 import { isWelcomePrompt } from "../shared/welcome";
 import { larkSignedIn } from "../shared/lark-status";
 import { larkStateNote } from "../shared/lark-state";
+import { deviceTools } from "../shared/workspace-spec";
+
+// The custom tools the person's own devices answer.
+const deviceToolNames = deviceTools.map((tool) => tool.name);
 import {
   modelChoiceInput,
   modelOverride,
@@ -80,6 +84,7 @@ import {
   canonicalJson,
   continuationAgent,
   IncompatibleConversation,
+  missingDeviceTools,
   needsPromptRefresh,
   refreshedAgentSystem,
   unreadableInstructions,
@@ -1000,7 +1005,12 @@ export class Client {
         if (choice && !sessionUsesModel(session, choice)) return true;
         const selected = await r.workspace.selection();
         try {
-          return needsPromptRefresh(session, r.key, selected.agent);
+          return needsPromptRefresh(
+            session,
+            r.key,
+            selected.agent,
+            deviceToolNames,
+          );
         } catch (error) {
           if (error instanceof IncompatibleConversation)
             throw new IncompatibleConversation(t(error.message));
@@ -1112,8 +1122,10 @@ export class Client {
               r.ark,
               `/sessions/${validId(previous.id)}/events?order=asc&limit=200`,
             ),
+            // The chapter keeps its agent version, unless that version lacks
+            // device tools this app now answers; then the current one.
             r.ark.request<AgentSnapshot>(
-              `/agents/${validId(selection.agent)}${sourceAgent ? `?version=${sourceAgent.version}` : ""}`,
+              `/agents/${validId(selection.agent)}${sourceAgent && !missingDeviceTools(sourceAgent, deviceToolNames) ? `?version=${sourceAgent.version}` : ""}`,
             ),
             this.collect<unknown>(
               r.ark,
@@ -1149,9 +1161,10 @@ export class Client {
                   sourceAgent,
                   agent,
                   Boolean(await this.chosenModel(r)),
+                  deviceToolNames,
                 )
               : agent.system;
-            if (sourceAgent) selection.agent_version = sourceAgent.version;
+            if (sourceAgent) selection.agent_version = agent.version;
             selection.system = withConversationHistory(
               system,
               archive.store,
