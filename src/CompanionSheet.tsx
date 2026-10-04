@@ -22,7 +22,11 @@ import type {
   IdentityDocument,
   IdentityDocumentName,
 } from "../shared/identity";
-import { eventText, type AgentEvent } from "../shared/types";
+import {
+  eventText,
+  pendingCustomTools,
+  type AgentEvent,
+} from "../shared/types";
 import type { Client } from "./api";
 import { CompanionAvatar } from "./ChatUI";
 import { Markdown, PermissionCard } from "./components";
@@ -197,6 +201,11 @@ export function CompanionSheet({
   const [browser, setBrowser] = useState<string>();
   const [browserError, setBrowserError] = useState("");
   const browserReady = Boolean(sessionId) && client.browserViewSupported();
+  // A request waiting in the chat, such as an approval or a health share,
+  // holds the conversation, so the browser cannot be started until it is
+  // answered; a browser already running can still be shown.
+  const waitingInChat =
+    permissions.length > 0 || pendingCustomTools(events).length > 0;
   async function openBrowser() {
     if (!sessionId || browser) return;
     const running = client.activeBrowserView();
@@ -487,40 +496,55 @@ export function CompanionSheet({
         )}
         {tab === "Desktop" && (
           <section className="companion-desktop">
-            <div className="desktop-card" aria-hidden="true">
-              <span className="desktop-menubar">{identity.name}</span>
-              <span className="desktop-window">
-                <i />
-                <Globe size={20} strokeWidth={1.4} />
-                <b />
-              </span>
+            <div className="desktop-stage">
+              <div className="desktop-card" aria-hidden="true">
+                <span className="desktop-menubar">{identity.name}</span>
+                <span className="desktop-window">
+                  <i />
+                  <Globe size={20} strokeWidth={1.4} />
+                  <b />
+                </span>
+              </div>
+              {browserReady ? (
+                <button
+                  type="button"
+                  className="desktop-open"
+                  disabled={
+                    browser === "starting" ||
+                    (waitingInChat && !client.activeBrowserView())
+                  }
+                  onClick={() => void openBrowser()}
+                >
+                  {browser === "starting" ? (
+                    <LoaderCircle size={15} className="spin" />
+                  ) : null}
+                  {client.activeBrowserView()
+                    ? t("Resume browsing")
+                    : t("Open browser")}
+                  <Maximize2 size={13} strokeWidth={2} />
+                </button>
+              ) : (
+                <a
+                  className="desktop-open"
+                  href="#/studio"
+                  aria-label={t("View workspace in MA Studio")}
+                  onClick={onClose}
+                >
+                  {t("Open workspace")}
+                  <Maximize2 size={13} strokeWidth={2} />
+                </a>
+              )}
             </div>
-            {browserReady ? (
-              <button
-                type="button"
-                className="desktop-open"
-                disabled={browser === "starting"}
-                onClick={() => void openBrowser()}
-              >
-                {browser === "starting" ? (
-                  <LoaderCircle size={15} className="spin" />
-                ) : null}
-                {client.activeBrowserView()
-                  ? t("Resume browsing")
-                  : t("Open browser")}
-                <Maximize2 size={13} strokeWidth={2} />
-              </button>
-            ) : (
-              <a
-                className="desktop-open"
-                href="#/studio"
-                aria-label={t("View workspace in MA Studio")}
-                onClick={onClose}
-              >
-                {t("Open workspace")}
-                <Maximize2 size={13} strokeWidth={2} />
-              </a>
-            )}
+            {browserReady &&
+              waitingInChat &&
+              !client.activeBrowserView() &&
+              !browserError && (
+                <p className="desktop-note">
+                  {t(
+                    "Answer the request waiting in the chat first, then open the browser.",
+                  )}
+                </p>
+              )}
             {browserError && (
               <p className="inline-error" role="alert">
                 {browserError}

@@ -16,6 +16,8 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    // The backend's own error code, when it gave one.
+    public code?: string,
   ) {
     super(message);
   }
@@ -69,7 +71,8 @@ export class ArkClient {
           [400, 401, 403, 404, 409, 413, 429].includes(response.status)
             ? response.status
             : 502,
-          `${this.provider.name} request failed (HTTP ${response.status}${diagnostic ? `; ${diagnostic}` : ""}). Check your Ark connection or try again later.`,
+          `${this.provider.name} request failed (HTTP ${response.status}${diagnostic.text ? `; ${diagnostic.text}` : ""}). Check your Ark connection or try again later.`,
+          diagnostic.code,
         );
       }
       if (response.status === 204) return { ok: true } as T;
@@ -178,6 +181,8 @@ async function errorDiagnostic(
   requestIdHeader: string,
 ) {
   const parts: string[] = [];
+  let errorCode: string | undefined;
+  const result = () => ({ text: parts.join("; "), code: errorCode });
   const requestId = response.headers.get(requestIdHeader);
   if (
     requestId &&
@@ -186,7 +191,7 @@ async function errorDiagnostic(
   )
     parts.push(`Request ID ${requestId}`);
   const reader = response.body?.getReader();
-  if (!reader) return parts.join("; ");
+  if (!reader) return result();
   try {
     let raw = "";
     let bytes = 0;
@@ -195,13 +200,19 @@ async function errorDiagnostic(
       const chunk = await reader.read();
       if (chunk.done) break;
       bytes += chunk.value.byteLength;
-      if (bytes > 65_536) return parts.join("; ");
+      if (bytes > 65_536) return result();
       raw += decoder.decode(chunk.value, { stream: true });
     }
     raw += decoder.decode();
     const envelope = JSON.parse(raw);
     const error = envelope?.error ?? envelope;
     const code = error?.code;
+    if (
+      typeof code === "string" &&
+      /^[A-Za-z][A-Za-z0-9_.-]{0,90}$/.test(code) &&
+      code !== secret
+    )
+      errorCode = code;
     if (
       typeof code === "string" &&
       /^(Invalid|Missing|Unsupported|AccessDenied|Forbidden|Authentication|Permission|Resource|Quota|RateLimit|Internal|Service|BadRequest|NotFound)[a-zA-Z0-9_.-]{0,90}$/.test(
@@ -257,5 +268,5 @@ async function errorDiagnostic(
     await reader.cancel().catch(() => {});
     reader.releaseLock();
   }
-  return parts.join("; ");
+  return result();
 }

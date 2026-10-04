@@ -2282,6 +2282,16 @@ export class Client {
       });
     } catch (error) {
       await account.closeBrowserView!(view.id).catch(() => {});
+      // The conversation is still waiting on a request, such as an approval
+      // or a health share, and takes nothing else until it is answered.
+      if (error instanceof ApiError && error.code === "RequiresActionRejected")
+        throw new ApiError(
+          409,
+          t(
+            "Answer the request waiting in the chat first, then open the browser.",
+          ),
+          error.code,
+        );
       throw error;
     }
     this.liveView = { id: view.id, expires: view.expires_at };

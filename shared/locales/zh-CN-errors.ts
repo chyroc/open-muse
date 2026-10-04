@@ -16,6 +16,8 @@ export const zhErrors: Record<string, string> = {
     "对话历史关联不一致。未替换任何历史记录。",
   "Resolve the pending tool approval before continuing this conversation.":
     "请先处理待批准的工具操作，再继续此对话。",
+  "Answer the request waiting in the chat first, then open the browser.":
+    "请先回答聊天里正在等你处理的请求，再打开浏览器。",
   "The previous conversation changed while preparing. Its history is intact; resume to include the latest messages.":
     "准备期间，之前的对话发生了更改。历史记录完整保留；继续以包含最新消息。",
   "The agent instructions could not be read. No replacement conversation was created.":

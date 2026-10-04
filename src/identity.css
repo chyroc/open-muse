@@ -593,6 +593,16 @@
   position: relative;
   margin: -6px 4px 0;
 }
+/* The open button rests on the preview card, not on the notes below it. */
+.desktop-stage {
+  position: relative;
+}
+.companion-desktop .desktop-note {
+  margin: 10px 2px 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #8e8e93;
+}
 .desktop-card {
   position: relative;
   display: block;
