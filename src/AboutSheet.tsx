@@ -76,7 +76,7 @@ export function AboutSheet({ onClose }: { onClose: () => void }) {
             <strong>{t("A real connection")}</strong>
             <p>
               {t(
-                "If sign-in expires or a request fails, Muse reports the error instead of generating simulated replies.",
+                "If sign-in expires or a request fails, Open Muse reports the error instead of generating simulated replies.",
               )}
             </p>
           </div>

@@ -106,8 +106,8 @@ export const zhCN: Record<string, string> = {
   "Tools run directly by default and may send data to external services, change files, or incur charges. Upstream denials still apply. Execution records stay in the conversation.":
     "工具默认直接执行，可能向外部服务发送数据、修改文件或产生费用。上游拒绝策略仍然有效。执行记录会保留在对话中。",
   "A real connection": "真实连接",
-  "If sign-in expires or a request fails, Muse reports the error instead of generating simulated replies.":
-    "如果登录过期或请求失败，Muse 会报告错误，不会生成模拟回复。",
+  "If sign-in expires or a request fails, Open Muse reports the error instead of generating simulated replies.":
+    "如果登录过期或请求失败，Open Muse 会报告错误，不会生成模拟回复。",
   "Connect to Ark MA": "连接 Ark MA",
   "Add an Ark API key and your personal assistant is set up automatically":
     "添加 Ark API Key 后，系统会自动配置个人助手",
