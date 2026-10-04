@@ -104,6 +104,7 @@ import {
 } from "./SideChats";
 import { ShortcutsDialog } from "./Shortcuts";
 import { groupLinks, timeMarkerLabel, timeMarkers } from "./messageGroups";
+import { companionFaceSelector, flyCompanion } from "./companionFlight";
 import { droppedFiles, droppedFilesEvent } from "./dropped";
 import { postCompanion, type CompanionState } from "./presence";
 import {
@@ -163,6 +164,24 @@ export function DesktopApp({ client }: { client: Client }) {
   const [route, setRoute] = useState(() =>
     parseRoute(typeof location === "undefined" ? "" : location.hash),
   );
+  // Where the companion's portrait rested after the last render, so a page
+  // change can fly it to its new place. The flight runs before the position
+  // is recorded again.
+  const companionAt = useRef<DOMRect | undefined>(undefined);
+  const flownPage = useRef(route.page);
+  useLayoutEffect(() => {
+    if (flownPage.current === route.page) return;
+    flownPage.current = route.page;
+    const to = window.document.querySelector<HTMLElement>(
+      companionFaceSelector(route.page),
+    );
+    if (companionAt.current && to) flyCompanion(companionAt.current, to);
+  }, [route.page]);
+  useLayoutEffect(() => {
+    companionAt.current = window.document
+      .querySelector(companionFaceSelector(route.page))
+      ?.getBoundingClientRect();
+  });
   const [index, setIndex] = useState(emptyConversations);
   const [sessions, setSessions] = useState<Session[]>([]);
   // A pinned panel opens with the app and stays open while moving around.
