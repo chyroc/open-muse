@@ -37,7 +37,7 @@ Goals for the macOS app:
 - `scripts/` — build and asset generation
 - `docs/` — integration notes and verification records
 
-Builds configured with `VITE_MUSE_BACKGROUND_URL`, `VITE_MUSE_SUPABASE_URL`, and `VITE_MUSE_SUPABASE_ANON_KEY` use an Open Muse account (Supabase Auth email/password) as the user's identity. The Ark API key is only the model-service credential: it is stored encrypted per account by the Open Muse service, read back only by that account's verified sessions, and scoped with the account owner so accounts sharing one key keep separate workspaces, memory, history, and local records. Clients still call public Volcano Ark APIs directly with that key. Builds without that configuration run in single-user local mode with a device-held API key. Volcano SSO is not supported. Without credentials the app stays disconnected and never generates simulated replies. Real calls may incur cloud costs. Mock responses and the old server migration harness belong only in tests and must never be bundled.
+The account build is the default: build, run, and verify features as an account build, because background work and the other Open Muse service capabilities exist only there. Builds configured with `VITE_MUSE_BACKGROUND_URL`, `VITE_MUSE_SUPABASE_URL`, and `VITE_MUSE_SUPABASE_ANON_KEY` use an Open Muse account (Supabase Auth email/password) as the user's identity. The Ark API key is only the model-service credential: it is stored encrypted per account by the Open Muse service, read back only by that account's verified sessions, and scoped with the account owner so accounts sharing one key keep separate workspaces, memory, history, and local records. Clients still call public Volcano Ark APIs directly with that key. Builds without that configuration run in single-user local mode with a device-held API key; keep that mode working, but treat it as a fallback rather than the target. Volcano SSO is not supported. Without credentials the app stays disconnected and never generates simulated replies. Real calls may incur cloud costs. Mock responses and the old server migration harness belong only in tests and must never be bundled.
 
 ## README
 
@@ -55,11 +55,12 @@ npm run dev          # frontend only, on 4310
 npm run check        # tsc --noEmit + vitest run
 npm test             # vitest run
 npm run build        # type-check + production web build
-npm run macos:build  # standalone macOS app
-npm run ios:build    # iOS Simulator app
+npm run macos:build  # macOS app, always an account build
+npm run ios:install  # iOS account build, signed and installed on a paired iPhone
+npm run ios:build    # iOS Simulator app (an account build only when the three values are set)
 ```
 
-Requires Node.js 22.21+. Native Apple builds require Xcode.
+Requires Node.js 22.21+. Native Apple builds require Xcode. Account build values and how the build scripts obtain them are described in `docs/development.md`.
 
 ## Conventions
 
