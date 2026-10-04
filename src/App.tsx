@@ -135,6 +135,10 @@ export default function App() {
     [],
   );
   const [restored, setRestored] = useState(false);
+  // The companion's name and look as last read, so the chat never shows the
+  // default name before the saved one.
+  const [look, setLook] =
+    useState<Awaited<ReturnType<Client["cachedCompanion"]>>>();
   const [restoreError, setRestoreError] = useState("");
   const [restoreAttempt, setRestoreAttempt] = useState(0);
   useEffect(() => {
@@ -142,8 +146,11 @@ export default function App() {
     setRestoreError("");
     void client
       .restore()
-      .then(() => {
-        if (active) setRestored(true);
+      .then(async () => {
+        const cached = await client.cachedCompanion().catch(() => undefined);
+        if (!active) return;
+        setLook(cached);
+        setRestored(true);
       })
       .catch((error: Error) => {
         if (active) setRestoreError(error.message);
@@ -203,6 +210,7 @@ export default function App() {
     <Workspace
       key={revision}
       client={client}
+      look={look}
       onConnection={() => {
         setRevision((value) => value + 1);
         navigate(client.signedIn() ? "/" : "/settings");
@@ -213,9 +221,12 @@ export default function App() {
 
 function Workspace({
   client,
+  look,
   onConnection,
 }: {
   client: Client;
+  // The companion's last known name and look, read while restoring.
+  look?: Awaited<ReturnType<Client["cachedCompanion"]>>;
   onConnection: () => void;
 }) {
   const [hashRoute, setRoute] = useState(location.hash.slice(1) || "/");
@@ -253,7 +264,10 @@ function Workspace({
   const [feedEditor, setFeedEditor] = useState(false);
   const [config, setConfig] = useState<AppConfig>();
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [companion, setCompanion] = useState(defaultIdentity);
+  const [companion, setCompanion] = useState(() => ({
+    ...defaultIdentity(),
+    ...look,
+  }));
   // The companion's look, wherever its avatar is drawn.
   useEffect(() => {
     const root = document.documentElement;
