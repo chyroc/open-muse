@@ -250,19 +250,20 @@ html.sidebar-dragging .sidebar-panel {
     transform: rotate(-5.5deg);
   }
 }
+/* The face turns in perspective as it glances, so the far eye recedes. */
 @keyframes companion-idle-face {
   0%,
   66%,
   100% {
-    transform: none;
+    transform: translateX(0) perspective(60px) rotateY(0deg);
   }
   8%,
   30% {
-    transform: translateX(3px);
+    transform: translateX(3px) perspective(60px) rotateY(22deg);
   }
   38%,
   58% {
-    transform: translateX(-3px);
+    transform: translateX(-3px) perspective(60px) rotateY(-22deg);
   }
 }
 @keyframes companion-idle-eyes {
