@@ -1,3 +1,5 @@
+/* Ideas page: list of idea rows, their "…" menu, the preview and feedback
+   dialogs, and the page's toast. Colors come from the shared theme tokens. */
 .desktop-ideas {
   position: relative;
   height: 100%;
@@ -26,9 +28,19 @@
 }
 .ideas-description {
   margin: 0 0 24px;
-  padding-bottom: 24px;
-  font-size: 20px;
-  line-height: 1.4;
+  font-size: 18px;
+  line-height: 26px;
+  color: var(--text);
+}
+.ideas-subtitle-blank {
+  display: block;
+  height: 22px;
+}
+.ideas-subtitle-skeleton {
+  display: block;
+  height: 22px;
+  width: 320px;
+  max-width: 100%;
 }
 .ideas-split-toggle {
   position: absolute;
@@ -36,49 +48,92 @@
   left: 20px;
   color: var(--text-2);
 }
+
+/* Sections */
 .ideas-sections {
   display: flex;
   flex-direction: column;
   gap: 32px;
   padding-top: 8px;
 }
-.ideas-sections h2 {
-  font-size: 20px;
-  font-weight: 600;
-  margin: 0;
+.idea-section-heading {
+  min-width: 0;
+  overflow: hidden;
   padding-bottom: 8px;
+}
+.idea-section-heading h2 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+  color: var(--text);
+  text-wrap: pretty;
+}
+
+/* Rows */
+.idea-list-item {
+  height: 100%;
 }
 .idea-row {
   position: relative;
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  height: 100%;
   margin: 0 -12px;
   padding: 12px;
   border-radius: 16px;
-  transition: background 0.15s;
+  transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .idea-row:hover {
   background: var(--fill);
 }
+.idea-row:has(.idea-open:active) {
+  background: var(--fill-hover);
+}
 .idea-icon {
+  position: relative;
   flex: 0 0 44px;
   width: 44px;
   height: 44px;
-  display: grid;
-  place-items: center;
-  font-size: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.idea-icon-chip {
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--fill);
+  color: var(--text-2);
+}
+.idea-icon-emoji {
+  font-size: 30px;
+  line-height: 1;
 }
 .idea-open {
   min-width: 0;
   flex: 1;
-  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0;
+  text-align: start;
+  border-radius: 16px;
+  cursor: pointer;
+  color: inherit;
+  background: none;
 }
 .idea-open::after {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: 16px;
+}
+.idea-open:focus {
+  outline: none;
+}
+.idea-open:focus-visible::after {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 .idea-open h3,
 .idea-open p {
@@ -91,235 +146,684 @@
 }
 .idea-open h3 {
   font-size: 16px;
-  line-height: 1.4;
-  font-weight: 600;
+  line-height: 22px;
+  font-weight: 500;
+  color: var(--text);
 }
 .idea-open p {
-  font-size: 15px;
-  line-height: 1.45;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
   color: var(--text-2);
-  margin-top: 2px;
+}
+.idea-row-actions {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
 }
 .idea-started {
-  color: var(--success);
-  padding-top: 3px;
-}
-/* The options button stays visible on every row, as in the reference app. */
-.idea-options {
-  position: relative;
-  flex-shrink: 0;
-  z-index: 2;
-}
-.idea-options summary {
-  list-style: none;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 24px;
   height: 24px;
+  flex-shrink: 0;
+  color: var(--success-mark);
+  pointer-events: none;
+}
+
+/* Icon buttons */
+.idea-borderless-button,
+.idea-elevated-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0;
   border-radius: 50%;
+  color: var(--text);
   cursor: pointer;
-  color: var(--text-2);
+  transition:
+    background-color 0.15s ease-in-out,
+    filter 0.15s ease-in-out;
 }
-.idea-options summary::-webkit-details-marker {
-  display: none;
+.idea-borderless-button {
+  width: 24px;
+  height: 24px;
+  background: transparent;
 }
-.idea-options summary:hover {
-  background: var(--fill-strong);
+.idea-borderless-button:hover:not(:disabled),
+.idea-borderless-button[aria-expanded="true"] {
+  background: var(--flat);
+}
+.idea-borderless-button:active:not(:disabled) {
+  filter: brightness(0.965);
+}
+.idea-elevated-button {
+  width: 32px;
+  height: 32px;
+  background: var(--blur-thick);
+  box-shadow: var(--elevation-1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.idea-elevated-button:hover:not(:disabled) {
+  filter: brightness(0.99);
+}
+.idea-elevated-button:active:not(:disabled) {
+  filter: brightness(0.975);
+}
+.idea-borderless-button:disabled,
+.idea-elevated-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.idea-borderless-button:focus:not(:focus-visible),
+.idea-elevated-button:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* "…" menu */
+.idea-actions {
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
 }
 .idea-menu {
-  position: absolute;
-  right: 0;
-  top: 28px;
-  width: 186px;
-  padding: 5px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  box-shadow: 0 6px 28px #0002;
-  z-index: 15;
+  position: fixed;
+  z-index: 50;
+  min-width: 224px;
+  padding: 6px;
+  border-radius: 16px;
+  background: var(--blur-thick);
+  backdrop-filter: blur(60px);
+  -webkit-backdrop-filter: blur(60px);
+  box-shadow: var(--elevation-3);
+  color: var(--text);
+  transform-origin: top right;
+  animation: idea-menu-in 0.15s var(--ease-pop);
+}
+.idea-actions-bubble .idea-menu {
+  transform-origin: top left;
+}
+.idea-menu[data-side="top"] {
+  transform-origin: bottom right;
+  animation-name: idea-menu-in-above;
+}
+.idea-actions-bubble .idea-menu[data-side="top"] {
+  transform-origin: bottom left;
 }
 .idea-menu button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
   width: 100%;
+  padding: 6px 8px;
+  border-radius: 12px;
+  text-align: start;
+  color: var(--text);
+  background: transparent;
+  cursor: pointer;
+  user-select: none;
+}
+.idea-menu button:hover:not(:disabled),
+.idea-menu button:focus-visible {
+  background: var(--flat);
+  outline: none;
+}
+.idea-menu button:disabled {
+  pointer-events: none;
+  opacity: 0.5;
+}
+.idea-menu-icon {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 9px;
-  text-align: left;
-  border-radius: 8px;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin: 2px;
+  flex-shrink: 0;
+}
+.idea-menu-label {
+  flex: 1;
+  padding: 2px 4px;
   font-size: 14px;
+  line-height: 20px;
 }
-.idea-menu hr {
-  border: 0;
-  border-top: 1px solid var(--line);
-  margin: 4px 0;
+.idea-menu-separator {
+  height: 0.5px;
+  margin: 6px 8px;
+  background: var(--divider-strong);
 }
-.ideas-empty {
-  border: 1px solid var(--line);
-  border-radius: 14px;
+@keyframes idea-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+}
+@keyframes idea-menu-in-above {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.95);
+  }
+}
+
+/* Empty and error states */
+.ideas-state-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   padding: 16px;
+  border: 1px solid var(--divider-strong);
+  border-radius: 14px;
+  background: var(--sheet);
 }
-.ideas-empty h3 {
-  font-size: 20px;
-  margin: 0 0 4px;
+.ideas-state-card[role="alert"] {
+  gap: 8px;
 }
-.ideas-empty p {
+.ideas-state-title {
   margin: 0;
-  color: var(--muted);
-  font-size: 15px;
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+  color: var(--text);
 }
-.ideas-notice {
+.ideas-state-body {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+.ideas-flat-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--flat);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: filter 0.15s ease-in-out;
+}
+.ideas-flat-button:hover:not(:disabled) {
+  filter: brightness(0.975);
+}
+.ideas-flat-button:active:not(:disabled) {
+  filter: brightness(0.965);
+}
+:root[data-appearance="dark"] .ideas-flat-button:hover:not(:disabled) {
+  filter: brightness(1.15);
+}
+.ideas-flat-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.ideas-generation {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  gap: 8px;
+}
+.ideas-refresh {
+  width: 36px;
+  height: 36px;
+  color: var(--text-2);
+}
+
+/* Skeletons */
+.idea-skeleton {
+  display: block;
+  border-radius: 4px;
+  background: var(--placeholder);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .idea-skeleton {
+    animation: idea-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+@keyframes idea-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+.ideas-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+.idea-row-skeleton {
+  display: flex;
+  align-items: flex-start;
   gap: 12px;
-  padding: 12px 16px;
-  margin-top: 20px;
-  border-radius: 14px;
-  background: var(--surface);
+  padding: 12px 0;
+}
+.idea-row-skeleton > div {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+.idea-skeleton-icon {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+.idea-skeleton-title {
+  height: 22px;
+  width: 100%;
+}
+.idea-skeleton-title.short {
+  width: 60%;
+}
+.idea-skeleton-line {
+  height: 20px;
+  width: 100%;
+}
+.idea-skeleton-line.first {
+  margin-top: 2px;
+}
+.idea-skeleton-line.short {
+  width: 80%;
+}
+.idea-skeleton-spacer {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.idea-skeleton-heading {
+  height: 24px;
+  width: 192px;
+  max-width: 100%;
+}
+
+/* Toast */
+.ideas-toast-layer {
+  position: sticky;
+  top: -8px;
+  height: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.ideas-toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: 400px;
+  min-height: 60px;
+  padding: 12px;
+  border-radius: 999px;
+  background: var(--blur-thick);
+  backdrop-filter: blur(60px);
+  -webkit-backdrop-filter: blur(60px);
+  box-shadow: var(--elevation-2);
+  color: var(--text);
   font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  pointer-events: auto;
+  animation: idea-toast-in 0.4s cubic-bezier(0.21, 1.02, 0.73, 1);
 }
-.ideas-notice button {
-  color: var(--accent);
-  text-decoration: underline;
+.ideas-toast[data-leaving] {
+  opacity: 0;
+  transform: translateY(-8px);
+  transition:
+    opacity 0.2s var(--ease-fade),
+    transform 0.2s var(--ease-fade);
 }
+.ideas-toast-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: 2px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--flat);
+}
+.ideas-toast-text {
+  padding-inline-end: 8px;
+}
+.ideas-toast button {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  margin: 0 2px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--flat);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.ideas-toast button:active {
+  filter: brightness(0.965);
+}
+@keyframes idea-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+}
+
+/* Preview dialog */
 .idea-preview {
-  width: 600px;
+  width: calc(100% - 64px);
+  max-width: 600px;
+  max-height: calc(100vh - 64px);
+  padding: 0;
   border: 0;
   border-radius: 32px;
+  color: var(--text);
+  background: var(--sheet);
+  box-shadow: var(--elevation-3);
+  overflow: hidden;
+}
+.idea-preview[open] {
+  display: flex;
+  flex-direction: column;
+  animation: idea-dialog-in 0.15s var(--ease-fade);
 }
 .idea-preview::backdrop {
-  backdrop-filter: none;
+  background: var(--scrim-light);
+  animation: idea-fade-in 0.15s var(--ease-fade);
 }
-.idea-preview > header {
-  padding: 24px 24px 8px;
-  border-bottom: 0;
+.idea-preview:focus {
+  outline: none;
+}
+.idea-preview-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 20;
+}
+.idea-preview-scroll {
   position: relative;
-  align-items: flex-start;
-  gap: 16px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
 }
-.idea-preview > header h2 {
-  font-size: 20px;
-  line-height: 1.4;
+.idea-preview-scroll::-webkit-scrollbar {
+  display: none;
+}
+.idea-preview-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 24px;
+}
+.idea-preview-content h2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  margin: 0;
+  padding-inline-end: 32px;
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+  text-wrap: pretty;
 }
-.idea-preview > header .icon-button {
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  box-shadow: 0 2px 10px #0001;
-  margin: -8px -8px 0 0;
-}
-.idea-preview > .dialog-body {
-  padding: 0;
+.idea-preview-body {
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 172px);
+  gap: 20px;
 }
-.idea-preview-scroll {
-  overflow-y: auto;
-  min-height: 0;
-  padding: 12px 24px 8px;
+.idea-preview-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
-.idea-preview .markdown,
+.idea-preview-description .markdown,
 .idea-fit-reason,
 .idea-how p {
+  margin: 0;
   color: var(--text-2);
   font-size: 16px;
-  line-height: 1.5;
-  white-space: pre-wrap;
+  line-height: 22px;
   overflow-wrap: anywhere;
-  margin: 0 0 20px;
 }
-.idea-preview .markdown p {
-  margin: 0 0 20px;
+.idea-preview-description .markdown > :first-child {
+  margin-top: 0;
+}
+.idea-preview-description .markdown > :last-child {
+  margin-bottom: 0;
+}
+.idea-fit-reason,
+.idea-how p {
+  white-space: pre-wrap;
 }
 .idea-preview h4 {
-  margin: 0 0 6px;
+  margin: 0;
   font-size: 16px;
+  line-height: 22px;
   font-weight: 600;
+  color: var(--text);
 }
-.idea-included {
-  margin-bottom: 20px;
+.idea-included,
+.idea-how {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.idea-included > div {
+  display: flex;
+  flex-direction: column;
 }
 .idea-included-row {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
-  width: 100%;
-  text-align: left;
-  margin-top: 8px;
-  padding: 6px 0;
+  margin: 0 -12px;
+  padding: 10px 12px;
+  border-radius: 20px;
+  text-align: start;
 }
-.idea-included-row > span:nth-child(2) {
-  flex: 1;
-  min-width: 0;
+.idea-included-row::after {
+  content: "";
+  position: absolute;
+  left: 68px;
+  right: 12px;
+  bottom: 0;
+  height: 1px;
+  background: var(--divider-strong);
 }
-.idea-included-row strong {
-  font-size: 15px;
-  font-weight: 600;
-  display: block;
+.idea-included-row:last-child::after {
+  display: none;
 }
-.idea-included-row > span:nth-child(2) > span {
-  display: block;
-  font-size: 15px;
-  line-height: 1.4;
-  color: var(--muted);
+.idea-included-row.interactive {
+  cursor: pointer;
+  transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.idea-included-row.interactive:hover,
+.idea-included-row.interactive:active {
+  background: var(--fill);
+}
+.idea-included-row.interactive:hover::after,
+.idea-included-row:has(+ .interactive:hover)::after {
+  opacity: 0;
 }
 .idea-activity-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 44px;
   height: 44px;
   flex-shrink: 0;
-  background: var(--fill);
   border-radius: 50%;
-  display: grid;
-  place-items: center;
+  background: var(--fill);
+  color: var(--text);
 }
-.idea-selection {
+.idea-included-text {
+  flex: 1;
+  min-width: 0;
+}
+.idea-included-text strong {
+  display: block;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--text);
+}
+.idea-included-text span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text-2);
+}
+.idea-check {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 20px;
   height: 20px;
   flex-shrink: 0;
-  border-radius: 50%;
-  border: 1px solid var(--line-strong);
-  display: grid;
-  place-items: center;
+  color: var(--text-3);
 }
-.idea-selection.selected {
-  color: white;
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+.idea-check input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  border-radius: 50%;
+  appearance: none;
+  cursor: pointer;
+}
+.idea-check input:disabled {
+  cursor: default;
+}
+.idea-check input:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
+  outline-offset: 2px;
+}
+.idea-check svg {
+  pointer-events: none;
+}
+.idea-check svg.checked {
+  color: var(--success-mark);
+}
+.idea-sources {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text-2);
+}
+.idea-sources a {
+  color: inherit;
+}
+.idea-preview-error {
+  margin: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--danger);
 }
 .idea-preview footer {
-  padding: 8px 24px 20px;
+  display: flex;
+  align-items: center;
   flex-shrink: 0;
+  gap: 8px;
+  padding: 8px 24px 20px;
+  background: var(--sheet);
+}
+.idea-preview footer .idea-actions .idea-elevated-button {
+  width: 44px;
+  height: 44px;
 }
 .idea-primary {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
+  display: inline-flex;
+  flex: 1;
+  min-width: 116px;
   height: 44px;
-  border-radius: 24px;
-  background: var(--accent-hover);
-  color: white;
-  font-size: 15px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 14px;
+  line-height: 20px;
   font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s ease-in-out;
 }
 .idea-primary:hover:not(:disabled) {
-  background: var(--accent-hover);
+  filter: brightness(0.95);
 }
-.idea-feedback-dialog {
+.idea-primary:active:not(:disabled) {
+  filter: brightness(0.9);
+}
+:root[data-appearance="dark"] .idea-primary:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+:root[data-appearance="dark"] .idea-primary:active:not(:disabled) {
+  filter: brightness(0.95);
+}
+.idea-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+@keyframes idea-dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+@keyframes idea-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Feedback dialog */
+.desktop-dialog.idea-feedback-dialog {
   width: 420px;
+  border: 0;
+  border-radius: 32px;
+  background: var(--sheet);
+  box-shadow: var(--elevation-3);
 }
-.idea-feedback-dialog > header {
+.desktop-dialog.idea-feedback-dialog > header {
+  padding: 16px 16px 16px 24px;
   border-bottom: 0;
+  background: transparent;
 }
-.idea-feedback-dialog .dialog-body {
-  padding-top: 4px;
+.desktop-dialog.idea-feedback-dialog.writing > header {
+  padding-left: 56px;
+}
+.idea-feedback-dialog > header h2 {
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+}
+.desktop-dialog.idea-feedback-dialog .dialog-body {
+  padding: 0 24px 24px;
 }
 .idea-feedback-reasons {
   display: flex;
@@ -327,60 +831,83 @@
   margin: 0 -12px -12px;
 }
 .idea-feedback-reasons button {
-  padding: 14px 12px;
-  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  text-align: left;
-  font-size: 15px;
+  min-height: 48px;
+  padding: 12px;
+  border-radius: 16px;
+  text-align: start;
+  font-size: 16px;
+  line-height: 22px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.idea-feedback-reasons button:hover:not(:disabled),
+.idea-feedback-reasons button:active:not(:disabled) {
+  background: var(--fill);
+}
+.idea-feedback-chevron {
+  flex-shrink: 0;
+  color: var(--text-3);
 }
 .idea-feedback-dialog form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
+  padding-top: 12px;
+}
+.idea-back {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: 28px;
+  height: 28px;
+}
+.idea-back svg {
+  transform: rotate(180deg);
 }
 .idea-feedback-dialog textarea {
   resize: vertical;
   min-height: 110px;
   max-height: 35vh;
-  border: 1px solid var(--line);
-  border-radius: 12px;
   padding: 12px;
-  line-height: 1.5;
+  border: 1px solid var(--divider-strong);
+  border-radius: 16px;
+  background: transparent;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 22px;
 }
-.idea-back {
-  display: flex;
+.idea-send {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  width: fit-content;
-  color: var(--muted);
+  justify-content: center;
+  width: 100%;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--primary-bg);
+  color: var(--primary-text);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: filter 0.15s ease-in-out;
 }
-.ideas-loading > div {
-  position: relative;
-  padding-left: 56px;
-  margin: 12px 0 28px;
+.idea-send:hover:not(:disabled) {
+  filter: brightness(1.15);
 }
-.ideas-loading span {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: var(--fill-hover);
+.idea-send:active:not(:disabled) {
+  filter: brightness(0.9);
 }
-.ideas-loading p {
-  height: 16px;
-  margin: 0 0 8px;
-  width: 80%;
-  background: var(--fill-hover);
-  border-radius: 6px;
+.idea-send:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
-.ideas-loading p:last-child {
-  width: 60%;
-}
+
 @media (max-width: 1050px) {
   .desktop-ideas {
     padding-left: 56px;
@@ -389,7 +916,21 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .idea-row,
-  .idea-options {
+  .idea-included-row,
+  .idea-feedback-reasons button {
     transition: none;
+  }
+  .idea-menu,
+  .idea-menu[data-side="top"] {
+    animation: idea-fade-in 0.12s var(--ease-fade);
+  }
+  .ideas-toast {
+    animation: idea-fade-in 0.15s var(--ease-fade);
+  }
+  .ideas-toast[data-leaving] {
+    transform: none;
+  }
+  .idea-preview[open] {
+    animation: idea-fade-in 0.12s var(--ease-fade);
   }
 }

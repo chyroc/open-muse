@@ -420,6 +420,18 @@ function button(text: string) {
 async function click(text: string) {
   await act(async () => button(text).click());
 }
+async function check(label: string) {
+  await act(async () =>
+    host
+      .querySelector<HTMLInputElement>(`input[aria-label="${label}"]`)!
+      .click(),
+  );
+}
+// Row actions live in each row's options menu.
+async function rowAction(title: string, action: string) {
+  await click(`More options for ${title}`);
+  await click(action);
+}
 const props = (stub: Stub) => ({
   client: asClient(stub),
   onMainChat: vi.fn(async () => {}),
@@ -453,28 +465,32 @@ describe("Mac Ideas UI", () => {
         onActivate={start}
       />,
     );
-    await click("OutlineA focused outline");
-    await click("ResearchSources to read");
+    await check("Include Outline");
+    await check("Include Research");
     expect(button("Let's do it").disabled).toBe(true);
-    await click("OutlineA focused outline");
+    await check("Include Outline");
     await click("Let's do it");
     expect(start).toHaveBeenCalledWith(["outline"]);
     expect(host.textContent).not.toContain("Installed");
   });
-  it("dismisses with optional feedback and supports Undo without cloud mutation", async () => {
+  it("dismisses with optional feedback without cloud mutation", async () => {
     const stub = clientStub();
     await mount(<IdeasPage {...props(stub)} />);
     await settle();
-    await click("Not interested");
+    await rowAction("Idea one", "Not interested");
     await settle();
     expect(host.querySelectorAll('[role="listitem"]')).toHaveLength(1);
+    expect(host.querySelector(".ideas-toast")?.textContent).toContain(
+      "Idea dismissed",
+    );
     await click("Give feedback");
     expect(host.textContent).toContain("Too repetitive");
     await click("Too repetitive");
     await settle();
-    await click("Undo");
-    await settle();
-    expect(host.querySelectorAll('[role="listitem"]')).toHaveLength(2);
+    expect(host.querySelector(".ideas-toast")?.textContent).toContain(
+      "Thanks for the feedback.",
+    );
+    expect(host.querySelectorAll('[role="listitem"]')).toHaveLength(1);
     expect(stub.client.ma).not.toHaveBeenCalled();
     expect(stub.client.send).not.toHaveBeenCalled();
   });
@@ -483,7 +499,7 @@ describe("Mac Ideas UI", () => {
     const stub = clientStub();
     await mount(<DesktopApp client={asClient(stub)} />);
     await settle();
-    await click("Not interested");
+    await rowAction("Idea one", "Not interested");
     await settle();
     await click("Give feedback");
     await click("Write something");

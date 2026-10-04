@@ -51,6 +51,11 @@
   --search-shadow-far: #1111121f;
   --shadow: #0000001a;
   --pill: #fff;
+  --success-mark: #008200;
+  --sheet: #fcfcfc;
+  --scrim-light: #ffffff6b;
+  --elevation-2: 0 4px 12px 0 #1111121f, 0 6px 24px 0 #11111214;
+  --ease-fade: cubic-bezier(0, 0, 0.2, 1);
   --fill-solid: #f3f4f5;
   --link: #0064d4;
   --love: #ff453a;
@@ -120,6 +125,11 @@
   --shadow: #00000066;
   --blue: #005cff2b;
   --pill: #383b3d;
+  --success-mark: #07b123;
+  --sheet: #28292b;
+  --scrim-light: #ffffff0f;
+  --elevation-2: 0 4px 12px 0 #1111121f, 0 6px 24px 0 #11111214;
+  --ease-fade: cubic-bezier(0, 0, 0.2, 1);
   --fill-solid: #28292b;
   --link: #1793ff;
   --love: #ff453a;
