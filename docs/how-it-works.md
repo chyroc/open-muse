@@ -265,6 +265,22 @@ selection. Existing conversations reuse their active chapter; opening an old
 chat does not reset its history or generate another introduction. Side chats
 are still created only when their first message is sent.
 
+A sent message shows in the chat at once, with the companion's typing dots,
+while it is posted; if posting fails, the text returns to the composer and
+nothing is resent on its own. The dots give way when the reply's text shows.
+While the companion works, the line under its name says what it is doing:
+the short description it gives each command it runs (one emoji and a few
+words in the person's language), or the kind of tool otherwise. The companion
+is asked to answer like a person texting: one short line before longer work,
+then the result. Files it saves during a turn show under the first reply made
+after them; when that reply opens with a short line such as "Here it is 👇",
+the files sit right under that line and the rest follows. A PDF shows its
+first page on its card, drawn on the iPhone from the downloaded file; a single
+picture shows large. Tables use the reply's text size with hairlines between
+rows, and fenced code shows in a card with its language, a copy button, and
+light highlighting. A reminder or recurring task set up in a chat shows as a
+small card under the reply that set it up.
+
 ### First conversation
 
 MA introduces the companion, offers Kit, Milo, and Muse as inline naming
@@ -651,9 +667,12 @@ conversation. Sources are supplied by the assistant and may need verification.
 Feed instructions are editable through the top-right control and saved to
 `FEED.md` in personal MA memory with conflict checks and readback verification.
 Changes affect future posts only. Likes, generated-post indexes, dismissed
-instructions, and discussion links are scoped to the active connection. In
+instructions, and discussion links are scoped to the active connection, and
 they sync across the account's devices (see
-[Sync across devices](#sync-across-devices)). Opening Discuss or an idea prepares an editable side-chat draft;
+[Sync across devices](#sync-across-devices)). A post that compares two to six
+figures in the same unit can carry a small bar chart, drawn under its text;
+for now the chart stays on the device that generated the post, and other
+devices show the post without it. Opening Discuss or an idea prepares an editable side-chat draft;
 it does not send a message until the user presses Send. Existing discussions
 reopen their linked conversation.
 
