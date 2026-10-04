@@ -419,8 +419,10 @@ export function modelAdapter(db: LocalDatabase, key: string): SyncAdapter {
   };
 }
 
+// A post's chart stays on the device that made it: the account service's
+// copy of a post does not carry one yet.
 const postValue = (item: InspirationItem) => {
-  const { id: _id, ...value } = item;
+  const { id: _id, chart: _chart, ...value } = item;
   return drop(value as unknown as Record<string, unknown>);
 };
 type FeedState = {
@@ -464,7 +466,12 @@ export function feedAdapter(db: LocalDatabase, key: string): SyncAdapter {
           if (index >= 0) state.items.splice(index, 1);
           return state;
         }
-        const item = { ...(next as object), id } as InspirationItem;
+        const chart = index >= 0 ? state.items[index].chart : undefined;
+        const item = {
+          ...(next as object),
+          id,
+          ...(chart ? { chart } : {}),
+        } as InspirationItem;
         if (index >= 0) state.items[index] = item;
         else {
           // Newest first, like posts generated here.

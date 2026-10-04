@@ -42,6 +42,7 @@ import {
   mergeBackgroundFeed,
   useBackgroundFeed,
 } from "./background-feed";
+import { PostChart } from "./PostChart";
 import "./inspiration.css";
 
 export function InspirationPost({
@@ -69,6 +70,7 @@ export function InspirationPost({
           {item.title}
         </h2>
         <Markdown text={item.body} />
+        {item.chart && <PostChart chart={item.chart} />}
         <PostImages item={item} />
         <Sources item={item} />
         <footer className="post-actions">
