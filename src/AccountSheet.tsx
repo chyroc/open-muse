@@ -22,11 +22,14 @@ export function AccountSheet({
   client,
   onClose,
   onChanged,
+  onReset,
   service = backgroundClient,
 }: {
   client: Client;
   onClose: () => void;
   onChanged: () => void;
+  // Opens the confirmation that resets this device.
+  onReset?: () => void;
   service?: BackgroundClient;
 }) {
   const [status, setStatus] = useState<Status>();
@@ -304,6 +307,17 @@ export function AccountSheet({
             <span>{t("Delete account")}</span>
           </button>
         </li>
+        {onReset && (
+          <li>
+            <button
+              className="settings-list-row settings-destructive"
+              disabled={busy}
+              onClick={onReset}
+            >
+              <span>{t("Reset this device")}</span>
+            </button>
+          </li>
+        )}
       </ul>
       {busy && (
         <p className="settings-footnote" role="status">

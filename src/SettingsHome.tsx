@@ -7,7 +7,7 @@ import {
   FileText,
   Info,
   Check,
-  KeyRound,
+  CircleUserRound,
   Languages,
   LayoutGrid,
   MessageCircle,
@@ -95,6 +95,34 @@ export function SettingsHome({
       setResetting(false);
     }
   }
+  // Signing out from the foot of the page, after the person confirms.
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutNotice, setSignOutNotice] = useState("");
+  async function signOut() {
+    if (signingOut || !confirm(t("Sign out of Open Muse on this device?")))
+      return;
+    setSigningOut(true);
+    setSignOutNotice("");
+    let revoked = false;
+    try {
+      revoked = (await backgroundClient.signOutAccount()).revoked;
+    } catch {
+      // Signing out still ends this device's session below.
+    } finally {
+      try {
+        await client.accountChanged();
+      } finally {
+        setSigningOut(false);
+        onConnection();
+      }
+    }
+    if (!revoked)
+      setSignOutNotice(
+        t(
+          "Signed out on this device. The account service could not confirm ending the session; it expires on its own.",
+        ),
+      );
+  }
   const signedIn = client.signedIn();
   const close = () => setSection(undefined);
   // The chosen model and thinking level, named on the Model row.
@@ -140,16 +168,16 @@ export function SettingsHome({
         )}
         {signedIn && (
           <Row
-            icon={<MessageCircle size={22} strokeWidth={2} />}
-            label={t("Message channels")}
-            onClick={() => setSection("channels")}
+            icon={<ShieldCheck size={22} strokeWidth={2} />}
+            label={t("Permissions")}
+            onClick={() => setSection("permissions")}
           />
         )}
         {signedIn && (
           <Row
-            icon={<ShieldCheck size={22} strokeWidth={2} />}
-            label={t("Permissions")}
-            onClick={() => setSection("permissions")}
+            icon={<MessageCircle size={22} strokeWidth={2} />}
+            label={t("Message channels")}
+            onClick={() => setSection("channels")}
           />
         )}
       </ul>
@@ -214,26 +242,62 @@ export function SettingsHome({
           onClick={() => setSection("about")}
         />
       </ul>
-      {signedIn && (
+      {signedIn ? (
+        <>
+          {/* The account the app is signed in to, then signing out of it;
+              resetting the device sits inside the account's sheet. */}
+          <h3 className="settings-group-title settings-account-title">
+            {t("Your account")}
+          </h3>
+          <ul className="settings-list">
+            <li>
+              <button
+                className="settings-list-row settings-account-row"
+                onClick={() => setSection("account")}
+              >
+                <span aria-hidden="true">
+                  <CircleUserRound size={22} strokeWidth={2} />
+                </span>
+                <span className="settings-row-text">
+                  {t("Open Muse account")}
+                  <small>{t("Ark API key, workspace, and your data")}</small>
+                </span>
+                <RowChevron />
+              </button>
+            </li>
+          </ul>
+          <ul className="settings-list">
+            <li>
+              <button
+                className="settings-list-row settings-destructive settings-sign-out"
+                disabled={signingOut}
+                onClick={() => void signOut()}
+              >
+                <span>{t("Sign out")}</span>
+              </button>
+            </li>
+          </ul>
+          {signOutNotice && (
+            <p className="settings-footnote" role="status">
+              {signOutNotice}
+            </p>
+          )}
+        </>
+      ) : (
         <ul className="settings-list">
-          <Row
-            icon={<KeyRound size={22} strokeWidth={2} />}
-            label={t("Account and workspace")}
-            onClick={() => setSection("account")}
-          />
+          <li>
+            <button
+              className="settings-list-row settings-destructive"
+              disabled={resetting}
+              onClick={() => setSection("reset")}
+            >
+              <span>
+                {resetting ? t("Resetting…") : t("Reset this device")}
+              </span>
+            </button>
+          </li>
         </ul>
       )}
-      <ul className="settings-list">
-        <li>
-          <button
-            className="settings-list-row settings-destructive"
-            disabled={resetting}
-            onClick={() => setSection("reset")}
-          >
-            <span>{resetting ? t("Resetting…") : t("Reset this device")}</span>
-          </button>
-        </li>
-      </ul>
       {section === "model" && (
         <ModelSheet client={client} onClose={close} onChanged={setModel} />
       )}
@@ -321,6 +385,7 @@ export function SettingsHome({
             client={client}
             onClose={close}
             onChanged={onConnection}
+            onReset={() => setSection("reset")}
           />
         ) : (
           <Sheet title={t("Account and workspace")} onClose={close} grouped>

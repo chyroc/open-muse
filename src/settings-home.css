@@ -196,6 +196,19 @@
   flex: 0 1 auto;
   color: #ff3b30;
 }
+/* The account at the foot of Settings, titled at the list's own size. */
+.settings-group-title.settings-account-title {
+  /* The page's 24px gap already sits above; keep the title near its row. */
+  margin: 0 16px -14px;
+  font-size: 16px;
+}
+.settings-account-row .settings-row-text small {
+  font-size: 15px;
+}
+/* Signing out reads as a plain red label at the row's start. */
+.settings-list-row.settings-destructive.settings-sign-out {
+  justify-content: flex-start;
+}
 .settings-reset-copy {
   margin: 0 0 18px;
   padding: 18px;

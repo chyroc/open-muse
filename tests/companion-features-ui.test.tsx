@@ -190,7 +190,17 @@ describe("Settings home", () => {
       expect(html).toContain(label);
     // Studio is not listed in Settings.
     expect(html).not.toContain("MA Studio");
-    expect(html).toContain("Reset this device");
+    // The page ends with the account and signing out of it, in that order;
+    // resetting the device moved into the account's sheet.
+    expect(html.indexOf("Your account")).toBeGreaterThan(html.indexOf("About"));
+    expect(html.indexOf("Sign out")).toBeGreaterThan(
+      html.indexOf("Your account"),
+    );
+    expect(html).not.toContain("Reset this device");
+    // Permissions come before message channels.
+    expect(html.indexOf("Permissions")).toBeLessThan(
+      html.indexOf("Message channels"),
+    );
     expect(html).toContain("Language");
     expect(html).toContain("Follow system");
     expect(t("Follow system", {}, "zh-CN")).toBe("跟随系统");
