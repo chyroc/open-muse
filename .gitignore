@@ -35,6 +35,12 @@ android/local.properties
 android/app/build/
 macos/.build/
 
+# Device pairing identity written by go-ios (`ios tunnel start`) in its
+# working directory; it holds a private key.
+selfIdentity.plist
+# A separate private repository cloned for local use
+/open-muse-local/
+
 # Local agent instructions
 /AGENTS.local.md
 /CLAUDE.local.md
