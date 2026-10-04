@@ -905,6 +905,9 @@ function Workspace({
       setAwayFromBottom(false);
       let sessionId = activeId;
       try {
+        // Sent before the launch check finished: it waits for that check.
+        if (!config && (await client.config()).mode !== "ark")
+          throw new Error(t("Add an Ark API key to start chatting"));
         if (goalInitiation || goalDraft) await client.prepareGoals();
         if (!sessionId || sessionId === index.mainId) {
           const session = await client.openConversation(
@@ -1666,12 +1669,14 @@ function Workspace({
                         welcome.phase,
                       ),
                     )) ||
-                  config?.mode !== "ark" ||
+                  // While the connection and the conversation are still
+                  // being read at launch, a message can already be sent: it
+                  // waits for them (see sendMessage).
+                  config?.mode === "disconnected" ||
                   Boolean(
                     activeId &&
-                    (!task.session ||
-                      (task.session.status === "terminated" &&
-                        activeId !== index.mainId)),
+                    task.session?.status === "terminated" &&
+                    activeId !== index.mainId,
                   ) ||
                   pendingTools.length > 0
                 }
