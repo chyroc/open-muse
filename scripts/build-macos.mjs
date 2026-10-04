@@ -1,11 +1,13 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import {
   mkdir,
   copyFile,
   cp,
   mkdtemp,
   readFile,
+  readdir,
   rename,
+  rm,
   writeFile,
 } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
@@ -243,4 +245,29 @@ try {
   if (error.code !== "ENOENT") throw error;
 }
 await rename(app, destination);
+// Each build parks the replaced app in its staging directory. Left in place,
+// these copies pile up and all register the same bundle ID, so LaunchServices
+// can resolve the ID to a stale copy. Remove the ones nothing has open; a copy
+// that is still running stays, but is unregistered.
+const lsregister =
+  "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister";
+for (const entry of await readdir(output)) {
+  if (!entry.startsWith("direct-build-")) continue;
+  const directory = path.join(output, entry);
+  // lsof can list a process and still exit 1, so only its output counts.
+  const { stdout } = spawnSync("lsof", ["-t", "+D", directory], {
+    encoding: "utf8",
+  });
+  if (!stdout?.trim()) {
+    await rm(directory, { recursive: true, force: true });
+    continue;
+  }
+  const previous = path.join(directory, "Previous Open Muse.app");
+  if (existsSync(previous))
+    try {
+      execFileSync(lsregister, ["-u", previous], { stdio: "pipe" });
+    } catch {
+      // Unregistering is best effort; the copy itself is left alone.
+    }
+}
 console.log(`Built ${destination}`);
