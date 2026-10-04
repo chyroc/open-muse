@@ -5,6 +5,7 @@ import { buildCommit } from "./build-info";
 import { shellVersion } from "./devices";
 import { Sheet } from "./MusePages";
 import { nativeMobile } from "./platform";
+import { shellSystem } from "./DevicesSheet";
 import { Share } from "@capacitor/share";
 import "./report-sheet.css";
 
@@ -44,14 +45,6 @@ export function reportText(
     `Version: ${buildCommit || "development build"}${shellVersion() ? ` (${shellVersion()})` : ""}`,
     `System: ${system || "unknown"}`,
   ].join("\n");
-}
-
-// The system name and version from the iPhone app (WebKit's user agent
-// reports a frozen one), or "" outside it.
-function shellSystem() {
-  const value = (globalThis as { __OPEN_MUSE_SYSTEM__?: unknown })
-    .__OPEN_MUSE_SYSTEM__;
-  return typeof value === "string" && /^[\w. ]{1,40}$/.test(value) ? value : "";
 }
 
 // Settings > Report a problem: what went wrong, screenshots, and which part

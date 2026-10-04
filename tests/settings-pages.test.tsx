@@ -100,11 +100,17 @@ describe("Settings pages", () => {
     );
   });
 
-  it("lists this device and describes others without an account", () => {
+  it("lists this device and describes others before signing in", () => {
     const html = renderToStaticMarkup(<DevicesSheet onClose={() => {}} />);
     expect(html).toContain("This device");
     expect(html).toContain("Other devices");
-    expect(html).toContain("Devices signed in to the same Open Muse account");
+    expect(html).toContain(
+      "Devices signed in to your Open Muse account appear here once you sign in.",
+    );
+    // Each device opens its details; removing one happens there.
+    expect(html).toContain('class="row-chevron"');
+    expect(html).not.toContain("Remove");
+    expect(t("Last seen", {}, "zh-CN")).toBe("上次在线");
     expect(lastSeen(0, 30_000)).toBe("Online");
   });
 

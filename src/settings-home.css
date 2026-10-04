@@ -205,6 +205,10 @@
 .settings-account-row .settings-row-text small {
   font-size: 15px;
 }
+/* Taking a device off the list sits apart from its details. */
+.settings-list.device-remove {
+  margin-top: 24px;
+}
 /* Signing out reads as a plain red label at the row's start. */
 .settings-list-row.settings-destructive.settings-sign-out {
   justify-content: flex-start;
@@ -243,7 +247,8 @@
   transform: scale(0.97);
   opacity: 0.75;
 }
-.settings-list-row > .settings-row-value {
+.settings-list-row > .settings-row-value,
+.settings-list-row > span.settings-row-value:nth-child(2) {
   flex: 0 0 auto;
   font-size: 17px;
   color: #69696b;

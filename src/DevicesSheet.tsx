@@ -4,8 +4,14 @@ import { formatLocale, t } from "../shared/i18n";
 import type { DeviceRecord } from "../shared/devices";
 import { backgroundClient } from "./background-client";
 import { buildCommit } from "./build-info";
-import { accountDevices, thisDeviceId, thisDeviceName } from "./devices";
+import {
+  accountDevices,
+  shellVersion,
+  thisDeviceId,
+  thisDeviceName,
+} from "./devices";
 import { Sheet } from "./MusePages";
+import { RowChevron } from "./SettingsHome";
 
 // When a device was last seen, in the person's language.
 export function lastSeen(at: number, now = Date.now()) {
@@ -23,11 +29,31 @@ export function lastSeen(at: number, now = Date.now()) {
 const kind = (platform: DeviceRecord["platform"]) =>
   platform === "ios" ? "iPhone" : "Mac";
 
-// This iPhone, then the account's other devices as the service last saw them.
-// Removing a device only takes it off this list; it stays signed in.
+// The system name and version from the iPhone app (WebKit's user agent
+// reports a frozen one), or "" outside it.
+export function shellSystem() {
+  const value = (globalThis as { __OPEN_MUSE_SYSTEM__?: unknown })
+    .__OPEN_MUSE_SYSTEM__;
+  return typeof value === "string" && /^[\w. ]{1,40}$/.test(value) ? value : "";
+}
+
+type Shown = {
+  name: string;
+  platform: DeviceRecord["platform"];
+  status: string;
+  version: string;
+  system?: string;
+  // Other devices can be taken off the list; this one cannot.
+  record?: DeviceRecord;
+};
+
+// This iPhone, then the account's other devices as the service last saw them,
+// each opening its details. Removing a device only takes it off this list; it
+// stays signed in.
 export function DevicesSheet({ onClose }: { onClose: () => void }) {
   const [devices, setDevices] = useState<DeviceRecord[]>();
   const [error, setError] = useState("");
+  const [open, setOpen] = useState<Shown>();
   const account = accountDevices();
   const id = thisDeviceId();
   const load = useCallback(() => {
@@ -38,25 +64,45 @@ export function DevicesSheet({ onClose }: { onClose: () => void }) {
       .catch((failure: Error) => setError(failure.message));
   }, [account]);
   useEffect(load, [load]);
-  const others = (devices ?? []).filter((device) => device.id !== id);
+  const current: Shown = {
+    name: thisDeviceName("iPhone"),
+    platform: "ios",
+    status: t("Online"),
+    version: shellVersion() || buildCommit || "",
+    system: shellSystem(),
+  };
+  const others: Shown[] = (devices ?? [])
+    .filter((device) => device.id !== id)
+    .map((device) => ({
+      name: device.name,
+      platform: device.platform,
+      status: lastSeen(device.last_seen_at),
+      version: device.app_version,
+      record: device,
+    }));
+  const remove = (device: DeviceRecord) => {
+    if (
+      !confirm(
+        t(
+          "Remove {name} from this list? It stays signed in and shows up again the next time it opens Open Muse.",
+          { name: device.name },
+        ),
+      )
+    )
+      return;
+    void backgroundClient
+      .forgetDevice(device.id)
+      .then(() => {
+        setOpen(undefined);
+        load();
+      })
+      .catch((failure: Error) => setError(failure.message));
+  };
   return (
     <Sheet title={t("Devices")} onClose={onClose} grouped>
       <h3 className="settings-group-title">{t("This device")}</h3>
       <ul className="settings-list">
-        <li>
-          <div className="settings-list-row">
-            <span aria-hidden="true">
-              <Smartphone size={22} strokeWidth={2} />
-            </span>
-            <span className="settings-row-text">
-              {thisDeviceName("iPhone")}
-              <small>
-                iPhone · {t("Online")}
-                {buildCommit ? ` · ${buildCommit}` : ""}
-              </small>
-            </span>
-          </div>
-        </li>
+        <DeviceRow device={current} onOpen={() => setOpen(current)} />
       </ul>
       <h3 className="settings-group-title">{t("Other devices")}</h3>
       <ul className="settings-list">
@@ -64,7 +110,7 @@ export function DevicesSheet({ onClose }: { onClose: () => void }) {
           <li>
             <p className="settings-list-note">
               {t(
-                "Devices signed in to the same Open Muse account appear here. Without an account, each device keeps its own data.",
+                "Devices signed in to your Open Muse account appear here once you sign in.",
               )}
             </p>
           </li>
@@ -79,46 +125,13 @@ export function DevicesSheet({ onClose }: { onClose: () => void }) {
             <p className="settings-list-note">{t("No other devices yet.")}</p>
           </li>
         ) : (
-          others.map((device) => {
-            const Icon = device.platform === "ios" ? Smartphone : Laptop;
-            return (
-              <li key={device.id}>
-                <div className="settings-list-row">
-                  <span aria-hidden="true">
-                    <Icon size={22} strokeWidth={2} />
-                  </span>
-                  <span className="settings-row-text">
-                    {device.name}
-                    <small>
-                      {kind(device.platform)} · {lastSeen(device.last_seen_at)}
-                      {` · ${device.app_version}`}
-                    </small>
-                  </span>
-                  <button
-                    className="settings-row-action danger"
-                    aria-label={t("Remove {name}", { name: device.name })}
-                    onClick={() => {
-                      if (
-                        !confirm(
-                          t(
-                            "Remove {name} from this list? It stays signed in and shows up again the next time it opens Open Muse.",
-                            { name: device.name },
-                          ),
-                        )
-                      )
-                        return;
-                      void backgroundClient
-                        .forgetDevice(device.id)
-                        .then(load)
-                        .catch((failure: Error) => setError(failure.message));
-                    }}
-                  >
-                    {t("Remove")}
-                  </button>
-                </div>
-              </li>
-            );
-          })
+          others.map((device) => (
+            <DeviceRow
+              key={device.record!.id}
+              device={device}
+              onOpen={() => setOpen(device)}
+            />
+          ))
         )}
       </ul>
       {error && (
@@ -131,6 +144,68 @@ export function DevicesSheet({ onClose }: { onClose: () => void }) {
           "Each device signs in on its own. This list only shows where your account is used.",
         )}
       </p>
+      {open && (
+        <Sheet title={open.name} onClose={() => setOpen(undefined)} grouped>
+          <ul className="settings-list">
+            <Detail label={t("Type")} value={kind(open.platform)} />
+            <Detail label={t("Last seen")} value={open.status} />
+            {open.system && <Detail label={t("System")} value={open.system} />}
+            {open.version && (
+              <Detail label={t("App version")} value={open.version} />
+            )}
+          </ul>
+          {open.record && (
+            <>
+              <ul className="settings-list device-remove">
+                <li>
+                  <button
+                    className="settings-list-row settings-destructive"
+                    onClick={() => remove(open.record!)}
+                  >
+                    <span>{t("Remove from this list")}</span>
+                  </button>
+                </li>
+              </ul>
+              <p className="settings-footnote">
+                {t(
+                  "The device stays signed in and shows up again the next time it opens Open Muse.",
+                )}
+              </p>
+            </>
+          )}
+        </Sheet>
+      )}
     </Sheet>
+  );
+}
+
+function DeviceRow({ device, onOpen }: { device: Shown; onOpen: () => void }) {
+  const Icon = device.platform === "ios" ? Smartphone : Laptop;
+  return (
+    <li>
+      <button className="settings-list-row" onClick={onOpen}>
+        <span aria-hidden="true">
+          <Icon size={22} strokeWidth={2} />
+        </span>
+        <span className="settings-row-text">
+          {device.name}
+          <small>
+            {kind(device.platform)} · {device.status}
+          </small>
+        </span>
+        <RowChevron />
+      </button>
+    </li>
+  );
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <li>
+      <div className="settings-list-row">
+        <span className="settings-row-text">{label}</span>
+        <span className="settings-row-value">{value}</span>
+      </div>
+    </li>
   );
 }
