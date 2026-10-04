@@ -1,4 +1,5 @@
 import { occurrences, type UpcomingItem } from "../shared/upcoming";
+import { notificationsEnabled } from "./notifications";
 
 // How far ahead, and how many, reminders are handed to the system to announce
 // while Open Muse is closed. The plan is replaced whenever the app refreshes
@@ -45,5 +46,8 @@ export function announceReminders(
   items: readonly UpcomingItem[],
   now = Date.now(),
 ) {
-  bridge()?.postMessage({ items: notificationPlan(items, now) });
+  // Turned off in Settings > Notifications, nothing is announced.
+  bridge()?.postMessage({
+    items: notificationsEnabled() ? notificationPlan(items, now) : [],
+  });
 }

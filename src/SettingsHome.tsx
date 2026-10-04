@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
+  Bell,
   Cpu,
   Info,
   Check,
@@ -30,6 +31,8 @@ import { backgroundClient } from "./background-client";
 import { ChannelsSheet } from "./ChannelsSheet";
 import { DevicesSheet } from "./DevicesSheet";
 import { PermissionsSheet } from "./PermissionsSheet";
+import { NotificationsSheet } from "./NotificationsSheet";
+import { notificationsSupported } from "./notifications";
 import { Sheet } from "./MusePages";
 import { effortLabels, ModelSheet } from "./ModelSheet";
 import { modelOption, type ModelChoice } from "../shared/models";
@@ -42,6 +45,7 @@ type Section =
   | "channels"
   | "checkins"
   | "appearance"
+  | "notifications"
   | "permissions"
   | "model"
   | "language"
@@ -141,6 +145,13 @@ export function SettingsHome({
         )}
       </ul>
       <ul className="settings-list">
+        {signedIn && notificationsSupported() && (
+          <Row
+            icon={<Bell size={22} strokeWidth={2} />}
+            label={t("Notifications")}
+            onClick={() => setSection("notifications")}
+          />
+        )}
         {signedIn && (
           <Row
             icon={<MessageCircleHeart size={22} strokeWidth={2} />}
@@ -295,6 +306,9 @@ export function SettingsHome({
         <AppearanceSheet name={name ?? t("Your assistant")} onClose={close} />
       )}
       {section === "devices" && <DevicesSheet onClose={close} />}
+      {section === "notifications" && (
+        <NotificationsSheet client={client} onClose={close} />
+      )}
       {section === "permissions" && (
         <PermissionsSheet client={client} onClose={close} />
       )}

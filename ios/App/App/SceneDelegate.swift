@@ -104,6 +104,55 @@ final class MuseAppearanceHandler: NSObject, WKScriptMessageHandler {
     }
 }
 
+// Settings > Notifications: whether iOS lets Open Muse notify, asking when
+// the person turns notifications on, and a notification when a reply
+// finishes after the person left the app. Only the bundled main frame can
+// post one.
+final class MuseNotificationsHandler: NSObject, WKScriptMessageHandlerWithReply {
+    static let prefix = "open-muse-reply-"
+    private let center = UNUserNotificationCenter.current()
+
+    func userContentController(_ userContentController: WKUserContentController,
+                               didReceive message: WKScriptMessage,
+                               replyHandler: @escaping (Any?, String?) -> Void) {
+        let origin = message.frameInfo.securityOrigin
+        guard message.frameInfo.isMainFrame, origin.protocol == "capacitor", origin.host == "localhost",
+              let body = message.body as? [String: Any], let operation = body["operation"] as? String
+        else { replyHandler(nil, "Invalid notification request"); return }
+        switch operation {
+        case "status":
+            center.getNotificationSettings { settings in
+                let status: String
+                switch settings.authorizationStatus {
+                case .authorized, .provisional, .ephemeral: status = "allowed"
+                case .denied: status = "denied"
+                default: status = "not-asked"
+                }
+                DispatchQueue.main.async { replyHandler(status, nil) }
+            }
+        case "authorize":
+            center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+                DispatchQueue.main.async { replyHandler(granted ? "allowed" : "denied", nil) }
+            }
+        case "reply":
+            guard let title = body["title"] as? String, !title.isEmpty,
+                  let text = body["body"] as? String
+            else { replyHandler(nil, "Invalid notification"); return }
+            let content = UNMutableNotificationContent()
+            content.title = String(title.prefix(80))
+            content.body = String(text.prefix(240))
+            content.sound = .default
+            content.threadIdentifier = "open-muse-replies"
+            center.add(UNNotificationRequest(identifier: Self.prefix + UUID().uuidString,
+                                             content: content, trigger: nil)) { error in
+                DispatchQueue.main.async { replyHandler(error == nil, nil) }
+            }
+        default:
+            replyHandler(nil, "Unknown notification operation")
+        }
+    }
+}
+
 // Reminders from the person's Upcoming list become local notifications, so a
 // due item is announced while Open Muse is closed. The page sends the full
 // set of upcoming occurrences each time; it replaces every earlier one.
@@ -160,7 +209,10 @@ final class MuseRemindersHandler: NSObject, WKScriptMessageHandler, UNUserNotifi
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 willPresent notification: UNNotification,
                                 withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        completionHandler(notification.request.identifier.hasPrefix(Self.prefix) ? [] : [.banner, .sound])
+        // A finished reply is already on screen in front, too.
+        let identifier = notification.request.identifier
+        completionHandler(identifier.hasPrefix(Self.prefix) || identifier.hasPrefix(MuseNotificationsHandler.prefix)
+            ? [] : [.banner, .sound])
     }
 }
 
@@ -197,6 +249,7 @@ class MuseBridgeViewController: CAPBridgeViewController {
     private let personalHandler = MusePersonalHandler()
     private let hapticsHandler = MuseHapticsHandler()
     private let appearanceHandler = MuseAppearanceHandler()
+    private let notificationsHandler = MuseNotificationsHandler()
     private let remindersHandler = MuseRemindersHandler()
 
     override func capacitorDidLoad() {
@@ -243,6 +296,7 @@ class MuseBridgeViewController: CAPBridgeViewController {
         webView?.configuration.userContentController.addScriptMessageHandler(personalHandler, contentWorld: .page, name: "musePersonal")
         webView?.configuration.userContentController.add(hapticsHandler, contentWorld: .page, name: "museHaptics")
         webView?.configuration.userContentController.add(appearanceHandler, contentWorld: .page, name: "museAppearance")
+        webView?.configuration.userContentController.addScriptMessageHandler(notificationsHandler, contentWorld: .page, name: "museNotifications")
         webView?.configuration.userContentController.add(remindersHandler, contentWorld: .page, name: "museReminders")
         #if DEBUG && targetEnvironment(simulator)
         // Real-MA acceptance uses separate mappings/resources without changing
@@ -303,6 +357,27 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.makeKeyAndVisible()
 
         SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)
+    }
+
+    // Leaving the app keeps it running for the short time iOS allows, so a
+    // reply that is nearly done can finish and be announced.
+    private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
+
+    func sceneDidEnterBackground(_ scene: UIScene) {
+        endBackgroundTask()
+        backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Finish reply") { [weak self] in
+            self?.endBackgroundTask()
+        }
+    }
+
+    func sceneWillEnterForeground(_ scene: UIScene) {
+        endBackgroundTask()
+    }
+
+    private func endBackgroundTask() {
+        guard backgroundTask != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(backgroundTask)
+        backgroundTask = .invalid
     }
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {

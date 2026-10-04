@@ -67,4 +67,10 @@ export const zhSettingsPages: Record<string, string> = {
     "助手每次读取这里的数据前都会先询问你；“拒绝”会直接拒绝所有请求，不再询问。",
   "Only Apple Health reads can be allowed without asking.":
     "只有 Apple 健康的读取可以设为无需询问。",
+  Notifications: "通知",
+  "Allow notifications": "允许通知",
+  "Get notified when your assistant replies after you leave the app, and when an Upcoming reminder is due.":
+    "离开 App 后助手回复时，以及“即将到来”里的提醒到时，接收通知。",
+  "Notifications are off for Open Muse in iOS.":
+    "iOS 已关闭 Open Muse 的通知。",
 };

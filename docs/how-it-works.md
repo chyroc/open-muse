@@ -413,6 +413,15 @@ time there is something to announce and are not shown while the app is in
 front, where the main chat delivers the item itself. There are no remote push
 notifications, and the Mac and web apps show no notifications.
 
+A reply that finishes after the person leaves the iPhone app is announced
+too, with the companion's name and the start of the reply. Leaving the app
+keeps it running for the short time iOS allows (usually under a minute), so
+this covers replies that finish soon after; a longer task shows when the app
+is opened again. Settings > **Notifications** has one switch, on by default,
+for both kinds: turning it off clears the announced reminders and stops reply
+notifications on this device, turning it on asks iOS the first time, and
+when iOS has refused it points to the app's page in iOS Settings.
+
 ### Incoming webhooks
 
 With an Open Muse account, the **Webhooks** card in Settings > Account and

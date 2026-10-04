@@ -77,6 +77,7 @@ import {
   announceReminders,
   reminderNotificationsSupported,
 } from "./reminderNotifications";
+import { notifyReply } from "./notifications";
 import { backgroundClient } from "./background-client";
 import { registerThisIPhone } from "./iphone-device";
 import { ensureBackgroundWork } from "./background-default";
@@ -473,6 +474,14 @@ function Workspace({
           currentEvents,
           task.session?.id === activeId ? task.session?.status : undefined,
         );
+  // A reply that finishes while the app is in the background is announced.
+  const wasRunning = useRef(false);
+  useEffect(() => {
+    const running = state === "running";
+    if (wasRunning.current && !running && document.hidden)
+      notifyReply(currentEvents, companion.name);
+    wasRunning.current = running;
+  }, [state]);
   const alive = useRef(true);
   const [toast, setToast] = useState("");
   const [awayFromBottom, setAwayFromBottom] = useState(false);
