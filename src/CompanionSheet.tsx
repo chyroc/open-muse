@@ -286,7 +286,7 @@ export function CompanionSheet({
           <X size={23} />
         </button>
         <div className="identity-avatar">
-          <CompanionAvatar />
+          <CompanionAvatar alive />
           <button
             className="glass-button"
             aria-label={t("Edit companion name")}

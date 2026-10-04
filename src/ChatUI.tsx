@@ -30,11 +30,18 @@ import { Sheet } from "./MusePages";
 import "./message-quote.css";
 
 // The companion, drawn in CSS. While it works it puts on headphones and
-// types on a laptop.
-export function CompanionAvatar({ working = false }: { working?: boolean }) {
+// types on a laptop. Where it is shown large and alive it idles: it looks
+// around, blinks, and now and then smiles with its eyes.
+export function CompanionAvatar({
+  working = false,
+  alive = false,
+}: {
+  working?: boolean;
+  alive?: boolean;
+}) {
   return (
     <span
-      className={`companion-avatar${working ? " working" : ""}`}
+      className={`companion-avatar${working ? " working" : ""}${alive ? " alive" : ""}`}
       aria-hidden="true"
     >
       <span className="companion-body" />
@@ -184,7 +191,7 @@ export function ChatHeader({
         aria-label={t("{name} status: {status}", { name, status: t(status) })}
         onClick={onStatus}
       >
-        <CompanionAvatar working={Boolean(activity?.working)} />
+        <CompanionAvatar working={Boolean(activity?.working)} alive />
         <span className="companion-name">
           <span className="companion-name-text">{name}</span>
           {activity && (

@@ -240,6 +240,135 @@ html.sidebar-dragging .sidebar-panel {
   border-bottom: 1px solid #8b5a45;
   border-radius: 50%;
 }
+/* Idling while nothing is happening: over one slow loop the companion looks
+   right, then left, its body turning a little with its gaze; it blinks
+   between glances and smiles with its eyes before looking ahead again. Its
+   face moves a few pixels at most. */
+.companion-avatar.alive {
+  --companion-idle-duration: 9.6s;
+}
+.companion-avatar.alive:not(.working) .companion-body {
+  animation: companion-idle-body var(--companion-idle-duration)
+    cubic-bezier(0.45, 0, 0.35, 1) infinite;
+}
+.companion-avatar.alive:not(.working) .companion-face {
+  animation: companion-idle-face var(--companion-idle-duration)
+    cubic-bezier(0.45, 0, 0.35, 1) infinite;
+}
+.companion-avatar.alive:not(.working) .companion-face i {
+  animation: companion-idle-eyes var(--companion-idle-duration) ease-in-out
+    infinite;
+}
+.companion-avatar.alive:not(.working) .companion-face b {
+  animation: companion-idle-smile var(--companion-idle-duration) ease-in-out
+    infinite;
+}
+@keyframes companion-idle-body {
+  0%,
+  66%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  8%,
+  30% {
+    transform: rotate(-0.5deg);
+  }
+  38%,
+  58% {
+    transform: rotate(-5.5deg);
+  }
+}
+@keyframes companion-idle-face {
+  0%,
+  66%,
+  100% {
+    transform: none;
+  }
+  8%,
+  30% {
+    transform: translateX(3px);
+  }
+  38%,
+  58% {
+    transform: translateX(-3px);
+  }
+}
+@keyframes companion-idle-eyes {
+  0%,
+  66%,
+  72%,
+  84%,
+  92%,
+  94.5%,
+  100% {
+    transform: none;
+  }
+  /* A glance right with a blink in it. */
+  8%,
+  19%,
+  21.5%,
+  30% {
+    transform: translateX(1px);
+  }
+  20% {
+    transform: translateX(1px) scaleY(0.1);
+  }
+  /* Then left, with another. */
+  38%,
+  49%,
+  51.5%,
+  58% {
+    transform: translateX(-1px);
+  }
+  50% {
+    transform: translateX(-1px) scaleY(0.1);
+  }
+  /* Eyes closed in a smile. */
+  74%,
+  82% {
+    transform: translateY(0.5px) scaleY(0.3);
+  }
+  93% {
+    transform: scaleY(0.1);
+  }
+}
+@keyframes companion-idle-smile {
+  0%,
+  72%,
+  84%,
+  100% {
+    transform: none;
+  }
+  74%,
+  82% {
+    transform: translateY(0.5px) scaleX(1.3);
+  }
+}
+/* With Reduce Motion the companion keeps still and only blinks. */
+@media (prefers-reduced-motion: reduce) {
+  .companion-avatar.alive:not(.working) .companion-body,
+  .companion-avatar.alive:not(.working) .companion-face,
+  .companion-avatar.alive:not(.working) .companion-face b {
+    animation: none;
+  }
+  .companion-avatar.alive:not(.working) .companion-face i {
+    animation-name: companion-idle-blink;
+  }
+}
+@keyframes companion-idle-blink {
+  0%,
+  19%,
+  21.5%,
+  92%,
+  94.5%,
+  100% {
+    transform: none;
+  }
+  20%,
+  93% {
+    transform: scaleY(0.1);
+  }
+}
 /* While the companion works, its name pill grows a second line saying what
    it is doing, in the accent color when it waits on the person. */
 .companion-subtitle {

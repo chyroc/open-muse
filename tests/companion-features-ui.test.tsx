@@ -8,6 +8,8 @@ import { CheckInSettings } from "../src/CheckInSettings";
 import { ConnectorsSheet } from "../src/ConnectorsSheet";
 import { LarkConnectSheet } from "../src/LarkConnectSheet";
 import { SettingsHome } from "../src/SettingsHome";
+import { CompanionAvatar } from "../src/ChatUI";
+import { readFileSync } from "node:fs";
 import { connectHealth, healthAccess } from "../src/health";
 import { t } from "../shared/i18n";
 
@@ -166,6 +168,26 @@ describe("Connectors", () => {
     expect(postMessage).toHaveBeenLastCalledWith({ operation: "authorize" });
     postMessage.mockResolvedValueOnce("granted");
     await expect(healthAccess()).rejects.toThrow();
+  });
+});
+
+describe("Companion avatar", () => {
+  it("idles only where it is shown alive, and keeps a blink under Reduce Motion", () => {
+    expect(renderToStaticMarkup(<CompanionAvatar alive />)).toContain(
+      'class="companion-avatar alive"',
+    );
+    // Swatches and share cards stay still.
+    expect(renderToStaticMarkup(<CompanionAvatar />)).toContain(
+      'class="companion-avatar"',
+    );
+    // At work it types instead of idling.
+    expect(renderToStaticMarkup(<CompanionAvatar working alive />)).toContain(
+      'class="companion-avatar working alive"',
+    );
+    const css = readFileSync("src/chat.css", "utf8");
+    expect(css).toMatch(
+      /\.companion-avatar\.alive:not\(\.working\) \.companion-face i \{\s*animation-name: companion-idle-blink;/,
+    );
   });
 });
 
