@@ -110,7 +110,7 @@ describe("Settings pages", () => {
     // Each device opens its details; removing one happens there.
     expect(html).toContain('class="row-chevron"');
     expect(html).not.toContain("Remove");
-    expect(t("Last seen", {}, "zh-CN")).toBe("上次在线");
+    expect(t("Last seen", {}, "zh-CN")).toBe("最后上线");
     expect(lastSeen(0, 30_000)).toBe("Online");
   });
 

@@ -3,13 +3,7 @@ import { Laptop, Smartphone } from "lucide-react";
 import { formatLocale, t } from "../shared/i18n";
 import { mergeDevices, type DeviceRecord } from "../shared/devices";
 import { backgroundClient } from "./background-client";
-import { buildCommit } from "./build-info";
-import {
-  accountDevices,
-  shellVersion,
-  thisDeviceId,
-  thisDeviceName,
-} from "./devices";
+import { accountDevices, thisDeviceId, thisDeviceName } from "./devices";
 import { Sheet } from "./MusePages";
 import { RowChevron } from "./SettingsHome";
 
@@ -28,6 +22,8 @@ export function lastSeen(at: number, now = Date.now()) {
 
 const kind = (platform: DeviceRecord["platform"]) =>
   platform === "ios" ? "iPhone" : "Mac";
+const system = (platform: DeviceRecord["platform"]) =>
+  platform === "ios" ? "iOS" : "macOS";
 
 // The system name and version from the iPhone app (WebKit's user agent
 // reports a frozen one), or "" outside it.
@@ -40,9 +36,10 @@ export function shellSystem() {
 type Shown = {
   name: string;
   platform: DeviceRecord["platform"];
+  // What the device is, and when it was last seen.
+  model: string;
   status: string;
-  version: string;
-  system?: string;
+  system: string;
   // Other devices can be taken off the list; this one cannot.
   record?: DeviceRecord & { ids: string[] };
 };
@@ -67,17 +64,21 @@ export function DevicesSheet({ onClose }: { onClose: () => void }) {
   const current: Shown = {
     name: thisDeviceName("iPhone"),
     platform: "ios",
-    status: t("Online"),
-    version: shellVersion() || buildCommit || "",
-    system: shellSystem(),
+    model: thisDeviceName("iPhone"),
+    status: t("Now"),
+    system: shellSystem() || system("ios"),
   };
   const others: Shown[] = mergeDevices(devices ?? [])
     .filter((device) => !device.ids.includes(id ?? ""))
     .map((device) => ({
       name: device.name,
       platform: device.platform,
-      status: lastSeen(device.last_seen_at),
-      version: device.app_version,
+      model: kind(device.platform),
+      status:
+        Date.now() - device.last_seen_at < 120_000
+          ? t("Now")
+          : lastSeen(device.last_seen_at),
+      system: system(device.platform),
       record: device,
     }));
   const remove = (device: DeviceRecord & { ids: string[] }) => {
@@ -156,12 +157,9 @@ export function DevicesSheet({ onClose }: { onClose: () => void }) {
       {open && (
         <Sheet title={open.name} onClose={() => setOpen(undefined)} grouped>
           <ul className="settings-list">
-            <Detail label={t("Type")} value={kind(open.platform)} />
+            <Detail label={t("Device")} value={open.model} />
             <Detail label={t("Last seen")} value={open.status} />
-            {open.system && <Detail label={t("System")} value={open.system} />}
-            {open.version && (
-              <Detail label={t("App version")} value={open.version} />
-            )}
+            <Detail label={t("Operating system")} value={open.system} />
           </ul>
           {open.record && (
             <>
@@ -196,12 +194,7 @@ function DeviceRow({ device, onOpen }: { device: Shown; onOpen: () => void }) {
         <span aria-hidden="true">
           <Icon size={22} strokeWidth={2} />
         </span>
-        <span className="settings-row-text">
-          {device.name}
-          <small>
-            {kind(device.platform)} · {device.status}
-          </small>
-        </span>
+        <span>{device.name}</span>
         <RowChevron />
       </button>
     </li>

@@ -180,9 +180,10 @@ export const zhDesktop: Record<string, string> = {
   "Other devices": "其他设备",
   "Devices signed in to your Open Muse account appear here once you sign in.":
     "登录后，这里会显示登录了你 Open Muse 账号的设备。",
-  Type: "类型",
-  "Last seen": "上次在线",
-  "App version": "App 版本",
+  "Last seen": "最后上线",
+  Device: "设备",
+  "Operating system": "操作系统",
+  Now: "现在",
   "Remove from this list": "从列表中移除",
   "The device stays signed in and shows up again the next time it opens Open Muse.":
     "该设备仍保持登录，下次打开 Open Muse 时会重新出现。",
