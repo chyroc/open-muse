@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { formatLocale, t } from "../../shared/i18n";
 import { sideChatDrawerCopy } from "./labels";
+import { panelOpacity } from "./PanelEdge";
 
 // The side-chat panel docked next to the rail: its width, the range a drag on
 // its edge can resize it to, and how far past the narrowest width a drag has
@@ -306,6 +307,28 @@ function PanelEdge({
         if (start) onWidth(start.width, true);
       }}
     />
+  );
+}
+
+// While side chats are pulled in from the rail, the panel shows only as wide
+// as the pull and fades in over its first stretch.
+export function PullFrame({
+  pull,
+  width,
+  children,
+}: {
+  pull?: number;
+  width: number;
+  children: ReactNode;
+}) {
+  if (pull === undefined) return <>{children}</>;
+  return (
+    <div
+      className="chat-drawer-pull"
+      style={{ width: pull, opacity: panelOpacity(pull, width) }}
+    >
+      <div style={{ marginLeft: pull - width, width }}>{children}</div>
+    </div>
   );
 }
 

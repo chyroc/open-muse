@@ -24,9 +24,18 @@ export const panelCloseRemainder = (width: number) =>
     Math.max(0, width - panelEdge.closeOvershoot),
   );
 
-// How much of a right-side panel a drag from `startX` to `clientX` reveals.
-export const panelReveal = (startX: number, clientX: number, width: number) =>
-  Math.min(width, Math.max(0, startX - clientX));
+// How much of a panel a drag from `startX` to `clientX` reveals: a panel on
+// the right is pulled leftwards, one on the left rightwards.
+export const panelReveal = (
+  startX: number,
+  clientX: number,
+  width: number,
+  side: "left" | "right" = "right",
+) =>
+  Math.min(
+    width,
+    Math.max(0, side === "right" ? startX - clientX : clientX - startX),
+  );
 
 export const panelOpacity = (reveal: number, width: number) =>
   width <= 0 ? 1 : Math.min(1, Math.max(0, reveal / width) / panelEdge.fadeEnd);
@@ -49,12 +58,19 @@ export function PanelEdgeHandle({
   mode,
   width,
   label,
+  side = "right",
+  tooltip = true,
   onDrag,
   onCommit,
 }: {
   mode: "open" | "close";
   width: number;
   label: string;
+  // Which side of the window the panel lives on.
+  side?: "left" | "right";
+  // Whether the edge names itself with the system tooltip; an edge with its
+  // own hint card turns it off.
+  tooltip?: boolean;
   onDrag: (drag: PanelDrag) => void;
   onCommit: (open: boolean) => void;
 }) {
@@ -77,7 +93,7 @@ export function PanelEdgeHandle({
         mode === "open"
           ? {
               kind: "opening",
-              reveal: panelReveal(start.x, event.clientX, size),
+              reveal: panelReveal(start.x, event.clientX, size, side),
             }
           : {
               kind: "closing",
@@ -85,7 +101,7 @@ export function PanelEdgeHandle({
             },
       );
     },
-    [mode],
+    [mode, side],
   );
   const end = useCallback(
     (event: PointerEvent<HTMLDivElement>, cancelled = false) => {
@@ -99,19 +115,20 @@ export function PanelEdgeHandle({
       if (!start.moved) return commit(mode === "open");
       if (mode === "open")
         commit(
-          panelReveal(start.x, event.clientX, size) >= panelEdge.openThreshold,
+          panelReveal(start.x, event.clientX, size, side) >=
+            panelEdge.openThreshold,
         );
       else commit(!panelClosePreview(start.x, event.clientX, size));
     },
-    [mode],
+    [mode, side],
   );
   return (
     <div
-      className={`panel-edge panel-edge-${mode}`}
+      className={`panel-edge panel-edge-${mode} panel-edge-${side}`}
       role="separator"
       aria-orientation="vertical"
       aria-label={label}
-      title={label}
+      title={tooltip ? label : undefined}
       onPointerDown={(event) => {
         if (event.button !== 0 || !event.isPrimary) return;
         event.preventDefault();

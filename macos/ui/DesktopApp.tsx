@@ -96,6 +96,7 @@ import {
 import { canAutoApprove } from "../../shared/approval-policy";
 import { Avatar, Empty, Modal, Rail } from "./Chrome";
 import {
+  PullFrame,
   SideChatsPanel,
   keepChatPanelVisible,
   setKeepChatPanelVisible,
@@ -188,6 +189,10 @@ export function DesktopApp({ client }: { client: Client }) {
   const [keepPanel, setKeepPanel] = useState(keepChatPanelVisible);
   const [drawer, setDrawer] = useState(keepChatPanelVisible);
   const [drawerWidth, setDrawerWidth] = useState(storedChatPanelWidth);
+  // How far a pull from the rail's edge has brought the side chats in, and
+  // where the pointer rests on that edge while its hint shows.
+  const [drawerPull, setDrawerPull] = useState<number>();
+  const [edgeHint, setEdgeHint] = useState<number>();
   const keepPanelRef = useRef(keepPanel);
   keepPanelRef.current = keepPanel;
   // Choosing something from the panel closes it unless it is pinned.
@@ -1227,60 +1232,106 @@ export function DesktopApp({ client }: { client: Client }) {
             : openSettings()
         }
       />
+      {/* Away from a pinned panel, the rail's edge opens side chats: a click,
+          or a pull to the right that the panel follows. */}
+      {!drawer && !document && (route.page === "chat" || !keepPanel) && (
+        <div
+          className="rail-edge"
+          // The hint follows the pointer and steps aside during a pull.
+          onPointerMove={(event) =>
+            setEdgeHint(event.buttons ? undefined : event.clientY)
+          }
+          onPointerLeave={() => setEdgeHint(undefined)}
+        >
+          <PanelEdgeHandle
+            mode="open"
+            side="left"
+            tooltip={false}
+            width={drawerWidth}
+            label={t("Click or drag to open side chats")}
+            onDrag={(drag) => {
+              setEdgeHint(undefined);
+              setDrawerPull(drag.kind === "opening" ? drag.reveal : undefined);
+            }}
+            onCommit={(open) => {
+              setDrawerPull(undefined);
+              if (open) setDrawer(true);
+            }}
+          />
+          {edgeHint !== undefined && (
+            <div
+              className="rail-edge-hint"
+              style={{ top: edgeHint }}
+              aria-hidden="true"
+            >
+              <strong>{t("Side chats")}</strong>
+              <span>{t("Click or drag to open")}</span>
+            </div>
+          )}
+        </div>
+      )}
       {/* A pinned panel docks on the chat page only; elsewhere it waits there
           until the person comes back to the chat. */}
-      {drawer && !document && (route.page === "chat" || !keepPanel) && (
-        <SideChatsPanel
-          chats={sideChats(sessions, index, "").map(panelRow)}
-          archivedChats={sideChats(sessions, index, "", true).map(panelRow)}
-          main={(() => {
-            const session = sessions.find((item) => item.id === index.mainId);
-            return session ? { updatedAt: panelRow(session).updatedAt } : {};
-          })()}
-          activeId={id}
-          mainActive={
-            route.page === "chat" &&
-            !route.newSide &&
-            (!id || id === index.mainId)
-          }
-          drafting={route.page === "chat" && Boolean(route.newSide)}
-          query={query}
-          onQuery={setQuery}
-          keepVisible={keepPanel}
-          onKeepVisible={(value) => {
-            setKeepChatPanelVisible(value);
-            setKeepPanel(value);
-          }}
-          width={drawerWidth}
-          onWidth={(value, done) => {
-            setDrawerWidth(value);
-            if (done) storeChatPanelWidth(value);
-          }}
-          onClose={() => {
-            setKeepChatPanelVisible(false);
-            setKeepPanel(false);
-            setDrawer(false);
-          }}
-          onOpenMain={() => {
-            navigate("/");
-            settleDrawer();
-          }}
-          onOpenChat={(chat) => {
-            const session = sessions.find((item) => item.id === chat);
-            if (session) openChat(session);
-          }}
-          onNewChat={() => {
-            navigate("/new");
-            settleDrawer();
-          }}
-          onUnarchive={(chat) =>
-            void action(async () => {
-              await client.archiveConversation(chat, false);
-              await reload();
-            })
-          }
-        />
-      )}
+      {(drawer || drawerPull !== undefined) &&
+        !document &&
+        (route.page === "chat" || !keepPanel) && (
+          <PullFrame pull={drawer ? undefined : drawerPull} width={drawerWidth}>
+            <SideChatsPanel
+              chats={sideChats(sessions, index, "").map(panelRow)}
+              archivedChats={sideChats(sessions, index, "", true).map(panelRow)}
+              main={(() => {
+                const session = sessions.find(
+                  (item) => item.id === index.mainId,
+                );
+                return session
+                  ? { updatedAt: panelRow(session).updatedAt }
+                  : {};
+              })()}
+              activeId={id}
+              mainActive={
+                route.page === "chat" &&
+                !route.newSide &&
+                (!id || id === index.mainId)
+              }
+              drafting={route.page === "chat" && Boolean(route.newSide)}
+              query={query}
+              onQuery={setQuery}
+              keepVisible={keepPanel}
+              onKeepVisible={(value) => {
+                setKeepChatPanelVisible(value);
+                setKeepPanel(value);
+              }}
+              width={drawerWidth}
+              onWidth={(value, done) => {
+                setDrawerWidth(value);
+                if (done) storeChatPanelWidth(value);
+              }}
+              onClose={() => {
+                setKeepChatPanelVisible(false);
+                setKeepPanel(false);
+                setDrawer(false);
+              }}
+              onOpenMain={() => {
+                navigate("/");
+                settleDrawer();
+              }}
+              onOpenChat={(chat) => {
+                const session = sessions.find((item) => item.id === chat);
+                if (session) openChat(session);
+              }}
+              onNewChat={() => {
+                navigate("/new");
+                settleDrawer();
+              }}
+              onUnarchive={(chat) =>
+                void action(async () => {
+                  await client.archiveConversation(chat, false);
+                  await reload();
+                })
+              }
+            />
+          </PullFrame>
+        )}
       {document && (
         <Suspense
           fallback={

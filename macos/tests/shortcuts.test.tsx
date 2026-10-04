@@ -145,6 +145,49 @@ describe("Mac rail menu and shortcuts", () => {
     expect(host!.querySelector(".toolbar-avatar")).toBeTruthy();
     expect(localStorage.getItem("open-muse.status-panel.open")).toBe("false");
   });
+  it("opens side chats from the rail's edge by a click or a pull", async () => {
+    await mount();
+    const edge = () =>
+      host!.querySelector<HTMLElement>(".rail-edge .panel-edge")!;
+    const pointer = (type: string, x: number) =>
+      act(async () => {
+        edge().dispatchEvent(
+          new PointerEvent(type, {
+            bubbles: true,
+            button: 0,
+            buttons: type === "pointerup" ? 0 : 1,
+            isPrimary: true,
+            clientX: x,
+            clientY: 300,
+          }),
+        );
+      });
+    expect(host!.querySelector(".chat-drawer")).toBeNull();
+    await act(async () =>
+      host!
+        .querySelector(".rail-edge")!
+        .dispatchEvent(
+          new PointerEvent("pointermove", { bubbles: true, clientY: 300 }),
+        ),
+    );
+    expect(host!.querySelector(".rail-edge-hint")?.textContent).toBe(
+      "Side chatsClick or drag to open",
+    );
+    await pointer("pointerdown", 78);
+    await pointer("pointermove", 128);
+    const pull = host!.querySelector<HTMLElement>(".chat-drawer-pull")!;
+    expect(pull.style.width).toBe("50px");
+    expect(host!.querySelector(".rail-edge-hint")).toBeNull();
+    // Too short a pull springs back.
+    await pointer("pointerup", 128);
+    expect(host!.querySelector(".chat-drawer")).toBeNull();
+    await pointer("pointerdown", 78);
+    await pointer("pointermove", 160);
+    await pointer("pointerup", 160);
+    expect(host!.querySelector(".chat-drawer")).toBeTruthy();
+    expect(host!.querySelector(".chat-drawer-pull")).toBeNull();
+    expect(host!.querySelector(".rail-edge")).toBeNull();
+  });
   it("translates every shortcut", () => {
     for (const { label } of shortcuts) expect(zhCN[label], label).toBeTruthy();
   });

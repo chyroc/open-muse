@@ -2559,6 +2559,68 @@ h3 {
 .panel-edge:active::after {
   opacity: 1;
 }
+/* The rail's own edge opens side chats from the left. */
+.panel-edge-open.panel-edge-left {
+  right: auto;
+  left: 0;
+  cursor: e-resize;
+}
+.panel-edge-open.panel-edge-left::after {
+  right: auto;
+  left: 4px;
+}
+.rail-edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 73px;
+  width: 10px;
+  z-index: 25;
+}
+/* Names the edge beside the pointer: what it opens and how. */
+.rail-edge-hint {
+  position: absolute;
+  left: 21px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--elevation-1);
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateY(-50%);
+  animation: rail-edge-hint-in 0.15s ease-out both;
+}
+.rail-edge-hint strong {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+.rail-edge-hint span {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-2);
+}
+@keyframes rail-edge-hint-in {
+  from {
+    opacity: 0;
+    transform: translate(-4px, -50%);
+  }
+}
+/* The panel slides out from behind the rail: its trailing edge shows first. */
+.chat-drawer-pull {
+  flex-shrink: 0;
+  display: flex;
+  overflow: hidden;
+}
+.chat-drawer-pull > div {
+  display: flex;
+  flex-shrink: 0;
+}
 @media (prefers-reduced-motion: reduce) {
   .status-surface[data-preview="closing"] {
     transition: width 0.12s ease-out;

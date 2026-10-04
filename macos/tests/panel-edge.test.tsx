@@ -58,6 +58,9 @@ describe("status panel edge", () => {
   it("reveals a pulled panel with the pointer and fades it in early", () => {
     expect(panelReveal(1000, 990, 345)).toBe(10);
     expect(panelReveal(1000, 400, 345)).toBe(345);
+    // A panel on the left is pulled rightwards.
+    expect(panelReveal(78, 128, 240, "left")).toBe(50);
+    expect(panelReveal(78, 40, 240, "left")).toBe(0);
     expect(panelReveal(1000, 1010, 345)).toBe(0);
     expect(panelOpacity(0, 345)).toBe(0);
     expect(panelOpacity(345 * panelEdge.fadeEnd, 345)).toBe(1);
