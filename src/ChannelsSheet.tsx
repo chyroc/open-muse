@@ -122,6 +122,9 @@ export function ChannelsSheet({
               ),
             })
           : t("Connected · waiting for the first message");
+  const readyNote = t(
+    "Messages arrive once background work has started for your account and Deliver even when Open Muse is closed is on in Upcoming.",
+  );
   const icon = (
     <span className="channel-icon app-icon" aria-hidden="true">
       <AppIcon id="lark" />
@@ -130,9 +133,7 @@ export function ChannelsSheet({
   return (
     <Sheet title={t("Message channels")} onClose={onClose} grouped>
       <p className="channels-intro">
-        {t(
-          "Message your assistant from another app, like texting anyone else. It answers there, and the conversation also shows here.",
-        )}
+        {t("Chat with your assistant from other messaging apps.")}
       </p>
       <h3 className="settings-group-title">
         {hook ? t("Connected") : t("Available")}
@@ -141,16 +142,13 @@ export function ChannelsSheet({
         <li>
           <button className="settings-list-row" onClick={() => setOpen(true)}>
             {icon}
-            <span className="settings-row-text">
-              {t("Lark")}
-              <small>{status}</small>
-            </span>
+            <span>{t("Lark")}</span>
             <RowChevron />
           </button>
         </li>
       </ul>
       {open && (
-        <Sheet title={t("Lark")} onClose={() => setOpen(false)} grouped>
+        <Sheet title="" onClose={() => setOpen(false)} grouped>
           {larkSetup && (
             <LarkConnectSheet
               name={t("Your assistant")}
@@ -159,131 +157,135 @@ export function ChannelsSheet({
               onClose={() => setLarkSetup(false)}
             />
           )}
-          <ul className="settings-list">
-            <li>
-              <div className="settings-list-row">
-                {icon}
-                <span className="settings-row-text">
-                  {t("Lark")}
-                  <small>{status}</small>
-                </span>
-                {account && data && !hook && (
+          <div className="channel-detail">
+            {/* The channel itself: its app, where it stands, and what
+              connecting it means; connecting waits at the foot. */}
+            <div className="channel-hero">
+              <span className="channel-hero-icon" aria-hidden="true">
+                <AppIcon id="lark" />
+              </span>
+              <h2>{t("Lark")}</h2>
+              {(hook || !account) && (
+                <p className="channel-hero-status">{status}</p>
+              )}
+              <p>
+                {t("Once connected, you can message your assistant from Lark.")}
+              </p>
+              <p>
+                {t(
+                  "Your assistant only reads the messages sent to your bot, never your other Lark chats, and acts on them only after confirming they come from your own Lark account. You can disconnect at any time.",
+                )}
+              </p>
+            </div>
+            {error && (
+              <p className="settings-footnote" role="alert">
+                {error}
+              </p>
+            )}
+            {hook && data && !ready && (
+              <p className="settings-footnote">{readyNote}</p>
+            )}
+            {address && (
+              <section className="channel-setup">
+                <h3>{t("Finish in Lark")}</h3>
+                <p>
+                  {t(
+                    "This address is shown only now. Copy it, or let your assistant set Lark up with it.",
+                  )}
+                </p>
+                <button
+                  className="channel-address"
+                  onClick={() =>
+                    void navigator.clipboard?.writeText(address).then(
+                      () => setCopied(true),
+                      () => {},
+                    )
+                  }
+                >
+                  <code>{address}</code>
+                  <span>
+                    <Copy size={15} aria-hidden="true" />
+                    {copied ? t("Copied") : t("Copy")}
+                  </span>
+                </button>
+                <ol>
+                  <li>
+                    {t(
+                      "In the Lark developer console, open the app your assistant uses with lark-cli and turn on its bot.",
+                    )}
+                  </li>
+                  <li>
+                    {t(
+                      "Under Events and callbacks, send events to this address and add the event for receiving messages (im.message.receive_v1). Leave the encrypt key empty.",
+                    )}
+                  </li>
+                  <li>
+                    {t(
+                      "Publish the app version, then send your bot a message in Lark.",
+                    )}
+                  </li>
+                </ol>
+                <button
+                  className="button primary"
+                  onClick={() =>
+                    onDraft(
+                      t(
+                        "Set up my Lark message channel: for the Lark app you use with lark-cli, turn on the bot, send its message events (im.message.receive_v1) to {address} with no encrypt key, and publish it. Tell me what I still need to do in the Lark console.",
+                        { address },
+                      ),
+                    )
+                  }
+                >
+                  {t("Ask my assistant to set it up")}
+                </button>
+              </section>
+            )}
+            {hook && !address && (
+              <ul className="settings-list channel-actions">
+                <li>
                   <button
-                    className="connector-connect"
+                    className="settings-list-row"
                     disabled={busy}
                     onClick={() => void connect()}
                   >
-                    {busy ? (
-                      <LoaderCircle size={16} className="spin" />
-                    ) : (
-                      t("Connect")
-                    )}
+                    <span className="settings-row-text">
+                      {t("Get a new address")}
+                      <small>
+                        {t(
+                          "The current address stops working. Use the new one in Lark.",
+                        )}
+                      </small>
+                    </span>
                   </button>
-                )}
-              </div>
-            </li>
-          </ul>
-          {error && (
-            <p className="settings-footnote" role="alert">
-              {error}
-            </p>
-          )}
-          {data && !ready && (
-            <p className="settings-footnote">
-              {t(
-                "Messages arrive once background work has started for your account and Deliver even when Open Muse is closed is on in Upcoming.",
-              )}
-            </p>
-          )}
-          {address && (
-            <section className="channel-setup">
-              <h3>{t("Finish in Lark")}</h3>
-              <p>
-                {t(
-                  "This address is shown only now. Copy it, or let your assistant set Lark up with it.",
-                )}
-              </p>
-              <button
-                className="channel-address"
-                onClick={() =>
-                  void navigator.clipboard?.writeText(address).then(
-                    () => setCopied(true),
-                    () => {},
-                  )
-                }
-              >
-                <code>{address}</code>
-                <span>
-                  <Copy size={15} aria-hidden="true" />
-                  {copied ? t("Copied") : t("Copy")}
-                </span>
-              </button>
-              <ol>
-                <li>
-                  {t(
-                    "In the Lark developer console, open the app your assistant uses with lark-cli and turn on its bot.",
-                  )}
                 </li>
                 <li>
-                  {t(
-                    "Under Events and callbacks, send events to this address and add the event for receiving messages (im.message.receive_v1). Leave the encrypt key empty.",
-                  )}
+                  <button
+                    className="settings-list-row settings-destructive"
+                    disabled={busy}
+                    onClick={disconnect}
+                  >
+                    <span>{t("Disconnect Lark")}</span>
+                  </button>
                 </li>
-                <li>
-                  {t(
-                    "Publish the app version, then send your bot a message in Lark.",
-                  )}
-                </li>
-              </ol>
-              <button
-                className="button primary"
-                onClick={() =>
-                  onDraft(
-                    t(
-                      "Set up my Lark message channel: for the Lark app you use with lark-cli, turn on the bot, send its message events (im.message.receive_v1) to {address} with no encrypt key, and publish it. Tell me what I still need to do in the Lark console.",
-                      { address },
-                    ),
-                  )
-                }
-              >
-                {t("Ask my assistant to set it up")}
-              </button>
-            </section>
-          )}
-          {hook && !address && (
-            <ul className="settings-list channel-actions">
-              <li>
+              </ul>
+            )}
+            {!hook && (
+              <div className="channel-detail-foot">
+                {data && !ready && <p>{readyNote}</p>}
                 <button
-                  className="settings-list-row"
-                  disabled={busy}
+                  className="channel-connect"
+                  disabled={!account || !data || busy}
                   onClick={() => void connect()}
                 >
-                  <span className="settings-row-text">
-                    {t("Get a new address")}
-                    <small>
-                      {t(
-                        "The current address stops working. Use the new one in Lark.",
-                      )}
-                    </small>
-                  </span>
+                  {busy ? (
+                    <LoaderCircle size={18} className="spin" />
+                  ) : (
+                    t("Connect")
+                  )}
                 </button>
-              </li>
-              <li>
-                <button
-                  className="settings-list-row settings-destructive"
-                  disabled={busy}
-                  onClick={disconnect}
-                >
-                  <span>{t("Disconnect Lark")}</span>
-                </button>
-              </li>
-            </ul>
-          )}
-          <p className="settings-footnote">
-            {t(
-              "Your assistant only reads the messages sent to your bot, never your other Lark chats, and acts on them only after confirming they come from your own Lark account. You can disconnect at any time.",
+              </div>
             )}
-          </p>
+          </div>
         </Sheet>
       )}
     </Sheet>

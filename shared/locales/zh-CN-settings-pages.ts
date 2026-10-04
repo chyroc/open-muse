@@ -111,4 +111,8 @@ export const zhSettingsPages: Record<string, string> = {
     "在这台 Mac 上退出登录，并在账号服务中结束本次会话。其他设备保持登录，不会删除任何内容。",
   "Signs this Mac out of your Open Muse account. Local records are preserved and are unreadable without the same account.":
     "让这台 Mac 退出你的 Open Muse 账号。本地记录会保留，但不登录同一账号就无法读取。",
+  "Chat with your assistant from other messaging apps.":
+    "在其他消息应用里和你的助手聊天。",
+  "Once connected, you can message your assistant from Lark.":
+    "连接后，就能在飞书里给你的助手发消息。",
 };

@@ -1,9 +1,9 @@
 /* Message channels in Settings. */
 .channels-intro {
-  margin: 0 16px 16px;
-  font-size: 15px;
+  margin: 0 16px;
+  font-size: 16px;
   line-height: 1.45;
-  color: #3a3a3c;
+  color: #6e6e73;
 }
 .channel-icon {
   display: grid;
@@ -102,5 +102,90 @@
   }
   .channel-address span {
     color: #4a9cff;
+  }
+}
+
+/* A channel's own page: its app centered over what connecting means, and
+   Connect at the foot of the page. */
+.channel-detail {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+.channel-hero {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 24px 16px 8px;
+  text-align: center;
+}
+.channel-hero-icon {
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 4px;
+  overflow: hidden;
+  border-radius: 22.5%;
+  box-shadow: 0 0 0 0.5px rgb(0 0 0 / 12%);
+}
+.channel-hero-icon > svg {
+  display: block;
+}
+.channel-hero h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+.channel-hero p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.45;
+  color: #3a3a3c;
+}
+.channel-hero .channel-hero-status {
+  color: #6e6e73;
+}
+.channel-detail-foot {
+  display: grid;
+  gap: 16px;
+  margin-top: auto;
+  padding-top: 24px;
+}
+.channel-detail-foot p {
+  margin: 0 8px;
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: center;
+  color: #3a3a3c;
+}
+.channel-connect {
+  display: grid;
+  place-items: center;
+  height: 52px;
+  border: 0;
+  border-radius: 26px;
+  background: linear-gradient(90deg, #0866f5, #4f8dff);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  color: #fff;
+  transition:
+    transform var(--motion-press-duration) ease-out,
+    opacity var(--motion-press-duration) ease-out;
+}
+.channel-connect:disabled {
+  opacity: 0.5;
+}
+.channel-connect:not(:disabled):active {
+  transform: scale(var(--motion-press-scale));
+}
+@media (prefers-color-scheme: dark) {
+  .channel-hero p,
+  .channel-detail-foot p {
+    color: #d1d1d6;
+  }
+  .channel-hero .channel-hero-status,
+  .channels-intro {
+    color: #98989d;
   }
 }
