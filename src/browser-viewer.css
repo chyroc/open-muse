@@ -329,6 +329,11 @@
   text-align: left;
   -webkit-text-size-adjust: 100%;
 }
+/* Watching keeps the address readable; only steering is off. */
+.browser-viewer .browser-viewer-address:disabled {
+  opacity: 1;
+  color: #202124;
+}
 .browser-viewer-address span {
   overflow: hidden;
   white-space: nowrap;
@@ -387,6 +392,11 @@ span.browser-tasks-new {
   background: rgb(0 0 0 / 5%);
   transform: scale(0.98);
 }
+/* A task still starting reads as normal text, it just cannot open yet. */
+.browser-tasks .browser-task:disabled {
+  opacity: 1;
+  color: #1c1c1e;
+}
 .browser-task-thumbnail {
   flex: 0 0 auto;
   width: 72px;
@@ -413,7 +423,8 @@ span.browser-tasks-new {
 @media (prefers-color-scheme: dark) {
   .browser-tasks h3,
   .browser-tasks-new,
-  .browser-task {
+  .browser-task,
+  .browser-tasks .browser-task:disabled {
     color: #fff;
   }
   .browser-task:active:not(:disabled) {
