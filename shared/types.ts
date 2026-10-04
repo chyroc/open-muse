@@ -77,13 +77,27 @@ export interface WorkspaceStatus {
   review?: "settings" | "rebuild" | "unconfirmed" | "drift";
 }
 
-export function eventText(event: AgentEvent): string {
+// The companion can react to the person's message with one emoji by opening
+// its reply with [[react:👍]]: the app shows the emoji on that message, and
+// the mark never shows as text.
+const reactionMark = /^\s*\[\[react:([^\]\s]{1,16})\]\]\s*/u;
+function rawText(event: AgentEvent) {
   return (
     event.content
       ?.filter((block) => block.type === "text")
       .map((block) => block.text ?? "")
       .join("\n") ?? ""
   );
+}
+export function eventText(event: AgentEvent): string {
+  const text = rawText(event);
+  return event.type === "agent.message" ? text.replace(reactionMark, "") : text;
+}
+// The emoji a reply opens its reaction mark with, if it is one.
+export function companionReaction(event: AgentEvent) {
+  if (event.type !== "agent.message") return undefined;
+  const emoji = reactionMark.exec(rawText(event))?.[1];
+  return emoji && /\p{Extended_Pictographic}/u.test(emoji) ? emoji : undefined;
 }
 
 export function mergeEvents(

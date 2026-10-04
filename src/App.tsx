@@ -63,6 +63,7 @@ import type {
 } from "../shared/types";
 import {
   eventText,
+  companionReaction,
   pendingCustomTools,
   pendingPermissions,
   taskState,
@@ -1138,6 +1139,16 @@ function Workspace({
   // The message being sent in this chat, until its history has it.
   const pendingSend = pendingOutgoing(outgoing, draftKey, messageEvents);
   const reminders = remindersByReply(upcoming, events);
+  // The companion's reaction to a message of the person's, from the first of
+  // its replies that opens with one; the person's own reaction wins.
+  const companionReactions = new Map<string, string>();
+  let asked: string | undefined;
+  for (const event of events) {
+    if (event.type === "user.message") asked = event.id;
+    const emoji = companionReaction(event);
+    if (asked && emoji && !companionReactions.has(asked))
+      companionReactions.set(asked, emoji);
+  }
   // A sent message stays shown until the history has it, which can be a
   // poll or two after the send returns; a minute later it gives way anyway.
   useEffect(() => {
@@ -1470,7 +1481,10 @@ function Workspace({
                               setSelectedBubble(bubble);
                               setSelectedMessage(event);
                             }}
-                            reaction={reactions[reactionKey(event)]}
+                            reaction={
+                              reactions[reactionKey(event)] ??
+                              companionReactions.get(event.id)
+                            }
                           >
                             <MessageAttachments
                               items={messageAttachments(event, attachmentNames)}
