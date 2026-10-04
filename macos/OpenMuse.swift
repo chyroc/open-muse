@@ -744,10 +744,20 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             NSGraphicsContext.restoreGraphicsState()
             return rep.representation(using: .png, properties: [:]).map { "data:image/png;base64," + $0.base64EncodedString() }
         }
+        // Another maker's app shows its own icon file: the icon macOS returns
+        // for it can carry the system's glass treatment, which washes out its
+        // colors. Apple's apps are drawn for the current system already.
+        func ownIcon(_ url: URL) -> NSImage? {
+            guard let bundle = Bundle(url: url), bundle.bundleIdentifier?.hasPrefix("com.apple.") == false,
+                  let name = bundle.object(forInfoDictionaryKey: "CFBundleIconFile") as? String,
+                  let file = bundle.url(forResource: (name as NSString).deletingPathExtension, withExtension: "icns")
+            else { return nil }
+            return NSImage(contentsOf: file)
+        }
         for (id, bundles) in Self.connectorApps {
             guard let url = bundles.lazy.compactMap({ NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }).first
             else { continue }
-            icons[id] = encode(NSWorkspace.shared.icon(forFile: url.path))
+            icons[id] = encode(ownIcon(url) ?? NSWorkspace.shared.icon(forFile: url.path))
         }
         if let mac = NSImage(named: NSImage.computerName) { icons["mac"] = encode(mac) }
         connectorIcons = icons
