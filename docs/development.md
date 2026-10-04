@@ -61,6 +61,9 @@ The Open Muse service itself is documented in [server/README](../server/README.m
 internet access, not a reachable Mac or service URL. Simulator builds use ad-hoc
 signing for Keychain access. Physical-device builds require a local development
 identity and provisioning profile; keep team/device identifiers untracked.
+A free Apple Developer team allows only three installed development apps per
+device and has no push entitlement, so the iPhone app cannot receive remote
+notifications.
 
 **macOS:** the AppKit/WKWebView shell loads bundled assets through `muse://app/`.
 The package contains no Node executable or server bundle and opens no listening
@@ -83,6 +86,39 @@ tests/legacy-server/  Test-only migration harness; never shipped or started
 scripts/              Builds and asset generation
 .build/               Ignored local builds and test artifacts
 ```
+
+## Checking a commit in isolation
+
+The worktree is often shared by several sessions, so a run there can include
+someone else's uncommitted changes. To check one commit on its own, export it
+into a temporary directory and link the installed dependencies, including the
+Mac app's own:
+
+```bash
+dir=$(mktemp -d)
+git archive HEAD | tar -x -C "$dir"
+ln -s "$PWD/node_modules" "$dir/node_modules"
+ln -s "$PWD/macos/node_modules" "$dir/macos/node_modules"
+(cd "$dir" && npm run check && npm run build)
+```
+
+Without the `macos/node_modules` link the Mac tests report no tests and exit
+with an error. Native builds write into the snapshot's own `.build/`.
+
+## Troubleshooting native builds
+
+- Swift packages are fetched over HTTPS. A global Git rule that rewrites
+  `https://github.com/` to SSH makes an unattended build fail on host key
+  checks; run the build with `GIT_CONFIG_GLOBAL=/dev/null`.
+- Granting Screen Recording in System Settings quits every running Open Muse
+  instance. That is macOS, not a crash.
+- A covered WKWebView window renders white in a window capture; bring it to
+  the front first. A window that is not key takes the first click only to
+  activate.
+- `npm run macos:build` replaces `.build/macos/Open Muse.app` and removes the
+  copies earlier builds parked in `.build/macos/direct-build-*`. A copy that is
+  still running is kept but unregistered from LaunchServices, so the bundle ID
+  resolves to the new build.
 
 ## Verification and notices
 

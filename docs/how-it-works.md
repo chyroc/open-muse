@@ -192,6 +192,11 @@ the chat list and main chat update as soon as a change arrives.
   the same workspace key as the agent (account owner, API key, and project in
   account builds). Local pending-write records can contain document drafts
   until cloud readback confirms them. These records are not encrypted.
+- In account builds the Ark key is read back from the Open Muse service at
+  every launch, and local records are keyed by a workspace key derived from
+  the account, the key, and its project. The cached chat therefore appears
+  only after that short restore, not instantly. This is the cost of keeping
+  the key out of device storage, not a defect to optimize away.
 - Signing out of an Open Muse account ends that session and drops the in-memory key
   and runtime; nothing is deleted. In local builds, signing out removes the
   device's key. Neither revokes the key at Ark; do that in the Ark console.
@@ -239,7 +244,12 @@ evenly spaced still frames; the video itself never leaves the device. A
 video shows as one attachment. Sent photos and videos appear as thumbnails that
 open full screen, from copies kept on the sending device (up to 300 MB, oldest
 dropped first; videos over 100 MB keep only their frames), because Ark offers
-no way to download uploads back. Other devices show a placeholder.
+no way to download uploads back. Other devices show a placeholder. A message
+carries up to four attachments of up to 10 MB each. Photos, video frames, and
+PDFs are uploaded to Ark Files; text, Markdown, and CSV documents travel inline
+in the message text (up to 200,000 characters), because Ark Files does not
+accept plain-text uploads. Other types, such as HEIC, SVG, or HTML, are
+refused with a message before anything is sent.
 
 **Model:** Settings > Model chooses the model and thinking depth for new
 conversations, per account: Doubao Seed 2.1 Pro (the default), Lite and
