@@ -44,6 +44,7 @@ import { currentChoiceEvent } from "../shared/chat-choices";
 import { digest, uuid } from "../shared/crypto";
 import { isEcho, pendingOutgoing, type Outgoing } from "./outgoing";
 import { remindersByReply } from "./reminder-cards";
+import { splitLeadIn } from "./lead-in";
 import type { UpcomingItem } from "../shared/upcoming";
 import { ReminderCard } from "./ReminderCard";
 import {
@@ -1365,6 +1366,13 @@ function Workspace({
                   event.type === "user.message"
                     ? splitQuote(eventText(event))
                     : { text: eventText(event) };
+                // A reply with files may open with a line such as "Here it
+                // is 👇": the files then show right under that line.
+                const files = outputs.get(event.id);
+                const lead =
+                  event.type === "agent.message" && files
+                    ? splitLeadIn(eventText(event))
+                    : undefined;
                 return (
                   <Fragment key={event.id}>
                     {card && <WorkCard work={card} />}
@@ -1381,6 +1389,25 @@ function Workspace({
                           })}
                         </time>
                       )}
+                      {lead && (
+                        <>
+                          <AssistantMessage
+                            label={t("Reply options {number}", {
+                              number: position + 1,
+                            })}
+                            onOptions={(bubble) => {
+                              setSelectedBubble(bubble);
+                              setSelectedMessage(event);
+                            }}
+                            text={lead.lead}
+                            active={false}
+                            busy={busy || task.loading}
+                            streaming={state === "running"}
+                            onChoose={() => {}}
+                          />
+                          <TurnOutputs files={files!} client={client} />
+                        </>
+                      )}
                       {event.type === "agent.message" ? (
                         <AssistantMessage
                           welcome={
@@ -1395,7 +1422,7 @@ function Workspace({
                             setSelectedMessage(event);
                           }}
                           reaction={reactions[reactionKey(event)]}
-                          text={eventText(event)}
+                          text={lead ? lead.rest : eventText(event)}
                           reply={event.choice_reply}
                           active={
                             !event.source_session_id &&
@@ -1444,11 +1471,8 @@ function Workspace({
                       {reminders.get(event.id)?.map((item) => (
                         <ReminderCard key={item.id} item={item} />
                       ))}
-                      {outputs.get(event.id) && (
-                        <TurnOutputs
-                          files={outputs.get(event.id)!}
-                          client={client}
-                        />
+                      {files && !lead && (
+                        <TurnOutputs files={files} client={client} />
                       )}
                     </div>
                   </Fragment>
