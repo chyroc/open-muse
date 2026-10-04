@@ -5,10 +5,10 @@ import {
   Check,
   KeyRound,
   Languages,
+  LayoutGrid,
   MessageCircle,
   MessageCircleHeart,
   MonitorSmartphone,
-  Plug,
 } from "lucide-react";
 import {
   deviceLanguage,
@@ -104,9 +104,11 @@ export function SettingsHome({
       ) : (
         <AuthPanel client={client} onChanged={onConnection} />
       )}
+      {/* Grouped as in the companion's own app: what it reaches, how it
+          talks and thinks, then the account and the app itself. */}
       <ul className="settings-list">
         <Row
-          icon={<Plug size={22} strokeWidth={2} />}
+          icon={<LayoutGrid size={22} strokeWidth={2} />}
           label={t("Connectors")}
           onClick={() => setSection("connectors")}
         />
@@ -124,6 +126,8 @@ export function SettingsHome({
             onClick={() => setSection("channels")}
           />
         )}
+      </ul>
+      <ul className="settings-list">
         {signedIn && (
           <Row
             icon={<MessageCircleHeart size={22} strokeWidth={2} />}
@@ -149,6 +153,8 @@ export function SettingsHome({
           }
           onClick={() => setSection("language")}
         />
+      </ul>
+      <ul className="settings-list">
         {signedIn && (
           <Row
             icon={<KeyRound size={22} strokeWidth={2} />}
