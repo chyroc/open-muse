@@ -107,7 +107,7 @@ export const macTools = [
     type: "custom",
     name: "mac_calendar",
     description:
-      "Read the user's schedule from the Calendar app, or their open reminders from the Reminders app, on their Mac. Read-only: it never creates, changes or deletes anything. Use when the user asks about their events, schedule, availability or to-dos and has not pointed you to another calendar such as Lark. The user approves each call on the Mac and can turn this off; if declined or unavailable, say so and do not try another way.",
+      "Read the user's schedule from the Calendar app, or their open reminders from the Reminders app, on their Mac. Read-only: it never creates, changes or deletes anything. Use when the user asks about their events, schedule, availability or to-dos while writing from the Mac app, or asks for their Mac's calendar, and has not pointed you to another calendar such as Lark. When they write from the iPhone app, use iphone_personal instead. The user approves each call on the Mac and can turn this off; if declined or unavailable, say so and do not try another way.",
     input_schema: {
       type: "object",
       properties: {

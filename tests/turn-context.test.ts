@@ -22,6 +22,10 @@ describe("Turn context", () => {
     expect(iphone).toMatch(/^<open-muse-context>\n/);
     expect(iphone).toMatch(/\n<\/open-muse-context>$/);
     expect(iphone).toContain("iPhone app, which answers health_read");
+    // Calendar questions on the iPhone go to the iPhone, not the Mac.
+    expect(iphone).toContain(
+      "for their calendar, reminders and contacts use iphone_personal",
+    );
     expect(iphone).toContain(
       "only when the person asks for something on their Mac",
     );
