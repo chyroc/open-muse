@@ -77,6 +77,7 @@ import {
   announceReminders,
   reminderNotificationsSupported,
 } from "./reminderNotifications";
+import { listenForEdgePull, type EdgePull } from "./gesture";
 import { notifyReply } from "./notifications";
 import { backgroundClient } from "./background-client";
 import { registerThisIPhone } from "./iphone-device";
@@ -253,6 +254,29 @@ function Workspace({
           : index.mainId
       : undefined;
   const [sidebarOpen, setSidebarOpen] = useState(route === "/tasks");
+  // A finger pulling the sidebar in from the screen edge, while it does.
+  const [sidebarPull, setSidebarPull] = useState<EdgePull>();
+  // From the leading screen edge a finger pulls the sidebar in, wherever the
+  // header's sidebar button shows and nothing is open above the page.
+  const pullAllowed = useRef(false);
+  pullAllowed.current = tab !== "studio" && !sidebarOpen;
+  // A pull belongs to one opening; any later one slides in by itself.
+  useEffect(() => {
+    if (!sidebarOpen) setSidebarPull(undefined);
+  }, [sidebarOpen]);
+  useEffect(
+    () =>
+      listenForEdgePull({
+        width: () => Math.min(window.innerWidth, 440),
+        allowed: () =>
+          pullAllowed.current && !document.querySelector("dialog[open]"),
+        onStart: (pull) => {
+          setSidebarPull(pull);
+          setSidebarOpen(true);
+        },
+      }),
+    [],
+  );
   const [panel, setPanel] = useState<"actions" | "status">();
   const [selectedMessage, setSelectedMessage] = useState<AgentEvent>();
   const [selectedBubble, setSelectedBubble] = useState<HTMLElement>();
@@ -972,9 +996,7 @@ function Workspace({
       ? t("Not connected")
       : state === "running"
         ? t("Replying")
-        : permissions.length ||
-            healthRequests.length ||
-            personalRequests.length
+        : permissions.length || healthRequests.length || personalRequests.length
           ? t("Waiting for approval")
           : macTools.length
             ? t("Waiting for your Mac")
@@ -1668,6 +1690,7 @@ function Workspace({
       )}
       {sidebarOpen && (
         <ConversationSidebar
+          pull={sidebarPull}
           name={companion.name}
           sessions={sessions}
           index={index}

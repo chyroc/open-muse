@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import type { Session } from "../shared/types";
 import { AttachmentSheet } from "./AttachmentSheet";
-import { animateAway, animateIn, useDragToDismiss } from "./gesture";
+import { motionToken, useDragToDismiss, type EdgePull } from "./gesture";
 import type { ConversationIndex } from "./direct/conversations";
 import { Sheet } from "./MusePages";
 import "./message-quote.css";
@@ -374,7 +374,11 @@ export function ConversationSidebar({
   busy,
   error,
   name = "Muse",
+  pull,
 }: {
+  // Opened by a finger from the screen edge: the sidebar follows it, then
+  // settles open or closes when it lifts.
+  pull?: EdgePull;
   sessions: Session[];
   index: ConversationIndex;
   activeId?: string;
@@ -391,43 +395,62 @@ export function ConversationSidebar({
   const [query, setQuery] = useState("");
   const [archived, setArchived] = useState(false);
   const closing = useRef(false);
-  // The sidebar and the page move as one: opening pushes the page off to the
-  // trailing edge, and closing slides both back; links navigate meanwhile.
+  // The sidebar opens beneath the page: the page slides off to the
+  // trailing edge and the sidebar grows into place, both driven by
+  // --sidebar-progress (0 open, 1 closed); see chat.css.
   const root = () => document.documentElement;
+  const setProgress = (closed: number, dragging: boolean) => {
+    root().style.setProperty("--sidebar-progress", String(closed));
+    root().classList.toggle("sidebar-dragging", dragging);
+  };
   const dismiss = () => {
     if (closing.current) return;
     closing.current = true;
-    root().classList.remove("sidebar-shown", "sidebar-dragging");
-    root().style.removeProperty("--sidebar-progress");
-    animateAway(panel.current, "x", -1, onClose, "push");
+    setProgress(1, false);
+    // Closed once the page is back in place.
+    window.setTimeout(onClose, motionToken("--motion-push-duration", 320));
   };
   const drag = useDragToDismiss({
     target: panel,
     axis: "x",
     direction: -1,
+    track: false,
     onDismiss: dismiss,
-    onProgress: (progress, dragging) => {
-      root().style.setProperty("--sidebar-progress", String(progress));
-      root().classList.toggle("sidebar-dragging", dragging);
-    },
+    onProgress: setProgress,
   });
   useEffect(() => {
     const element = dialog.current!;
     const focused = document.activeElement;
     // Shown without modality: the page beneath stays focusable, so starting
     // a side chat can focus the composer within the tap and the keyboard
-    // comes up. The sidebar covers the page and is layered above it.
+    // comes up. The page slides over it while the stage is set.
     element.show();
     // Focus the panel, not its first button, so no focus ring flashes on open.
     element.focus({ preventScroll: true });
-    root().classList.add("sidebar-stage", "sidebar-shown");
-    animateIn(panel.current, "x", -1, "push");
-    return () => {
-      root().classList.remove(
-        "sidebar-stage",
-        "sidebar-shown",
-        "sidebar-dragging",
+    root().classList.add("sidebar-stage");
+    // A finger from the screen edge places both where it is (1 is open);
+    // otherwise they start closed and open in the next frame.
+    const settle = (released: "open" | "close") =>
+      released === "open" ? setProgress(0, false) : dismiss();
+    let frame = 0;
+    if (pull) {
+      setProgress(1 - pull.progress, true);
+      if (pull.released) {
+        const released = pull.released;
+        frame = requestAnimationFrame(() => settle(released));
+      } else
+        pull.follow = (progress, released) =>
+          released ? settle(released) : setProgress(1 - progress, true);
+    } else {
+      setProgress(1, true);
+      frame = requestAnimationFrame(() =>
+        requestAnimationFrame(() => setProgress(0, false)),
       );
+    }
+    return () => {
+      cancelAnimationFrame(frame);
+      if (pull) pull.follow = undefined;
+      root().classList.remove("sidebar-stage", "sidebar-dragging");
       root().style.removeProperty("--sidebar-progress");
       element.close();
       // Leave focus where typing has already started.

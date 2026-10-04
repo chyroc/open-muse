@@ -20,18 +20,46 @@ body {
   transition-duration: var(--motion-push-duration);
   transition-timing-function: var(--motion-push-ease);
 }
-/* With the sidebar shown, the page is pushed off to the trailing edge as a
-   rounded card over black, and follows a drag that closes the sidebar. */
+/* The sidebar sits beneath the page. While it is staged the page becomes a
+   rounded card over black and slides to the trailing edge, darkening as it
+   goes, and the sidebar grows from 83% to full size underneath. One value,
+   --sidebar-progress (0 open, 1 closed), drives both, so a finger from the
+   screen edge or on the sidebar moves them together. */
+:root {
+  --sidebar-dim: 0.21;
+  --sidebar-rest-scale: 0.83;
+}
 html.sidebar-stage,
 html.sidebar-stage body {
   background: #000;
 }
-html.sidebar-shown .companion-shell {
-  transform: translateX(calc(100% * (1 - var(--sidebar-progress, 0))));
+html.sidebar-stage .companion-shell {
+  z-index: 60;
   border-radius: 44px;
+  transform: translateX(calc(100% * (1 - var(--sidebar-progress, 1))));
 }
-html.sidebar-dragging .companion-shell {
+html.sidebar-stage .companion-shell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  background: #000;
+  opacity: calc(var(--sidebar-dim) * (1 - var(--sidebar-progress, 1)));
+  pointer-events: none;
+  transition: opacity var(--motion-push-duration) var(--motion-push-ease);
+}
+html.sidebar-dragging .companion-shell,
+html.sidebar-dragging .companion-shell::after,
+html.sidebar-dragging .sidebar-panel {
   transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Without large movement: the page fades out over the sidebar. */
+  html.sidebar-stage .companion-shell {
+    transform: none;
+    opacity: var(--sidebar-progress, 1);
+    transition-property: opacity;
+  }
 }
 .companion-main {
   height: 100%;
@@ -901,6 +929,18 @@ html.sidebar-dragging .companion-shell {
     calc(8px + env(safe-area-inset-bottom));
   border-radius: 44px;
   touch-action: pan-y;
+  transform: scale(
+    calc(
+      var(--sidebar-rest-scale) + (1 - var(--sidebar-rest-scale)) *
+        (1 - var(--sidebar-progress, 1))
+    )
+  );
+  transition: transform var(--motion-push-duration) var(--motion-push-ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-panel {
+    transform: none;
+  }
 }
 .conversation-sidebar::backdrop {
   background: transparent;

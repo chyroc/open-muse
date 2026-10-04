@@ -298,7 +298,11 @@ also requires history evidence before another main-chat submission.
 The sidebar contains the main chat, searchable side chats, archived chats, and
 Settings. Start a side chat for a separate topic. Archiving and restoring only
 change the local sidebar index; they never delete or terminate a cloud session.
-Existing cloud conversations remain accessible as side chats.
+Existing cloud conversations remain accessible as side chats. On iPhone the
+sidebar opens from the header button or by pulling from the leading screen
+edge: the page slides aside as a darkening card and follows the finger while
+the sidebar grows into place beneath it, opening past a third of the way or on
+a flick; swiping the sidebar back closes it the same way.
 
 Main-chat selection is isolated by API key and project. In an account build,
 the main chat and its chapters are shared by the account's devices, and

@@ -109,8 +109,12 @@ export function useDragToDismiss({
   direction,
   onDismiss,
   onProgress,
+  track = true,
 }: {
   target: RefObject<HTMLElement | null>;
+  // Whether the panel itself follows the finger; when it does not,
+  // `onProgress` alone moves what the drag drives.
+  track?: boolean;
   axis: Axis;
   direction: 1 | -1;
   onDismiss: () => void;
@@ -157,7 +161,7 @@ export function useDragToDismiss({
         }
         state.active = true;
         event.currentTarget.setPointerCapture(event.pointerId);
-        element.style.transition = "none";
+        if (track) element.style.transition = "none";
       }
       // The other way resists, as a rubber band.
       const distance = raw < 0 ? -Math.sqrt(-raw) * 2 : raw;
@@ -165,7 +169,7 @@ export function useDragToDismiss({
       state.velocity = (distance - state.distance) / elapsed;
       state.distance = distance;
       state.time = event.timeStamp;
-      element.style.transform = offset(axis, distance * direction);
+      if (track) element.style.transform = offset(axis, distance * direction);
       const size = axis === "x" ? element.offsetWidth : element.offsetHeight;
       onProgress?.(Math.min(Math.max(distance / (size || 1), 0), 1), true);
     },
@@ -186,8 +190,108 @@ export function useDragToDismiss({
       return;
     }
     onProgress?.(0, false);
+    if (!track) return;
     element.style.transition =
       "transform var(--motion-release-duration) var(--motion-release-ease)";
     element.style.transform = "";
   }
+}
+
+// A panel pulled in from the leading screen edge while a finger moves: the
+// page's edge listener reports how far it has come, 0 to 1, and the panel,
+// once mounted, follows it and settles open or closed on release.
+export type EdgePull = {
+  progress: number;
+  // Set by the panel while it follows the finger; `released` carries the
+  // decision once the finger lifts.
+  follow?: (progress: number, released?: "open" | "close") => void;
+  released?: "open" | "close";
+};
+
+// The width of the leading edge a pull starts from, in points.
+const EDGE = 24;
+
+// Listens for a finger that starts at the leading screen edge and moves
+// inward. `onStart` is called once the movement is clearly horizontal and
+// receives the pull to drive; the page does not scroll meanwhile. Release
+// opens the panel past a third of its width or on a flick inward.
+export function listenForEdgePull({
+  width,
+  allowed,
+  onStart,
+}: {
+  // The panel's width, which a full pull covers.
+  width: () => number;
+  // Whether a pull may start now (no sheet or menu above the page).
+  allowed: () => boolean;
+  onStart: (pull: EdgePull) => void;
+}) {
+  let state:
+    | {
+        x: number;
+        y: number;
+        time: number;
+        velocity: number;
+        last: number;
+        pull?: EdgePull;
+      }
+    | undefined;
+  const start = (event: TouchEvent) => {
+    const touch = event.touches[0];
+    state =
+      event.touches.length === 1 && touch.clientX <= EDGE && allowed()
+        ? {
+            x: touch.clientX,
+            y: touch.clientY,
+            time: event.timeStamp,
+            velocity: 0,
+            last: 0,
+          }
+        : undefined;
+  };
+  const move = (event: TouchEvent) => {
+    if (!state) return;
+    const touch = event.touches[0];
+    const dx = touch.clientX - state.x;
+    const dy = Math.abs(touch.clientY - state.y);
+    if (!state.pull) {
+      // Start only once the movement is clearly inward and horizontal.
+      if (dx < 8 || dx < dy) {
+        if (dy > 12 || dx < -8) state = undefined;
+        return;
+      }
+      state.pull = { progress: 0 };
+      onStart(state.pull);
+    }
+    event.preventDefault();
+    const progress = Math.min(Math.max(dx / (width() || 1), 0), 1);
+    const elapsed = Math.max(event.timeStamp - state.time, 1);
+    state.velocity = ((progress - state.last) * width()) / elapsed;
+    state.last = progress;
+    state.time = event.timeStamp;
+    state.pull.progress = progress;
+    state.pull.follow?.(progress);
+  };
+  const end = () => {
+    const pull = state?.pull;
+    const velocity = state?.velocity ?? 0;
+    state = undefined;
+    if (!pull) return;
+    const flick = motionToken("--motion-dismiss-velocity", 0.5);
+    pull.released =
+      velocity > flick || (pull.progress > 1 / 3 && velocity > -flick)
+        ? "open"
+        : "close";
+    pull.follow?.(pull.progress, pull.released);
+  };
+  document.addEventListener("touchstart", start, { passive: true });
+  document.addEventListener("touchmove", move, { passive: false });
+  document.addEventListener("touchend", end);
+  document.addEventListener("touchcancel", end);
+  return () => {
+    document.removeEventListener("touchstart", start);
+    document.removeEventListener("touchmove", move);
+    document.removeEventListener("touchend", end);
+    document.removeEventListener("touchcancel", end);
+  };
 }
