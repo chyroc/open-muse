@@ -34,7 +34,7 @@ import { ActivityList } from "./ActivityList";
 import { animateAway, useDragToDismiss } from "./gesture";
 import { activityTurns } from "../shared/activity";
 import { UpcomingPanel } from "./UpcomingPanel";
-import { BrowserViewer } from "./BrowserViewer";
+import { BrowserTasks, BrowserViewer } from "./BrowserViewer";
 import { ApprovalHistory } from "./ApprovalHistory";
 import { AvatarShareSheet } from "./AvatarShareSheet";
 import { approvalHistory } from "../shared/approvals";
@@ -197,29 +197,48 @@ export function CompanionSheet({
   const [mounted, setMounted] = useState<boolean>();
   const [sharing, setSharing] = useState(false);
   const [menu, setMenu] = useState(false);
-  // The live cloud browser: being started, or the open view's ID.
-  const [browser, setBrowser] = useState<string>();
+  // The cloud browser task: being started, or its view's ID. A browser left
+  // running from before shows as the task again.
+  const [browser, setBrowser] = useState(() => client.activeBrowserView());
+  // The browser itself, taken over or watched.
+  const [viewer, setViewer] = useState<"control" | "watch">();
   const [browserError, setBrowserError] = useState("");
+  // A browser just started is shown as soon as its first picture arrives.
+  const presentWhenReady = useRef(false);
   const browserReady = Boolean(sessionId) && client.browserViewSupported();
   // A request waiting in the chat, such as an approval or a health share,
   // holds the conversation, so the browser cannot be started until it is
   // answered; a browser already running can still be shown.
   const waitingInChat =
     permissions.length > 0 || pendingCustomTools(events).length > 0;
-  async function openBrowser() {
-    if (!sessionId || browser) return;
-    const running = client.activeBrowserView();
-    if (running) {
-      setBrowser(running);
-      return;
-    }
+  // The agent may report that this conversation cannot run the browser
+  // before the browser is ever shown; the task ends with that reason.
+  const browserRefused =
+    Boolean(browser && browser !== "starting" && !viewer) &&
+    browserUnavailable(events, browser!);
+  useEffect(() => {
+    if (!browserRefused || !browser) return;
+    void client.closeBrowserView(browser).catch(() => {});
+    presentWhenReady.current = false;
+    setBrowser(undefined);
+    setBrowserError(
+      t(
+        "This conversation cannot run the cloud browser. Start a new chat and try again.",
+      ),
+    );
+  }, [browserRefused, browser, client]);
+  async function openBrowser(replacing?: string) {
+    if (!sessionId || (browser && !replacing)) return;
     setBrowser("starting");
     setBrowserError("");
+    if (replacing) await client.closeBrowserView(replacing).catch(() => {});
     try {
       // The browser runs in the sandbox of the conversation the person will
       // talk in, so the main chat is brought up to date first.
       const target = (await prepareSession?.()) ?? sessionId;
-      setBrowser(await client.startBrowserView(target));
+      const view = await client.startBrowserView(target);
+      presentWhenReady.current = true;
+      setBrowser(view);
     } catch (reason) {
       setBrowser(undefined);
       setBrowserError((reason as Error).message);
@@ -496,55 +515,73 @@ export function CompanionSheet({
         )}
         {tab === "Desktop" && (
           <section className="companion-desktop">
-            <div className="desktop-stage">
-              <div className="desktop-card" aria-hidden="true">
-                <span className="desktop-menubar">{identity.name}</span>
-                <span className="desktop-window">
-                  <i />
-                  <Globe size={20} strokeWidth={1.4} />
-                  <b />
-                </span>
+            {browser ? (
+              <BrowserTasks
+                client={client}
+                view={browser}
+                paused={Boolean(viewer)}
+                onReady={() => {
+                  if (!presentWhenReady.current) return;
+                  presentWhenReady.current = false;
+                  setViewer("control");
+                }}
+                onOpen={() => setViewer("watch")}
+                onNew={() => {
+                  if (!waitingInChat) void openBrowser(browser);
+                  else
+                    setBrowserError(
+                      t(
+                        "Answer the request waiting in the chat first, then open the browser.",
+                      ),
+                    );
+                }}
+                onEnded={(reason) => {
+                  presentWhenReady.current = false;
+                  setBrowser(undefined);
+                  setViewer(undefined);
+                  if (reason) setBrowserError(reason);
+                }}
+              />
+            ) : (
+              <div className="desktop-stage">
+                <div className="desktop-card" aria-hidden="true">
+                  <span className="desktop-menubar">{identity.name}</span>
+                  <span className="desktop-window">
+                    <i />
+                    <Globe size={20} strokeWidth={1.4} />
+                    <b />
+                  </span>
+                </div>
+                {browserReady ? (
+                  <button
+                    type="button"
+                    className="desktop-open"
+                    disabled={waitingInChat}
+                    onClick={() => void openBrowser()}
+                  >
+                    {t("Open browser")}
+                    <Maximize2 size={13} strokeWidth={2} />
+                  </button>
+                ) : (
+                  <a
+                    className="desktop-open"
+                    href="#/studio"
+                    aria-label={t("View workspace in MA Studio")}
+                    onClick={onClose}
+                  >
+                    {t("Open workspace")}
+                    <Maximize2 size={13} strokeWidth={2} />
+                  </a>
+                )}
               </div>
-              {browserReady ? (
-                <button
-                  type="button"
-                  className="desktop-open"
-                  disabled={
-                    browser === "starting" ||
-                    (waitingInChat && !client.activeBrowserView())
-                  }
-                  onClick={() => void openBrowser()}
-                >
-                  {browser === "starting" ? (
-                    <LoaderCircle size={15} className="spin" />
-                  ) : null}
-                  {client.activeBrowserView()
-                    ? t("Resume browsing")
-                    : t("Open browser")}
-                  <Maximize2 size={13} strokeWidth={2} />
-                </button>
-              ) : (
-                <a
-                  className="desktop-open"
-                  href="#/studio"
-                  aria-label={t("View workspace in MA Studio")}
-                  onClick={onClose}
-                >
-                  {t("Open workspace")}
-                  <Maximize2 size={13} strokeWidth={2} />
-                </a>
-              )}
-            </div>
-            {browserReady &&
-              waitingInChat &&
-              !client.activeBrowserView() &&
-              !browserError && (
-                <p className="desktop-note">
-                  {t(
-                    "Answer the request waiting in the chat first, then open the browser.",
-                  )}
-                </p>
-              )}
+            )}
+            {browserReady && waitingInChat && !browser && !browserError && (
+              <p className="desktop-note">
+                {t(
+                  "Answer the request waiting in the chat first, then open the browser.",
+                )}
+              </p>
+            )}
             {browserError && (
               <p className="inline-error" role="alert">
                 {browserError}
@@ -553,12 +590,17 @@ export function CompanionSheet({
           </section>
         )}
       </div>
-      {browser && browser !== "starting" && (
+      {browser && browser !== "starting" && viewer && (
         <BrowserViewer
           client={client}
           view={browser}
           unavailable={browserUnavailable(events, browser)}
-          onClose={() => setBrowser(undefined)}
+          initialMode={viewer}
+          onClose={() => setViewer(undefined)}
+          onStopped={() => {
+            setViewer(undefined);
+            setBrowser(undefined);
+          }}
         />
       )}
       {sharing && (

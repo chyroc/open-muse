@@ -43,6 +43,14 @@
   font-size: 19px;
   font-weight: 600;
 }
+.browser-viewer hgroup {
+  text-align: center;
+}
+.browser-viewer hgroup p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: rgb(255 255 255 / 60%);
+}
 .browser-viewer-round {
   display: grid;
   place-items: center;
@@ -68,6 +76,7 @@
   min-height: 0;
   display: grid;
   place-items: center;
+  overflow: hidden;
 }
 .browser-viewer-stage img {
   display: block;
@@ -134,9 +143,95 @@
 .browser-viewer-stop {
   position: absolute;
   left: 20px;
-  width: 50px;
-  height: 50px;
+  width: 48px;
+  height: 48px;
   color: #ff453a;
+}
+/* Watching: take control in a bright button, stop the task under it. */
+.browser-viewer-actions {
+  flex-direction: column;
+  gap: 10px;
+}
+.browser-viewer-actions button {
+  height: 50px;
+  border-radius: 25px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #fff;
+  transition:
+    transform var(--motion-press-duration) ease-out,
+    opacity var(--motion-fade-duration) ease-out;
+}
+.browser-viewer-actions button:active {
+  transform: scale(var(--motion-press-scale));
+}
+.browser-viewer-actions button:disabled {
+  opacity: 0.4;
+}
+.browser-viewer-take {
+  background: linear-gradient(180deg, #2f8cff, #0a6cf0);
+  box-shadow: inset 0 0.5px 0 rgb(255 255 255 / 35%);
+}
+.browser-viewer-end {
+  background: rgb(255 255 255 / 12%);
+  box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 18%);
+}
+/* Asking before the task stops, as a system alert over the browser. */
+.browser-viewer-alert-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 40%);
+  animation: companion-sheet-dim var(--motion-fade-duration) ease-out both;
+}
+.browser-viewer-alert {
+  width: 270px;
+  overflow: hidden;
+  border-radius: 14px;
+  text-align: center;
+  background: rgb(44 44 46 / 92%);
+  -webkit-backdrop-filter: blur(30px);
+  backdrop-filter: blur(30px);
+  animation: browser-alert-in var(--motion-sheet-duration)
+    var(--motion-sheet-spring) both;
+}
+@keyframes browser-alert-in {
+  from {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+}
+.browser-viewer-alert h3 {
+  margin: 20px 16px 4px;
+  font-size: 17px;
+  font-weight: 600;
+}
+.browser-viewer-alert p {
+  margin: 0 16px 20px;
+  font-size: 13px;
+  line-height: 18px;
+}
+.browser-viewer-alert div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 0.5px solid rgb(255 255 255 / 18%);
+}
+.browser-viewer-alert button {
+  height: 44px;
+  font-size: 17px;
+  color: #0a84ff;
+}
+.browser-viewer-alert button + button {
+  border-left: 0.5px solid rgb(255 255 255 / 18%);
+}
+.browser-viewer-alert button.danger {
+  font-weight: 600;
+  color: #ff453a;
+}
+.browser-viewer-alert button:active {
+  background: rgb(255 255 255 / 10%);
 }
 .browser-viewer-tools {
   display: flex;
@@ -172,6 +267,8 @@
   width: 100%;
   overflow: hidden;
   background: #fff;
+  transform-origin: center;
+  will-change: transform;
 }
 .browser-viewer-tabs {
   display: flex;
@@ -200,13 +297,30 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-.browser-viewer-address {
+.browser-viewer-bar {
   display: flex;
   align-items: center;
-  gap: 5px;
-  width: calc(100% - 16px);
+  gap: 4px;
+  padding: 4px 8px 5px 4px;
+}
+.browser-viewer-back {
+  display: grid;
+  place-items: center;
+  width: 24px;
   height: 24px;
-  margin: 4px 8px 5px;
+  border-radius: 12px;
+  color: #5f6368;
+}
+.browser-viewer-back:active {
+  background: #f1f3f4;
+}
+.browser-viewer-address {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
   padding: 0 10px;
   border-radius: 12px;
   font-size: 12px;
@@ -223,4 +337,93 @@
 .browser-viewer-address svg {
   flex: 0 0 auto;
   color: #5f6368;
+}
+
+/* The browser as a task in the desktop tab: a header with the count and a
+   button for a fresh browser, and a row with the page's latest picture. */
+.browser-tasks header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  padding-left: 2px;
+}
+.browser-tasks h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: #1c1c1e;
+}
+.browser-tasks-new {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: #1c1c1e;
+  transition: transform var(--motion-press-duration) ease-out;
+}
+button.browser-tasks-new:active {
+  transform: scale(var(--motion-press-scale));
+}
+span.browser-tasks-new {
+  color: #8e8e93;
+}
+.browser-task {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 72px;
+  padding: 0 2px;
+  border-radius: 12px;
+  text-align: left;
+  color: #1c1c1e;
+  transition:
+    background-color var(--motion-fade-duration) ease-out,
+    transform var(--motion-press-duration) ease-out;
+}
+.browser-task:active:not(:disabled) {
+  background: rgb(0 0 0 / 5%);
+  transform: scale(0.98);
+}
+.browser-task-thumbnail {
+  flex: 0 0 auto;
+  width: 72px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #b8dafd;
+  box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 10%);
+}
+.browser-task-thumbnail img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  animation: companion-sheet-dim var(--motion-fade-duration) ease-out both;
+}
+.browser-task-title {
+  font-size: 17px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+@media (prefers-color-scheme: dark) {
+  .browser-tasks h3,
+  .browser-tasks-new,
+  .browser-task {
+    color: #fff;
+  }
+  .browser-task:active:not(:disabled) {
+    background: rgb(255 255 255 / 8%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes browser-alert-in {
+    from {
+      opacity: 0;
+    }
+  }
 }
