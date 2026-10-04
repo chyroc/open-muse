@@ -439,8 +439,10 @@ the person through them:
    assistant uses, or picks one they already have.
 2. **Approve your access.** With that app, the service starts the OAuth
    device authorization for the person's own account with offline access,
-   asking for the user scopes lark-cli publishes; the person approves on a
-   second Lark page.
+   asking for the user scopes lark-cli publishes except OKR, attendance, and
+   sending mail, which organizations commonly keep for administrators (Lark
+   refuses a request with any scope the organization does not allow); the
+   person approves on a second Lark page.
 
 The sheet checks progress every few seconds and when the person returns from
 Lark, and shows who is connected once Lark confirms. A declined or expired

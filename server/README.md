@@ -107,7 +107,9 @@ starts Lark's public app registration (`accounts.feishu.cn`
 Lark page. `GET /v1/lark/connect` polls the step in progress at most once per
 Lark's interval: once the app is registered, it starts the OAuth device
 authorization for the person (`/oauth/v1/device_authorization` with the
-user scopes listed at `open.feishu.cn/lark-cli/apis/scopes.json` plus
+user scopes listed at `open.feishu.cn/lark-cli/apis/scopes.json` except the
+`okr` and `attendance` domains and `mail:user_mailbox.message:send`, or
+lark-cli's recommended scopes when that list cannot be read, plus
 `offline_access`) and returns `{phase: "user", url}`; once the person
 approves, it stores the tokens and returns
 `{phase: "connected", name, scope}`. A declined or expired step returns

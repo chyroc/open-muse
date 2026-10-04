@@ -34,8 +34,18 @@ const upstream = vi.fn<typeof fetch>(async (input, init) => {
   if (url.endsWith("/lark-cli/apis/scopes.json"))
     return Response.json({
       scopes: {
-        docs: { user_scopes: ["docx:document:readonly", "bad scope!"] },
+        docs: {
+          user_scopes: ["docs:document.content:read", "bad scope!"],
+        },
         calendar: { user_scopes: ["calendar:calendar:read"] },
+        // Kept for administrators: never requested.
+        mail: {
+          user_scopes: [
+            "mail:user_mailbox.message:send",
+            "mail:user_mailbox:readonly",
+          ],
+        },
+        okr: { user_scopes: ["okr:okr.content:readonly"] },
       },
     });
   if (url.endsWith("/oauth/v1/app/registration")) {
@@ -164,7 +174,7 @@ describe("Lark connection set up by the service", () => {
     )!;
     expect(authorize.auth).toBe(`Basic ${btoa("cli_test:app-secret")}`);
     expect(new URLSearchParams(authorize.body).get("scope")).toBe(
-      "docx:document:readonly calendar:calendar:read offline_access",
+      "calendar:calendar:read docs:document.content:read mail:user_mailbox:readonly offline_access",
     );
 
     feishu.userApproved = true;

@@ -1,6 +1,7 @@
 import { seal, unseal } from "./connection";
 import { HttpError, type Env } from "./env";
 import { edgeFetch } from "./fetch";
+import { LARK_RECOMMENDED_SCOPES } from "./lark-scopes";
 
 // The account's Lark (Feishu) connection, set up by this service so the
 // person never runs lark-cli setup in a conversation. It speaks the same
@@ -12,24 +13,11 @@ import { edgeFetch } from "./fetch";
 const purpose = "open-muse-lark-connection";
 const ACCOUNTS = "https://accounts.feishu.cn";
 const OPEN = "https://open.feishu.cn";
+// Scope domains and scopes setup never asks for; see scopes().
+const RESTRICTED_DOMAINS = ["okr", "attendance"];
+const RESTRICTED_SCOPES = ["mail:user_mailbox.message:send"];
 // Renew the user token when it has less than this left.
 const RENEW_AHEAD = 5 * 60 * 1000;
-// Scopes when the published list cannot be read: the everyday domains.
-const FALLBACK_SCOPES = [
-  "calendar:calendar:read",
-  "calendar:calendar.event:read",
-  "calendar:calendar.free_busy:read",
-  "contact:user.base:readonly",
-  "docx:document:readonly",
-  "docx:document:create",
-  "drive:drive.metadata:readonly",
-  "drive:drive.search:readonly",
-  "im:message:readonly",
-  "im:chat:read",
-  "search:docs:read",
-  "task:task:read",
-  "wiki:wiki:readonly",
-];
 
 type Setup = {
   phase: "app" | "user";
@@ -128,24 +116,34 @@ export class LarkConnections {
     return { ok: response.ok, data };
   }
 
+  // Every user scope Lark publishes for lark-cli except those organizations
+  // commonly keep for administrators (OKR, attendance, sending mail): a
+  // request with one scope the organization does not allow is refused as a
+  // whole. lark-cli's recommended scopes when the list cannot be read.
   private async scopes() {
     try {
       const response = await this.fetcher(`${OPEN}/lark-cli/apis/scopes.json`);
       const file = (await response.json()) as {
         scopes?: Record<string, { user_scopes?: unknown }>;
       };
-      const all = new Set<string>();
-      for (const domain of Object.values(file.scopes ?? {}))
-        for (const scope of Array.isArray(domain.user_scopes)
-          ? domain.user_scopes
-          : [])
-          if (typeof scope === "string" && /^[\w:.-]{1,100}$/.test(scope))
-            all.add(scope);
-      if (all.size) return [...all];
+      const scopes = new Set<string>();
+      for (const [domain, entry] of Object.entries(file.scopes ?? {}))
+        if (
+          !RESTRICTED_DOMAINS.includes(domain) &&
+          Array.isArray(entry.user_scopes)
+        )
+          for (const scope of entry.user_scopes)
+            if (
+              typeof scope === "string" &&
+              /^[\w:.-]{1,100}$/.test(scope) &&
+              !RESTRICTED_SCOPES.includes(scope)
+            )
+              scopes.add(scope);
+      if (scopes.size) return [...scopes].sort();
     } catch {
       /* Fall back below. */
     }
-    return FALLBACK_SCOPES;
+    return [...LARK_RECOMMENDED_SCOPES];
   }
 
   private async beginApp(): Promise<Setup> {

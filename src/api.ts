@@ -2396,13 +2396,17 @@ export class Client {
     }
     return summary;
   }
-  // Whether the assistant is signed in to Lark in the main chat's current
-  // cloud environment, as its lark-cli output last showed, or, before it has
-  // used Lark there, whether the account keeps a saved sign-in that the
-  // environment restores. `cached` reads only what this device kept, for an
-  // immediate answer.
+  // Whether the assistant is signed in to Lark: for an account, whether the
+  // service keeps a saved sign-in that every conversation restores;
+  // otherwise as the main chat's lark-cli output last showed. `cached` reads
+  // only what this device kept, for an immediate answer.
   async larkConnected(cached = false) {
     if (!this.signedIn()) return false;
+    // An account keeps the sign-in on the service, which has the final say:
+    // a removed sign-in stays removed even while the chat still shows it.
+    const account = this.identity.account;
+    if (!cached && this.identity.accountMode() && account?.larkState)
+      return (await account.larkState().catch(() => ({ saved: false }))).saved;
     const r = this.context();
     const main = (await this.conversations(r).index()).mainId;
     if (!main) return false;
@@ -2414,11 +2418,7 @@ export class Client {
         );
     const shown = larkSignedIn(events);
     if (shown !== undefined) return shown;
-    // Nothing in this chapter yet: a saved sign-in starts it signed in.
-    const account = this.identity.account;
-    if (cached || !this.identity.accountMode() || !account?.larkState)
-      return false;
-    return (await account.larkState().catch(() => ({ saved: false }))).saved;
+    return false;
   }
   // Whether a Lark sign-in carries over to new conversations.
   larkKept() {
