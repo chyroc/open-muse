@@ -242,6 +242,22 @@ function pending(): AgentEvent[] {
   ];
 }
 describe("Direct MA client", () => {
+  it("stays connected while the account's session renews", async () => {
+    const f = fixture();
+    await f.login();
+    expect((await f.client.config()).mode).toBe("ark");
+    // A renewal in flight: no owner until it settles.
+    const owner = f.account.account.accountOwner;
+    let settle!: () => void;
+    const settled = new Promise<void>((resolve) => (settle = resolve));
+    f.account.account.accountOwner = () => undefined;
+    f.account.account.settled = () => settled;
+    const config = f.client.config();
+    f.account.account.accountOwner = owner;
+    settle();
+    expect((await config).mode).toBe("ark");
+  });
+
   it("automatically starts an empty identity through genuine MA submission and rejects forged initiation markers", async () => {
     const f = fixture();
     await f.login();

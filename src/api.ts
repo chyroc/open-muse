@@ -531,6 +531,9 @@ export class Client {
     return this.runtime;
   }
   async config(): Promise<AppConfig> {
+    // A session renewing right now is still signed in; wait for it rather
+    // than reporting a signed-out device for the moment it has no owner.
+    await this.identity.account?.settled?.();
     return {
       mode: this.signedIn() ? "ark" : "disconnected",
       authRequired: false,
