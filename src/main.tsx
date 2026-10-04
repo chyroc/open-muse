@@ -7,10 +7,13 @@ import "./styles.css";
 import "./muse.css";
 import "./chat.css";
 import "./dark.css";
+import "./appearance.css";
+import { applyAppearance } from "./appearance";
 import { initializeLanguage } from "../shared/i18n";
 import { followDynamicType } from "./dynamic-type";
 
 initializeLanguage();
+applyAppearance();
 
 const desktop = Boolean(
   (window as unknown as { __OPEN_MUSE_DESKTOP__?: boolean })

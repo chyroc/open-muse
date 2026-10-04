@@ -240,6 +240,12 @@
 .settings-list[role="radiogroup"] .settings-list-row {
   justify-content: space-between;
 }
+/* Choice rows have no icon: their label takes the row. */
+.settings-list[role="radiogroup"] .settings-list-row > span:first-child {
+  display: block;
+  flex: 1;
+  color: inherit;
+}
 
 /* A titled group of rows, and a row with a second line of detail. */
 .settings-group-title {

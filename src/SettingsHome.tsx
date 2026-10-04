@@ -9,6 +9,7 @@ import {
   MessageCircle,
   MessageCircleHeart,
   MonitorSmartphone,
+  Palette,
 } from "lucide-react";
 import {
   deviceLanguage,
@@ -22,6 +23,7 @@ import { AuthPanel } from "./AuthPanel";
 import { CheckInSettings } from "./CheckInSettings";
 import { ConnectorsSheet } from "./ConnectorsSheet";
 import { AboutSheet } from "./AboutSheet";
+import { AppearanceSheet } from "./AppearanceSheet";
 import { AccountSheet } from "./AccountSheet";
 import { backgroundClient } from "./background-client";
 import { ChannelsSheet } from "./ChannelsSheet";
@@ -37,6 +39,7 @@ type Section =
   | "devices"
   | "channels"
   | "checkins"
+  | "appearance"
   | "model"
   | "language"
   | "account"
@@ -135,6 +138,11 @@ export function SettingsHome({
             onClick={() => setSection("checkins")}
           />
         )}
+        <Row
+          icon={<Palette size={22} strokeWidth={2} />}
+          label={t("Appearance")}
+          onClick={() => setSection("appearance")}
+        />
         {signedIn && (
           <Row
             icon={<Cpu size={22} strokeWidth={2} />}
@@ -273,6 +281,9 @@ export function SettingsHome({
           </Sheet>
         ))}
       {section === "about" && <AboutSheet onClose={close} />}
+      {section === "appearance" && (
+        <AppearanceSheet name={name ?? t("Your assistant")} onClose={close} />
+      )}
       {section === "devices" && <DevicesSheet onClose={close} />}
       {section === "channels" && (
         <ChannelsSheet

@@ -1,0 +1,198 @@
+/* Settings > Appearance, laid out like the system's own appearance pages:
+   a chat preview, then grouped choices under small gray headings. */
+.appearance-preview {
+  display: flex;
+  justify-content: center;
+  height: 230px;
+  margin: -4px -20px 8px;
+  overflow: hidden;
+  /* The phone fades out at the bottom edge, as if cut by the page. */
+  mask-image: linear-gradient(#000 82%, transparent);
+}
+.appearance-phone {
+  --mine: var(--chat-theme, var(--chat-blue));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 200px;
+  height: 260px;
+  margin-top: 36px;
+  padding: 10px 8px;
+  border: 3px solid var(--mine);
+  border-radius: 34px;
+  background: #fff;
+  box-shadow: 0 10px 40px rgb(0 0 0 / 10%);
+  transition: border-color var(--motion-fade-duration) ease-out;
+}
+.appearance-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 68px;
+  border-radius: 22px;
+  background: #ececee;
+}
+.appearance-avatar {
+  display: block;
+  transition: zoom var(--motion-fade-duration) ease-out;
+}
+.appearance-name {
+  margin-top: -6px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  color: #111113;
+}
+.appearance-bubble,
+.appearance-line,
+.appearance-card {
+  display: block;
+  flex: 0 0 auto;
+  border-radius: 14px;
+  background: #e9eaeb;
+}
+.appearance-bubble.mine {
+  align-self: flex-end;
+  width: 68%;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--mine);
+  transition: background-color var(--motion-fade-duration) ease-out;
+}
+.appearance-bubble.mine.wide {
+  height: 42px;
+  border-radius: 14px;
+}
+.appearance-line {
+  width: 82%;
+  height: 20px;
+  border-radius: 10px;
+}
+.appearance-card {
+  height: 60px;
+}
+:root[data-chat-theme="black"] .appearance-phone {
+  --mine: #000000;
+}
+.appearance-heading {
+  margin: 20px 12px 8px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #8e8e93;
+}
+.appearance-themes {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 24px;
+  background: #fff;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.appearance-themes::-webkit-scrollbar {
+  display: none;
+}
+.appearance-swatch {
+  position: relative;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #f3f4f5;
+  overflow: hidden;
+  transition: transform var(--motion-press-duration) ease-out;
+}
+.appearance-swatch:active {
+  transform: scale(var(--motion-press-scale));
+}
+/* The chosen swatch is ringed in its own color, with a white gap. */
+.appearance-swatch[aria-checked="true"] {
+  overflow: visible;
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 4px #c9cbd0;
+}
+.appearance-swatch[aria-checked="true"]:not([data-theme="avatar"]) {
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 4px currentColor;
+}
+.appearance-swatch .companion-avatar {
+  zoom: calc(36 / 68);
+  box-shadow: none;
+}
+.appearance-size {
+  position: relative;
+  justify-content: space-between;
+  color: inherit;
+}
+.settings-list-row.appearance-size > span:first-child {
+  display: block;
+  flex: 1;
+  color: inherit;
+}
+.appearance-size svg {
+  color: #8e8e93;
+}
+/* The native picker covers the row, so a tap opens the system menu. */
+.appearance-size select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  font-size: 16px;
+}
+@media (prefers-color-scheme: dark) {
+  .appearance-phone {
+    --mine: color-mix(
+      in srgb,
+      var(--chat-theme, var(--chat-blue)) 38%,
+      #1c1c1e
+    );
+    background: #000;
+    box-shadow: none;
+  }
+  :root:not([data-chat-theme]) .appearance-phone,
+  :root[data-chat-theme="avatar"]:not([data-avatar]) .appearance-phone,
+  :root[data-chat-theme="avatar"][data-avatar="classic"] .appearance-phone {
+    --mine: var(--chat-blue);
+  }
+  :root[data-chat-theme="black"] .appearance-phone {
+    --mine: #e5e5ea;
+  }
+  .appearance-header,
+  .appearance-bubble,
+  .appearance-line,
+  .appearance-card {
+    background: #1f1f1f;
+  }
+  .appearance-name {
+    background: #2c2c2e;
+    color: #fff;
+  }
+  .appearance-themes {
+    background: #1c1c1e;
+  }
+  .appearance-swatch[aria-checked="true"] {
+    box-shadow:
+      0 0 0 2px #1c1c1e,
+      0 0 0 4px #636366;
+  }
+  .appearance-swatch[aria-checked="true"]:not([data-theme="avatar"]) {
+    box-shadow:
+      0 0 0 2px #1c1c1e,
+      0 0 0 4px currentColor;
+  }
+}
+@media (prefers-color-scheme: dark) {
+  .appearance-swatch[data-theme="black"][aria-checked="true"] {
+    box-shadow:
+      0 0 0 2px #1c1c1e,
+      0 0 0 4px #8e8e93;
+  }
+}

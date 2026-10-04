@@ -86,7 +86,7 @@ checked before another write; they are never blindly retried or adopted.
 | Lark connection made in the app (app ID and secret, the person's Lark user token and refresh token) | Open Muse service, `lark_connections` (account builds) | AES-GCM on the service, bound to the account | Sandboxes receive only a short-lived user access token; Disconnect in Connectors removes it |
 | Lark sign-in (lark-cli configuration and token store) | The conversation's cloud environment, plus a saved copy in `lark_states` (account builds) | AES-GCM on the service, bound to the account | Restored in each new conversation's cloud environment; Disconnect in Connectors removes it |
 | Open Muse session | Keychain (sessionStorage on web) | OS-protected | Each device signs in |
-| Appearance (Mac) | Device preference | None | Not synced |
+| Appearance (Mac; chat theme, avatar size and mode on iPhone) | Device preference | None | Not synced |
 
 In an account build, changes to the agent or environment — Studio's
 `UpdateAgent` and `UpdateEnvironment`, and the app's own policy updates — are
@@ -218,7 +218,13 @@ can pin English or 简体中文 on this device; Follow system removes the choice
 The choice restarts the app, is not synced, and is cleared by a device reset.
 Native system sheets, such as permission prompts, follow the system language.
 
-**Appearance (iOS):** the app follows the system light or dark appearance. Text
+**Appearance (iOS):** the app follows the system light or dark appearance
+unless Settings > **Appearance** chooses Light or Dark; that page also picks
+the color of the person's own chat bubbles (by default the color matching the
+companion's look, or one of eight colors, with black shown light in dark
+mode) and how large the companion sits atop the chat (hidden, small, medium,
+large or extra large), with a live preview. These choices stay on the device.
+Text
 keeps its size at the everyday system text sizes and grows at the larger
 accessibility sizes (Dynamic Type). Settings opens as a sheet over the current
 page. Feed, Ideas, Goals, and Library refresh when pulled down from the top.

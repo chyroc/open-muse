@@ -1,0 +1,74 @@
+/* Settings > Appearance, applied on the root element (see appearance.ts). */
+
+/* The person's bubbles. Each theme names one color; "avatar" follows the
+   companion's look, and the classic look keeps the app's own blue. */
+:root[data-chat-theme="avatar"][data-avatar="cocoa"],
+:root[data-chat-theme="sand"] {
+  --chat-theme: #e2dbd3;
+}
+:root[data-chat-theme="avatar"][data-avatar="snow"],
+:root[data-chat-theme="sky"] {
+  --chat-theme: #d0e4fc;
+}
+:root[data-chat-theme="avatar"][data-avatar="blush"],
+:root[data-chat-theme="pink"] {
+  --chat-theme: #f3bddd;
+}
+:root[data-chat-theme="avatar"][data-avatar="mint"],
+:root[data-chat-theme="lime"] {
+  --chat-theme: #e3efcb;
+}
+:root[data-chat-theme="avatar"][data-avatar="sky"],
+:root[data-chat-theme="blue"] {
+  --chat-theme: #bfdafb;
+}
+:root[data-chat-theme="lilac"] {
+  --chat-theme: #d7c7ee;
+}
+:root[data-chat-theme="peach"] {
+  --chat-theme: #f9dabc;
+}
+.from-user .chat-bubble {
+  background: var(--chat-theme, var(--chat-blue));
+}
+/* In dark mode a color deepens toward the page so white text stays
+   readable. */
+@media (prefers-color-scheme: dark) {
+  .from-user .chat-bubble {
+    background: color-mix(
+      in srgb,
+      var(--chat-theme, var(--chat-blue)) 38%,
+      #1c1c1e
+    );
+  }
+  :root:not([data-chat-theme]) .from-user .chat-bubble,
+  :root[data-chat-theme="avatar"]:not([data-avatar]) .from-user .chat-bubble,
+  :root[data-chat-theme="avatar"][data-avatar="classic"]
+    .from-user
+    .chat-bubble {
+    background: var(--chat-blue);
+  }
+}
+/* Black stands out as black in light mode and as white in dark mode. */
+:root[data-chat-theme="black"] .from-user .chat-bubble {
+  background: #000000;
+  color: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-chat-theme="black"] .from-user .chat-bubble {
+    background: #e5e5ea;
+    color: #000000;
+  }
+}
+
+/* How large the companion sits atop the chat. */
+.companion-status .companion-avatar {
+  zoom: var(--companion-zoom, 1);
+}
+:root[data-avatar-size="hidden"] .companion-status .companion-avatar {
+  display: none;
+}
+/* Photos and videos sent without text keep standing on their own. */
+:root .from-user .chat-bubble:has(.message-media):not(:has(.markdown)) {
+  background: transparent;
+}

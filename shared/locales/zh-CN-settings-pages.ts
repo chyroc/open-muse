@@ -37,4 +37,17 @@ export const zhSettingsPages: Record<string, string> = {
   "Disconnect Lark": "断开飞书",
   "Your assistant only reads the messages sent to your bot, never your other Lark chats, and acts on them only after confirming they come from your own Lark account. You can disconnect at any time.":
     "你的助手只会读取发给机器人的消息，不会读取你的其他飞书聊天，并且只在确认消息来自你本人的飞书账号后才会照做。你随时可以断开。",
+  "Chat theme": "聊天主题",
+  "Avatar size": "虚拟形象大小",
+  "Match your companion": "与形象一致",
+  Sky: "天蓝",
+  Black: "黑色",
+  Sand: "沙色",
+  Lilac: "淡紫",
+  Peach: "蜜桃",
+  Lime: "青柠",
+  Hidden: "已隐藏",
+  "Extra large": "加大",
+  Large: "大",
+  Small: "小",
 };

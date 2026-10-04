@@ -75,6 +75,35 @@ final class MuseHapticsHandler: NSObject, WKScriptMessageHandler {
     }
 }
 
+// The light or dark mode chosen in Settings > Appearance. It overrides the
+// system's on this app's window, which the web view follows for
+// prefers-color-scheme, and is kept for the next launch so the app opens in
+// the chosen mode before the page loads.
+final class MuseAppearanceHandler: NSObject, WKScriptMessageHandler {
+    static let key = "OpenMuseAppearanceMode"
+
+    static func style(_ mode: String?) -> UIUserInterfaceStyle {
+        switch mode {
+        case "light": return .light
+        case "dark": return .dark
+        default: return .unspecified
+        }
+    }
+
+    func userContentController(_ userContentController: WKUserContentController,
+                               didReceive message: WKScriptMessage) {
+        let origin = message.frameInfo.securityOrigin
+        guard message.frameInfo.isMainFrame, origin.protocol == "capacitor", origin.host == "localhost",
+              let mode = message.body as? String, ["system", "light", "dark"].contains(mode)
+        else { return }
+        UserDefaults.standard.set(mode, forKey: Self.key)
+        let window = message.webView?.window
+        UIView.transition(with: window ?? UIView(), duration: 0.25, options: .transitionCrossDissolve) {
+            window?.overrideUserInterfaceStyle = Self.style(mode)
+        }
+    }
+}
+
 // Reminders from the person's Upcoming list become local notifications, so a
 // due item is announced while Open Muse is closed. The page sends the full
 // set of upcoming occurrences each time; it replaces every earlier one.
@@ -167,6 +196,7 @@ class MuseBridgeViewController: CAPBridgeViewController {
     private let healthHandler = MuseHealthHandler()
     private let personalHandler = MusePersonalHandler()
     private let hapticsHandler = MuseHapticsHandler()
+    private let appearanceHandler = MuseAppearanceHandler()
     private let remindersHandler = MuseRemindersHandler()
 
     override func capacitorDidLoad() {
@@ -212,6 +242,7 @@ class MuseBridgeViewController: CAPBridgeViewController {
         webView?.configuration.userContentController.addScriptMessageHandler(healthHandler, contentWorld: .page, name: "museHealth")
         webView?.configuration.userContentController.addScriptMessageHandler(personalHandler, contentWorld: .page, name: "musePersonal")
         webView?.configuration.userContentController.add(hapticsHandler, contentWorld: .page, name: "museHaptics")
+        webView?.configuration.userContentController.add(appearanceHandler, contentWorld: .page, name: "museAppearance")
         webView?.configuration.userContentController.add(remindersHandler, contentWorld: .page, name: "museReminders")
         #if DEBUG && targetEnvironment(simulator)
         // Real-MA acceptance uses separate mappings/resources without changing
@@ -266,6 +297,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         window = UIWindow(windowScene: windowScene)
+        window?.overrideUserInterfaceStyle = MuseAppearanceHandler.style(
+            UserDefaults.standard.string(forKey: MuseAppearanceHandler.key))
         window?.rootViewController = MuseBridgeViewController()
         window?.makeKeyAndVisible()
 
