@@ -1,0 +1,110 @@
+/* Code in a reply: a light card with its language and a copy button on top,
+   then the code in a fixed-width face, scrolling sideways. */
+.markdown .code-block {
+  margin: 8px 0;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 14%);
+}
+.code-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 6px 6px 14px;
+  border-bottom: 0.5px solid rgb(0 0 0 / 12%);
+  font-size: 15px;
+  font-weight: 600;
+}
+.code-block-head button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 18px;
+  background: none;
+  color: #6e6e73;
+  transition: transform var(--motion-press-duration) ease-out;
+}
+.code-block-head button:active {
+  transform: scale(var(--motion-press-scale));
+  background: rgb(0 0 0 / 6%);
+}
+.markdown .code-block pre.code-block-body {
+  margin: 0;
+  padding: 12px 14px 14px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: #1c1c1e;
+  font-size: 15px;
+  line-height: 1.55;
+  white-space: pre;
+}
+.markdown .code-block code {
+  padding: 0;
+  background: none;
+  font-size: inherit;
+  white-space: inherit;
+}
+.code-comment {
+  color: #6e7781;
+}
+.code-string {
+  color: #0a3069;
+}
+.code-number {
+  color: #0550ae;
+}
+.code-keyword {
+  color: #cf222e;
+}
+.code-call {
+  color: #8250df;
+}
+@media (prefers-color-scheme: dark) {
+  .markdown .code-block {
+    background: #1c1c1e;
+    box-shadow: inset 0 0 0 0.5px rgb(255 255 255 / 16%);
+  }
+  .code-block-head {
+    border-bottom-color: rgb(255 255 255 / 14%);
+  }
+  .code-block-head button {
+    color: #aeaeb2;
+  }
+  .markdown .code-block pre.code-block-body {
+    background: none;
+    color: #e5e5ea;
+  }
+  .code-comment {
+    color: #8b949e;
+  }
+  .code-string {
+    color: #a5d6ff;
+  }
+  .code-number {
+    color: #79c0ff;
+  }
+  .code-keyword {
+    color: #ff7b72;
+  }
+  .code-call {
+    color: #d2a8ff;
+  }
+}
+/* Code inside a sentence is set in the fixed-width face, without a pill. */
+.muse-shell .chat-bubble .markdown :not(pre) > code {
+  padding: 0;
+  background: none;
+  color: #545458;
+}
+@media (prefers-color-scheme: dark) {
+  .muse-shell .chat-bubble .markdown :not(pre) > code {
+    background: none;
+    color: #c7c7cc;
+  }
+}

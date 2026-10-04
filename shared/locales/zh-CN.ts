@@ -99,6 +99,8 @@ export const zhCN: Record<string, string> = {
   Photos: "照片",
   "Add file": "添加文件",
   Copied: "已复制",
+  Code: "代码",
+  "Copy code": "复制代码",
   "Copy text": "复制文本",
   "Saved to Library": "已保存到资源库",
   "Save reply": "保存回复",

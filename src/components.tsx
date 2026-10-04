@@ -13,9 +13,16 @@ import {
   ShieldCheck,
   Square,
 } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import {
+  isValidElement,
+  useState,
+  type FormEvent,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { CodeBlock } from "./CodeBlock";
 import type { AgentEvent, Category } from "../shared/types";
 import { eventText } from "../shared/types";
 import { categories } from "./content";
@@ -213,6 +220,21 @@ export function Markdown({ text }: { text: string }) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkLineBreaks]}
         components={{
+          // A fenced block arrives as <pre><code class="language-…">.
+          pre: ({ children }) => {
+            const code = (Array.isArray(children) ? children[0] : children) as
+              | ReactElement<{ className?: string; children?: ReactNode }>
+              | undefined;
+            const props = isValidElement(code) ? code.props : undefined;
+            return (
+              <CodeBlock
+                code={String(props?.children ?? "")}
+                language={
+                  /language-([\w+#.-]+)/.exec(props?.className ?? "")?.[1]
+                }
+              />
+            );
+          },
           a: ({ children, href }) => (
             <a href={href} target="_blank" rel="noopener noreferrer">
               {children}
