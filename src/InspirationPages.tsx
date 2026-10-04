@@ -22,6 +22,7 @@ import { Markdown, dateLabel } from "./components";
 import { PageHeader } from "./MusePages";
 import { useTask } from "./useTask";
 import { defaultFeedInstructions } from "../shared/inspiration";
+import { isTransientFailure } from "../shared/network-error";
 import {
   emptyIdeaCatalogState,
   type IdeaCatalogState,
@@ -219,7 +220,9 @@ export function InspirationPage({
         setError("");
       }
     } catch (e) {
-      if (alive.current) setError((e as Error).message);
+      // A connection failure is read again quietly on the next refresh.
+      if (alive.current && !isTransientFailure(e))
+        setError((e as Error).message);
     } finally {
       refreshing.current = false;
       if (alive.current) setLoading(false);

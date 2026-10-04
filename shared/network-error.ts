@@ -15,3 +15,14 @@ export function isNetworkFailure(error: unknown) {
     )
   );
 }
+
+// A read that ran in the background and failed only because the connection
+// did: no answer, no answer in time, or cut off before the answer arrived, as
+// when the system suspends the app. Such a read is tried again quietly; only
+// a request the person made, such as sending a message, reports it.
+export function isTransientFailure(error: unknown) {
+  return (
+    isNetworkFailure(error) ||
+    (error instanceof Error && error.name === "AbortError")
+  );
+}

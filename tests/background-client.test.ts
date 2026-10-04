@@ -214,9 +214,16 @@ describe("Optional native background client", () => {
         accountCredentialRevision: () => 3,
       }),
     ).rejects.toThrow("no request was retried");
+    // Named as a connection failure, so background reads retry quietly.
+    await expect(
+      client.syncConfiguration({
+        backgroundConfiguration: async () => config,
+        accountCredentialRevision: () => 3,
+      }),
+    ).rejects.toMatchObject({ name: "NetworkError" });
     expect(
       fetcher.mock.calls.filter(([, init]) => init?.method === "PUT"),
-    ).toHaveLength(1);
+    ).toHaveLength(2);
     expect(f.read()).not.toContain(config.apiKey);
   });
   it("removes remote access with revision/consent, retaining the local session", async () => {
@@ -270,7 +277,9 @@ describe("Optional native background client", () => {
       backgroundOrigin("https://background.example/functions/v1/open-muse/"),
     ).toBe("https://background.example/functions/v1/open-muse");
     expect(
-      backgroundConnectSource("https://background.example/functions/v1/open-muse"),
+      backgroundConnectSource(
+        "https://background.example/functions/v1/open-muse",
+      ),
     ).toBe("https://background.example");
   });
   it("restores Keychain state but will not send credentials to another origin", async () => {

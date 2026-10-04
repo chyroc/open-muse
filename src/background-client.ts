@@ -357,11 +357,24 @@ export class BackgroundClient {
       return await response.json();
     } catch (e) {
       if (e instanceof BackgroundRequestError) throw e;
-      throw new Error(
+      // A request the caller cancelled keeps its own error.
+      if (
+        init.signal?.aborted &&
+        (init.signal.reason as Error)?.name !== "TimeoutError"
+      )
+        throw e;
+      // Named like the direct client's network errors, so a read in the
+      // background can try again quietly.
+      const failure = new Error(
         t(
           "Could not confirm the background request. Refresh to check its result; no request was retried automatically.",
         ),
       );
+      failure.name =
+        (bound.signal.reason as Error)?.name === "TimeoutError"
+          ? "TimeoutError"
+          : "NetworkError";
+      throw failure;
     } finally {
       bound.dispose();
     }

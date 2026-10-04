@@ -1214,5 +1214,4 @@ export const zhCN: Record<string, string> = {
   "Build a feed around my interests. Keep it concise, direct, and easy to scan. Avoid clickbait. Include useful sources when available.":
     "为我打造一个关于我兴趣的动态版面。内容简洁直接、便于浏览，不要标题党，有可靠来源时附上来源。",
   Connecting: "正在连接",
-  "Can’t reach the network right now. Retrying…": "网络暂时连不上，正在重试…",
 };

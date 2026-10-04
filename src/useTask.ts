@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentEvent, Session } from "../shared/types";
 import { mergeEvents, mergeHistorySnapshot } from "../shared/types";
 import type { Client } from "./api";
-import { isNetworkFailure } from "../shared/network-error";
+import { isTransientFailure } from "../shared/network-error";
 import { AutoApprover } from "./autoApprove";
 
 export function useTask(client: Client, id?: string) {
@@ -34,7 +34,7 @@ export function useTask(client: Client, id?: string) {
     let reconnect: ReturnType<typeof setTimeout>;
     let resync: ReturnType<typeof setTimeout>;
     let retry = 0;
-    // Network failures in a row; the first few are retried without a message.
+    // Connection failures in a row, which space out the quiet retries.
     let quietFailures = 0;
     let historyLoaded = false;
     let knownEvents: AgentEvent[] = [];
@@ -71,20 +71,23 @@ export function useTask(client: Client, id?: string) {
         void client.keepEvents(id, knownEvents).catch(() => {});
       } catch (err) {
         if (signal.aborted) return;
-        // A request the system cut off, as when the app was in the
-        // background, is read again shortly instead of shown as an error.
-        // A connection that keeps failing is reported after a few tries.
-        if (
-          (err as Error).name === "AbortError" ||
-          (isNetworkFailure(err) && ++quietFailures <= 3)
-        ) {
+        // A read the connection failed, as when the app was in the
+        // background, is read again quietly instead of shown as an error.
+        // Until history first arrives the conversation keeps loading
+        // rather than showing as empty.
+        if (isTransientFailure(err)) {
           clearTimeout(resync);
-          resync = setTimeout(() => void sync(), 2000);
-        } else setError((err as Error).message);
+          resync = setTimeout(
+            () => void sync(),
+            Math.min(2000 * 2 ** quietFailures++, 15000),
+          );
+          return;
+        }
+        setError((err as Error).message);
       } finally {
         syncing = false;
-        if (!signal.aborted) setLoading(false);
       }
+      if (!signal.aborted) setLoading(false);
     };
     syncRef.current = sync;
     const connect = async () => {

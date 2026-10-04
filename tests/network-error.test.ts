@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isNetworkFailure } from "../shared/network-error";
+import { isNetworkFailure, isTransientFailure } from "../shared/network-error";
 
 describe("network failures", () => {
   it("recognizes the browsers' wording for a request that never arrived", () => {
@@ -26,8 +26,21 @@ describe("network failures", () => {
     expect(isNetworkFailure(new Error("Load failed"))).toBe(false);
     expect(isNetworkFailure(new TypeError("x is undefined"))).toBe(false);
     expect(isNetworkFailure("Load failed")).toBe(false);
+    expect(isNetworkFailure(new DOMException("Cancelled", "AbortError"))).toBe(
+      false,
+    );
+  });
+  it("treats a cut-off request as transient, so background reads retry", () => {
     expect(
-      isNetworkFailure(new DOMException("Cancelled", "AbortError")),
-    ).toBe(false);
+      isTransientFailure(
+        new DOMException("The operation was aborted.", "AbortError"),
+      ),
+    ).toBe(true);
+    expect(isTransientFailure(new TypeError("Load failed"))).toBe(true);
+    const timeout = new Error("Readable copy");
+    timeout.name = "TimeoutError";
+    expect(isTransientFailure(timeout)).toBe(true);
+    expect(isTransientFailure(new Error("HTTP 403"))).toBe(false);
+    expect(isTransientFailure("AbortError")).toBe(false);
   });
 });

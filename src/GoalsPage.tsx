@@ -16,6 +16,7 @@ import {
   Users,
 } from "lucide-react";
 import { goalCategories, type GoalCategory } from "../shared/goals";
+import { isTransientFailure } from "../shared/network-error";
 import type { Goal } from "../shared/types";
 import type { Client } from "./api";
 import { Markdown } from "./components";
@@ -156,6 +157,9 @@ export function GoalsPage({
   const reload = useCallback(async () => {
     if (reading.current) return;
     reading.current = true;
+    // A connection failure is read again quietly on the next refresh; until
+    // the first read, the page keeps loading rather than showing as empty.
+    let quiet = false;
     try {
       const value = await client.goals();
       if (alive.current) {
@@ -164,10 +168,11 @@ export function GoalsPage({
         setError("");
       }
     } catch (e) {
-      if (alive.current) setError((e as Error).message);
+      quiet = isTransientFailure(e);
+      if (alive.current && !quiet) setError((e as Error).message);
     } finally {
       reading.current = false;
-      if (alive.current) setLoading(false);
+      if (alive.current && !quiet) setLoading(false);
     }
   }, [client]);
   useRefreshHandler(reload);
