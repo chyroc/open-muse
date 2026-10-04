@@ -6,24 +6,36 @@ English | [简体中文](README.zh-CN.md)
 
 <table>
   <tr>
-    <td width="33%"><img src="docs/images/memory.png" alt="A weekly reminder and a saved preference, with the assistant's editable SOUL and MEMORY"></td>
-    <td width="33%"><img src="docs/images/approval.png" alt="An approval card before the assistant uses the Mac"></td>
-    <td width="33%"><img src="docs/images/feed.png" alt="A personal Feed with sources"></td>
+    <td width="16%"><img src="docs/images/memory.png" alt="A weekly reminder and a saved preference, with the assistant's editable SOUL and MEMORY"></td>
+    <td width="16%"><img src="docs/images/approval.png" alt="An approval card before the assistant uses the Mac"></td>
+    <td width="16%"><img src="docs/images/feed.png" alt="A personal Feed with sources"></td>
+    <td width="16%"><img src="docs/images/declined.png" alt="After a declined request, the assistant answers in the chat instead"></td>
+    <td width="16%"><img src="docs/images/quick-chat.png" alt="Quick Chat over any app"></td>
+    <td width="16%"><img src="docs/images/computer-use-settings.png" alt="Computer use settings"></td>
   </tr>
   <tr>
     <td align="center"><sub><b>Remembers and reminds.</b> One sentence sets a weekly reminder and saves a preference to memory you can open.</sub></td>
     <td align="center"><sub><b>Uses your Mac — after asking.</b> Allow once, allow for this chat, or decline.</sub></td>
     <td align="center"><sub><b>A Feed of your own.</b> Morning updates on the topics you choose, each with a source.</sub></td>
-  </tr>
-  <tr>
-    <td width="33%"><img src="docs/images/declined.png" alt="After a declined request, the assistant answers in the chat instead"></td>
-    <td width="33%"><img src="docs/images/quick-chat.png" alt="Quick Chat over any app"></td>
-    <td width="33%"><img src="docs/images/computer-use-settings.png" alt="Computer use settings"></td>
-  </tr>
-  <tr>
     <td align="center"><sub><b>No means no.</b> Decline, and it keeps its hands off and helps in the chat instead.</sub></td>
     <td align="center"><sub><b>Always at hand.</b> A small chat card over whatever you are doing.</sub></td>
     <td align="center"><sub><b>You set the limits.</b> Permissions, blocked apps and folders, all in one place.</sub></td>
+  </tr>
+  <tr>
+    <td width="16%"><img src="docs/images/ios-chat.png" alt="A short weekend plan in a side chat, ending with one question"></td>
+    <td width="16%"><img src="docs/images/ios-menu.png" alt="Long-press menu on a reply with reactions, Reply, Copy, Select, Share and Save to Library"></td>
+    <td width="16%"><img src="docs/images/ios-ideas.png" alt="Ideas: ready-made tasks to hand to the assistant"></td>
+    <td width="16%"><img src="docs/images/ios-goals.png" alt="Goals with categories to start a new goal"></td>
+    <td width="16%"><img src="docs/images/ios-connectors.png" alt="Connectors: Apple Health, Calendar, Reminders, Contacts and Lark"></td>
+    <td width="16%"><img src="docs/images/ios-appearance.png" alt="Appearance: chat theme, avatar size and light or dark mode"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Plans, then asks.</b> A short plan and one question to tailor it.</sub></td>
+    <td align="center"><sub><b>Long-press a reply.</b> React, reply, copy, share, or save it to your Library.</sub></td>
+    <td align="center"><sub><b>Ideas to start from.</b> Ready-made tasks your assistant can take on.</sub></td>
+    <td align="center"><sub><b>Goals that grow.</b> Pick a category and get a plan that keeps improving.</sub></td>
+    <td align="center"><sub><b>Connect what you use.</b> Apple Health, Calendar, Reminders, Contacts and Lark.</sub></td>
+    <td align="center"><sub><b>Make it yours.</b> Bubble colors, avatar size, light or dark.</sub></td>
   </tr>
 </table>
 
