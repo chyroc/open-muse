@@ -15,7 +15,6 @@ import {
   Menu,
   MessageCircle,
   Mic,
-  MoreHorizontal,
   Plus,
   ShieldCheck,
   Square,
@@ -30,7 +29,12 @@ import type {
   IdentityDocument,
   IdentityDocumentName,
 } from "../../shared/identity";
-import { StatusPanel, type StatusTab } from "./StatusPanel";
+import {
+  StatusPanel,
+  statusPanelOpenStored,
+  storeStatusPanelOpen,
+  type StatusTab,
+} from "./StatusPanel";
 import { FeedPage } from "./FeedPage";
 const IdeasPage = lazy(() =>
   import("./IdeasPage").then((module) => ({ default: module.IdeasPage })),
@@ -170,7 +174,12 @@ export function DesktopApp({ client }: { client: Client }) {
   const settleDrawer = () => {
     if (!keepPanelRef.current) setDrawer(false);
   };
-  const [statusOpen, setStatusOpen] = useState(true);
+  // Closed until the person opens it; their own choice is remembered.
+  const [statusOpen, setStatusOpen] = useState(statusPanelOpenStored);
+  const chooseStatusOpen = (open: boolean) => {
+    setStatusOpen(open);
+    storeStatusPanelOpen(open);
+  };
   const [statusTab, setStatusTab] = useState<StatusTab>("activity");
   // Dragging the status panel's edge, and settling it after a release.
   const [panelDrag, setPanelDrag] = useState<PanelDrag>({ kind: "idle" });
@@ -180,7 +189,7 @@ export function DesktopApp({ client }: { client: Client }) {
   }>();
   const panelSurface = useRef<HTMLDivElement>(null);
   const panelWidth = () =>
-    window.matchMedia("(max-width: 1050px)").matches ? 300 : 345;
+    window.matchMedia("(max-width: 1050px)").matches ? 300 : 360;
   const commitPanel = (open: boolean) => {
     // A click on an edge toggles at once; a released drag glides the rest of
     // the way from wherever the pointer left the panel.
@@ -244,7 +253,6 @@ export function DesktopApp({ client }: { client: Client }) {
   const [notice, setNotice] = useState("");
   const [ready, setReady] = useState(client.signedIn());
   const [loading, setLoading] = useState(false);
-  const [menu, setMenu] = useState(false);
   const [prefill, setPrefill] = useState(0);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [paletteGoals, setPaletteGoals] = useState<Goal[]>([]);
@@ -310,6 +318,17 @@ export function DesktopApp({ client }: { client: Client }) {
     (event) =>
       !canAutoApprove(event) || task.autoApprovalFailures.includes(event.id),
   );
+  // What the companion at the top of the chat says under its name; nothing
+  // while it is simply connected.
+  const presence: { label: string; tone: string } | undefined = !ready
+    ? { label: t("Not connected"), tone: "offline" }
+    : approvals.length
+      ? { label: t("Waiting for approval"), tone: "approval" }
+      : running
+        ? { label: t("Working"), tone: "busy" }
+        : task.connected || !id
+          ? undefined
+          : { label: t("Reconnecting…"), tone: "busy" };
   const panelRow = (session: Session) => ({
     id: session.id,
     title: index.entries[session.id]?.title ?? session.title,
@@ -411,7 +430,6 @@ export function DesktopApp({ client }: { client: Client }) {
       acceptedHash.current = location.hash;
       setRoute(parseRoute(location.hash));
       setError("");
-      setMenu(false);
       setAway(false);
     };
     const command = (event: Event) => {
@@ -1168,10 +1186,7 @@ export function DesktopApp({ client }: { client: Client }) {
             ? undefined
             : {
                 name,
-                onOpen: () => {
-                  setStatusOpen(true);
-                  goPage("chat");
-                },
+                onOpen: () => goPage("chat"),
               }
         }
         onSearch={() => {
@@ -1418,16 +1433,27 @@ export function DesktopApp({ client }: { client: Client }) {
               <div className="toolbar-spacer" />
               {route.page === "chat" && !statusOpen && (
                 // With the status panel closed, the companion sits at the top
-                // of the conversation and reopens it.
+                // of the conversation and opens it.
                 <button
                   className="toolbar-avatar companion-float"
-                  aria-label={t("Assistant status")}
-                  onClick={() => setStatusOpen(true)}
+                  aria-label={
+                    approvals.length
+                      ? t("{name} is waiting for your approval", { name })
+                      : name || t("Assistant status")
+                  }
+                  onClick={() => chooseStatusOpen(true)}
                 >
                   <span className="companion-face">
                     <Avatar />
                   </span>
-                  <span className="companion-name">{name}</span>
+                  <span className="companion-name">
+                    {name && <span>{name}</span>}
+                    {presence && (
+                      <span className={`companion-state is-${presence.tone}`}>
+                        {presence.label}
+                      </span>
+                    )}
+                  </span>
                 </button>
               )}
               {inspirationPage && (
@@ -1438,59 +1464,6 @@ export function DesktopApp({ client }: { client: Client }) {
                 >
                   <X size={18} />
                 </button>
-              )}
-              <button
-                className="glass-pill"
-                aria-label={t("Conversation options")}
-                aria-expanded={menu}
-                onClick={() => setMenu((value) => !value)}
-              >
-                <MoreHorizontal size={20} />
-              </button>
-              {menu && (
-                <div className="conversation-menu">
-                  <button
-                    onClick={() => {
-                      navigate("/new");
-                      setMenu(false);
-                    }}
-                  >
-                    {t("New side chat")}
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (inspirationPage)
-                        navigate(
-                          id && id !== index.mainId ? `/chat/${id}` : "/",
-                        );
-                      setStatusOpen(true);
-                      setMenu(false);
-                    }}
-                  >
-                    {t("Assistant status")}
-                  </button>
-                  {id && id !== index.mainId && (
-                    <button
-                      disabled={busy}
-                      onClick={() =>
-                        void action(async () => {
-                          await client.archiveConversation(
-                            id,
-                            !index.entries[id]?.archived,
-                          );
-                          await reload();
-                          navigate("/");
-                          setMenu(false);
-                        })
-                      }
-                    >
-                      {index.entries[id]?.archived
-                        ? t("Unarchive")
-                        : t("Archive")}{" "}
-                      {t("side chat")}
-                    </button>
-                  )}
-                </div>
               )}
             </header>
             {find !== undefined && (
@@ -1981,7 +1954,7 @@ export function DesktopApp({ client }: { client: Client }) {
               }
               tab={statusTab}
               onTab={setStatusTab}
-              onClose={() => setStatusOpen(false)}
+              onClose={() => chooseStatusOpen(false)}
               events={currentEvents}
               approvals={approvals}
               busy={busy}

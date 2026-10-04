@@ -91,64 +91,90 @@ h3 {
   background: var(--surface);
   isolation: isolate;
 }
+/* The navigation rail. Entry size follows the window height: nine entries
+   share the height left after 224 points of chrome, with 10 points between
+   them, between 32 and 56 points each. */
 .rail {
   width: 78px;
   flex-shrink: 0;
-  border-right: 1px solid var(--line);
+  border-right: 1px solid var(--divider);
   display: flex;
   flex-direction: column;
-  align-items: center;
   position: relative;
+  z-index: 24;
   background: var(--bg);
 }
 .window-drag-space {
-  height: 35px;
+  height: 28px;
   width: 100%;
   flex-shrink: 0;
 }
+/* Holds the companion away from the chat, and keeps its place in the chat so
+   the entries below never move. */
+.rail-companion-slot {
+  position: relative;
+  height: 72px;
+  padding-top: 16px;
+  flex-shrink: 0;
+}
+.rail-primary {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 .rail-items {
-  position: absolute;
-  /* Centered a little above the middle, clear of the menu button below. */
-  top: calc(50% - 12px);
-  transform: translateY(-50%);
+  margin: auto 0;
+  min-height: calc(16px + 9 * clamp(32px, calc((100vh - 304px) / 9), 56px));
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  flex-shrink: 0;
 }
-.rail-items > div {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.rail-items button,
-.rail-settings {
+.rail-item {
+  position: relative;
+  width: 100%;
+  min-height: clamp(32px, calc((100vh - 304px) / 9), 56px);
+  padding: 5px 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+  flex-shrink: 0;
+  animation: rail-reveal 0.18s ease-out both;
 }
-.rail-items button,
-.rail-settings {
+.rail-surface {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: min(44px, clamp(32px, calc((100vh - 304px) / 9), 56px));
+  height: min(44px, clamp(32px, calc((100vh - 304px) / 9), 56px));
+  border-radius: 50%;
+  font-size: 24px;
+  opacity: 0.95;
   transition:
-    background 0.15s ease-out,
+    background-color 0.2s,
+    opacity 0.2s,
     transform 0.3s cubic-bezier(0.34, 1.4, 0.64, 1);
 }
-.rail-items button:hover,
-.rail-settings:hover {
-  background: var(--fill-hover);
-}
-.rail-items button[aria-current="page"] {
+.rail-item:hover .rail-surface,
+.rail-item:focus-visible .rail-surface,
+.rail-item[aria-current="page"] .rail-surface,
+.rail-settings[aria-expanded="true"] .rail-surface {
   background: var(--fill);
+  opacity: 1;
 }
-.rail-items button:active,
-.rail-settings:active {
+.rail-item:active .rail-surface {
   transform: scale(0.92);
+  transition-duration: 0.1s;
 }
 /* Hovering an entry gives its glyph a short springy nudge. */
-.rail-items button:hover svg {
+.rail-item:hover .rail-surface svg {
   animation: rail-glyph 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes rail-reveal {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
 }
 @keyframes rail-glyph {
   0% {
@@ -164,23 +190,64 @@ h3 {
     transform: scale(1) rotate(0deg);
   }
 }
+/* The name of an entry and its shortcut, beside it as soon as it is hovered. */
+.rail-tip {
+  position: absolute;
+  left: calc(50% + 22px + 4px);
+  top: 50%;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  box-shadow:
+    0 2px 6px var(--quick-shadow-near),
+    0 8px 24px var(--quick-shadow-far);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-8px, -50%) scale(0.95);
+  transform-origin: left center;
+}
+.rail-tip kbd {
+  font-family: inherit;
+  color: var(--text-2);
+}
+.rail-item:hover > .rail-tip,
+.rail-companion:hover > .rail-tip {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(0, -50%);
+  transition:
+    opacity 0.15s ease-out,
+    transform 0.15s ease-out;
+}
 @media (prefers-reduced-motion: reduce) {
-  .rail-items button:hover svg {
+  .rail-item {
+    animation: none;
+  }
+  .rail-item:hover .rail-surface svg {
     animation: rail-glyph-fade 0.2s ease-out;
   }
-  .rail-items button:active,
-  .rail-settings:active {
+  .rail-item:active .rail-surface {
     transform: none;
+  }
+  .rail-item:hover > .rail-tip,
+  .rail-companion:hover > .rail-tip {
+    transform: translate(0, -50%);
   }
 }
 @keyframes rail-glyph-fade {
   from {
     opacity: 0.6;
   }
-}
-.rail-settings {
-  margin-top: auto;
-  margin-bottom: 9px;
 }
 .workspace {
   position: relative;
@@ -202,11 +269,15 @@ h3 {
   padding: 9px 12px;
   z-index: 3;
   pointer-events: none;
-  background: linear-gradient(
-    var(--scrim-strong),
-    var(--scrim-soft),
-    transparent
-  );
+}
+.chat-toolbar::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: -1;
+  height: 112px;
+  background: linear-gradient(to bottom, var(--bg), transparent);
+  pointer-events: none;
 }
 .chat-toolbar > * {
   pointer-events: auto;
@@ -246,24 +317,6 @@ h3 {
 }
 .toolbar-spacer {
   flex: 1;
-}
-.conversation-menu {
-  position: absolute;
-  right: 14px;
-  top: 53px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  box-shadow: 0 8px 30px #0002;
-  padding: 6px;
-  border-radius: 12px;
-  min-width: 190px;
-}
-.conversation-menu button {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 10px;
-  border-radius: 7px;
 }
 .chat-scroll {
   flex: 1;
@@ -824,7 +877,7 @@ h3 {
   position: relative;
   display: flex;
   flex-direction: column;
-  width: 345px;
+  width: 360px;
   flex-shrink: 0;
   border-left: 1px solid var(--line);
   background: var(--bg);
@@ -1544,13 +1597,15 @@ h3 {
   }
 }
 /* The rail's bottom button opens a small menu beside it. */
+/* The bottom utilities: the menu button rests 4 points above the edge. */
 .rail-menu-anchor {
   position: relative;
-  margin-top: auto;
-  margin-bottom: 9px;
-}
-.rail-menu-anchor .rail-settings {
-  margin: 0;
+  min-height: 125px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-bottom: 4px;
 }
 .rail-menu {
   position: absolute;
@@ -1580,6 +1635,16 @@ h3 {
 .rail-menu button:hover,
 .rail-menu button:focus-visible {
   background: var(--fill-hover);
+}
+.rail-menu button > svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+.rail-menu hr {
+  margin: 4px 9px;
+  border: 0;
+  border-top: 1px solid var(--divider);
 }
 .rail-menu kbd,
 .shortcuts-dialog kbd {
@@ -2152,11 +2217,13 @@ h3 {
     opacity: 0;
   }
 }
-/* The companion at the top of the conversation while the status panel is closed. */
+/* The companion at the top of the conversation while the status panel is
+   closed: a 56-point portrait with its name, and its state when it is not
+   simply connected, on a raised pill overlapping the portrait by 4 points. */
 .toolbar-avatar {
   position: absolute;
   left: 50%;
-  top: 6px;
+  top: 12px;
   transform: translateX(-50%);
   animation: toolbar-avatar-in 0.34s cubic-bezier(0.22, 1.2, 0.36, 1) both;
   transition: transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
@@ -2164,22 +2231,26 @@ h3 {
 .toolbar-avatar:active {
   transform: translateX(-50%) scale(0.94);
 }
-/* The companion as it floats over a page: a round portrait with its name
-   on a small raised pill that overlaps the portrait's lower edge. */
 .companion-float {
   z-index: 30;
   display: flex;
   flex-direction: column;
   align-items: center;
+  max-width: 320px;
 }
 .companion-face {
+  position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
-  width: 54px;
-  height: 54px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: var(--fill);
-  box-shadow: inset 0 0 0 1px var(--line);
+  box-shadow:
+    inset 0 1px 0 0 #ffffff80,
+    0 0 6px 0 #00000008,
+    0 6px 30px 0 #00000012;
   overflow: hidden;
 }
 .companion-face .desktop-avatar {
@@ -2187,32 +2258,84 @@ h3 {
 }
 .companion-name {
   position: relative;
-  margin-top: -10px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: var(--surface);
-  box-shadow: 0 2px 8px #0000001f;
-  font-size: 12px;
-  line-height: 16px;
+  margin-top: -4px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 18px;
+  background: var(--pill);
+  box-shadow:
+    0 2px 8px 0 #11111214,
+    0 2px 16px 0 #1111120a;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
   color: var(--text);
+  animation: companion-name-in 0.2s ease-out 0.1s both;
 }
-/* The companion at the top of the rail, away from the chat. */
+.companion-name:empty {
+  display: none;
+}
+.companion-name > span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.companion-state {
+  font-size: 11px;
+  line-height: 13px;
+  font-weight: 400;
+  color: var(--text-2);
+}
+.companion-state.is-approval {
+  color: var(--status-working);
+}
+.companion-state.is-offline {
+  color: var(--danger);
+}
+@keyframes companion-name-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+/* The companion at the top of the rail, away from the chat: a 48-point
+   portrait centered in the 56-point slot and lifted 8 points. */
 .rail-companion {
-  margin-top: 7px;
-  border-radius: 50%;
-  box-shadow: 0 4px 12px #0000001f;
-  animation: toolbar-avatar-in 0.34s cubic-bezier(0.22, 1.2, 0.36, 1) both;
-  transition: transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+  position: absolute;
+  inset: 16px 0 0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: rail-companion-in 0.34s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+@keyframes rail-companion-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
 }
 .rail-companion .companion-face {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
+  transform: translateY(-8px);
+  box-shadow:
+    inset 0 0 0 1px var(--line),
+    0 4px 12px #0000001f;
+  transition: transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 .rail-companion .companion-face .desktop-avatar {
-  transform: scale(0.8) translateY(3px);
+  transform: scale(0.85) translateY(3px);
 }
-.rail-companion:active {
-  transform: scale(0.92);
+.rail-companion:active .companion-face {
+  transform: translateY(-8px) scale(0.92);
+}
+.rail-companion > .rail-tip {
+  top: calc(50% - 8px);
 }
 @keyframes toolbar-avatar-in {
   from {
@@ -2223,6 +2346,9 @@ h3 {
 @media (prefers-reduced-motion: reduce) {
   .toolbar-avatar,
   .rail-companion {
+    animation: rail-menu-fade 0.15s ease-out both;
+  }
+  .companion-name {
     animation: rail-menu-fade 0.15s ease-out both;
   }
 }

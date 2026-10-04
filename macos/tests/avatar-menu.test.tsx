@@ -60,6 +60,8 @@ async function fixture() {
   return client;
 }
 async function mount(client: Client) {
+  // The avatar menu lives in the status panel, which starts closed.
+  localStorage.setItem("open-muse.status-panel.open", "true");
   host = document.createElement("div");
   document.body.append(host);
   root = createRoot(host);

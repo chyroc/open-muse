@@ -50,6 +50,8 @@
   --search-shadow-near: #11111229;
   --search-shadow-far: #1111121f;
   --shadow: #0000001a;
+  --pill: #fff;
+  --status-working: #08f;
   --blue: #cce6ff;
 }
 :root[data-appearance="dark"] {
@@ -100,6 +102,8 @@
   --search-shadow-far: #1111121f;
   --shadow: #00000066;
   --blue: #005cff2b;
+  --pill: #383b3d;
+  --status-working: #08f;
 }
 /* Theme colors: each replaces the accent, its hover and soft tints, and your
    own message bubbles, in both appearances. */

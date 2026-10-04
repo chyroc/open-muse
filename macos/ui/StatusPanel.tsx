@@ -40,6 +40,24 @@ const UpcomingIcon = createLucideIcon("clock-half-dashed", [
 
 export type StatusTab = "activity" | "approvals" | "upcoming" | "identity";
 const tabOrder: StatusTab[] = ["activity", "approvals", "upcoming", "identity"];
+
+// Whether the person left the status panel open: a device-local presentation
+// choice, closed until they open it.
+const openKey = "open-muse.status-panel.open";
+export function statusPanelOpenStored() {
+  try {
+    return localStorage.getItem(openKey) === "true";
+  } catch {
+    return false;
+  }
+}
+export function storeStatusPanelOpen(open: boolean) {
+  try {
+    localStorage.setItem(openKey, String(open));
+  } catch {
+    // Private storage can refuse writes; the choice then lasts this session.
+  }
+}
 export function fileDate(value?: string) {
   if (!value) return "";
   const date = new Date(value);

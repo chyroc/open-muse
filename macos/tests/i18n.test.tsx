@@ -51,7 +51,7 @@ describe("Apple UI localization", () => {
         />,
       );
       expect(rail).toContain(
-        language === "zh-CN" ? 'title="设置（⌘,）"' : 'title="Settings (⌘,)"',
+        language === "zh-CN" ? 'aria-label="设置"' : 'aria-label="Settings"',
       );
       // The Mac rail follows the desktop app it mirrors, not the mobile wording.
       expect(rail).toContain(language === "zh-CN" ? "资源库" : "Library");

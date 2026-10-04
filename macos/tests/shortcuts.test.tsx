@@ -35,6 +35,7 @@ afterEach(async () => {
   host = undefined;
   fixtureTask.events = [];
   location.hash = "";
+  localStorage.clear();
 });
 async function mount() {
   const client = new Client({
@@ -88,10 +89,10 @@ describe("Mac rail menu and shortcuts", () => {
     await act(async () => trigger.click());
     const items = [...host!.querySelectorAll(".rail-menu button")];
     expect(items.map((item) => item.textContent)).toEqual([
-      "Settings…⌘,",
       "Keyboard shortcuts⌘/",
+      "Settings⌘,",
     ]);
-    await act(async () => (items[1] as HTMLButtonElement).click());
+    await act(async () => (items[0] as HTMLButtonElement).click());
     expect(host!.querySelector(".rail-menu")).toBeNull();
     expect(host!.querySelector(".shortcuts-dialog")?.textContent).toContain(
       "Search chats",
@@ -122,22 +123,27 @@ describe("Mac rail menu and shortcuts", () => {
     expect(document.activeElement?.tagName).toBe("TEXTAREA");
     expect(send).toHaveBeenCalledTimes(1);
   });
-  it("moves the companion into the toolbar while the status panel is closed", async () => {
+  it("keeps the status panel closed until the companion opens it", async () => {
     await mount();
-    expect(host!.querySelector(".rail-avatar")).toBeNull();
-    expect(host!.querySelector(".toolbar-avatar")).toBeNull();
-    // This fixture's session is running, so the dot shows work in progress.
+    expect(host!.querySelector(".status-panel")).toBeNull();
+    const avatar = host!.querySelector<HTMLButtonElement>(".toolbar-avatar")!;
+    expect(avatar.textContent).toContain("Muse");
+    // This fixture's session is running, so the companion says it is working.
+    expect(avatar.querySelector(".companion-state")?.textContent).toBe(
+      "Working",
+    );
+    await act(async () => avatar.click());
+    expect(host!.querySelector(".status-panel")).toBeTruthy();
     expect(host!.querySelector(".status-line.is-busy")).toBeTruthy();
+    expect(host!.querySelector(".toolbar-avatar")).toBeNull();
+    expect(localStorage.getItem("open-muse.status-panel.open")).toBe("true");
     await act(async () =>
       host!
         .querySelector<HTMLButtonElement>('[aria-label="Close panel"]')!
         .click(),
     );
-    const avatar = host!.querySelector<HTMLButtonElement>(".toolbar-avatar")!;
-    expect(avatar.textContent).toContain("Muse");
-    await act(async () => avatar.click());
-    expect(host!.querySelector(".status-panel")).toBeTruthy();
-    expect(host!.querySelector(".toolbar-avatar")).toBeNull();
+    expect(host!.querySelector(".toolbar-avatar")).toBeTruthy();
+    expect(localStorage.getItem("open-muse.status-panel.open")).toBe("false");
   });
   it("translates every shortcut", () => {
     for (const { label } of shortcuts) expect(zhCN[label], label).toBeTruthy();

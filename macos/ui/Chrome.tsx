@@ -3,7 +3,6 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Keyboard,
   Lightbulb,
-  Menu,
   MessageCircle,
   Search,
   Settings,
@@ -15,10 +14,16 @@ import { navLabel } from "./labels";
 
 // The feed: a card resting on the page behind it.
 export const FeedIcon = createLucideIcon("feed-cards", [
-  ["rect", { x: "8", y: "3", width: "13", height: "18", rx: "2.5", key: "card" }],
+  [
+    "rect",
+    { x: "8", y: "3", width: "13", height: "18", rx: "2.5", key: "card" },
+  ],
   [
     "path",
-    { d: "M8 7H5.5A1.5 1.5 0 0 0 4 8.5v10A2.5 2.5 0 0 0 6.5 21H10", key: "page" },
+    {
+      d: "M8 7H5.5A1.5 1.5 0 0 0 4 8.5v10A2.5 2.5 0 0 0 6.5 21H10",
+      key: "page",
+    },
   ],
   ["path", { d: "M12 8h5", key: "title" }],
   ["path", { d: "M12 12h5", key: "line" }],
@@ -37,7 +42,10 @@ export const ChatIcon = createLucideIcon("chat-bubble", [
 
 // Goals: a box with a full-size tick.
 export const GoalsIcon = createLucideIcon("goal-box", [
-  ["rect", { x: "3.5", y: "3.5", width: "17", height: "17", rx: "3", key: "box" }],
+  [
+    "rect",
+    { x: "3.5", y: "3.5", width: "17", height: "17", rx: "3", key: "box" },
+  ],
   ["path", { d: "m8 12.5 2.8 2.8L16.5 9", key: "tick" }],
 ]);
 
@@ -69,12 +77,28 @@ export function SplitChatIcon({ open }: { open: boolean }) {
   );
 }
 
+// The rail's menu button: two long lines.
+const MenuLinesIcon = createLucideIcon("menu-lines", [
+  ["path", { d: "M4.5 9.5h15", key: "top" }],
+  ["path", { d: "M4.5 14.5h15", key: "bottom" }],
+]);
+
 // The library: four shapes in a grid.
 export const LibraryIcon = createLucideIcon("shape-grid", [
   ["path", { d: "M7 2.8 10.2 6 7 9.2 3.8 6z", key: "diamond" }],
   ["path", { d: "M17 3 20.5 9h-7z", key: "triangle" }],
   ["circle", { cx: "7", cy: "17", r: "3.3", key: "circle" }],
-  ["rect", { x: "13.7", y: "13.7", width: "6.6", height: "6.6", rx: "1.5", key: "square" }],
+  [
+    "rect",
+    {
+      x: "13.7",
+      y: "13.7",
+      width: "6.6",
+      height: "6.6",
+      rx: "1.5",
+      key: "square",
+    },
+  ],
 ]);
 
 export function Avatar({ large = false }: { large?: boolean }) {
@@ -91,6 +115,16 @@ export function Avatar({ large = false }: { large?: boolean }) {
         <i />
         <b />
       </span>
+    </span>
+  );
+}
+
+// One rail entry's name and shortcut, shown at once beside it on hover.
+function RailTip({ label, shortcut }: { label: string; shortcut?: string }) {
+  return (
+    <span className="rail-tip" aria-hidden="true">
+      <span>{label}</span>
+      {shortcut && <kbd>{shortcut}</kbd>}
     </span>
   );
 }
@@ -140,76 +174,119 @@ export function Rail({
     setMenu(false);
     action();
   };
-  const items = [
-    { id: "chat", label: navLabel("chat"), Icon: ChatIcon },
-    { id: "feed", label: t("Feed"), Icon: FeedIcon },
-    { id: "ideas", label: navLabel("ideas"), Icon: Lightbulb },
-    { id: "goals", label: t("Goals"), Icon: GoalsIcon },
-    { id: "library", label: navLabel("library"), Icon: LibraryIcon },
+  const entry = (
+    key: string,
+    label: string,
+    glyph: ReactNode,
+    onClick: () => void,
+    options: { current?: boolean; shortcut?: string; index: number },
+  ) => (
+    <button
+      key={key}
+      className="rail-item"
+      aria-label={label}
+      aria-current={options.current ? "page" : undefined}
+      style={{ animationDelay: `${options.index * 30}ms` }}
+      onClick={onClick}
+    >
+      <span className="rail-surface">{glyph}</span>
+      <RailTip label={label} shortcut={options.shortcut} />
+    </button>
+  );
+  const pages = [
+    {
+      id: "feed",
+      label: t("Feed"),
+      glyph: <FeedIcon size={24} strokeWidth={2} />,
+    },
+    {
+      id: "ideas",
+      label: navLabel("ideas"),
+      glyph: <Lightbulb size={24} strokeWidth={2} />,
+    },
+    {
+      id: "goals",
+      label: t("Goals"),
+      glyph: <GoalsIcon size={24} strokeWidth={2} />,
+    },
+    {
+      id: "library",
+      label: navLabel("library"),
+      glyph: <LibraryIcon size={24} strokeWidth={2} />,
+    },
   ] as const;
   return (
     <nav className="rail" aria-label={t("Main navigation")}>
       <div className="window-drag-space" />
-      {companion && (
-        <button
-          className="rail-companion"
-          title={t("Open the full chat with {name}", { name: companion.name })}
-          aria-label={t("Open the full chat with {name}", {
-            name: companion.name,
-          })}
-          onClick={companion.onOpen}
-        >
-          <span className="companion-face">
-            <Avatar />
-          </span>
-        </button>
-      )}
-      <div className="rail-items">
-        {items.map(({ id, label, Icon }, i) => (
-          <div key={id}>
-            <button
-              title={label}
-              aria-label={label}
-              aria-current={page === id ? "page" : undefined}
-              onClick={() => onNavigate(id)}
-            >
-              <Icon size={24} strokeWidth={2} />
-            </button>
-            {i === 0 && (
-              <button
-                title={t("Search (⌘K)")}
-                aria-label={t("Search")}
-                onClick={onSearch}
-              >
-                <Search size={24} strokeWidth={2} />
-              </button>
-            )}
-          </div>
-        ))}
+      <div className="rail-companion-slot">
+        {companion && (
+          <button
+            className="rail-companion"
+            aria-label={t("Open the full chat with {name}", {
+              name: companion.name,
+            })}
+            onClick={companion.onOpen}
+          >
+            <span className="companion-face">
+              <Avatar />
+            </span>
+            <RailTip label={companion.name} />
+          </button>
+        )}
+      </div>
+      <div className="rail-primary">
+        <div className="rail-items">
+          {entry(
+            "chat",
+            navLabel("chat"),
+            <ChatIcon size={24} strokeWidth={2} />,
+            () => onNavigate("chat"),
+            { current: page === "chat", shortcut: "⌘J", index: 0 },
+          )}
+          {entry(
+            "search",
+            t("Search"),
+            <Search size={24} strokeWidth={2} />,
+            onSearch,
+            {
+              shortcut: "⌘K",
+              index: 1,
+            },
+          )}
+          {pages.map(({ id, label, glyph }, i) =>
+            entry(id, label, glyph, () => onNavigate(id), {
+              current: page === id,
+              index: i + 2,
+            }),
+          )}
+        </div>
       </div>
       <div className="rail-menu-anchor">
         <button
           ref={trigger}
-          className="rail-settings"
-          title={t("Settings (⌘,)")}
+          className="rail-item rail-settings"
           aria-label={t("Settings")}
           aria-haspopup="menu"
           aria-expanded={menu}
           onClick={() => setMenu((open) => !open)}
         >
-          <Menu size={25} strokeWidth={1.5} />
+          <span className="rail-surface">
+            <MenuLinesIcon size={26} strokeWidth={1.6} />
+          </span>
+          {!menu && <RailTip label={t("Settings")} />}
         </button>
         {menu && (
           <div className="rail-menu" role="menu" ref={entries}>
-            <button role="menuitem" onClick={() => choose(onSettings)}>
-              <Settings size={16} />
-              <span>{t("Settings…")}</span>
-              <kbd>⌘,</kbd>
-            </button>
             <button role="menuitem" onClick={() => choose(onShortcuts)}>
               <Keyboard size={16} />
               <span>{t("Keyboard shortcuts")}</span>
               <kbd>⌘/</kbd>
+            </button>
+            <hr />
+            <button role="menuitem" onClick={() => choose(onSettings)}>
+              <Settings size={16} />
+              <span>{t("Settings")}</span>
+              <kbd>⌘,</kbd>
             </button>
           </div>
         )}
