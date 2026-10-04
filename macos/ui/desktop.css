@@ -123,9 +123,9 @@ h3 {
   display: flex;
   flex-direction: column;
 }
+/* Entries sit centered between the companion slot and the menu button. */
 .rail-items {
   margin: auto 0;
-  min-height: calc(16px + 9 * clamp(32px, calc((100vh - 304px) / 9), 56px));
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -352,13 +352,29 @@ h3 {
 .message.from-user {
   align-items: flex-end;
 }
+/* Bubbles: 16-point text on 22-point lines, 12 by 16 points of padding,
+   at most 85% of the reading column. */
 .message-bubble {
   border-radius: 22px;
-  background: var(--fill-strong);
-  padding: 10px 15px;
-  max-width: min(82%, 730px);
+  background: var(--bubble);
+  padding: 12px 16px;
+  max-width: 85%;
   overflow-wrap: anywhere;
-  line-height: 1.55;
+  font-size: 16px;
+  line-height: 22px;
+}
+/* A time label between groups: 16 points above and below, 40 above the
+   first message. */
+.message-time {
+  margin: 0;
+  padding: 16px 0;
+  text-align: center;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-2);
+}
+.message-time.first {
+  padding-top: 40px;
 }
 .from-user .message-bubble {
   background: var(--blue);

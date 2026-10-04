@@ -1,5 +1,6 @@
-import { systemLanguage, t } from "../../shared/i18n";
+import { formatLocale, systemLanguage, t } from "../../shared/i18n";
 import {
+  Fragment,
   lazy,
   Suspense,
   useCallback,
@@ -102,7 +103,7 @@ import {
   storedChatPanelWidth,
 } from "./SideChats";
 import { ShortcutsDialog } from "./Shortcuts";
-import { groupLinks } from "./messageGroups";
+import { groupLinks, timeMarkerLabel, timeMarkers } from "./messageGroups";
 import { droppedFiles, droppedFilesEvent } from "./dropped";
 import { postCompanion, type CompanionState } from "./presence";
 import {
@@ -1144,6 +1145,9 @@ export function DesktopApp({ client }: { client: Client }) {
       reacted: Boolean(reactions[event.id]) && part !== "intro",
     })),
   );
+  const markers = timeMarkers(
+    parts.map(({ event }) => event.processed_at ?? event.created_at),
+  );
   const found = findMatches(parts, find ?? "", (event) =>
     messageAttachments(event, fileNames).map((item) => item.name),
   );
@@ -1530,120 +1534,137 @@ export function DesktopApp({ client }: { client: Client }) {
               )}
               <div className="message-stack">
                 {parts.map(({ event, part }, index) => (
-                  <article
+                  <Fragment
                     key={`${echoKeys.current.get(event.id) ?? event.id}:${part}`}
-                    data-part={partKey({ event, part })}
-                    aria-busy={event.id === pendingEvent?.id || undefined}
-                    className={`message ${event.type === "user.message" ? "from-user" : "from-assistant"}${event.id === pendingEvent?.id ? " sending" : ""}${links[index].prev ? " grouped-prev" : ""}${links[index].next ? " grouped-next" : ""}${found.includes(partKey({ event, part })) ? " found" : ""}${current === partKey({ event, part }) ? " current" : ""}`}
                   >
-                    <div className="message-bubble">
-                      {event.type === "agent.message" ? (
-                        <AssistantContent
-                          text={eventText(event)}
-                          part={part}
-                          reply={event.choice_reply}
-                          active={
-                            !event.source_session_id &&
-                            activeChoice === event.id
-                          }
-                          busy={busy || task.loading}
-                          streaming={running}
-                          onChoose={(option) =>
-                            void action(async () => {
-                              if (!id) return;
-                              try {
-                                await client.answerChoice(
-                                  id,
-                                  event.id,
-                                  option,
-                                  digest(eventText(event)),
-                                );
-                                setAway(false);
-                              } finally {
-                                await task.refresh();
-                              }
-                            })
-                          }
-                        />
-                      ) : (
-                        <>
-                          <SentFiles
-                            items={messageAttachments(event, fileNames)}
-                          />
-                          {eventText(event) && (
-                            <Markdown text={eventText(event)} />
-                          )}
-                        </>
-                      )}
-                    </div>
-                    {reactions[event.id] && part !== "intro" && (
-                      <span
-                        className="message-mood"
-                        aria-label={t("Your mood: {mood}", {
-                          mood: reactions[event.id],
-                        })}
+                    {markers[index] && (
+                      <p
+                        className={`message-time${index === 0 ? " first" : ""}`}
                       >
-                        {reactions[event.id]}
-                      </span>
+                        <time dateTime={event.processed_at ?? event.created_at}>
+                          {timeMarkerLabel(
+                            (event.processed_at ?? event.created_at)!,
+                            formatLocale(),
+                          )}
+                        </time>
+                      </p>
                     )}
-                    <MessageActions
-                      fromAssistant={event.type === "agent.message"}
-                      mood={reactions[event.id]}
-                      busy={busy}
-                      onMood={(mood) =>
-                        void setReaction(client, event.id, mood).then(
-                          (next) => alive.current && setReactions(next),
-                        )
-                      }
-                      onCopy={() =>
-                        void action(async () => {
-                          await navigator.clipboard.writeText(eventText(event));
-                          setNotice(t("Message copied"));
-                        })
-                      }
-                      onReply={() => {
-                        setDrafts((old) => ({
-                          ...old,
-                          [draftKey]: `> ${eventText(event).replaceAll("\n", "\n> ")}\n\n`,
-                        }));
-                        composer.current?.focus();
-                      }}
-                      onSave={
-                        event.type === "agent.message"
-                          ? () =>
+                    <article
+                      data-part={partKey({ event, part })}
+                      aria-busy={event.id === pendingEvent?.id || undefined}
+                      className={`message ${event.type === "user.message" ? "from-user" : "from-assistant"}${event.id === pendingEvent?.id ? " sending" : ""}${links[index].prev ? " grouped-prev" : ""}${links[index].next ? " grouped-next" : ""}${found.includes(partKey({ event, part })) ? " found" : ""}${current === partKey({ event, part }) ? " current" : ""}`}
+                    >
+                      <div className="message-bubble">
+                        {event.type === "agent.message" ? (
+                          <AssistantContent
+                            text={eventText(event)}
+                            part={part}
+                            reply={event.choice_reply}
+                            active={
+                              !event.source_session_id &&
+                              activeChoice === event.id
+                            }
+                            busy={busy || task.loading}
+                            streaming={running}
+                            onChoose={(option) =>
                               void action(async () => {
-                                await client.saveReply(
-                                  event.source_session_id ?? id!,
-                                  event.source_event_id ?? event.id,
-                                );
-                                setNotice(t("Saved to Library"));
-                                window.dispatchEvent(
-                                  new Event("muse-library-changed"),
-                                );
+                                if (!id) return;
+                                try {
+                                  await client.answerChoice(
+                                    id,
+                                    event.id,
+                                    option,
+                                    digest(eventText(event)),
+                                  );
+                                  setAway(false);
+                                } finally {
+                                  await task.refresh();
+                                }
                               })
-                          : undefined
-                      }
-                      speaking={readAloud.speaking === event.id}
-                      onSpeak={
-                        event.type === "agent.message" && speechAvailable()
-                          ? () =>
-                              void readAloud
-                                .toggle(event.id, eventText(event))
-                                .catch((failure: Error) =>
-                                  setError(failure.message),
-                                )
-                          : undefined
-                      }
-                      onSelect={() => {
-                        const bubble = scroll.current?.querySelector(
-                          `[data-part="${CSS.escape(partKey({ event, part }))}"] .message-bubble`,
-                        );
-                        const selection = window.getSelection();
-                        if (!bubble || !selection) return;
-                        selection.selectAllChildren(bubble);
-                      }}
-                    />
-                  </article>
+                            }
+                          />
+                        ) : (
+                          <>
+                            <SentFiles
+                              items={messageAttachments(event, fileNames)}
+                            />
+                            {eventText(event) && (
+                              <Markdown text={eventText(event)} />
+                            )}
+                          </>
+                        )}
+                      </div>
+                      {reactions[event.id] && part !== "intro" && (
+                        <span
+                          className="message-mood"
+                          aria-label={t("Your mood: {mood}", {
+                            mood: reactions[event.id],
+                          })}
+                        >
+                          {reactions[event.id]}
+                        </span>
+                      )}
+                      <MessageActions
+                        fromAssistant={event.type === "agent.message"}
+                        mood={reactions[event.id]}
+                        busy={busy}
+                        onMood={(mood) =>
+                          void setReaction(client, event.id, mood).then(
+                            (next) => alive.current && setReactions(next),
+                          )
+                        }
+                        onCopy={() =>
+                          void action(async () => {
+                            await navigator.clipboard.writeText(
+                              eventText(event),
+                            );
+                            setNotice(t("Message copied"));
+                          })
+                        }
+                        onReply={() => {
+                          setDrafts((old) => ({
+                            ...old,
+                            [draftKey]: `> ${eventText(event).replaceAll("\n", "\n> ")}\n\n`,
+                          }));
+                          composer.current?.focus();
+                        }}
+                        onSave={
+                          event.type === "agent.message"
+                            ? () =>
+                                void action(async () => {
+                                  await client.saveReply(
+                                    event.source_session_id ?? id!,
+                                    event.source_event_id ?? event.id,
+                                  );
+                                  setNotice(t("Saved to Library"));
+                                  window.dispatchEvent(
+                                    new Event("muse-library-changed"),
+                                  );
+                                })
+                            : undefined
+                        }
+                        speaking={readAloud.speaking === event.id}
+                        onSpeak={
+                          event.type === "agent.message" && speechAvailable()
+                            ? () =>
+                                void readAloud
+                                  .toggle(event.id, eventText(event))
+                                  .catch((failure: Error) =>
+                                    setError(failure.message),
+                                  )
+                            : undefined
+                        }
+                        onSelect={() => {
+                          const bubble = scroll.current?.querySelector(
+                            `[data-part="${CSS.escape(partKey({ event, part }))}"] .message-bubble`,
+                          );
+                          const selection = window.getSelection();
+                          if (!bubble || !selection) return;
+                          selection.selectAllChildren(bubble);
+                        }}
+                      />
+                    </article>
+                  </Fragment>
                 ))}
               </div>
               {running && (
