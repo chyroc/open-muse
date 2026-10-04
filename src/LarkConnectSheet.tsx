@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import {
   AppWindow,
   KeyRound,
@@ -7,13 +7,11 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { t } from "../shared/i18n";
-import type { BackgroundClient, LarkConnection } from "./background-client";
+import type { LarkConnection } from "./background-client";
+import { useLarkSetup, type LarkSetupService } from "./lark-setup";
 import { ContinuousSurface } from "./ContinuousSurface";
 import { animateAway, useDragToDismiss } from "./gesture";
 import "./health-connect.css";
-
-// How often a step in progress is checked while the sheet is open.
-const POLL_MS = 3000;
 
 // Connecting Lark, in the same floating sheet as the other connectors. The
 // Open Muse service sets the connection up: first the Lark app the assistant
@@ -28,7 +26,7 @@ export function LarkConnectSheet({
   onClose,
 }: {
   name: string;
-  service: Pick<BackgroundClient, "larkConnection" | "startLarkConnection">;
+  service: LarkSetupService;
   onConnected: (
     status: Extract<LarkConnection, { phase: "connected" }>,
   ) => void;
@@ -36,9 +34,7 @@ export function LarkConnectSheet({
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const closing = useRef(false);
-  const [status, setStatus] = useState<LarkConnection>();
-  const [error, setError] = useState("");
-  const [attempt, setAttempt] = useState(0);
+  const { status, error, step, retry } = useLarkSetup(service, onConnected);
   const dismiss = (then?: () => void) => {
     if (closing.current) return;
     closing.current = true;
@@ -65,36 +61,6 @@ export function LarkConnectSheet({
         focused.focus({ preventScroll: true });
     };
   }, []);
-  // Starts, or resumes, setup; then follows it until Lark confirms.
-  useEffect(() => {
-    let active = true;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const show = (next: LarkConnection) => {
-      if (!active) return;
-      // A check that failed earlier is superseded by this answer.
-      setError("");
-      setStatus(next);
-      if (next.phase === "connected") onConnected(next);
-      else if (next.phase !== "none") timer = setTimeout(poll, POLL_MS);
-    };
-    const fail = (reason: Error) => active && setError(reason.message);
-    const poll = () => void service.larkConnection().then(show, fail);
-    // Back from the Lark page: check at once.
-    const visible = () => {
-      if (document.visibilityState !== "visible") return;
-      clearTimeout(timer);
-      poll();
-    };
-    setError("");
-    setStatus(undefined);
-    void service.startLarkConnection().then(show, fail);
-    document.addEventListener("visibilitychange", visible);
-    return () => {
-      active = false;
-      clearTimeout(timer);
-      document.removeEventListener("visibilitychange", visible);
-    };
-  }, [attempt]);
   const row = (
     icon: ReactNode,
     title: string,
@@ -112,20 +78,7 @@ export function LarkConnectSheet({
     </li>
   );
   const phase = status?.phase;
-  const failed =
-    phase === "none"
-      ? status?.error === "denied"
-        ? t("Lark authorization was declined.")
-        : status?.error === "unsupported_brand"
-          ? t("Only Feishu accounts can be connected here.")
-          : t("The Lark page expired before setup finished.")
-      : "";
-  const stepState = (step: "app" | "user") =>
-    phase === "connected" || (step === "app" && phase === "user")
-      ? "done"
-      : phase === step
-        ? "active"
-        : undefined;
+  const stepState = step;
   return (
     <dialog
       ref={dialog}
@@ -178,9 +131,9 @@ export function LarkConnectSheet({
             ),
           )}
         </ul>
-        {(error || failed) && (
+        {error && (
           <p className="inline-error" role="alert">
-            {error || failed}
+            {error}
           </p>
         )}
         {phase === "app" || phase === "user" ? (
@@ -202,11 +155,11 @@ export function LarkConnectSheet({
           >
             {t("Close")}
           </button>
-        ) : error || failed ? (
+        ) : error ? (
           <button
             type="button"
             className="health-connect-continue"
-            onClick={() => setAttempt((value) => value + 1)}
+            onClick={retry}
           >
             {t("Try again")}
           </button>

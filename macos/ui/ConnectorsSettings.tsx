@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import {
   Brain,
   Globe,
@@ -10,7 +10,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { t } from "../../shared/i18n";
-import { draftInMainChat } from "./dataExport";
+import { backgroundClient } from "../../src/background-client";
+import { LarkSetupPanel, useLarkAccount } from "./LarkSetup";
 import { Switch } from "./SettingsSwitch";
 import {
   computerAvailable,
@@ -145,8 +146,9 @@ type Connector = {
   name: string;
   detail: string;
   Icon: typeof Globe;
-  // A connection that needs the person's own sign-in starts as a chat draft.
-  connect?: string;
+  // A connection the person sets up themselves; it is listed as available
+  // until they do.
+  connect?: boolean;
   // Or it lives in another settings section.
   section?: string;
 };
@@ -183,8 +185,7 @@ export const connectors = (): Connector[] => [
       "The Lark command-line tool and its official skills, for messages, docs, calendar and more once you sign in.",
     ),
     Icon: MessagesSquare,
-    connect:
-      "Help me sign in to Lark with lark-cli so you can work in my Lark account.",
+    connect: true,
   },
   {
     id: "memory",
@@ -213,16 +214,48 @@ export const connectors = (): Connector[] => [
 
 export function ConnectorsSettings({
   onSection,
+  name = t("Your assistant"),
+  service = backgroundClient,
 }: {
   onSection: (id: string) => void;
+  // The companion's name, for the Lark setup steps.
+  name?: string;
+  service?: typeof backgroundClient;
 }) {
   const [query, setQuery] = useState("");
-  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  // Lark is connected through the Open Muse service, as on iPhone.
+  const lark = useLarkAccount(service);
+  const [larkSetup, setLarkSetup] = useState(false);
+  useEffect(lark.read, []);
   const term = query.trim().toLocaleLowerCase();
-  const items = connectors().filter(
-    (item) =>
-      !term || `${item.name} ${item.detail}`.toLocaleLowerCase().includes(term),
-  );
+  const items = connectors()
+    .map((item) =>
+      item.id === "lark" && lark.account && lark.account !== "unknown"
+        ? {
+            ...item,
+            connect: false,
+            detail: lark.account.name
+              ? t(
+                  "Connected as {name}. Your assistant works in Lark as you in every conversation.",
+                  { name: lark.account.name },
+                )
+              : t(
+                  "Connected. Your assistant works in Lark as you in every conversation.",
+                ),
+          }
+        : item,
+    )
+    .filter(
+      (item) =>
+        !term ||
+        `${item.name} ${item.detail}`.toLocaleLowerCase().includes(term),
+    );
+  const disconnect = () =>
+    void service.removeLarkState().then(
+      () => lark.setAccount(undefined),
+      (reason: Error) => setError(reason.message),
+    );
   return (
     <>
       <label className="search-field settings-search">
@@ -245,44 +278,63 @@ export function ConnectorsSettings({
             <section key={heading}>
               <h2>{heading}</h2>
               <div className="settings-group">
-                {group.map(({ id, name, detail, Icon, connect, section }) => (
-                  <div
-                    className="settings-row settings-device-row connector-row"
-                    key={id}
-                  >
-                    <span className="connector-tile" aria-hidden="true">
-                      <Icon size={18} strokeWidth={1.7} />
-                    </span>
-                    <div>
-                      <strong>{name}</strong>
-                      <p>{detail}</p>
-                    </div>
-                    {connect ? (
-                      <button
-                        className="settings-link"
-                        onClick={() =>
-                          setNotice(
-                            draftInMainChat(t(connect))
-                              ? t("A draft is waiting in the main chat.")
-                              : t("Open the Mac app to continue."),
+                {group.map(
+                  ({ id, name: title, detail, Icon, connect, section }) => (
+                    <Fragment key={id}>
+                      <div className="settings-row settings-device-row connector-row">
+                        <span className="connector-tile" aria-hidden="true">
+                          <Icon size={18} strokeWidth={1.7} />
+                        </span>
+                        <div>
+                          <strong>{title}</strong>
+                          <p>{detail}</p>
+                        </div>
+                        {connect ? (
+                          !larkSetup && (
+                            <button
+                              className="settings-link"
+                              disabled={lark.account === "unknown"}
+                              onClick={() => {
+                                setError("");
+                                setLarkSetup(true);
+                              }}
+                            >
+                              {t("Connect")}
+                            </button>
                           )
-                        }
-                      >
-                        {t("Connect")}
-                      </button>
-                    ) : (
-                      section && (
-                        <button
-                          className="connector-open icon-button"
-                          onClick={() => onSection(section)}
-                        >
-                          <ChevronRight size={18} aria-hidden="true" />
-                          <span className="sr-only">{t("Settings")}</span>
-                        </button>
-                      )
-                    )}
-                  </div>
-                ))}
+                        ) : id === "lark" ? (
+                          <button
+                            className="settings-inline-button danger"
+                            onClick={disconnect}
+                          >
+                            {t("Disconnect")}
+                          </button>
+                        ) : (
+                          section && (
+                            <button
+                              className="connector-open icon-button"
+                              onClick={() => onSection(section)}
+                            >
+                              <ChevronRight size={18} aria-hidden="true" />
+                              <span className="sr-only">{t("Settings")}</span>
+                            </button>
+                          )
+                        )}
+                      </div>
+                      {id === "lark" && connect && larkSetup && (
+                        <LarkSetupPanel
+                          name={name}
+                          service={service}
+                          onCancel={() => setLarkSetup(false)}
+                          onConnected={(value) => {
+                            setLarkSetup(false);
+                            lark.setAccount({ name: value.name });
+                          }}
+                        />
+                      )}
+                    </Fragment>
+                  ),
+                )}
               </div>
             </section>
           ),
@@ -297,7 +349,11 @@ export function ConnectorsSettings({
         </div>
       )}
       {computerAvailable() && <LocalConnectors term={term} />}
-      {notice && <p className="settings-lead settings-after">{notice}</p>}
+      {error && (
+        <p className="settings-error settings-after" role="alert">
+          {error}
+        </p>
+      )}
       <p className="settings-lead settings-after">
         {t(
           "Other services are not connected in this app. Ask your assistant in chat; it can often use a service's website or command-line tool instead.",
