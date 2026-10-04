@@ -6,6 +6,7 @@ import {
   Fragment,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -41,6 +42,7 @@ import type { WelcomeState } from "./direct/welcome";
 import { isWelcomeReply } from "../shared/welcome";
 import { currentChoiceEvent } from "../shared/chat-choices";
 import { digest, uuid } from "../shared/crypto";
+import { isEcho, pendingOutgoing, type Outgoing } from "./outgoing";
 import {
   goalPlanningMessage,
   goalPrompt,
@@ -338,6 +340,11 @@ function Workspace({
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [category, setCategory] = useState<Category>("general");
   const draftKey = activeId ?? (isSideDraft ? "new-side" : "new-main");
+  // A message on its way: it shows in the chat as soon as it is sent, with
+  // the companion's typing dots, until the conversation's history has it.
+  // `view` is the draft key of the chat it was sent from, or the new
+  // conversation's id once one is opened for it.
+  const [outgoing, setOutgoing] = useState<Outgoing>();
   const draft = drafts[draftKey] ?? "";
   // Staged attachments belong to the conversation being written; switching
   // conversations drops them (the uploaded copies simply expire in MA).
@@ -788,15 +795,25 @@ function Workspace({
       active = false;
     };
   }, [client, lastStatusId]);
-  useEffect(() => {
+  // Pinned before paint, so content that grows under the pin (a message's
+  // time, a reply arriving) never shows for a frame above the bottom.
+  useLayoutEffect(() => {
     const body = conversationBody.current;
     if (!body || task.loading) return;
     if (initialScroll.current !== activeId || !awayFromBottom) {
       body.scrollTop = body.scrollHeight;
       initialScroll.current = activeId;
     }
-    // A reaction adds room under its message, so it also keeps the pin.
-  }, [activeId, lastEventId, task.loading, awayFromBottom, reactions]);
+    // A reaction adds room under its message, so it also keeps the pin, as
+    // does a message shown while it is being sent.
+  }, [
+    activeId,
+    lastEventId,
+    task.loading,
+    awayFromBottom,
+    reactions,
+    outgoing?.at,
+  ]);
   // Content that grows after it is shown, such as history merged in or
   // pictures that finish loading, keeps the pin unless the person scrolled
   // away from the bottom.
@@ -870,56 +887,69 @@ function Workspace({
         throw new Error(
           t("Wait for uploads to finish or remove failed attachments."),
         );
-      if (goalInitiation || goalDraft) await client.prepareGoals();
+      const origin = draftKey;
+      setOutgoing({ view: origin, text, at: Date.now() });
+      setDrafts((current) => ({ ...current, [origin]: "" }));
+      setAwayFromBottom(false);
       let sessionId = activeId;
-      if (!sessionId || sessionId === index.mainId) {
-        const session = await client.openConversation(
-          isSideDraft ? "side" : "main",
-          isSideDraft
-            ? (goalDraft?.title ?? (text || attachments[0].name)).slice(0, 60)
-            : t("Main chat"),
-          category,
-        );
-        if (!alive.current) return;
-        sessionId = session.id;
-        const conversations = await client.conversationIndex();
-        if (!alive.current) return;
-        setIndex(conversations);
-        setDrafts((current) => ({
-          ...current,
-          [draftKey]: "",
-          [session.id]: text,
-        }));
-        carryStaged.current = session.id;
-        if (isSideDraft) navigate(`/task/${session.id}`);
-        else if (taskRoute && taskRoute !== session.id) navigate("/");
-        if (goalDraft) {
-          await client.updateGoal(goalDraft.id, { session_id: session.id });
-          setGoalDraft(undefined);
+      try {
+        if (goalInitiation || goalDraft) await client.prepareGoals();
+        if (!sessionId || sessionId === index.mainId) {
+          const session = await client.openConversation(
+            isSideDraft ? "side" : "main",
+            isSideDraft
+              ? (goalDraft?.title ?? (text || attachments[0].name)).slice(0, 60)
+              : t("Main chat"),
+            category,
+          );
+          if (!alive.current) return;
+          sessionId = session.id;
+          const conversations = await client.conversationIndex();
+          if (!alive.current) return;
+          setIndex(conversations);
+          setDrafts((current) => ({ ...current, [session.id]: "" }));
+          setOutgoing((current) => current && { ...current, view: session.id });
+          carryStaged.current = session.id;
+          if (isSideDraft) navigate(`/task/${session.id}`);
+          else if (taskRoute && taskRoute !== session.id) navigate("/");
+          if (goalDraft) {
+            await client.updateGoal(goalDraft.id, { session_id: session.id });
+            setGoalDraft(undefined);
+          }
+          if (inspirationDraft) {
+            // The service's scheduled posts are not saved items, so there is
+            // nothing to link.
+            if (!isBackgroundPost(inspirationDraft))
+              await client.linkInspirationDiscussion(
+                inspirationDraft.id,
+                session.id,
+              );
+            setInspirationDraft(undefined);
+          }
         }
-        if (inspirationDraft) {
-          // The service's scheduled posts are not saved items, so there is
-          // nothing to link.
-          if (!isBackgroundPost(inspirationDraft))
-            await client.linkInspirationDiscussion(
-              inspirationDraft.id,
-              session.id,
-            );
-          setInspirationDraft(undefined);
+        if (!alive.current) return;
+        await client.send(sessionId, {
+          type: "user.message",
+          text,
+          ...(attachments.length ? { attachments } : {}),
+        });
+        if (alive.current) {
+          setGoalInitiation(false);
+          setStaged([]);
+          setAwayFromBottom(false);
+          await task.refresh();
         }
-      }
-      if (!alive.current) return;
-      await client.send(sessionId, {
-        type: "user.message",
-        text,
-        ...(attachments.length ? { attachments } : {}),
-      });
-      if (alive.current) {
-        setGoalInitiation(false);
-        setDrafts((current) => ({ ...current, [sessionId!]: "" }));
-        setStaged([]);
-        setAwayFromBottom(false);
-        await task.refresh();
+      } catch (error) {
+        // Nothing is resent on its own: the text goes back to the composer,
+        // and the error asks to check history first.
+        if (alive.current) {
+          setOutgoing(undefined);
+          setDrafts((current) => {
+            const key = sessionId ?? origin;
+            return current[key] ? current : { ...current, [key]: text };
+          });
+        }
+        throw error;
       }
     });
   // Sends one message to the main chat and opens it there, as a goal
@@ -1081,6 +1111,22 @@ function Workspace({
       !browserReplies.has(event.id) &&
       (eventText(event) || messageAttachments(event).length),
   );
+  // The message being sent in this chat, until its history has it.
+  const pendingSend = pendingOutgoing(outgoing, draftKey, messageEvents);
+  // A sent message stays shown until the history has it, which can be a
+  // poll or two after the send returns; a minute later it gives way anyway.
+  useEffect(() => {
+    if (!outgoing) return;
+    if (outgoing.view === draftKey && !pendingSend) {
+      setOutgoing(undefined);
+      return;
+    }
+    const timer = setTimeout(
+      () => setOutgoing(undefined),
+      Math.max(0, outgoing.at + 60_000 - Date.now()),
+    );
+    return () => clearTimeout(timer);
+  }, [outgoing, pendingSend, draftKey]);
   const isChat = tab === "home";
   // The long-press menu for a message: reply, copy, select, share, and for
   // the assistant's replies, saving to the Library.
@@ -1152,9 +1198,17 @@ function Workspace({
   const unseen = messageEvents.filter(
     (event) => !seenMessages.current.ids.has(event.id),
   );
+  // A message already shown while it was being sent is in place, so it
+  // takes the bubble's spot without rising in again.
+  const lastSent = useRef<Outgoing>(undefined);
+  if (outgoing) lastSent.current = outgoing;
   const arriving = new Set(
     unseen.length <= 2 && seenMessages.current.ids.size
-      ? unseen.map((event) => event.id)
+      ? unseen
+          .filter(
+            (event) => !(lastSent.current && isEcho(event, lastSent.current)),
+          )
+          .map((event) => event.id)
       : [],
   );
   useEffect(() => {
@@ -1385,6 +1439,13 @@ function Workspace({
                   </Fragment>
                 );
               })}
+              {pendingSend && (
+                <div className="chat-message-group from-user arriving pending">
+                  <MessageBubble label={t("Sending")} onOptions={() => {}}>
+                    <Markdown text={pendingSend.text} />
+                  </MessageBubble>
+                </div>
+              )}
               {work.trailing && <WorkCard work={work.trailing} />}
               {permissions.some((event) =>
                 task.autoApprovalFailures.includes(event.id),
@@ -1428,7 +1489,11 @@ function Workspace({
                     onAnswered={() => void task.refresh()}
                   />
                 ))}
-              {state === "running" && (
+              {/* Typing dots wait for the reply; once its text shows, the
+                  work still going on is told under the companion's name. */}
+              {((state === "running" &&
+                messageEvents.at(-1)?.type !== "agent.message") ||
+                pendingSend) && (
                 <div
                   className="chat-typing"
                   role="status"

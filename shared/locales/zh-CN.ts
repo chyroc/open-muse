@@ -829,6 +829,7 @@ export const zhCN: Record<string, string> = {
   "{name} is working…": "{name} 正在处理…",
   "Reply options {number}": "回复选项 {number}",
   "Message options {number}": "消息选项 {number}",
+  Sending: "正在发送",
   "{name} is replying": "{name} 正在回复",
   "View {count} conversations": "查看 {count} 个对话",
   "{count} action needs approval": "{count} 个操作需要批准",
