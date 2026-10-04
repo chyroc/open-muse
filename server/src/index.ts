@@ -16,7 +16,8 @@ import { externalScheduler, TRIGGER_PATH, verifyTrigger } from "./trigger";
 import { UpcomingDelivery, upcomingInput } from "./upcoming";
 import { AccountDevices, deviceInput, validDeviceId } from "./devices";
 import { BrowserViews, relay } from "./browser";
-import { LarkStates, MAX_LARK_STATE, sandboxState } from "./lark";
+import { LarkStates, MAX_LARK_STATE, sandboxState, tokenOwner } from "./lark";
+import { LarkConnections } from "./lark-connect";
 import { AccountSync, pullInput, pushInput } from "./sync";
 import { SYNC_LIMITS } from "../../shared/account-sync";
 import { ProactiveClaims } from "./claims";
@@ -124,6 +125,21 @@ export async function handle(
           await body(request, 800_000),
           Date.now(),
         ),
+      );
+    } else if (
+      url.pathname === "/v1/lark/sandbox/credentials" &&
+      request.method === "GET"
+    ) {
+      // lark-cli in an MA sandbox asks for a current user token with the
+      // conversation's token: server-to-server, no account session or origin.
+      if (request.headers.has("Origin"))
+        throw new HttpError(403, "This application origin is not allowed.");
+      const token = /^Bearer ([A-Za-z0-9_-]{20,200})$/.exec(
+        request.headers.get("Authorization") ?? "",
+      )?.[1];
+      const owner = await tokenOwner(env, token ?? "", Date.now());
+      response = json(
+        await new LarkConnections(env, owner, fetcher).sandboxToken(),
       );
     } else if (url.pathname === "/v1/lark/sandbox/state") {
       // lark-cli in an MA sandbox, holding only the token the app issued for
@@ -360,6 +376,14 @@ export async function handle(
         request.method === "POST"
       ) {
         response = json(await new LarkStates(env, owner).issue(Date.now()));
+      } else if (url.pathname === "/v1/lark/connect") {
+        const connection = new LarkConnections(env, owner, fetcher);
+        if (request.method === "GET") response = json(await connection.status());
+        else if (request.method === "POST")
+          response = json(await connection.start());
+        else if (request.method === "DELETE")
+          response = json(await connection.disconnect());
+        else throw new HttpError(404, "Endpoint not found.");
       } else if (url.pathname === "/v1/lark/state") {
         const states = new LarkStates(env, owner);
         if (request.method === "GET") response = json(await states.status());

@@ -83,6 +83,7 @@ checked before another write; they are never blindly retried or adopted.
 | Name, SOUL, MEMORY, goals, and Feed instructions | The account's Ark memory store | Ark | Same memory store |
 | Chosen model and thinking level, saved replies, Feed and Ideas posts with likes and discussion links, Feed instructions dismissal, archived side chats, the main chat and its earlier chapters | Device IndexedDB, scoped by workspace key, plus a synced copy in `account_sync_items` | Not app-encrypted on the device; AES-GCM on the service, bound to account, workspace key, item, and revision | Synced for the same workspace key (see [Sync across devices](#sync-across-devices)) |
 | Side-chat list, in-progress main-chat continuation, local approvals, reactions | Device IndexedDB, scoped by workspace key | Not app-encrypted | Not synced; conversations themselves remain in Ark |
+| Lark connection made in the app (app ID and secret, the person's Lark user token and refresh token) | Open Muse service, `lark_connections` (account builds) | AES-GCM on the service, bound to the account | Sandboxes receive only a short-lived user access token; Disconnect in Connectors removes it |
 | Lark sign-in (lark-cli configuration and token store) | The conversation's cloud environment, plus a saved copy in `lark_states` (account builds) | AES-GCM on the service, bound to the account | Restored in each new conversation's cloud environment; Disconnect in Connectors removes it |
 | Open Muse session | Keychain (sessionStorage on web) | OS-protected | Each device signs in |
 | Appearance (Mac) | Device preference | None | Not synced |
@@ -426,10 +427,44 @@ revoke a hook whose address leaked. See
 [the service README](../server/README.md#incoming-webhooks) for limits and the
 security details.
 
+### Lark connection
+
+In an account build, **Connect** next to Lark in Settings > **Connectors**
+sets Lark (Feishu) up from the app instead of the chat. The Open Muse service
+runs the same public device flows lark-cli uses, and a floating sheet walks
+the person through them:
+
+1. **Choose the Lark app.** The service starts Lark's app registration; the
+   person opens the Lark page from the sheet and creates the app the
+   assistant uses, or picks one they already have.
+2. **Approve your access.** With that app, the service starts the OAuth
+   device authorization for the person's own account with offline access,
+   asking for the user scopes lark-cli publishes; the person approves on a
+   second Lark page.
+
+The sheet checks progress every few seconds and when the person returns from
+Lark, and shows who is connected once Lark confirms. A declined or expired
+step can be tried again; reconnecting reuses the app. Only Feishu accounts
+are supported.
+
+The service keeps the app secret, the person's user token, and the refresh
+token sealed with the account in `lark_connections`. A conversation's cloud
+environment never receives them: when the `lark-cli` wrapper runs a command,
+it asks the service, with the conversation's Lark token from the hidden note,
+for a current user access token, which the service renews with the refresh
+token when it is within five minutes of expiry, and passes it to lark-cli
+through its environment credentials (`LARKSUITE_CLI_APP_ID`,
+`LARKSUITE_CLI_USER_ACCESS_TOKEN`, user identity only). The assistant then
+works in Lark as the person in every conversation without signing in.
+**Disconnect** removes the connection and the saved sign-in at once. Builds
+without an account keep the earlier flow, where the assistant runs lark-cli's
+own setup in the chat.
+
 ### Lark message channel
 
 Settings > **Message channels** on iPhone connects Lark (Feishu), so the
-person can message their assistant from Lark. Connecting creates an incoming
+person can message their assistant from Lark. If Lark is not connected yet,
+the Lark connection sheet opens first. Connecting creates an incoming
 webhook named "Lark message channel" and shows its address once, with the
 steps for the Lark developer console: turn on the bot of the app the
 assistant uses with lark-cli, send its receive-message events

@@ -98,6 +98,32 @@ token, stored as a hash and valid for 30 days; an account keeps at most 50.
 A sandbox writes nothing until it has read the saved copy, so a failed read
 never replaces a saved sign-in. Deleting the account removes both.
 
+### Lark connection
+
+The app can also have the service set Lark up. `POST /v1/lark/connect`
+starts Lark's public app registration (`accounts.feishu.cn`
+`/oauth/v1/app/registration`, archetype `PersonalAgent`) and returns
+`{phase: "app", url, expires_at}`; the person creates or picks the app on that
+Lark page. `GET /v1/lark/connect` polls the step in progress at most once per
+Lark's interval: once the app is registered, it starts the OAuth device
+authorization for the person (`/oauth/v1/device_authorization` with the
+user scopes listed at `open.feishu.cn/lark-cli/apis/scopes.json` plus
+`offline_access`) and returns `{phase: "user", url}`; once the person
+approves, it stores the tokens and returns
+`{phase: "connected", name, scope}`. A declined or expired step returns
+`{phase: "none", error}`. A started connection that still works is left
+alone, and reconnecting reuses the app. `DELETE /v1/lark/connect` forgets the
+user token and keeps the app; `DELETE /v1/lark/state` removes everything.
+
+The app ID and secret, the user's access and refresh tokens, and any step in
+progress are sealed with the account in `lark_connections` and never
+returned to the app. A sandbox asks for a current user access token with
+`GET /v1/lark/sandbox/credentials` and its conversation's Lark token (no
+browser origin), receiving `{app_id, brand, open_id, access_token,
+expires_at}`. Within five minutes of expiry the service renews the token with
+the refresh token first; a refresh token Lark no longer accepts ends the
+connection. Without a connection the route returns 404.
+
 ### Live cloud browser
 
 The phone cannot reach a browser running in the account's MA sandbox, so the

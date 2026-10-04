@@ -5,6 +5,11 @@
 // changed it, including when the CLI renews its token. The app gives each
 // conversation a token for this through a hidden note; without one nothing is
 // sent. Failures here never stop the lark-cli command itself.
+//
+// When the person connected Lark in the app, the service holds the app and
+// their user token instead, and the wrapper gives every lark-cli command a
+// current user access token through lark-cli's environment credentials. The
+// sandbox never sees the app secret or the refresh token.
 export const larkStateRoot = "/opt/open-muse/lark-state";
 
 export const larkStateSync =
@@ -15,7 +20,9 @@ import hashlib
 import io
 import json
 import os
+import shlex
 import sys
+import time
 import tarfile
 import urllib.error
 import urllib.request
@@ -23,13 +30,17 @@ import urllib.request
 ROOT = "__ROOT__"
 LINK = "/opt/open-muse/lark-link.json"
 SAVED = "/opt/open-muse/lark-state.saved"
+CREDENTIALS = "/opt/open-muse/lark-credentials.json"
 opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
-def call(method, body=None):
+def call(method, body=None, path="state"):
     with open(LINK) as handle:
         link = json.load(handle)
-    request = urllib.request.Request(link["url"], method=method,
+    url = link["url"]
+    if path != "state":
+        url = url[: -len("state")] + path
+    request = urllib.request.Request(url, method=method,
         data=None if body is None else json.dumps(body).encode(),
         headers={"Authorization": "Bearer " + link["token"], "Content-Type": "application/json"})
     with opener.open(request, timeout=20) as response:
@@ -129,6 +140,49 @@ def save():
             revision = call("GET").get("revision", 0)
 
 
+def connection():
+    """The connection the person made in the app: a user access token kept
+    current by the service, cached here until close to expiry. None when
+    Lark is not connected that way."""
+    if not os.path.exists(LINK):
+        return None
+    try:
+        with open(CREDENTIALS) as handle:
+            cached = json.load(handle)
+        if cached.get("expires_at", 0) / 1000 - time.time() > 300:
+            return cached
+    except (OSError, ValueError):
+        pass
+    try:
+        reply = call("GET", path="credentials")
+    except urllib.error.HTTPError as error:
+        if error.code == 404:
+            if os.path.exists(CREDENTIALS):
+                os.remove(CREDENTIALS)
+            return None
+        raise
+    with open(CREDENTIALS, "w") as handle:
+        json.dump(reply, handle)
+    os.chmod(CREDENTIALS, 0o600)
+    return reply
+
+
+def credentials():
+    """Shell exports for lark-cli's environment credentials, or nothing."""
+    found = connection()
+    if not found:
+        return
+    exports = {
+        "LARKSUITE_CLI_APP_ID": found["app_id"],
+        "LARKSUITE_CLI_BRAND": found.get("brand") or "feishu",
+        "LARKSUITE_CLI_USER_ACCESS_TOKEN": found["access_token"],
+        "LARKSUITE_CLI_DEFAULT_AS": "user",
+        "LARKSUITE_CLI_STRICT_MODE": "user",
+    }
+    for name, value in exports.items():
+        print("export %s=%s" % (name, shlex.quote(str(value))))
+
+
 def main():
     action = sys.argv[1] if len(sys.argv) > 1 else ""
     try:
@@ -140,11 +194,20 @@ def main():
                 json.dump({"url": url, "token": token}, handle)
             os.chmod(LINK, 0o600)
             restore()
-            print("Lark sign-in sync is on for this conversation.")
+            try:
+                connected = connection()
+            except Exception:
+                connected = None
+            if connected:
+                print("Lark is connected through Open Muse: lark-cli acts as the person (--as user); its own app setup and sign-in are not needed.")
+            else:
+                print("Lark sign-in sync is on for this conversation. Lark is not connected in the app yet.")
         elif action == "restore":
             restore()
         elif action == "save":
             save()
+        elif action == "credentials":
+            credentials()
     except Exception as error:
         print("lark sign-in sync: " + type(error).__name__, file=sys.stderr)
         if action == "link":

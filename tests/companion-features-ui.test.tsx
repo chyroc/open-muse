@@ -6,6 +6,7 @@ import { HealthRequestCard } from "../src/HealthRequestCard";
 import { UpcomingPanel } from "../src/UpcomingPanel";
 import { CheckInSettings } from "../src/CheckInSettings";
 import { ConnectorsSheet } from "../src/ConnectorsSheet";
+import { LarkConnectSheet } from "../src/LarkConnectSheet";
 import { SettingsHome } from "../src/SettingsHome";
 import { connectHealth, healthAccess } from "../src/health";
 import { t } from "../shared/i18n";
@@ -125,6 +126,31 @@ describe("Connectors", () => {
     expect(html).not.toContain("Apple Health");
     expect(t("Connectors", {}, "zh-CN")).toBe("连接器");
     expect(t("Available", {}, "zh-CN")).toBe("可用");
+  });
+
+  it("connects Lark in the app through the service's setup sheet", () => {
+    const service = {
+      larkConnection: vi.fn(),
+      startLarkConnection: vi.fn(),
+    };
+    const html = renderToStaticMarkup(
+      <LarkConnectSheet
+        name="Kit"
+        service={service}
+        onConnected={() => {}}
+        onClose={() => {}}
+      />,
+    );
+    expect(html).toContain("Let Kit work in your Lark account");
+    expect(html).toContain("Choose the Lark app");
+    expect(html).toContain("Approve your access");
+    expect(html).toContain("Preparing…");
+    // Setup starts only once the sheet is on screen.
+    expect(service.startLarkConnection).not.toHaveBeenCalled();
+    expect(t("Open Lark to approve", {}, "zh-CN")).toBe("打开飞书授权");
+    expect(
+      t("Let {name} work in your Lark account", { name: "Kit" }, "zh-CN"),
+    ).toBe("让Kit在你的飞书账号中工作");
   });
 
   it("asks the native Health reader for access status and authorization", async () => {

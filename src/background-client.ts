@@ -41,6 +41,26 @@ const larkToken = z.object({
   token: z.string().regex(/^[A-Za-z0-9_-]{20,200}$/),
   expires_at: z.number(),
 });
+// The account's Lark connection as the service reports it; never a secret.
+const larkConnection = z.discriminatedUnion("phase", [
+  z.object({ phase: z.literal("none"), error: z.string().optional() }),
+  z.object({
+    phase: z.enum(["app", "user"]),
+    url: z
+      .string()
+      .url()
+      .refine((url) =>
+        /^https:\/\/[\w.-]+\.(feishu\.cn|larkoffice\.com)\//.test(url),
+      ),
+    expires_at: z.number(),
+  }),
+  z.object({
+    phase: z.literal("connected"),
+    name: z.string().optional(),
+    scope: z.string(),
+  }),
+]);
+export type LarkConnection = z.infer<typeof larkConnection>;
 const larkSaved = z.object({
   saved: z.boolean(),
   updated_at: z.number().optional(),
@@ -568,7 +588,8 @@ export class BackgroundClient {
       | `/v1/account/sync?${string}`
       | "/v1/browser/views"
       | "/v1/lark/tokens"
-      | "/v1/lark/state",
+      | "/v1/lark/state"
+      | "/v1/lark/connect",
     schema: z.ZodType<T>,
     init?: RequestInit,
     messages?: Partial<Record<number, string>>,
@@ -660,6 +681,18 @@ export class BackgroundClient {
   removeLarkState() {
     return this.accountRequest("/v1/lark/state", larkSaved, {
       method: "DELETE",
+    });
+  }
+  // The Lark connection the service sets up: it registers or picks the
+  // person's Lark app and authorizes them, each step finished on a Lark page.
+  // Reading it advances a step in progress.
+  larkConnection() {
+    return this.accountRequest("/v1/lark/connect", larkConnection);
+  }
+  startLarkConnection() {
+    return this.accountRequest("/v1/lark/connect", larkConnection, {
+      method: "POST",
+      body: "{}",
     });
   }
   // Reminder delivery by the service while the apps are closed. Enabling it

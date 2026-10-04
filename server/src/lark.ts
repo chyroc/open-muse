@@ -70,12 +70,15 @@ export class LarkStates {
       this.env.DB.prepare("DELETE FROM lark_states WHERE owner_id=?").bind(
         this.owner,
       ),
+      this.env.DB.prepare("DELETE FROM lark_connections WHERE owner_id=?").bind(
+        this.owner,
+      ),
     ]);
     return { saved: false as const };
   }
 }
 
-async function tokenOwner(env: Env, token: string, now: number) {
+export async function tokenOwner(env: Env, token: string, now: number) {
   const found = token
     ? await env.DB.prepare(
         "SELECT owner_id,expires_at FROM lark_tokens WHERE token_hash=?",

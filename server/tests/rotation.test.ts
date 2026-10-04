@@ -189,6 +189,11 @@ describe("Keyring rotation without the deployed key's value", () => {
           "INSERT INTO lark_states(owner_id,revision,encrypted,updated_at) VALUES (?,7,?,?)",
         )
         .bind(owner, await sealed("open-muse-lark-state", 7, "AAAA"), now),
+      db
+        .prepare(
+          "INSERT INTO lark_connections(owner_id,revision,encrypted,updated_at) VALUES (?,8,?,?)",
+        )
+        .bind(owner, await sealed("open-muse-lark-connection", 8, {}), now),
     );
     await db.batch(statements);
     expect(await pendingRewrap(base)).toBe(0);
@@ -197,7 +202,7 @@ describe("Keyring rotation without the deployed key's value", () => {
       ...base,
       CREDENTIAL_ENCRYPTION_KEYS_NEXT: ring("v2", { v2: k2 }),
     };
-    expect(await pendingRewrap(rotating)).toBe(10);
+    expect(await pendingRewrap(rotating)).toBe(11);
     // One row per table per call when limited to one.
     expect(await rewrapRetiredKeys(rotating, 1)).toBe(SEALED_COLUMNS.length);
     expect(await pendingRewrap(rotating)).toBe(2);
@@ -244,7 +249,7 @@ describe("Keyring rotation without the deployed key's value", () => {
     };
     // Rows sealed under v2 cannot be opened with v3 alone.
     expect(await rewrapRetiredKeys(env)).toBe(0);
-    expect(await pendingRewrap(env)).toBe(10);
+    expect(await pendingRewrap(env)).toBe(11);
     expect(
       await pendingRewrap({ ...env, CREDENTIAL_ENCRYPTION_KEYS: "" }),
     ).toBe(undefined);

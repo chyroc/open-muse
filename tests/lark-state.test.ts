@@ -20,11 +20,15 @@ function scenario(steps: string, stderr = "") {
       .replaceAll(larkStateRoot, `${dir}/root`)
       .replace("/opt/open-muse/lark-link.json", `${dir}/link.json`)
       .replace("/opt/open-muse/lark-state.saved", `${dir}/saved.json`)
+      .replace(
+        "/opt/open-muse/lark-credentials.json",
+        `${dir}/credentials.json`,
+      )
       .replace('if __name__ == "__main__":\n    main()', "");
     const harness = String.raw`
 import json, os, shutil, sys, threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
-store = {"revision": 0, "state": None, "puts": 0, "fail": False}
+store = {"revision": 0, "state": None, "puts": 0, "fail": False, "connection": None, "reads": 0}
 class Service(BaseHTTPRequestHandler):
     def log_message(self, *args): pass
     def reply(self, code, body):
@@ -34,6 +38,10 @@ class Service(BaseHTTPRequestHandler):
     def do_GET(self):
         if store["fail"]: return self.reply(503, {})
         assert self.headers["Authorization"] == "Bearer token-1"
+        if self.path.endswith("/credentials"):
+            store["reads"] += 1
+            if not store["connection"]: return self.reply(404, {})
+            return self.reply(200, store["connection"])
         self.reply(200, {"revision": store["revision"], "state": store["state"]})
     def do_PUT(self):
         body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
@@ -47,12 +55,12 @@ URL = "https://example.invalid/v1/lark/sandbox/state"
 DIR = ${JSON.stringify(dir)}
 exec(compile(sys.stdin.read(), "lark_state.py", "exec"))
 real_call = call
-def call(method, body=None):
+def call(method, body=None, path="state"):
     # The helper requires https; the stand-in listens on plain http.
     with open(LINK) as handle: link = json.load(handle)
-    link["url"] = "http://127.0.0.1:%d/" % server.server_port
+    link["url"] = "http://127.0.0.1:%d/v1/lark/sandbox/state" % server.server_port
     with open(LINK, "w") as handle: json.dump(link, handle)
-    return real_call(method, body)
+    return real_call(method, body, path)
 def write(path, text):
     full = os.path.join(ROOT, path); os.makedirs(os.path.dirname(full), exist_ok=True)
     open(full, "w").write(text)
@@ -143,6 +151,49 @@ link(); save()
 out["after"] = store["puts"]
 `);
     expect(out).toEqual({ before: 0, after: 1 });
+  });
+
+  it("gives lark-cli the user token of a connection made in the app", () => {
+    const out = scenario(String.raw`
+import contextlib, time
+def exports():
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer): credentials()
+    return buffer.getvalue()
+fresh_sandbox(); link()
+out["none"] = exports()
+store["connection"] = {"app_id": "cli_a", "brand": "feishu", "open_id": "ou_1",
+    "access_token": "u-1 'quoted'", "expires_at": (time.time() + 7200) * 1000}
+out["first"] = exports()
+reads = store["reads"]
+exports()  # cached while far from expiry
+out["cached"] = store["reads"] == reads
+store["connection"] = dict(store["connection"], access_token="u-2")
+with open(CREDENTIALS) as handle: cached = json.load(handle)
+cached["expires_at"] = (time.time() + 60) * 1000
+with open(CREDENTIALS, "w") as handle: json.dump(cached, handle)
+out["renewed"] = "u-2" in exports()
+store["connection"] = None
+with open(CREDENTIALS, "w") as handle: json.dump(cached, handle)
+out["disconnected"] = exports() == "" and not os.path.exists(CREDENTIALS)
+`);
+    expect(out.none).toBe("");
+    expect(out.first).toBe(
+      [
+        "export LARKSUITE_CLI_APP_ID=cli_a",
+        "export LARKSUITE_CLI_BRAND=feishu",
+        `export LARKSUITE_CLI_USER_ACCESS_TOKEN='u-1 '"'"'quoted'"'"''`,
+        "export LARKSUITE_CLI_DEFAULT_AS=user",
+        "export LARKSUITE_CLI_STRICT_MODE=user",
+        "",
+      ].join("\n"),
+    );
+    expect(out).toMatchObject({
+      cached: true,
+      renewed: true,
+      disconnected: true,
+    });
+    expect(toolingSetup).toContain("lark_state.py credentials");
   });
 
   it("is installed behind the lark-cli wrapper and announced by a hidden note", () => {

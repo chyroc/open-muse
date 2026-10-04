@@ -61,6 +61,13 @@ export const SEALED_COLUMNS: readonly {
     revision: "revision",
     purpose: "open-muse-lark-state",
   },
+  // The Lark app and user tokens the service set up for the account.
+  {
+    table: "lark_connections",
+    column: "encrypted",
+    revision: "revision",
+    purpose: "open-muse-lark-connection",
+  },
 ];
 
 // Sealed values are JSON envelopes naming the key that sealed them. Key IDs

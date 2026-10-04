@@ -16,6 +16,8 @@ import { t } from "../shared/i18n";
 import type { Client } from "./api";
 import { connectHealth, healthAccess } from "./health";
 import { PersonalConnectSheet } from "./PersonalConnectSheet";
+import { LarkConnectSheet } from "./LarkConnectSheet";
+import { backgroundClient, type BackgroundClient } from "./background-client";
 import {
   connectPersonal,
   personalAccess,
@@ -122,6 +124,18 @@ const larkSignedIn = (kept: boolean): Connector => ({
         "Signed in to your Lark account in your assistant's cloud environment. When the main chat continues into a new chapter, sign in again.",
       ),
 });
+// Connected in the app: the service keeps the person's authorization.
+const larkAuthorized = (name?: string): Connector => ({
+  ...lark(),
+  detail: name
+    ? t(
+        "Connected as {name}. Your assistant works in Lark as you in every conversation.",
+        { name },
+      )
+    : t(
+        "Connected. Your assistant works in Lark as you in every conversation.",
+      ),
+});
 const larkSignIn =
   "Help me sign in to Lark with lark-cli so you can work in my Lark account.";
 const larkSignOut = "Sign me out of Lark with lark-cli.";
@@ -131,6 +145,7 @@ export function ConnectorsSheet({
   name,
   onClose,
   onDraft,
+  service = backgroundClient,
 }: {
   // The companion's name, for the connect sheets.
   name?: string;
@@ -147,6 +162,8 @@ export function ConnectorsSheet({
   onClose: () => void;
   // Puts text in the main chat composer for the person to review and send.
   onDraft: (text: string) => void;
+  // The Open Muse service, which sets up Lark for an account.
+  service?: Pick<BackgroundClient, "larkConnection" | "startLarkConnection">;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<string>();
@@ -156,6 +173,9 @@ export function ConnectorsSheet({
   const [error, setError] = useState("");
   const [linked, setLinked] = useState(false);
   const [larkLinked, setLarkLinked] = useState(false);
+  // The Lark connection the service set up, by the person's Lark name.
+  const [larkAccount, setLarkAccount] = useState<{ name?: string }>();
+  const [larkSetup, setLarkSetup] = useState(false);
   // iOS access for Calendar, Reminders, and Contacts, once read.
   const [personalState, setPersonalState] =
     useState<Partial<Record<IphoneSource, PersonalAccess>>>();
@@ -180,6 +200,15 @@ export function ConnectorsSheet({
         (value) => active && setLarkLinked(value),
         () => {},
       );
+    if (client.larkKept())
+      void service.larkConnection().then(
+        (value) =>
+          active &&
+          setLarkAccount(
+            value.phase === "connected" ? { name: value.name } : undefined,
+          ),
+        () => {},
+      );
     void client.healthConnected().then(
       (value) => active && setLinked(value),
       () => {},
@@ -199,7 +228,9 @@ export function ConnectorsSheet({
   async function connect(id: string) {
     setError("");
     if (id === "lark") {
-      onDraft(t(larkSignIn));
+      // Accounts connect in the app; a device-only setup asks the assistant.
+      if (client.larkKept()) setLarkSetup(true);
+      else onDraft(t(larkSignIn));
       return;
     }
     if ((personalSources as string[]).includes(id)) {
@@ -233,15 +264,27 @@ export function ConnectorsSheet({
     ...included(),
     ...(linked ? healthItem : []),
     ...allowed.map(personal),
-    ...(larkLinked ? [larkSignedIn(client.larkKept())] : []),
+    ...(larkAccount
+      ? [larkAuthorized(larkAccount.name)]
+      : larkLinked
+        ? [larkSignedIn(client.larkKept())]
+        : []),
   ].filter(matches);
   const available = [
     ...(linked ? [] : healthItem),
     ...askable.map(personal),
-    ...(larkLinked ? [] : [lark()]),
+    ...(larkAccount || larkLinked ? [] : [lark()]),
   ].filter(matches);
   return (
     <Sheet title={t("Connectors")} onClose={onClose} grouped>
+      {larkSetup && (
+        <LarkConnectSheet
+          name={name ?? t("Your assistant")}
+          service={service}
+          onConnected={(value) => setLarkAccount({ name: value.name })}
+          onClose={() => setLarkSetup(false)}
+        />
+      )}
       {connecting && (
         <PersonalConnectSheet
           source={connecting}
@@ -307,7 +350,15 @@ export function ConnectorsSheet({
                           className="connector-disconnect"
                           onClick={() =>
                             void client.forgetLark().then(
-                              () => onDraft(t(larkSignOut)),
+                              () => {
+                                // Authorization kept by the service ends at
+                                // once; a sign-in in the chat signs out there.
+                                if (larkAccount) {
+                                  setLarkAccount(undefined);
+                                  setLarkLinked(false);
+                                  setOpen(undefined);
+                                } else onDraft(t(larkSignOut));
+                              },
                               (reason: Error) => setError(reason.message),
                             )
                           }

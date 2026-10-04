@@ -198,3 +198,31 @@
     border-top-color: rgb(255 255 255 / 10%);
   }
 }
+/* Lark: the setup steps light up as Lark confirms them, and the primary
+   action is a link to the Lark page. */
+.lark-connect .health-connect-continue {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  border: 0;
+}
+.lark-connect .health-connect-continue:disabled {
+  opacity: 0.6;
+}
+.lark-connect .health-connect-rows li {
+  transition: opacity var(--motion-fade-duration, 200ms) ease-out;
+}
+.lark-connect .health-connect-rows li[data-state="done"] {
+  opacity: 0.45;
+}
+.lark-connect
+  .health-connect-rows
+  li[data-state="active"]
+  .health-connect-row-icon {
+  color: #3370ff;
+}
+.lark-connect .inline-error {
+  margin: 12px 19px 0;
+}

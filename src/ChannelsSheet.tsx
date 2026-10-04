@@ -4,6 +4,7 @@ import { formatLocale, t } from "../shared/i18n";
 import type { WebhookList } from "../shared/webhooks";
 import { backgroundClient, type BackgroundClient } from "./background-client";
 import { Sheet } from "./MusePages";
+import { LarkConnectSheet } from "./LarkConnectSheet";
 import "./channels-sheet.css";
 
 // The hook that carries the person's Lark bot messages. Its name marks it in
@@ -14,7 +15,9 @@ export const larkChannelName = "Lark message channel";
 // channel here: the person's own Lark bot posts its messages to an incoming
 // webhook, they reach the main chat, and the assistant answers in Lark as
 // the bot once it has confirmed the sender is the person. The hook's address
-// is shown once, when the channel is connected.
+// is shown once, when the channel is connected. The bot belongs to the
+// person's Lark app, so a person who has not connected Lark yet does that
+// first, in the same sheet as Connectors.
 export function ChannelsSheet({
   onClose,
   onDraft,
@@ -31,6 +34,7 @@ export function ChannelsSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [larkSetup, setLarkSetup] = useState(false);
   const alive = useRef(true);
   const account = service.configured();
   const load = async () => {
@@ -68,12 +72,19 @@ export function ChannelsSheet({
   }
   const connect = () =>
     run(async () => {
-      // A new address replaces an earlier one whose secret is gone.
-      if (hook) await service.revokeWebhook(hook.id);
-      const created = await service.createWebhook(larkChannelName);
-      setAddress(`${created.url}?token=${encodeURIComponent(created.secret)}`);
-      setCopied(false);
+      if ((await service.larkConnection()).phase !== "connected") {
+        setLarkSetup(true);
+        return;
+      }
+      await createHook();
     });
+  const createHook = async () => {
+    // A new address replaces an earlier one whose secret is gone.
+    if (hook) await service.revokeWebhook(hook.id);
+    const created = await service.createWebhook(larkChannelName);
+    setAddress(`${created.url}?token=${encodeURIComponent(created.secret)}`);
+    setCopied(false);
+  };
   const disconnect = () => {
     if (
       !hook ||
@@ -92,6 +103,14 @@ export function ChannelsSheet({
   const ready = data && data.ready.mainChat && data.ready.background;
   return (
     <Sheet title={t("Message channels")} onClose={onClose} grouped>
+      {larkSetup && (
+        <LarkConnectSheet
+          name={t("Your assistant")}
+          service={service}
+          onConnected={() => void run(createHook)}
+          onClose={() => setLarkSetup(false)}
+        />
+      )}
       <p className="channels-intro">
         {t(
           "Message your assistant from another app, like texting anyone else. It answers there, and the conversation also shows here.",

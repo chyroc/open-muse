@@ -10,6 +10,7 @@ export const ACCOUNT_TABLES = [
   "browser_views",
   "lark_tokens",
   "lark_states",
+  "lark_connections",
   "feed_items",
   "runs",
   "schedules",
