@@ -279,7 +279,11 @@ first page on its card, drawn on the iPhone from the downloaded file; a single
 picture shows large. Tables use the reply's text size with hairlines between
 rows, and fenced code shows in a card with its language, a copy button, and
 light highlighting. A reminder or recurring task set up in a chat shows as a
-small card under the reply that set it up.
+small card under the reply that set it up, found by the turn whose memory
+write first names it. When the companion takes something on, it can react to
+the person's message with one emoji, shown on that message; the reply carries
+it as a leading `[[react:…]]` mark, which never shows as text. Tappable
+choices come with at most a short line of prose and three or four options.
 
 ### First conversation
 
@@ -672,9 +676,12 @@ they sync across the account's devices (see
 [Sync across devices](#sync-across-devices)). A post that compares two to six
 figures in the same unit can carry a small bar chart, drawn under its text;
 for now the chart stays on the device that generated the post, and other
-devices show the post without it. Opening Discuss or an idea prepares an editable side-chat draft;
-it does not send a message until the user presses Send. Existing discussions
-reopen their linked conversation.
+devices show the post without it. Discuss on a Feed post prepares an
+editable side-chat draft; it does not send a message until the user presses
+Send, and an existing discussion reopens its linked conversation. Ideas made
+for the person lead the Ideas page, above the catalog. Get started on an idea,
+from the catalog or made for the person, sends a short "Let's get started!"
+quoting the idea's title to the main chat.
 
 Generation runs persist submission markers and recover from real session
 history after relaunch. Ambiguous session or message submissions are never
