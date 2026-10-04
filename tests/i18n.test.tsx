@@ -9,6 +9,7 @@ import {
   systemLanguage,
   t,
   deviceLanguage,
+  initializeLanguage,
   languageChoice,
   setLanguageChoice,
 } from "../shared/i18n";
@@ -53,6 +54,21 @@ describe("System language selection", () => {
     expect(systemLanguage()).toBe("en");
     expect(formatLocale()).toBe("en-US");
     vi.stubGlobal("navigator", undefined);
+  });
+
+  it("names the page's language to the iPhone app for its system dialogs", () => {
+    const postMessage = vi.fn();
+    vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", ["zh-Hans-CN"]);
+    vi.stubGlobal("document", { documentElement: { lang: "" } });
+    vi.stubGlobal("webkit", {
+      messageHandlers: { museLanguage: { postMessage } },
+    });
+    initializeLanguage();
+    expect(document.documentElement.lang).toBe("zh-CN");
+    expect(postMessage).toHaveBeenCalledWith("zh-CN");
+    // Elsewhere there is no one to tell.
+    vi.stubGlobal("webkit", undefined);
+    expect(() => initializeLanguage()).not.toThrow();
   });
 
   it("interpolates values once without translating or interpreting them", () => {

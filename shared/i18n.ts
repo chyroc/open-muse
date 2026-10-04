@@ -73,4 +73,14 @@ export function t(
 
 export function initializeLanguage() {
   document.documentElement.lang = systemLanguage();
+  // The iPhone app titles the system's alert and confirm buttons in it.
+  (
+    globalThis as {
+      webkit?: {
+        messageHandlers?: {
+          museLanguage?: { postMessage(value: string): void };
+        };
+      };
+    }
+  ).webkit?.messageHandlers?.museLanguage?.postMessage(systemLanguage());
 }

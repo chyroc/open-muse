@@ -251,6 +251,7 @@ class MuseBridgeViewController: CAPBridgeViewController {
     private let appearanceHandler = MuseAppearanceHandler()
     private let notificationsHandler = MuseNotificationsHandler()
     private let remindersHandler = MuseRemindersHandler()
+    private let dialogs = MuseWebDialogs()
 
     override func capacitorDidLoad() {
         super.capacitorDidLoad()
@@ -308,6 +309,11 @@ class MuseBridgeViewController: CAPBridgeViewController {
         webView?.configuration.userContentController.add(appearanceHandler, contentWorld: .page, name: "museAppearance")
         webView?.configuration.userContentController.addScriptMessageHandler(notificationsHandler, contentWorld: .page, name: "museNotifications")
         webView?.configuration.userContentController.add(remindersHandler, contentWorld: .page, name: "museReminders")
+        // The page's alerts and confirmations use the app's own language.
+        dialogs.original = webView?.uiDelegate
+        dialogs.presenter = self
+        webView?.uiDelegate = dialogs
+        webView?.configuration.userContentController.add(dialogs, contentWorld: .page, name: "museLanguage")
         // Keep the composer above the keyboard without spending the reduced
         // viewport on the bottom navigation. No third-party app is inspected.
         for (notification, visible) in [
@@ -405,5 +411,49 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
         SceneDelegateProxy.shared.scene(scene, continue: userActivity)
+    }
+}
+
+// The page's alert and confirm dialogs, with their buttons in the page's
+// language rather than fixed English titles. The page names its language
+// when it starts (see initializeLanguage in shared/i18n.ts); asking it while a
+// dialog holds its script would never return. Prompts, which Capacitor uses
+// for its own bridge, and everything else go to the delegate it had before.
+final class MuseWebDialogs: NSObject, WKUIDelegate, WKScriptMessageHandler {
+    weak var original: WKUIDelegate?
+    weak var presenter: UIViewController?
+    private var chinese = Locale.preferredLanguages
+        .first { $0.hasPrefix("en") || $0.hasPrefix("zh") }?.hasPrefix("zh") == true
+
+    func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage) {
+        if let language = message.body as? String { chinese = language.hasPrefix("zh") }
+    }
+
+    override func responds(to selector: Selector!) -> Bool {
+        super.responds(to: selector) || (original?.responds(to: selector) ?? false)
+    }
+
+    override func forwardingTarget(for selector: Selector!) -> Any? {
+        original?.responds(to: selector) == true ? original : nil
+    }
+
+    private func present(_ alert: UIAlertController, otherwise: () -> Void) {
+        guard let presenter, presenter.presentedViewController == nil else { return otherwise() }
+        presenter.present(alert, animated: true)
+    }
+
+    func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String,
+                 initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
+        let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: chinese ? "好" : "OK", style: .default) { _ in completionHandler() })
+        present(alert, otherwise: completionHandler)
+    }
+
+    func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String,
+                 initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
+        let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: chinese ? "取消" : "Cancel", style: .cancel) { _ in completionHandler(false) })
+        alert.addAction(UIAlertAction(title: chinese ? "好" : "OK", style: .default) { _ in completionHandler(true) })
+        present(alert) { completionHandler(false) }
     }
 }
