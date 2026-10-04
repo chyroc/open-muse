@@ -296,7 +296,9 @@ final class MuseFilesHandler: NSObject, WKScriptMessageHandlerWithReply, QLPrevi
 
     // ImageIO downsamples without decoding the full image, which bounds memory
     // for very large dimensions. SVG and other non-bitmap types are rejected.
+    // A PDF shows its first page, wide enough for a document card.
     private static func encodedThumbnail(_ data: Data) -> String? {
+        if data.starts(with: Array("%PDF-".utf8)) { return pdfThumbnail(data) }
         guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
               CGImageSourceGetCount(source) > 0,
               let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
@@ -313,6 +315,31 @@ final class MuseFilesHandler: NSObject, WKScriptMessageHandlerWithReply, QLPrevi
         }
         guard let png = bitmap.pngData() else { return nil }
         return "data:image/png;base64," + png.base64EncodedString()
+    }
+
+    private static func pdfThumbnail(_ data: Data) -> String? {
+        guard let provider = CGDataProvider(data: data as CFData),
+              let document = CGPDFDocument(provider),
+              let page = document.page(at: 1)
+        else { return nil }
+        let box = page.getBoxRect(.cropBox)
+        guard box.width > 0, box.height > 0 else { return nil }
+        let scale = min(720 / box.width, 4)
+        let size = CGSize(width: (box.width * scale).rounded(), height: (box.height * scale).rounded())
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = true
+        let image = UIGraphicsImageRenderer(size: size, format: format).image { context in
+            UIColor.white.setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+            let canvas = context.cgContext
+            canvas.translateBy(x: 0, y: size.height)
+            canvas.scaleBy(x: scale, y: -scale)
+            canvas.translateBy(x: -box.minX, y: -box.minY)
+            canvas.drawPDFPage(page)
+        }
+        guard let jpeg = image.jpegData(compressionQuality: 0.8) else { return nil }
+        return "data:image/jpeg;base64," + jpeg.base64EncodedString()
     }
 
     func previewController(_ controller: QLPreviewController, previewItemAt index: Int) -> QLPreviewItem {
