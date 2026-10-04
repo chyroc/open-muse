@@ -367,6 +367,12 @@ export function InspirationPage({
       <PageHeader title={title} />
       {ideas && (
         <div className="idea-catalog">
+          {/* Ideas made for this person lead the page, before the catalog. */}
+          {items.length > 0 && (
+            <section aria-label={t("Made for you")}>
+              {items.map((item) => row(shownGeneratedIdea(item)))}
+            </section>
+          )}
           {sections.map((section, index) => (
             <section
               key={section.title ?? index}
@@ -378,12 +384,6 @@ export function InspirationPage({
               {section.ideas.map(row)}
             </section>
           ))}
-          {items.length > 0 && (
-            <section aria-label={t("Made for you")}>
-              <h2 className="idea-section-title">{t("Made for you")}</h2>
-              {items.map((item) => row(shownGeneratedIdea(item)))}
-            </section>
-          )}
         </div>
       )}
       {!ideas && error && (
@@ -473,7 +473,8 @@ export function InspirationPage({
       )}
       {run?.error && (
         <p className="inline-error" role="alert">
-          {run.error}
+          {/* Stored in English; shown in the app's language. */}
+          {t(run.error)}
         </p>
       )}
       {pending && (
