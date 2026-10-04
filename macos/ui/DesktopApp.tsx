@@ -12,8 +12,8 @@ import {
 import {
   ArrowDown,
   ArrowUp,
-  AudioLines,
   Menu,
+  Phone,
   MessageCircle,
   Mic,
   Plus,
@@ -1478,6 +1478,21 @@ export function DesktopApp({ client }: { client: Client }) {
                   </span>
                 </button>
               )}
+              {route.page === "chat" &&
+                voiceAvailable &&
+                voice.state === "off" && (
+                  // A voice conversation starts from the top of the chat; the
+                  // voice bar above the composer ends it.
+                  <button
+                    className="glass-pill talk-pill"
+                    aria-label={t("Start a voice conversation")}
+                    disabled={!ready}
+                    onClick={() => void voice.start()}
+                  >
+                    <Phone size={18} />
+                    <span>{t("Talk")}</span>
+                  </button>
+                )}
               {inspirationPage && (
                 <button
                   className="glass-pill"
@@ -1855,24 +1870,6 @@ export function DesktopApp({ client }: { client: Client }) {
               >
                 <Mic size={20} />
               </button>
-              {voiceAvailable && (
-                <button
-                  type="button"
-                  className={`icon-button voice ${voice.state !== "off" ? "active" : ""}`}
-                  aria-label={
-                    voice.state === "off"
-                      ? t("Start a voice conversation")
-                      : t("End the voice conversation")
-                  }
-                  aria-pressed={voice.state !== "off"}
-                  disabled={!ready}
-                  onClick={() =>
-                    voice.state === "off" ? void voice.start() : voice.end()
-                  }
-                >
-                  <AudioLines size={20} />
-                </button>
-              )}
               {running ? (
                 <button
                   type="button"

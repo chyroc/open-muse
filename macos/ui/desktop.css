@@ -318,6 +318,26 @@ h3 {
 .toolbar-spacer {
   flex: 1;
 }
+/* Starts a voice conversation: a 36-point raised pill at the top right. */
+.talk-pill {
+  height: 36px;
+  padding: 0 14px;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  transition: filter 0.15s ease-out;
+}
+.talk-pill:hover:not(:disabled) {
+  filter: brightness(0.99);
+}
+.talk-pill:active:not(:disabled) {
+  filter: brightness(0.975);
+}
+.talk-pill:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 .chat-scroll {
   flex: 1;
   overflow: auto;
@@ -337,20 +357,40 @@ h3 {
   max-width: 720px;
   margin: 0 auto;
 }
+/* A message is one row: the bubble with its actions beside it, on the
+   outer side, and a mood under the bubble. */
 .message {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: minmax(0, max-content) auto;
+  grid-template-areas:
+    "bubble actions"
+    "mood .";
+  justify-content: start;
+  align-items: center;
   max-width: 100%;
   position: relative;
   margin-bottom: 16px;
+  container-type: inline-size;
+}
+.message > .message-bubble {
+  grid-area: bubble;
+}
+.message > .message-actions {
+  grid-area: actions;
+}
+.message > .message-mood {
+  grid-area: mood;
 }
 /* Bubbles in one group sit 4 points apart. */
 .message.grouped-next {
   margin-bottom: 4px;
 }
 .message.from-user {
-  align-items: flex-end;
+  grid-template-columns: auto minmax(0, max-content);
+  grid-template-areas:
+    "actions bubble"
+    ". mood";
+  justify-content: end;
 }
 /* Bubbles: 16-point text on 22-point lines, 12 by 16 points of padding,
    at most 85% of the reading column. */
@@ -358,7 +398,7 @@ h3 {
   border-radius: 22px;
   background: var(--bubble);
   padding: 12px 16px;
-  max-width: 85%;
+  max-width: 85cqi;
   overflow-wrap: anywhere;
   font-size: 16px;
   line-height: 22px;
@@ -428,53 +468,58 @@ h3 {
   max-width: 100%;
   border-radius: 12px;
 }
-/* Hover actions float just below the bubble on a small raised bar, so
-   they never push the next bubble away. */
+/* Hover actions sit beside the bubble, 8 points away, and grow in from 95%
+   as they fade in. */
 .message-actions {
+  position: relative;
   display: flex;
-  gap: 3px;
-  position: absolute;
-  top: calc(100% - 4px);
-  z-index: 4;
-  padding: 2px;
-  border-radius: 16px;
-  background: var(--surface);
-  box-shadow: 0 2px 10px #0000001a;
+  gap: 0;
+  margin-left: 8px;
   opacity: 0;
+  transform: scale(0.95);
   pointer-events: none;
-  transition: opacity 0.12s;
+  transition:
+    opacity 0.15s ease-out,
+    transform 0.15s ease-out;
 }
-.message:hover .message-actions,
-.message:focus-within .message-actions {
-  pointer-events: auto;
+.from-user .message-actions {
+  margin-left: 0;
+  margin-right: 8px;
 }
 .message:hover .message-actions,
 .message:focus-within .message-actions {
   opacity: 1;
+  transform: none;
+  pointer-events: auto;
 }
-.message-actions button {
-  height: 25px;
+.message-actions > button {
+  height: 28px;
   width: 28px;
-  border-radius: 20px;
+  border-radius: 14px;
   color: var(--text-2);
 }
+@media (prefers-reduced-motion: reduce) {
+  .message-actions {
+    transform: none;
+  }
+}
+/* The composer: a 58-point translucent capsule 16 points above the edge. */
 .desktop-composer {
-  margin: 16px auto 14px;
+  margin: 16px auto 16px;
   width: calc(100% - 32px);
   max-width: 768px;
   box-sizing: border-box;
   padding: 8px 10px 8px 12px;
-  min-height: 56px;
+  min-height: 58px;
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  border-radius: 30px;
-  background: var(--surface);
-  box-shadow:
-    0 2px 12px #0000000d,
-    0 1px 4px #00000004;
+  border-radius: 32px;
+  background: var(--blur-thick);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--elevation-1);
   z-index: 2;
-  border: 1px solid var(--surface-2);
+  border: 1px solid transparent;
 }
 .desktop-composer textarea {
   resize: none;
@@ -1470,7 +1515,7 @@ h3 {
     padding-right: 18px;
   }
   .message-bubble {
-    max-width: 92%;
+    max-width: 92cqi;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -2069,6 +2114,8 @@ h3 {
    the bubble. */
 .message-actions.has-popup {
   opacity: 1;
+  transform: none;
+  pointer-events: auto;
   z-index: 5;
 }
 .message-actions button:hover {
@@ -2130,7 +2177,7 @@ h3 {
   background: var(--fill-strong);
 }
 .message-mood {
-  align-self: flex-start;
+  justify-self: start;
   margin: -10px 0 0 10px;
   padding: 1px 6px;
   border-radius: 11px;
@@ -2141,7 +2188,7 @@ h3 {
   animation: mood-in 0.36s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 .from-user .message-mood {
-  align-self: flex-end;
+  justify-self: end;
   margin: -10px 10px 0 0;
 }
 @keyframes mood-in {
@@ -2203,10 +2250,6 @@ h3 {
 .voice-bar.speaking .voice-dot {
   background: var(--primary-bg);
   animation: voice-pulse 0.9s ease-in-out infinite;
-}
-.icon-button.voice.active {
-  color: var(--primary-bg);
-  background: var(--fill-hover);
 }
 @keyframes voice-in {
   from {
