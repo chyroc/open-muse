@@ -185,6 +185,11 @@ describe("Companion avatar", () => {
       'class="companion-avatar working alive"',
     );
     const css = readFileSync("src/chat.css", "utf8");
+    // The plush body is a rendered image the face sits on.
+    expect(css).toContain('url("./assets/companion/plush.png")');
+    expect(
+      readFileSync("src/assets/companion/plush.png").length,
+    ).toBeGreaterThan(10_000);
     expect(css).toMatch(
       /\.companion-avatar\.alive:not\(\.working\) \.companion-face i \{\s*animation-name: companion-idle-blink;/,
     );

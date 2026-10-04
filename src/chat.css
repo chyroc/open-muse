@@ -153,41 +153,14 @@ html.sidebar-dragging .sidebar-panel {
   background: radial-gradient(circle at 50% 35%, #ffffff, #ececee);
   box-shadow: 0 1px 6px rgb(0 0 0 / 6%);
 }
+/* The plush body, hood, and arms are one rendered image of soft fur (see
+   scripts/generate-companion.mjs); the face sits on it in CSS so it can
+   blink and look around. */
 .companion-body {
   position: absolute;
-  inset: 6px 7px 2px;
-  background: radial-gradient(
-    ellipse at 48% 22%,
-    #f2e6d5 0%,
-    #e1cdb5 57%,
-    #c6b399 100%
-  );
-  border-radius: 45% 45% 38% 39%;
-  box-shadow:
-    inset 3px 2px 6px #fff9,
-    inset -3px -1px 5px #9e87694d,
-    0 1px 6px #bfae9526;
+  inset: 0;
+  background: url("./assets/companion/plush.png") center / 100% 100% no-repeat;
   transform: rotate(-3deg);
-}
-.companion-body::before,
-.companion-body::after {
-  content: "";
-  position: absolute;
-  bottom: 3px;
-  width: 17px;
-  height: 28px;
-  background: #dfcdb8;
-  z-index: -1;
-  border-radius: 65% 25% 55% 45%;
-}
-.companion-body::before {
-  left: -3px;
-  transform: rotate(20deg);
-}
-.companion-body::after {
-  right: -3px;
-  transform: rotate(-25deg);
-  background: #cdbba3;
 }
 .companion-face {
   position: absolute;
@@ -196,10 +169,9 @@ html.sidebar-dragging .sidebar-panel {
   width: 33px;
   height: 28px;
   border-radius: 44% 48% 45% 46%;
-  background: radial-gradient(ellipse at 35% 28%, #fff5e7, #e8c4a4);
-  border: 1px solid #c8aa8f;
+  background: radial-gradient(ellipse at 35% 28%, #fff6ea, #ecd0b4);
   box-shadow:
-    0 0 0 3px #f6eadb9e,
+    inset 0 1px 2px #b3967a59,
     inset 0 -2px 3px #d8b395;
 }
 .companion-face::before,
@@ -221,24 +193,24 @@ html.sidebar-dragging .sidebar-panel {
 }
 .companion-face i {
   position: absolute;
-  top: 11px;
-  left: 6px;
-  width: 3px;
-  height: 3px;
-  background: #463329;
+  top: 10.5px;
+  left: 5.5px;
+  width: 4px;
+  height: 4px;
+  background: radial-gradient(circle at 34% 30%, #fff9 0 18%, #1a130e 26%);
   border-radius: 50%;
 }
 .companion-face i + i {
-  left: 22px;
+  left: 23.5px;
 }
 .companion-face b {
   position: absolute;
-  width: 5px;
+  width: 8px;
   height: 3px;
   top: 14px;
-  left: 13px;
-  border-bottom: 1px solid #8b5a45;
-  border-radius: 50%;
+  left: 12.5px;
+  border-bottom: 0.9px solid #3b2a22;
+  border-radius: 0 0 50% 50% / 0 0 100% 100%;
 }
 /* Idling while nothing is happening: over one slow loop the companion looks
    right, then left, its body turning a little with its gaze; it blinks
