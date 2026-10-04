@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Laptop, Smartphone } from "lucide-react";
 import { formatLocale, t } from "../shared/i18n";
-import type { DeviceRecord } from "../shared/devices";
+import { mergeDevices, type DeviceRecord } from "../shared/devices";
 import { backgroundClient } from "./background-client";
 import { buildCommit } from "./build-info";
 import {
@@ -44,7 +44,7 @@ type Shown = {
   version: string;
   system?: string;
   // Other devices can be taken off the list; this one cannot.
-  record?: DeviceRecord;
+  record?: DeviceRecord & { ids: string[] };
 };
 
 // This iPhone, then the account's other devices as the service last saw them,
@@ -71,8 +71,8 @@ export function DevicesSheet({ onClose }: { onClose: () => void }) {
     version: shellVersion() || buildCommit || "",
     system: shellSystem(),
   };
-  const others: Shown[] = (devices ?? [])
-    .filter((device) => device.id !== id)
+  const others: Shown[] = mergeDevices(devices ?? [])
+    .filter((device) => !device.ids.includes(id ?? ""))
     .map((device) => ({
       name: device.name,
       platform: device.platform,
@@ -80,7 +80,7 @@ export function DevicesSheet({ onClose }: { onClose: () => void }) {
       version: device.app_version,
       record: device,
     }));
-  const remove = (device: DeviceRecord) => {
+  const remove = (device: DeviceRecord & { ids: string[] }) => {
     if (
       !confirm(
         t(
@@ -90,13 +90,22 @@ export function DevicesSheet({ onClose }: { onClose: () => void }) {
       )
     )
       return;
-    void backgroundClient
-      .forgetDevice(device.id)
+    // A merged Mac is forgotten under every id it signed in with, one after
+    // another; a failure stops there and the list is read again.
+    void device.ids
+      .reduce<Promise<unknown>>(
+        (previous, deviceId) =>
+          previous.then(() => backgroundClient.forgetDevice(deviceId)),
+        Promise.resolve(),
+      )
       .then(() => {
         setOpen(undefined);
         load();
       })
-      .catch((failure: Error) => setError(failure.message));
+      .catch((failure: Error) => {
+        setError(failure.message);
+        load();
+      });
   };
   return (
     <Sheet title={t("Devices")} onClose={onClose} grouped>
