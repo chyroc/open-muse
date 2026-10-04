@@ -71,6 +71,8 @@ export function LarkConnectSheet({
     let timer: ReturnType<typeof setTimeout> | undefined;
     const show = (next: LarkConnection) => {
       if (!active) return;
+      // A check that failed earlier is superseded by this answer.
+      setError("");
       setStatus(next);
       if (next.phase === "connected") onConnected(next);
       else if (next.phase !== "none") timer = setTimeout(poll, POLL_MS);
