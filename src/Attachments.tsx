@@ -16,7 +16,7 @@ import type {
 } from "../shared/attachments";
 import { groupFrames } from "./videoFrames";
 import type { KeptMedia } from "./direct/media";
-import { MediaViewer, useObjectURL } from "./MediaViewer";
+import { MediaViewer } from "./MediaViewer";
 import "./attachments.css";
 
 export interface StagedAttachment {
@@ -127,6 +127,28 @@ export function StagedAttachments({
   );
 }
 
+// The last photos shown, with their thumbnail address, so a message that
+// takes the place of its bubble while it was being sent shows the photo on
+// its first frame instead of loading it again.
+const shown = new Map<string, { media: KeptMedia; url?: string }>();
+function remember(fileId: string, media: KeptMedia) {
+  const kept = shown.get(fileId);
+  if (kept) {
+    shown.delete(fileId);
+    shown.set(fileId, kept);
+    return kept;
+  }
+  const image = media.kind === "video" ? media.poster : media.blob;
+  const entry = { media, url: image && URL.createObjectURL(image) };
+  shown.set(fileId, entry);
+  for (const [key, old] of shown) {
+    if (shown.size <= 16) break;
+    shown.delete(key);
+    if (old.url) URL.revokeObjectURL(old.url);
+  }
+  return entry;
+}
+
 // A sent photo or video as a thumbnail that opens full screen. Only this
 // device's own copies can be shown; anything else opens to a short note.
 function MediaTile({
@@ -140,17 +162,20 @@ function MediaTile({
   load?: (fileId: string) => Promise<KeptMedia | undefined>;
   onOpen: (media?: KeptMedia) => void;
 }) {
-  const [media, setMedia] = useState<KeptMedia>();
+  const [kept, setKept] = useState(() => shown.get(fileId));
   useEffect(() => {
     let active = true;
-    void load?.(fileId).then((value) => active && setMedia(value));
+    if (shown.has(fileId)) setKept(shown.get(fileId));
+    else
+      void load?.(fileId).then((value) => {
+        if (active) setKept(value && remember(fileId, value));
+      });
     return () => {
       active = false;
     };
   }, [fileId, load]);
-  const url = useObjectURL(
-    media?.kind === "video" ? media.poster : media?.blob,
-  );
+  const media = kept?.media;
+  const url = kept?.url;
   return (
     <li className="message-media-item">
       <button

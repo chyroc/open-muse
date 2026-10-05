@@ -42,7 +42,12 @@ import type { WelcomeState } from "./direct/welcome";
 import { isWelcomeReply } from "../shared/welcome";
 import { currentChoiceEvent } from "../shared/chat-choices";
 import { digest, uuid } from "../shared/crypto";
-import { isEcho, pendingOutgoing, type Outgoing } from "./outgoing";
+import {
+  inlineKey,
+  isEcho,
+  pendingOutgoing,
+  type Outgoing,
+} from "./outgoing";
 import { remindersByReply } from "./reminder-cards";
 import { splitLeadIn } from "./lead-in";
 import type { UpcomingItem } from "../shared/upcoming";
@@ -901,8 +906,20 @@ function Workspace({
           t("Wait for uploads to finish or remove failed attachments."),
         );
       const origin = draftKey;
-      setOutgoing({ view: origin, text, at: Date.now() });
+      // The photos and files go with the message into its bubble.
+      const sending = staged;
+      setOutgoing({
+        view: origin,
+        text,
+        at: Date.now(),
+        attachments: attachments.map((item) => ({
+          key: "file_id" in item ? item.file_id : `${inlineKey}${uuid()}`,
+          name: item.name,
+          kind: item.kind,
+        })),
+      });
       setDrafts((current) => ({ ...current, [origin]: "" }));
+      setStaged([]);
       setAwayFromBottom(false);
       let sessionId = activeId;
       try {
@@ -951,7 +968,6 @@ function Workspace({
         });
         if (alive.current) {
           setGoalInitiation(false);
-          setStaged([]);
           setAwayFromBottom(false);
           await task.refresh();
         }
@@ -964,6 +980,7 @@ function Workspace({
             const key = sessionId ?? origin;
             return current[key] ? current : { ...current, [key]: text };
           });
+          setStaged((current) => (current.length ? current : sending));
         }
         throw error;
       }
@@ -1515,7 +1532,13 @@ function Workspace({
                     <MessageQuote text={splitQuote(pendingSend.text).quote!} />
                   )}
                   <MessageBubble label={t("Sending")} onOptions={() => {}}>
-                    <Markdown text={splitQuote(pendingSend.text).text} />
+                    <MessageAttachments
+                      items={pendingSend.attachments ?? []}
+                      load={sentMedia}
+                    />
+                    {splitQuote(pendingSend.text).text && (
+                      <Markdown text={splitQuote(pendingSend.text).text} />
+                    )}
                   </MessageBubble>
                 </div>
               )}

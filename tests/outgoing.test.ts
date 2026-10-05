@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { AgentEvent } from "../shared/types";
-import { isEcho, pendingOutgoing, type Outgoing } from "../src/outgoing";
+import {
+  inlineKey,
+  isEcho,
+  pendingOutgoing,
+  type Outgoing,
+} from "../src/outgoing";
 
 const sent: Outgoing = {
   view: "session-1",
@@ -42,5 +47,34 @@ describe("Messages being sent", () => {
         message("Hello", "2026-10-04T20:00:00Z"),
       ]),
     ).toBe(sent);
+  });
+
+  it("waits for the photos sent with a message, not only its words", () => {
+    const withPhoto: Outgoing = {
+      ...sent,
+      text: "",
+      attachments: [
+        { key: "file-photo", name: "IMG_0005.jpeg", kind: "image" },
+        { key: `${inlineKey}note`, name: "note.txt", kind: "document" },
+      ],
+    };
+    const photo = (fileId: string) =>
+      ({
+        id: `evt-${fileId}`,
+        type: "user.message",
+        content: [
+          { type: "image", source: { type: "file", file_id: fileId } },
+          {
+            type: "document",
+            source: { type: "text", media_type: "text/plain", data: "hi" },
+            title: "note.txt",
+          },
+        ],
+        created_at: "2026-10-05T00:00:01Z",
+      }) as unknown as AgentEvent;
+    expect(isEcho(photo("file-photo"), withPhoto)).toBe(true);
+    // Another photo-only message is not this one.
+    expect(isEcho(photo("file-other"), withPhoto)).toBe(false);
+    expect(isEcho(message("", "2026-10-05T00:00:01Z"), withPhoto)).toBe(false);
   });
 });
