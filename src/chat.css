@@ -606,6 +606,10 @@ html.sidebar-dragging .sidebar-panel {
   align-items: flex-end;
   margin: 12px 0;
 }
+/* Two replies in a row stay separate bubbles, not one stacked block. */
+.chat-message-group.from-assistant + .chat-message-group.from-assistant {
+  margin-top: 12px;
+}
 .chat-time {
   align-self: center;
   color: #737379;

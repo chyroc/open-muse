@@ -4,8 +4,13 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-top: 6px;
+  margin-top: 8px;
   max-width: 94%;
+}
+/* Files under a reply's opening line keep the same space before the summary
+   that follows them. */
+.turn-outputs:not(:last-child) {
+  margin-bottom: 8px;
 }
 .turn-output-images {
   display: flex;
