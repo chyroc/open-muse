@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AgentEvent } from "../shared/types";
-import {
-  inlineKey,
-  isEcho,
-  pendingOutgoing,
-  type Outgoing,
-} from "../src/outgoing";
+import { isEcho, pendingOutgoing, type Outgoing } from "../src/outgoing";
 
 const sent: Outgoing = {
   view: "session-1",
@@ -54,8 +49,8 @@ describe("Messages being sent", () => {
       ...sent,
       text: "",
       attachments: [
-        { key: "file-photo", name: "IMG_0005.jpeg", kind: "image" },
-        { key: `${inlineKey}note`, name: "note.txt", kind: "document" },
+        { key: "staged-photo", name: "IMG_0005.jpeg", kind: "image" },
+        { key: "staged-note", name: "note.txt", kind: "document" },
       ],
     };
     const photo = (fileId: string) =>
@@ -72,9 +67,12 @@ describe("Messages being sent", () => {
         ],
         created_at: "2026-10-05T00:00:01Z",
       }) as unknown as AgentEvent;
-    expect(isEcho(photo("file-photo"), withPhoto)).toBe(true);
+    // Still uploading: no message in the history can be this one yet.
+    expect(isEcho(photo("file-photo"), withPhoto)).toBe(false);
+    const uploaded = { ...withPhoto, files: ["file-photo"] };
+    expect(isEcho(photo("file-photo"), uploaded)).toBe(true);
     // Another photo-only message is not this one.
-    expect(isEcho(photo("file-other"), withPhoto)).toBe(false);
-    expect(isEcho(message("", "2026-10-05T00:00:01Z"), withPhoto)).toBe(false);
+    expect(isEcho(photo("file-other"), uploaded)).toBe(false);
+    expect(isEcho(message("", "2026-10-05T00:00:01Z"), uploaded)).toBe(false);
   });
 });

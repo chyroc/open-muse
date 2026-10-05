@@ -129,9 +129,10 @@ export function StagedAttachments({
 
 // The last photos shown, with their thumbnail address, so a message that
 // takes the place of its bubble while it was being sent shows the photo on
-// its first frame instead of loading it again.
+// its first frame instead of loading it again. A photo is also remembered
+// once it is uploaded, before its message is in the history.
 const shown = new Map<string, { media: KeptMedia; url?: string }>();
-function remember(fileId: string, media: KeptMedia) {
+export function rememberMedia(fileId: string, media: KeptMedia) {
   const kept = shown.get(fileId);
   if (kept) {
     shown.delete(fileId);
@@ -168,7 +169,7 @@ function MediaTile({
     if (shown.has(fileId)) setKept(shown.get(fileId));
     else
       void load?.(fileId).then((value) => {
-        if (active) setKept(value && remember(fileId, value));
+        if (active) setKept(value && rememberMedia(fileId, value));
       });
     return () => {
       active = false;

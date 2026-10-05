@@ -32,6 +32,8 @@ export const zhAttachments: Record<string, string> = {
   "This text file is not valid UTF-8.": "此文本文件不是有效的 UTF-8 编码。",
   "Text attachments can be at most {count} characters.":
     "文本附件最多 {count} 个字符。",
+  "{name} didn't upload, so the message wasn't sent.":
+    "{name} 上传失败，消息没有发出。",
   "Wait for uploads to finish or remove failed attachments.":
     "请等待上传完成，或移除上传失败的附件。",
 };

@@ -42,12 +42,7 @@ import type { WelcomeState } from "./direct/welcome";
 import { isWelcomeReply } from "../shared/welcome";
 import { currentChoiceEvent } from "../shared/chat-choices";
 import { digest, uuid } from "../shared/crypto";
-import {
-  inlineKey,
-  isEcho,
-  pendingOutgoing,
-  type Outgoing,
-} from "./outgoing";
+import { isEcho, pendingOutgoing, type Outgoing } from "./outgoing";
 import { remindersByReply } from "./reminder-cards";
 import { splitLeadIn } from "./lead-in";
 import type { UpcomingItem } from "../shared/upcoming";
@@ -102,12 +97,15 @@ import {
   MessageAttachments,
   StagedAttachments,
   imagePreview,
+  rememberMedia,
   type StagedAttachment,
 } from "./Attachments";
+import type { KeptMedia } from "./direct/media";
 import {
   checkAttachment,
   maxAttachments,
   messageAttachments,
+  type Attachment,
 } from "../shared/attachments";
 import { videoFrameCount, videoFrames } from "./videoFrames";
 import { turnOutputs } from "../shared/turn-outputs";
@@ -375,6 +373,11 @@ function Workspace({
     (fileId: string) => client.sentMedia(fileId),
     [client],
   );
+  // A message being sent shows the photos as they were picked.
+  const pickedPhoto = useCallback(
+    async (key: string) => pickedMedia.current.get(key),
+    [],
+  );
   // This device's reactions, by the message's source event.
   const [reactions, setReactions] = useState<Record<string, string>>({});
   useEffect(() => {
@@ -383,7 +386,14 @@ function Workspace({
   }, [client]);
   const reactionKey = (message: AgentEvent) =>
     message.source_event_id ?? message.id;
-  const readyAttachments = staged.filter((item) => item.state === "ready");
+  // Uploads under way, by staged item: a message can be sent before they
+  // finish and goes out once they are done. The picked files show in its
+  // bubble meanwhile.
+  const uploads = useRef(new Map<string, Promise<Attachment>>());
+  const pickedMedia = useRef(new Map<string, KeptMedia>());
+  const sendable = (item: StagedAttachment) =>
+    item.state === "ready" ||
+    (item.state === "uploading" && uploads.current.has(item.key));
   const stagedCount = useRef(0);
   stagedCount.current = staged.length;
   const attachFiles = (files: File[], replacing?: string, video?: string) => {
@@ -429,7 +439,10 @@ function Workspace({
         void imagePreview(file).then(
           (preview) => preview && update({ preview }),
         );
-      client.uploadAttachment(file, file.name, position).then(
+      const upload = client.uploadAttachment(file, file.name, position);
+      uploads.current.set(key, upload);
+      if (kind === "image") pickedMedia.current.set(key, { kind, blob: file });
+      upload.then(
         (item) => {
           update({ state: "ready", value: item, name: item.name });
           if ("file_id" in item) {
@@ -438,8 +451,10 @@ function Workspace({
               [item.file_id]: item.name,
             }));
             // Kept on this device so the sent photo or video opens again.
-            if (kind === "image")
+            if (kind === "image") {
               void client.keepSentImage(item.file_id, file, video);
+              if (!video) rememberMedia(item.file_id, { kind, blob: file });
+            }
           }
         },
         (error: Error) => update({ state: "failed", error: error.message }),
@@ -897,26 +912,33 @@ function Workspace({
   const sendMessage = () =>
     action(async () => {
       const text = draft.trim();
-      const attachments = readyAttachments.flatMap((item) =>
-        item.value ? [item.value] : [],
-      );
-      if (!text && !attachments.length) return;
-      if (staged.some((item) => item.state !== "ready"))
+      const sending = staged;
+      if (!text && !sending.length) return;
+      if (!sending.every(sendable))
         throw new Error(
           t("Wait for uploads to finish or remove failed attachments."),
         );
+      // Photos still uploading do not hold the message: it shows at once
+      // with them, and goes out as soon as they are up.
+      const uploaded = Promise.allSettled(
+        sending.map((item) =>
+          item.value
+            ? Promise.resolve(item.value)
+            : uploads.current.get(item.key)!,
+        ),
+      );
+      let unsent = sending;
+      // Its bubble shows the picked photos from its first frame.
+      for (const { key } of sending) {
+        const picked = pickedMedia.current.get(key);
+        if (picked) rememberMedia(key, picked);
+      }
       const origin = draftKey;
-      // The photos and files go with the message into its bubble.
-      const sending = staged;
       setOutgoing({
         view: origin,
         text,
         at: Date.now(),
-        attachments: attachments.map((item) => ({
-          key: "file_id" in item ? item.file_id : `${inlineKey}${uuid()}`,
-          name: item.name,
-          kind: item.kind,
-        })),
+        attachments: sending.map(({ key, name, kind }) => ({ key, name, kind })),
       });
       setDrafts((current) => ({ ...current, [origin]: "" }));
       setStaged([]);
@@ -931,7 +953,7 @@ function Workspace({
           const session = await client.openConversation(
             isSideDraft ? "side" : "main",
             isSideDraft
-              ? (goalDraft?.title ?? (text || attachments[0].name)).slice(0, 60)
+              ? (goalDraft?.title ?? (text || sending[0].name)).slice(0, 60)
               : t("Main chat"),
             category,
           );
@@ -960,6 +982,38 @@ function Workspace({
             setInspirationDraft(undefined);
           }
         }
+        const results = await uploaded;
+        unsent = sending.map((item, position) => {
+          const result = results[position];
+          return result.status === "fulfilled"
+            ? { ...item, state: "ready", value: result.value }
+            : {
+                ...item,
+                state: "failed",
+                error: (result.reason as Error).message,
+              };
+        });
+        const failed = unsent.find((item) => item.state === "failed");
+        if (failed)
+          throw new Error(
+            t("{name} didn't upload, so the message wasn't sent.", {
+              name: failed.name,
+            }),
+          );
+        const attachments = unsent.flatMap((item) =>
+          item.value ? [item.value] : [],
+        );
+        // It goes out now: its minute to show up in the history starts here.
+        setOutgoing(
+          (current) =>
+            current && {
+              ...current,
+              at: Date.now(),
+              files: attachments.flatMap((item) =>
+                "file_id" in item ? [item.file_id] : [],
+              ),
+            },
+        );
         if (!alive.current) return;
         await client.send(sessionId, {
           type: "user.message",
@@ -980,7 +1034,7 @@ function Workspace({
             const key = sessionId ?? origin;
             return current[key] ? current : { ...current, [key]: text };
           });
-          setStaged((current) => (current.length ? current : sending));
+          setStaged((current) => (current.length ? current : unsent));
         }
         throw error;
       }
@@ -1534,7 +1588,7 @@ function Workspace({
                   <MessageBubble label={t("Sending")} onOptions={() => {}}>
                     <MessageAttachments
                       items={pendingSend.attachments ?? []}
-                      load={sentMedia}
+                      load={pickedPhoto}
                     />
                     {splitQuote(pendingSend.text).text && (
                       <Markdown text={splitQuote(pendingSend.text).text} />
@@ -1745,10 +1799,8 @@ function Workspace({
                     }
                   />
                 }
-                attachmentsReady={readyAttachments.length > 0}
-                attachmentsPending={staged.some(
-                  (item) => item.state !== "ready",
-                )}
+                attachmentsReady={staged.some(sendable)}
+                attachmentsPending={!staged.every(sendable)}
               />
             </div>
           </>
