@@ -18,6 +18,7 @@ npm start             # Preview the static site on port 4310
 npm run macos:build   # .build/macos/Open Muse.app, a Muse-account build
 npm run ios:build     # iOS Simulator app
 npm run ios:install   # Muse-account build, signed and installed on a paired iPhone
+npm run ios:testflight # Muse-account Release build, uploaded to TestFlight
 npm run native:sync   # Build and sync the iOS and Android bundles
 ```
 
@@ -48,6 +49,14 @@ CLI from the Supabase workspace named `open-muse` (override with
 `OPEN_MUSE_SUPABASE_WORKSPACE`), checks the service's `/health`, signs with the
 Apple Development team, installs, and launches the app. `OPEN_MUSE_DEVICE`
 selects a device when several are paired.
+
+`npm run ios:testflight` archives the same kind of build in Release and uploads
+it to App Store Connect for TestFlight. It needs an App Store Connect API key
+(`ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_PATH`, or `~/.appstoreconnect/asc_key.json`),
+the team's Apple Distribution identity in the login keychain, and an existing
+app record for `app.openmuse.mobile`. It recreates the App Store provisioning
+profile through the API on every run, so the key needs only the App Manager role,
+and numbers the build `yyyymmddHHMM` unless a build number is passed after `--`.
 
 `npm run macos:build` and `npm run ios:build` (the Simulator app) make such a
 build the same way: they take the three values from the environment or read

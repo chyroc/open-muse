@@ -27,8 +27,12 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>Open Muse uses the camera when you take a photo or record a video to send to your companion.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Open Muse only reads Health data and never writes or changes anything in Apple Health.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Open Muse records sound with a video you take to send to your companion.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
@@ -70,7 +74,7 @@
 	<string>Main</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
-		<string>armv7</string>
+		<string>arm64</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>

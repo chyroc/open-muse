@@ -1,5 +1,7 @@
 /* Shown by iOS when Open Muse first asks to read a type of Health data. */
 "NSHealthShareUsageDescription" = "当你向伙伴询问运动、体能训练、睡眠、心率或体重时，Open Muse 会读取你选择共享的健康数据。";
+/* Required with the HealthKit entitlement; the app requests no write access. */
+"NSHealthUpdateUsageDescription" = "Open Muse 只读取健康数据，从不写入或修改 Apple 健康中的任何内容。";
 /* Shown by iOS when Open Muse first uses the camera for an attachment. */
 "NSCameraUsageDescription" = "当你拍照或录像发送给伙伴时，Open Muse 会使用相机。";
 /* Shown by iOS when a video recorded for an attachment first uses the microphone. */
