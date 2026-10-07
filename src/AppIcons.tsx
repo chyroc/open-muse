@@ -16,11 +16,16 @@ export const appIconIds = [
   "lark",
   "browser",
   "files",
+  "mcd",
 ] as const;
 export type AppIconId = (typeof appIconIds)[number];
 
+// An app icon is used only when its image is actually bundled, so an id whose
+// PNG has not been added yet falls back to the connector's glyph instead of a
+// broken image.
 export const hasAppIcon = (id: string): id is AppIconId =>
-  (appIconIds as readonly string[]).includes(id);
+  (appIconIds as readonly string[]).includes(id) &&
+  Boolean(files[`./assets/apps/${id}.png`]);
 
 export const appIconSource = (id: AppIconId) =>
   files[`./assets/apps/${id}.png`];

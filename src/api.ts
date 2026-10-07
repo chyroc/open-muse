@@ -523,6 +523,7 @@ export class Client {
           async (kind, changes) => {
             await this.applyWorkspace(kind, changes);
           },
+          () => new DirectVault(ark, this.db, key).hasMcd(),
         ),
         companion,
         goals: new DirectGoals(key, this.db, companion),
@@ -1315,11 +1316,17 @@ export class Client {
   async connectMcd() {
     const token = await connectMcd();
     if (!token) return false;
-    await this.vaultService(this.context()).addMcd(token);
+    const r = this.context();
+    await this.vaultService(r).addMcd(token);
+    // Declare the MCP server on the agent now, so the next new conversation
+    // reaches McDonald's. New conversations attach the vault that authorizes it.
+    await r.workspace.syncPolicy();
     return true;
   }
   async disconnectMcd() {
-    await this.vaultService(this.context()).removeMcd();
+    const r = this.context();
+    await this.vaultService(r).removeMcd();
+    await r.workspace.syncPolicy();
     await disconnectMcd();
   }
   private upcomingService(r: Runtime) {

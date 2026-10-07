@@ -519,13 +519,16 @@ it in the iPhone Keychain.
 
 The token is then stored as a connection credential in the account's secure
 storage (the workspace vault) so the person's MA agent can reach McDonald's
-remote service for them. Because that vault is attached to every new
-conversation, the assistant can order food, find nearby restaurants, collect
-coupons, and check points when asked — in new conversations started after
-connecting. Orders and other changes are confirmed in the chat first, like any
-other action. **Disconnect** removes the connection credential and clears the
-token from this iPhone; new conversations no longer reach McDonald's. This
-connector appears only in the iPhone app.
+remote service for them. The agent declares the McDonald's MCP server, and the
+vault credential (matched by its URL) supplies the request authorization; the
+vault is attached to every new conversation. So in conversations started after
+connecting, the assistant can order food, find nearby restaurants, collect
+coupons, and check points when asked. An already-open conversation keeps its
+earlier agent version and does not gain the connector until a new conversation
+starts. Orders and other changes are confirmed in the chat first, like any
+other action. **Disconnect** removes the connection credential, stops the agent
+declaring the server, and clears the token from this iPhone. This connector
+appears only in the iPhone app.
 
 ### Lark message channel
 

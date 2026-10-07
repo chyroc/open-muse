@@ -5,6 +5,11 @@
 // connection among the workspace's vault credentials.
 export const MCD_MCP_URL = "https://mcp.mcd.cn";
 
+// The name the agent lists this remote MCP server under. Declaring the server
+// on the agent is what exposes its tools; the static_bearer vault credential
+// (matched by url) supplies the request authorization.
+export const MCD_MCP_SERVER_NAME = "mcd";
+
 // Shown on the vault credential so it is recognizable in MA; kept in English
 // like the other resource names.
 export const MCD_CREDENTIAL_NAME = "McDonald's";
