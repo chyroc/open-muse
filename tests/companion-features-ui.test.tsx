@@ -109,6 +109,9 @@ describe("Connectors", () => {
           setHealthConnected: async () => {},
           larkConnected: async () => false,
           forgetLark: async () => {},
+          mcdConnection: async () => "unavailable",
+          connectMcd: async () => false,
+          disconnectMcd: async () => {},
         }}
         onClose={() => {}}
         onDraft={() => {}}

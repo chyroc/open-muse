@@ -40,6 +40,7 @@ import type { Claim } from "./direct/initiations";
 import { validTimeZone } from "../shared/proactive";
 import { DirectUpcoming } from "./direct/upcoming";
 import { DirectVault, type SecureCredentialInput } from "./direct/vault";
+import { connectMcd, disconnectMcd, mcdStatus } from "./mcd";
 import type { UpcomingDelivery } from "../shared/upcoming";
 import { DirectLibrary } from "./direct/library";
 import { DirectAttachments } from "./direct/attachments";
@@ -1300,6 +1301,26 @@ export class Client {
   removeSecureCredential(id: string) {
     validId(id);
     return this.vaultService(this.context()).remove(id);
+  }
+  // The McDonald's connection: a remote MCP the agent reaches with a bearer
+  // token the person signs in for in the iPhone app. "connected" needs both
+  // the token kept on this device and the vault credential MA uses.
+  async mcdConnection() {
+    const status = await mcdStatus();
+    if (status === "unavailable") return "unavailable" as const;
+    return (await this.vaultService(this.context()).hasMcd())
+      ? ("connected" as const)
+      : ("none" as const);
+  }
+  async connectMcd() {
+    const token = await connectMcd();
+    if (!token) return false;
+    await this.vaultService(this.context()).addMcd(token);
+    return true;
+  }
+  async disconnectMcd() {
+    await this.vaultService(this.context()).removeMcd();
+    await disconnectMcd();
   }
   private upcomingService(r: Runtime) {
     return (r.upcoming ??= new DirectUpcoming(r.key, this.db, r.companion, {

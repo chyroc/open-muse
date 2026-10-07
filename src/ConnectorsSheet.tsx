@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ConnectorIcon } from "./AppIcons";
 import {
   BookUser,
+  Beef,
   Brain,
   CalendarDays,
   ChevronRight,
@@ -16,8 +17,10 @@ import {
 import { t } from "../shared/i18n";
 import type { Client } from "./api";
 import { connectHealth, healthAccess } from "./health";
+import { mcdSupported } from "./mcd";
 import { PersonalConnectSheet } from "./PersonalConnectSheet";
 import { LarkConnectSheet } from "./LarkConnectSheet";
+import { McdConnectSheet } from "./McdConnectSheet";
 import { backgroundClient, type BackgroundClient } from "./background-client";
 import {
   connectPersonal,
@@ -136,6 +139,22 @@ const larkAuthorized = (name?: string): Connector => ({
       ),
 });
 const larkSignOut = "Sign me out of Lark with lark-cli.";
+// McDonald's, reached as a remote service once the person signs in on
+// McDonald's own page in the iPhone app.
+const mcd = (): Connector => ({
+  id: "mcd",
+  name: t("McDonald's"),
+  detail: t(
+    "Order food, collect coupons and check points once you sign in on McDonald's page.",
+  ),
+  Icon: Beef,
+});
+const mcdConnected = (): Connector => ({
+  ...mcd(),
+  detail: t(
+    "Signed in. Ask your assistant to order, find a restaurant, or check coupons and points.",
+  ),
+});
 
 export function ConnectorsSheet({
   client,
@@ -150,7 +169,13 @@ export function ConnectorsSheet({
   // and whether the assistant is signed in to Lark in the main chat.
   client: Pick<
     Client,
-    "healthConnected" | "setHealthConnected" | "larkConnected" | "forgetLark"
+    | "healthConnected"
+    | "setHealthConnected"
+    | "larkConnected"
+    | "forgetLark"
+    | "mcdConnection"
+    | "connectMcd"
+    | "disconnectMcd"
   >;
   onClose: () => void;
   // Puts text in the main chat composer for the person to review and send.
@@ -169,6 +194,11 @@ export function ConnectorsSheet({
   // The Lark connection the service set up, by the person's Lark name.
   const [larkAccount, setLarkAccount] = useState<{ name?: string }>();
   const [larkSetup, setLarkSetup] = useState(false);
+  // Whether this iPhone holds a McDonald's connection, and whether its
+  // sign-in sheet is open.
+  const [mcdState, setMcdState] =
+    useState<Awaited<ReturnType<Client["mcdConnection"]>>>();
+  const [mcdSetup, setMcdSetup] = useState(false);
   // iOS access for Calendar, Reminders, and Contacts, once read.
   const [personalState, setPersonalState] =
     useState<Partial<Record<IphoneSource, PersonalAccess>>>();
@@ -206,6 +236,10 @@ export function ConnectorsSheet({
       () => {},
     );
     void readPersonal().catch(() => {});
+    void client.mcdConnection().then(
+      (value) => active && setMcdState(value),
+      () => {},
+    );
     void healthAccess()
       .then((value) => {
         if (active) setAccess(value);
@@ -221,6 +255,10 @@ export function ConnectorsSheet({
     setError("");
     if (id === "lark") {
       setLarkSetup(true);
+      return;
+    }
+    if (id === "mcd") {
+      setMcdSetup(true);
       return;
     }
     if ((personalSources as string[]).includes(id)) {
@@ -250,6 +288,8 @@ export function ConnectorsSheet({
   const askable = personalSources.filter((source) =>
     ["not-asked", "denied"].includes(personalState?.[source] ?? ""),
   );
+  // Shown only in the iPhone app, where signing in is possible.
+  const mcdItem = mcdState && mcdState !== "unavailable";
   const connected = [
     ...included(),
     ...(linked ? healthItem : []),
@@ -259,11 +299,13 @@ export function ConnectorsSheet({
       : larkLinked
         ? [larkSignedIn()]
         : []),
+    ...(mcdState === "connected" ? [mcdConnected()] : []),
   ].filter(matches);
   const available = [
     ...(linked ? [] : healthItem),
     ...askable.map(personal),
     ...(larkAccount || larkLinked ? [] : [lark()]),
+    ...(mcdItem && mcdState !== "connected" ? [mcd()] : []),
   ].filter(matches);
   return (
     <Sheet title={t("Connectors")} onClose={onClose} grouped>
@@ -273,6 +315,27 @@ export function ConnectorsSheet({
           service={service}
           onConnected={(value) => setLarkAccount({ name: value.name })}
           onClose={() => setLarkSetup(false)}
+        />
+      )}
+      {mcdSetup && (
+        <McdConnectSheet
+          name={name ?? t("Your assistant")}
+          onClose={() => setMcdSetup(false)}
+          onContinue={() =>
+            client.connectMcd().then(
+              (ok) => {
+                if (ok) {
+                  setMcdState("connected");
+                  setMcdSetup(false);
+                }
+                return ok;
+              },
+              (reason: Error) => {
+                setError(reason.message);
+                return false;
+              },
+            )
+          }
         />
       )}
       {connecting && (
@@ -362,6 +425,23 @@ export function ConnectorsSheet({
                             void client.setHealthConnected(false).then(
                               () => {
                                 setLinked(false);
+                                setOpen(undefined);
+                              },
+                              (reason: Error) => setError(reason.message),
+                            )
+                          }
+                        >
+                          {t("Disconnect")}
+                        </button>
+                      )}
+                      {id === "mcd" && (
+                        <button
+                          type="button"
+                          className="connector-disconnect"
+                          onClick={() =>
+                            void client.disconnectMcd().then(
+                              () => {
+                                setMcdState("none");
                                 setOpen(undefined);
                               },
                               (reason: Error) => setError(reason.message),

@@ -1,6 +1,13 @@
 import { z } from "zod";
 import { t } from "../../shared/i18n";
 import { ApiError, type ArkClient } from "../../shared/ark";
+import {
+  MCD_CONNECTOR_KEY,
+  MCD_CONNECTOR_VALUE,
+  MCD_CREDENTIAL_NAME,
+  MCD_MCP_URL,
+  isMcdCredential,
+} from "../../shared/mcd";
 import type { LocalDatabase } from "./storage";
 
 // Secure storage: one MA vault per personal workspace, holding secrets that
@@ -132,5 +139,53 @@ export class DirectVault {
       { method: "DELETE" },
     );
     return this.list();
+  }
+  // The remote MCP connection the person set up, as a static-bearer credential
+  // in the same workspace vault. Because the vault is attached to every new
+  // conversation, its MCP tools become available there automatically. The
+  // bearer token goes to MA once and is never read back.
+  private async mcdCredential() {
+    const vault = (await this.existing()) ?? (await this.find());
+    if (!vault) return undefined;
+    await this.db.set<VaultRow>(this.key, { vault_id: vault });
+    const page = await this.ark.request<{ data?: Remote[] }>(
+      `/vaults/${encodeURIComponent(vault)}/credentials?limit=100`,
+    );
+    return (page.data ?? []).find(isMcdCredential);
+  }
+  async hasMcd() {
+    return Boolean(await this.mcdCredential());
+  }
+  async addMcd(token: string) {
+    const value = z.string().trim().min(1).max(4096).parse(token);
+    const vault = await this.ensure();
+    // Only one connection: replace an existing one so the token stays current.
+    const current = await this.mcdCredential();
+    if (current?.id)
+      await this.ark.request(
+        `/vaults/${encodeURIComponent(vault)}/credentials/${encodeURIComponent(current.id)}`,
+        { method: "DELETE" },
+      );
+    await this.ark.request(`/vaults/${encodeURIComponent(vault)}/credentials`, {
+      method: "POST",
+      body: JSON.stringify({
+        display_name: MCD_CREDENTIAL_NAME,
+        metadata: { [MCD_CONNECTOR_KEY]: MCD_CONNECTOR_VALUE },
+        auth: {
+          type: "static_bearer",
+          mcp_server_url: MCD_MCP_URL,
+          token: value,
+        },
+      }),
+    });
+  }
+  async removeMcd() {
+    const vault = await this.existing();
+    const current = await this.mcdCredential();
+    if (!vault || !current?.id) return;
+    await this.ark.request(
+      `/vaults/${encodeURIComponent(vault)}/credentials/${encodeURIComponent(current.id)}`,
+      { method: "DELETE" },
+    );
   }
 }
