@@ -24,6 +24,7 @@
   <p>它在你的 iPhone 或 Android 手机上，在你的 Mac 上，也在一台云端电脑上——你关掉 App，它还在继续干活。</p>
   <div class="actions">
     <a class="button" href="https://testflight.apple.com/join/CX6wPZQ8">加入 iPhone 测试版</a>
+    <a class="button" href="{{macos.link}}">下载 Mac 版</a>
     <a class="button" href="{{android.link}}">下载 Android 版</a>
     <a class="button secondary" href="https://github.com/chyroc/open-muse">GitHub 上的源码</a>
   </div>
@@ -76,7 +77,8 @@
   <div class="grid">
     <div class="card"><h3>iPhone</h3><p>通过 <a href="https://testflight.apple.com/join/CX6wPZQ8">TestFlight</a> 加入公开测试，用邮箱和密码注册，再在设置里连接你的火山方舟 API Key。</p></div>
     <div class="card" id="android"><h3>Android</h3><p><a href="{{android.link}}">下载安装包</a>（版本 {{android.version}}，{{android.size}}），打开即可安装；第一次安装时 Android 会请你允许浏览器安装应用。需要 Android 9 及以上，Health Connect 需要 Android 14 及以上。安装包会从离你最近的服务器下载，你也可以手动选择<a href="{{android.cn}}">中国大陆</a>或<a href="{{android.global}}">海外</a>线路。</p><p class="note">SHA-256 <code>{{android.sha256}}</code></p></div>
-    <div class="card"><h3>Mac 和网页版</h3><p>用 <a href="https://github.com/chyroc/open-muse">GitHub 上的源码</a>自行构建，步骤见<a href="https://github.com/chyroc/open-muse/blob/master/docs/development.md">开发文档</a>（英文）。</p></div>
+    <div class="card" id="mac"><h3>Mac</h3><p><a href="{{macos.link}}">下载安装包</a>（版本 {{macos.version}}，{{macos.size}}），打开磁盘映像，把 Open Muse 拖进「应用程序」。安装包经过 Apple 签名和公证，支持 macOS 14 及以上、Apple 芯片和 Intel 芯片的 Mac。安装包会从离你最近的服务器下载，你也可以手动选择<a href="{{macos.cn}}">中国大陆</a>或<a href="{{macos.global}}">海外</a>线路。</p><p class="note">SHA-256 <code>{{macos.sha256}}</code></p></div>
+    <div class="card"><h3>网页版</h3><p>用 <a href="https://github.com/chyroc/open-muse">GitHub 上的源码</a>自行构建，步骤见<a href="https://github.com/chyroc/open-muse/blob/master/docs/development.md">开发文档</a>（英文）。</p></div>
     <div class="card"><h3>费用</h3><p>应用免费。模型和云端用量计入你的 API Key 所属的火山引擎账号。</p></div>
   </div>
 </section>

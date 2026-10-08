@@ -78,7 +78,8 @@ notifications.
 
 **macOS:** the AppKit/WKWebView shell loads bundled assets through `muse://app/`.
 The package contains no Node executable or server bundle and opens no listening
-port. The build targets macOS 14+ and is not notarized.
+port. The build targets macOS 14+; everyday builds are signed for development
+only and not notarized (see Mac releases below).
 
 **Android:** the Capacitor app answers the same
 `window.webkit.messageHandlers` contract as the iPhone app through a native
@@ -124,7 +125,7 @@ icons, and the current Android release from `site/downloads.json`:
   engines at the main site.
 
 `site/mirrors.json` names both download mirrors: the mirror bucket's
-`android/` folder for mainland China and the Cloudflare R2 bucket at
+`android/` and `macos/` folders for mainland China and the Cloudflare R2 bucket at
 `download.getopenmuse.com` everywhere else. Mainland object storage refuses to
 serve APKs from its default domains, which is why both go through a domain of
 the site's own.
@@ -142,6 +143,20 @@ it at least every two months.
 
 Keep its claims in step with the READMEs, and replace a README screenshot
 rather than adding one for the site.
+
+## Mac releases
+
+`npm run macos:release` builds the current commit, cloned into
+`.build/macos-release/`, as a universal (Apple silicon and Intel) account
+build whose build number is the number of commits on the branch. It signs the
+app with Developer ID under the hardened runtime, with the entitlements in
+`macos/OpenMuse.entitlements`, notarizes and staples it, and packs it in a
+signed, notarized disk image in `.build/macos/`. It needs the Developer ID
+Application identity as a `.p12` in `OPEN_MUSE_MAC_P12` with its password in
+`OPEN_MUSE_MAC_P12_PASSWORD`, imported only into a keychain made for the run,
+and an App Store Connect API key in `ASC_KEY_ID`, `ASC_ISSUER_ID`, and
+`ASC_KEY_PATH` for notarization. `-- --publish` uploads the image to both
+mirrors and records it in `site/downloads.json`, as for Android.
 
 ## Android releases
 

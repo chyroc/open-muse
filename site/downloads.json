@@ -6,5 +6,13 @@
     "file": "OpenMuse-0.2.0-502.apk",
     "size": 12356952,
     "sha256": "3802949ecfcd47f956230c0f752a2698f79c46ae7ca5c023f84cb1b7b6fc4713"
+  },
+  "macos": {
+    "version": "0.2.0",
+    "build": 507,
+    "commit": "53b2c5c",
+    "file": "OpenMuse-0.2.0-507.dmg",
+    "size": 1445690,
+    "sha256": "92cf7b8c488db294610f12128f7c5edb7395d5f106a3cc1b2d3bea3416f701d2"
   }
 }

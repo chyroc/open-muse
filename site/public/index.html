@@ -24,6 +24,7 @@
   <p>It remembers, follows up, and works for you — on your iPhone or Android phone, on your Mac, and on a cloud computer that keeps going after you close the app.</p>
   <div class="actions">
     <a class="button" href="https://testflight.apple.com/join/CX6wPZQ8">Join the iPhone beta</a>
+    <a class="button" href="{{macos.link}}">Download for Mac</a>
     <a class="button" href="{{android.link}}">Download for Android</a>
     <a class="button secondary" href="https://github.com/chyroc/open-muse">Source on GitHub</a>
   </div>
@@ -76,7 +77,8 @@
   <div class="grid">
     <div class="card"><h3>iPhone</h3><p>Join the public beta on <a href="https://testflight.apple.com/join/CX6wPZQ8">TestFlight</a>, register with an email and password, then connect your Volcano Ark API key in Settings.</p></div>
     <div class="card" id="android"><h3>Android</h3><p><a href="{{android.link}}">Download the app</a> (version {{android.version}}, {{android.size}}) and open it to install; Android asks you to allow installs from your browser the first time. It needs Android 9 or later, and Android 14 or later for Health Connect. The download comes from a server near you; you can also pick <a href="{{android.cn}}">mainland China</a> or <a href="{{android.global}}">global</a>.</p><p class="note">SHA-256 <code>{{android.sha256}}</code></p></div>
-    <div class="card"><h3>Mac and web</h3><p>Build from the <a href="https://github.com/chyroc/open-muse">source on GitHub</a>; the <a href="https://github.com/chyroc/open-muse/blob/master/docs/development.md">development guide</a> covers both.</p></div>
+    <div class="card" id="mac"><h3>Mac</h3><p><a href="{{macos.link}}">Download the app</a> (version {{macos.version}}, {{macos.size}}), open the disk image, and drag Open Muse to Applications. It is signed and notarized by Apple, and runs on macOS 14 or later on Apple silicon and Intel Macs. The download comes from a server near you; you can also pick <a href="{{macos.cn}}">mainland China</a> or <a href="{{macos.global}}">global</a>.</p><p class="note">SHA-256 <code>{{macos.sha256}}</code></p></div>
+    <div class="card"><h3>Web</h3><p>Build it from the <a href="https://github.com/chyroc/open-muse">source on GitHub</a>; the <a href="https://github.com/chyroc/open-muse/blob/master/docs/development.md">development guide</a> covers it.</p></div>
     <div class="card"><h3>What it costs</h3><p>The apps are free. Model and cloud usage is billed to the Volcano Engine account that owns your API key.</p></div>
   </div>
 </section>

@@ -3,10 +3,10 @@
 // Cloudflare is slow to reach from mainland China, so visitors there are
 // sent to the same pages on the mirror at cn.getopenmuse.com, served from
 // Hong Kong by Alibaba Cloud; ?mirror=global keeps someone on this site and
-// is remembered in a cookie. /download/android sends each visitor to the
-// current Android release on the nearer mirror: Alibaba Cloud for mainland
-// China, Cloudflare R2 everywhere else (?mirror=cn or ?mirror=global picks
-// one).
+// is remembered in a cookie. /download/android and /download/macos send each
+// visitor to the current release on the nearer mirror: Alibaba Cloud for
+// mainland China, Cloudflare R2 everywhere else (?mirror=cn or ?mirror=global
+// picks one).
 import downloads from "./downloads.json";
 import mirrors from "./mirrors.json";
 
@@ -34,10 +34,11 @@ export default {
     const url = new URL(request.url);
     const mirror = chosenMirror(request, url);
 
-    if (url.pathname === "/download/android") {
-      const base = mirrors[mirror].base;
-      return redirect(`${base}/android/${downloads.android.file}`);
-    }
+    const platform = /^\/download\/(android|macos)$/.exec(url.pathname)?.[1];
+    if (platform && downloads[platform])
+      return redirect(
+        `${mirrors[mirror].base}/${platform}/${downloads[platform].file}`,
+      );
 
     const page =
       request.method === "GET" &&

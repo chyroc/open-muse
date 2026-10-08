@@ -2,12 +2,13 @@
 //
 // - .build/site, served by Cloudflare at getopenmuse.com, whose Worker
 //   (site/worker.js) sends visitors from mainland China to the mirror and
-//   each Android download to the nearer of two mirrors;
+//   each Android or Mac download to the nearer of two mirrors;
 // - .build/site-cn, the mirror at cn.getopenmuse.com, served from Hong Kong
-//   by Alibaba Cloud, which links its Android download directly.
+//   by Alibaba Cloud, which links its downloads directly.
 //
 // Both get the README screenshots from docs/images as smaller WebP files,
-// the app icons, and the current Android release from site/downloads.json.
+// the app icons, and the current Android and Mac releases from
+// site/downloads.json.
 // The screenshots are converted at build time so the repository keeps one
 // copy of each.
 import {
@@ -25,7 +26,7 @@ const root = path.resolve(import.meta.dirname, "..");
 const mirrors = JSON.parse(
   readFileSync(path.join(root, "site/mirrors.json"), "utf8"),
 );
-const { android } = JSON.parse(
+const downloads = JSON.parse(
   readFileSync(path.join(root, "site/downloads.json"), "utf8"),
 );
 const site = "https://getopenmuse.com";
@@ -42,7 +43,7 @@ for (const file of readdirSync(path.join(root, "docs/images"))) {
     .toFile(path.join(images, file.replace(/\.png$/, ".webp")));
 }
 
-const releaseURL = (mirror) => `${mirror.base}/android/${android.file}`;
+const megabytes = (size) => `${(size / 1048576).toFixed(1)} MB`;
 const html = (directory) =>
   readdirSync(directory, { recursive: true })
     .map(String)
@@ -55,20 +56,26 @@ function build(out, cn) {
   cpSync(images, path.join(out, "images"), { recursive: true });
   for (const icon of ["icon-192.png", "icon-512.png", "icon.svg"])
     cpSync(path.join(root, "public", icon), path.join(out, icon));
-  const values = {
-    "android.link": cn ? `/android/${android.file}` : "/download/android",
-    "android.cn": releaseURL(mirrors.cn),
-    "android.global": releaseURL(mirrors.global),
-    "android.version": android.version,
-    "android.size": `${(android.size / 1048576).toFixed(1)} MB`,
-    "android.sha256": android.sha256,
+  const values = {};
+  for (const [platform, release] of Object.entries(downloads)) {
+    const file = `${platform}/${release.file}`;
+    Object.assign(values, {
+      [`${platform}.link`]: cn ? `/${file}` : `/download/${platform}`,
+      [`${platform}.cn`]: `${mirrors.cn.base}/${file}`,
+      [`${platform}.global`]: `${mirrors.global.base}/${file}`,
+      [`${platform}.version`]: release.version,
+      [`${platform}.size`]: megabytes(release.size),
+      [`${platform}.sha256`]: release.sha256,
+    });
+  }
+  Object.assign(values, {
     "mirror.switch.en": cn
       ? `<a href="${site}/?mirror=global">Global site</a>`
       : `<a href="${mirrors.cn.base}/">Mainland China mirror</a>`,
     "mirror.switch.zh": cn
       ? `<a href="${site}/zh/?mirror=global">海外站点</a>`
       : `<a href="${mirrors.cn.base}/zh/">中国大陆镜像</a>`,
-  };
+  });
   for (const file of html(out)) {
     const page = path.join(out, file);
     let text = readFileSync(page, "utf8")
