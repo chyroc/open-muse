@@ -190,23 +190,17 @@ for (const mirror of Object.values(mirrors)) {
   console.log(`${mirror.base}: ${response.status}`);
 }
 
-writeFileSync(
-  downloadsFile,
-  `${JSON.stringify(
-    {
-      android: {
-        version: versionName,
-        versionCode: Number(versionCode),
-        commit: short,
-        file,
-        size,
-        sha256,
-      },
-    },
-    null,
-    2,
-  )}\n`,
-);
+// The Mac release is recorded in the same file and stays as it is.
+const downloads = JSON.parse(readFileSync(downloadsFile, "utf8"));
+downloads.android = {
+  version: versionName,
+  versionCode: Number(versionCode),
+  commit: short,
+  file,
+  size,
+  sha256,
+};
+writeFileSync(downloadsFile, `${JSON.stringify(downloads, null, 2)}\n`);
 console.log(
   `\nUpdated ${path.relative(root, downloadsFile)}. Commit it, then deploy the website (node site/deploy.mjs).`,
 );
