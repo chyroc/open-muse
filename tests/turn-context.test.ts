@@ -33,6 +33,13 @@ describe("Turn context", () => {
       "Mac app, which answers the mac_* tools",
     );
     expect(turnContext(now, "UTC", "web")).toContain("web app");
+    // The Android app answers the same device tools from Android's sources,
+    // and has no reminders to read.
+    const android = turnContext(now, "UTC", "android");
+    expect(android).toContain(
+      "Android app, which answers health_read from Health Connect",
+    );
+    expect(android).toContain("do not use iphone_personal for reminders");
   });
   it("keeps progress notes in the person's language", () => {
     // A new chapter starts with notes about reading its history; they follow

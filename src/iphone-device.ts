@@ -8,22 +8,24 @@ import {
 import { appSurface } from "./platform";
 import { buildCommit } from "./build-info";
 
-// In account builds the iPhone app shows up in the account's device list, so
-// the Mac's Settings can list it. It reports at most hourly per account; the
-// web and Android builds never report.
+// In account builds the iPhone and Android apps show up in the account's
+// device list, so the Mac's Settings can list them. They report at most
+// hourly per account; the web build never reports.
 const reportInterval = 60 * 60 * 1000;
 let lastReport: { owner: string; at: number } | undefined;
 
 export async function registerThisIPhone(now = Date.now()) {
-  if (appSurface() !== "iphone" || !accountDevices()) return undefined;
+  const surface = appSurface();
+  if ((surface !== "iphone" && surface !== "android") || !accountDevices())
+    return undefined;
   const owner = String(backgroundClient.accountOwner());
   if (lastReport?.owner === owner && now - lastReport.at < reportInterval)
     return undefined;
   lastReport = { owner, at: now };
   try {
     return await registerThisDevice(
-      "ios",
-      thisDeviceName("iPhone"),
+      surface === "android" ? "android" : "ios",
+      thisDeviceName(surface === "android" ? "Android" : "iPhone"),
       buildCommit || shellVersion(),
     );
   } catch {

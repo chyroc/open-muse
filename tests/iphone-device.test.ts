@@ -93,13 +93,26 @@ describe("iPhone device registration", () => {
       app_version: "0",
     });
   });
-  it("does nothing on the web, on Android, or when signed out", async () => {
+  it("registers the Android app as an Android phone", async () => {
+    vi.spyOn(Capacitor, "getPlatform").mockReturnValue("android");
+    signedIn();
+    vi.stubGlobal("__OPEN_MUSE_DEVICE__", { name: "Pixel 10a" });
+    vi.stubGlobal("__OPEN_MUSE_VERSION__", "0.2.0");
+    const register = vi
+      .spyOn(backgroundClient, "registerDevice")
+      .mockResolvedValue({} as never);
+    await registerThisIPhone();
+    expect(register).toHaveBeenCalledWith(thisDeviceId(), {
+      name: "Pixel 10a",
+      platform: "android",
+      app_version: "0.2.0",
+    });
+  });
+  it("does nothing on the web or when signed out", async () => {
     const register = vi.spyOn(backgroundClient, "registerDevice");
     signedIn();
     const platform = vi.spyOn(Capacitor, "getPlatform");
     platform.mockReturnValue("web");
-    expect(await registerThisIPhone()).toBeUndefined();
-    platform.mockReturnValue("android");
     expect(await registerThisIPhone()).toBeUndefined();
     platform.mockReturnValue("ios");
     vi.spyOn(backgroundClient, "accountOwner").mockReturnValue(undefined);

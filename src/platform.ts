@@ -4,18 +4,22 @@ import { Share } from "@capacitor/share";
 import { uuid } from "../shared/crypto";
 import type { Surface } from "../shared/turn-context";
 export const nativeMobile = () => Capacitor.isNativePlatform();
+// The Android app, which mirrors the iPhone app's native features with
+// Android's own: Health Connect, the system share sheet and viewers.
+export const onAndroid = () => Capacitor.getPlatform() === "android";
 
-// Which Open Muse app this page runs in: the iPhone app, the Mac shell (known
-// by its computer-control bridge), or a browser.
+// Which Open Muse app this page runs in: the iPhone or Android app, the Mac
+// shell (known by its computer-control bridge), or a browser.
 export function appSurface(): Surface {
   if (Capacitor.getPlatform() === "ios") return "iphone";
+  if (onAndroid()) return "android";
   const shell = globalThis as unknown as {
     webkit?: { messageHandlers?: { museComputer?: unknown } };
   };
   return shell.webkit?.messageHandlers?.museComputer ? "mac" : "web";
 }
 
-// Saves text as a file: a save panel on the Mac, the share sheet on iOS, and a
+// Saves text as a file: a save panel on the Mac, the share sheet on phones, and a
 // download on the web. The labels default to a conversation's Markdown.
 export async function exportText(
   name: string,

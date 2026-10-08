@@ -14,8 +14,6 @@ export const zhHealth: Record<string, string> = {
     "{name} 发送了一个此 App 无法读取的请求。",
   "{name} asked to read this from Apple Health. Only this summary is shared with your MA agent.":
     "{name} 请求读取 Apple 健康中的这项数据。只有这份摘要会共享给你的 MA 智能体。",
-  "{name} asked to read this from Apple Health. Open Open Muse on your iPhone to share it.":
-    "{name} 请求读取 Apple 健康中的这项数据。请在 iPhone 上打开 Open Muse 进行共享。",
   "Don’t share": "不共享",
   Dismiss: "忽略",
   Share: "共享",

@@ -4,6 +4,7 @@ import { formatLocale, t } from "../shared/i18n";
 import { mergeDevices, type DeviceRecord } from "../shared/devices";
 import { backgroundClient } from "./background-client";
 import { accountDevices, thisDeviceId, thisDeviceName } from "./devices";
+import { onAndroid } from "./platform";
 import { Sheet } from "./MusePages";
 import { RowChevron } from "./SettingsHome";
 
@@ -21,12 +22,12 @@ export function lastSeen(at: number, now = Date.now()) {
 }
 
 const kind = (platform: DeviceRecord["platform"]) =>
-  platform === "ios" ? "iPhone" : "Mac";
+  platform === "ios" ? "iPhone" : platform === "android" ? "Android" : "Mac";
 const system = (platform: DeviceRecord["platform"]) =>
-  platform === "ios" ? "iOS" : "macOS";
+  platform === "ios" ? "iOS" : platform === "android" ? "Android" : "macOS";
 
-// The system name and version from the iPhone app (WebKit's user agent
-// reports a frozen one), or "" outside it.
+// The system name and version from the iPhone or Android app (WebKit's user
+// agent reports a frozen one), or "" outside it.
 export function shellSystem() {
   const value = (globalThis as { __OPEN_MUSE_SYSTEM__?: unknown })
     .__OPEN_MUSE_SYSTEM__;
@@ -44,7 +45,7 @@ type Shown = {
   record?: DeviceRecord & { ids: string[] };
 };
 
-// This iPhone, then the account's other devices as the service last saw them,
+// This phone, then the account's other devices as the service last saw them,
 // each opening its details. Removing a device only takes it off this list; it
 // stays signed in.
 export function DevicesSheet({ onClose }: { onClose: () => void }) {
@@ -61,12 +62,13 @@ export function DevicesSheet({ onClose }: { onClose: () => void }) {
       .catch((failure: Error) => setError(failure.message));
   }, [account]);
   useEffect(load, [load]);
+  const platform = onAndroid() ? "android" : "ios";
   const current: Shown = {
-    name: thisDeviceName("iPhone"),
-    platform: "ios",
-    model: thisDeviceName("iPhone"),
+    name: thisDeviceName(kind(platform)),
+    platform,
+    model: thisDeviceName(kind(platform)),
     status: t("Now"),
-    system: shellSystem() || system("ios"),
+    system: shellSystem() || system(platform),
   };
   const others: Shown[] = mergeDevices(devices ?? [])
     .filter((device) => !device.ids.includes(id ?? ""))
@@ -187,7 +189,7 @@ export function DevicesSheet({ onClose }: { onClose: () => void }) {
 }
 
 function DeviceRow({ device, onOpen }: { device: Shown; onOpen: () => void }) {
-  const Icon = device.platform === "ios" ? Smartphone : Laptop;
+  const Icon = device.platform === "mac" ? Laptop : Smartphone;
   return (
     <li>
       <button className="settings-list-row" onClick={onOpen}>

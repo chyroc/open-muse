@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { t } from "../shared/i18n";
+import { onAndroid } from "./platform";
 import type { Client } from "./api";
 import { Sheet } from "./MusePages";
 import {
@@ -60,7 +61,9 @@ export function NotificationsSheet({
         </p>
         {denied && (
           <p className="settings-footnote">
-            {t("Notifications are off for Open Muse in iOS.")}{" "}
+            {onAndroid()
+              ? t("Notifications are off for Open Muse in Android.")
+              : t("Notifications are off for Open Muse in iOS.")}{" "}
             <a href="app-settings:" target="_blank" rel="noopener noreferrer">
               {t("Open Settings")}
             </a>

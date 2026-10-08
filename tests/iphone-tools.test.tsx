@@ -96,7 +96,9 @@ describe("Calendar, Reminders, and Contacts on iPhone", () => {
     expect(html).toContain("Share contact details?");
     expect(html).toContain("Contacts matching “Ada”");
     // Outside the iPhone app there is nothing to read with.
-    expect(html).toContain("Open Open Muse on your iPhone to share it.");
+    expect(html).toContain(
+      "Open Open Muse on your iPhone or Android phone to share it.",
+    );
     expect(html).not.toContain(">Share<");
   });
 

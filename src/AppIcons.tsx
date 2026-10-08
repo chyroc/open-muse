@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import { onAndroid } from "./platform";
 
 // The official icons of the apps that connectors stand for. An app on iPhone
 // cannot read another app's icon, so the app carries them; each keeps its
@@ -19,8 +20,13 @@ export const appIconIds = [
 ] as const;
 export type AppIconId = (typeof appIconIds)[number];
 
+// On Android the phone's own apps stand behind these connectors, so the
+// iPhone apps' icons give way to the connectors' glyphs.
+const iphoneApps = new Set(["calendar", "reminders", "contacts", "health"]);
+
 export const hasAppIcon = (id: string): id is AppIconId =>
-  (appIconIds as readonly string[]).includes(id);
+  (appIconIds as readonly string[]).includes(id) &&
+  !(onAndroid() && iphoneApps.has(id));
 
 export const appIconSource = (id: AppIconId) =>
   files[`./assets/apps/${id}.png`];

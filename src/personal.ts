@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { IphoneRequest, IphoneSource } from "../shared/iphone-tools";
 import { iphoneSource } from "../shared/iphone-tools";
+import { onAndroid } from "./platform";
 
 type Handler = { postMessage(body: object): Promise<unknown> };
 const handler = () =>
@@ -10,9 +11,15 @@ const handler = () =>
     }
   ).webkit?.messageHandlers?.musePersonal;
 
-// Present only in the iPhone app, which registers the native reader for
-// Calendar, Reminders, and Contacts.
+// Present only in the iPhone and Android apps, which register the native
+// reader for Calendar, Reminders, and Contacts.
 export const personalSupported = () => Boolean(handler());
+
+// The sources this phone can read: Android has no system reminders list.
+export const personalSources = (): IphoneSource[] =>
+  onAndroid()
+    ? ["calendar", "contacts"]
+    : ["calendar", "reminders", "contacts"];
 
 const state = z.enum(["allowed", "not-asked", "denied"]);
 export type PersonalAccess = z.infer<typeof state> | "unavailable";

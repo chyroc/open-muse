@@ -79,7 +79,7 @@ import { PullToRefresh } from "./PullToRefresh";
 import { MessageMenu, type MessageMenuAction } from "./MessageMenu";
 import { haptic } from "./haptics";
 import { Studio } from "./Studio";
-import { appSurface, exportText, shareText } from "./platform";
+import { appSurface, exportText, onAndroid, shareText } from "./platform";
 import {
   announceReminders,
   reminderNotificationsSupported,
@@ -1720,7 +1720,9 @@ function Workspace({
                   }
                 >
                   <HeartPulse size={15} />
-                  {t("Apple Health data requested")}
+                  {onAndroid()
+                    ? t("Health Connect data requested")
+                    : t("Apple Health data requested")}
                 </button>
               )}
               {macTools.length > 0 && (

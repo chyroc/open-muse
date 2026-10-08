@@ -8,6 +8,7 @@ import {
   X,
 } from "lucide-react";
 import { formatLocale, t } from "../shared/i18n";
+import { onAndroid } from "./platform";
 import {
   iphoneDeclined,
   iphoneTurnedOff,
@@ -122,7 +123,7 @@ export function PersonalRequestCard({
           failed = /^\{"error":/.test(text) || /"ok":false/.test(text);
         } catch (reason) {
           // A failed read is reported to the agent, never retried here.
-          text = `The iPhone could not read this: ${(reason as Error).message}`;
+          text = `The ${onAndroid() ? "Android phone" : "iPhone"} could not read this: ${(reason as Error).message}`;
         }
       }
       await client.answerCustomTools(session, [
@@ -160,15 +161,20 @@ export function PersonalRequestCard({
       <p className="permission-description">
         {!request
           ? t("{name} sent a request this app cannot read.", { name })
-          : supported
+          : supported && onAndroid()
             ? t(
-                "{name} asked to read this on your iPhone. Only what matches is shared with your MA agent, and only this time.",
+                "{name} asked to read this on this phone. Only what matches is shared with your MA agent, and only this time.",
                 { name },
               )
-            : t(
-                "{name} asked to read this on your iPhone. Open Open Muse on your iPhone to share it.",
-                { name },
-              )}
+            : supported
+              ? t(
+                  "{name} asked to read this on your iPhone. Only what matches is shared with your MA agent, and only this time.",
+                  { name },
+                )
+              : t(
+                  "{name} asked to read this on your phone. Open Open Muse on your iPhone or Android phone to share it.",
+                  { name },
+                )}
       </p>
       {error && (
         <p className="inline-error" role="alert">

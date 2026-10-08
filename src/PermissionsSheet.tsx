@@ -10,7 +10,8 @@ import {
 import { t } from "../shared/i18n";
 import type { Client, DevicePermission, DevicePermissionSource } from "./api";
 import { healthSupported } from "./health";
-import { personalSupported } from "./personal";
+import { personalSources, personalSupported } from "./personal";
+import { onAndroid } from "./platform";
 import { Sheet } from "./MusePages";
 import { RowChevron } from "./SettingsHome";
 import "./connectors.css";
@@ -20,7 +21,14 @@ const sources: Record<
   DevicePermissionSource,
   { name: string; read: string; Icon: typeof HeartPulse }
 > = {
-  health: { name: "Apple Health", read: "View health data", Icon: HeartPulse },
+  health: {
+    // Health Connect on Android.
+    get name() {
+      return onAndroid() ? "Health Connect" : "Apple Health";
+    },
+    read: "View health data",
+    Icon: HeartPulse,
+  },
   calendar: {
     name: "Calendar",
     read: "View calendar events",
@@ -39,9 +47,7 @@ const permissionNames: Record<DevicePermission, string> = {
 function deviceSources(): DevicePermissionSource[] {
   return [
     ...(healthSupported() ? (["health"] as const) : []),
-    ...(personalSupported()
-      ? (["calendar", "reminders", "contacts"] as const)
-      : []),
+    ...(personalSupported() ? personalSources() : []),
   ];
 }
 
@@ -171,9 +177,13 @@ function SourcePermission({
         </li>
       </ul>
       <p className="settings-footnote">
-        {t(
-          "You can manage what Open Muse can access in the iPhone's Settings.",
-        )}
+        {onAndroid()
+          ? t(
+              "You can manage what Open Muse can access in Android's Settings.",
+            )
+          : t(
+              "You can manage what Open Muse can access in the iPhone's Settings.",
+            )}
       </p>
       <h3 className="permissions-heading">{t("Read permission")}</h3>
       <ul className="settings-list">

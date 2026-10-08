@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowUpRight, MessageCircle } from "lucide-react";
 import { t } from "../shared/i18n";
+import { onAndroid } from "./platform";
 import { RowChevron } from "./SettingsHome";
 import { Sheet } from "./MusePages";
 import { ReportSheet } from "./ReportSheet";
@@ -57,7 +58,11 @@ export function HelpSheet({
       {shakeSupported && (
         <div className="settings-switch-section">
           <label className="settings-switch-row">
-            <span>{t("Shake iPhone to report a problem")}</span>
+            <span>
+              {onAndroid()
+                ? t("Shake your phone to report a problem")
+                : t("Shake iPhone to report a problem")}
+            </span>
             <input
               type="checkbox"
               role="switch"

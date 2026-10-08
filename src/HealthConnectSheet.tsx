@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { ChartColumnIncreasing, Eye, ToggleRight } from "lucide-react";
 import { t } from "../shared/i18n";
+import { onAndroid } from "./platform";
 import { ContinuousSurface } from "./ContinuousSurface";
 import { animateAway, useDragToDismiss } from "./gesture";
 import "./health-connect.css";
@@ -89,25 +90,41 @@ export function HealthConnectSheet({
               />
             </svg>
           </span>
-          <h2 id="health-connect-title">{t("Health")}</h2>
-          <p>{t("Get insights from the Health data on your iPhone")}</p>
+          <h2 id="health-connect-title">
+            {onAndroid() ? t("Health Connect") : t("Health")}
+          </h2>
+          <p>
+            {onAndroid()
+              ? t("Get insights from the health data on this phone")
+              : t("Get insights from the Health data on your iPhone")}
+          </p>
         </div>
         <ul className="health-connect-rows">
           {row(
             <ChartColumnIncreasing size={22} strokeWidth={2} />,
             t("Read only when you ask"),
-            t(
-              "When you ask about activity, workouts, sleep, heart rate or weight, {name} reads just that data from Health and shares a summary with your MA agent.",
-              { name },
-            ),
+            onAndroid()
+              ? t(
+                  "When you ask about activity, workouts, sleep, heart rate or weight, {name} reads just that data from Health Connect and shares a summary with your MA agent.",
+                  { name },
+                )
+              : t(
+                  "When you ask about activity, workouts, sleep, heart rate or weight, {name} reads just that data from Health and shares a summary with your MA agent.",
+                  { name },
+                ),
           )}
           {row(
             <ToggleRight size={22} strokeWidth={2} />,
             t("You choose what {name} can read", { name }),
-            t(
-              "Once connected, {name} reads Health when you ask, without asking each time. Change or turn off access in the Health app, or disconnect in Connectors.",
-              { name },
-            ),
+            onAndroid()
+              ? t(
+                  "Once connected, {name} reads Health Connect when you ask, without asking each time. Change or turn off access in Health Connect, or disconnect in Connectors.",
+                  { name },
+                )
+              : t(
+                  "Once connected, {name} reads Health when you ask, without asking each time. Change or turn off access in the Health app, or disconnect in Connectors.",
+                  { name },
+                ),
           )}
           {row(
             <Eye size={22} strokeWidth={2} />,

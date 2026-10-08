@@ -14,6 +14,7 @@ import {
   SquareTerminal,
 } from "lucide-react";
 import { t } from "../shared/i18n";
+import { onAndroid } from "./platform";
 import type { Client } from "./api";
 import { connectHealth, healthAccess } from "./health";
 import { PersonalConnectSheet } from "./PersonalConnectSheet";
@@ -22,6 +23,7 @@ import { backgroundClient, type BackgroundClient } from "./background-client";
 import {
   connectPersonal,
   personalAccess,
+  personalSources,
   type PersonalAccess,
 } from "./personal";
 import type { IphoneSource } from "../shared/iphone-tools";
@@ -71,10 +73,14 @@ const included = (): Connector[] => [
 ];
 const health = (): Connector => ({
   id: "health",
-  name: t("Apple Health"),
-  detail: t(
-    "Your assistant reads it when you ask about activity, workouts, sleep, heart rate or weight. Change what it can read in the Health app.",
-  ),
+  name: onAndroid() ? t("Health Connect") : t("Apple Health"),
+  detail: onAndroid()
+    ? t(
+        "Your assistant reads it when you ask about activity, workouts, sleep, heart rate or weight. Change what it can read in Health Connect.",
+      )
+    : t(
+        "Your assistant reads it when you ask about activity, workouts, sleep, heart rate or weight. Change what it can read in the Health app.",
+      ),
   Icon: HeartPulse,
 });
 const lark = (): Connector => ({
@@ -92,9 +98,13 @@ const personal = (source: IphoneSource): Connector =>
     calendar: {
       id: "calendar",
       name: t("Calendar"),
-      detail: t(
-        "Your assistant asks before reading the events on your iPhone. Change access in iOS Settings > Open Muse.",
-      ),
+      detail: onAndroid()
+        ? t(
+            "Your assistant asks before reading the events on this phone. Change access in Android Settings > Apps > Open Muse.",
+          )
+        : t(
+            "Your assistant asks before reading the events on your iPhone. Change access in iOS Settings > Open Muse.",
+          ),
       Icon: CalendarDays,
     },
     reminders: {
@@ -108,13 +118,16 @@ const personal = (source: IphoneSource): Connector =>
     contacts: {
       id: "contacts",
       name: t("Contacts"),
-      detail: t(
-        "Your assistant asks before looking up the people you mention. Change access in iOS Settings > Open Muse.",
-      ),
+      detail: onAndroid()
+        ? t(
+            "Your assistant asks before looking up the people you mention. Change access in Android Settings > Apps > Open Muse.",
+          )
+        : t(
+            "Your assistant asks before looking up the people you mention. Change access in iOS Settings > Open Muse.",
+          ),
       Icon: BookUser,
     },
   })[source];
-const personalSources: IphoneSource[] = ["calendar", "reminders", "contacts"];
 // Signed in from a conversation with lark-cli: the account keeps that
 // sign-in for new conversations.
 const larkSignedIn = (): Connector => ({
@@ -175,7 +188,7 @@ export function ConnectorsSheet({
   const [connecting, setConnecting] = useState<IphoneSource>();
   const readPersonal = () =>
     Promise.all(
-      personalSources.map(
+      personalSources().map(
         async (source) => [source, await personalAccess(source)] as const,
       ),
     ).then((entries) => setPersonalState(Object.fromEntries(entries)));
@@ -223,7 +236,7 @@ export function ConnectorsSheet({
       setLarkSetup(true);
       return;
     }
-    if ((personalSources as string[]).includes(id)) {
+    if ((personalSources() as string[]).includes(id)) {
       setConnecting(id as IphoneSource);
       return;
     }
@@ -244,10 +257,10 @@ export function ConnectorsSheet({
     !term || `${item.name} ${item.detail}`.toLocaleLowerCase().includes(term);
   const healthItem = access && access !== "unavailable" ? [health()] : [];
   // Sources iOS has not refused yet can be connected; allowed ones are.
-  const allowed = personalSources.filter(
+  const allowed = personalSources().filter(
     (source) => personalState?.[source] === "allowed",
   );
-  const askable = personalSources.filter((source) =>
+  const askable = personalSources().filter((source) =>
     ["not-asked", "denied"].includes(personalState?.[source] ?? ""),
   );
   const connected = [
@@ -285,9 +298,13 @@ export function ConnectorsSheet({
               .then((state) => {
                 if (state === "denied")
                   setError(
-                    t(
-                      "iOS did not allow access. Turn it on in iOS Settings > Open Muse.",
-                    ),
+                    onAndroid()
+                      ? t(
+                          "Android did not allow access. Turn it on in Android Settings > Apps > Open Muse.",
+                        )
+                      : t(
+                          "iOS did not allow access. Turn it on in iOS Settings > Open Muse.",
+                        ),
                   );
                 return readPersonal();
               })

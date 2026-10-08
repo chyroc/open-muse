@@ -38,8 +38,6 @@ export const zhIphoneTools: Record<string, string> = {
   "Calendar events for 7 days from {from}": "从{from}起 7 天的日历日程",
   "{name} asked to read this on your iPhone. Only what matches is shared with your MA agent, and only this time.":
     "{name}请求读取你 iPhone 上的这些内容。只有匹配的内容会分享给你的 MA 智能体，且仅限这一次。",
-  "{name} asked to read this on your iPhone. Open Open Muse on your iPhone to share it.":
-    "{name}请求读取你 iPhone 上的这些内容。请在 iPhone 上打开 Open Muse 来共享。",
   "Use your iPhone": "使用你的 iPhone",
   "Using your iPhone": "正在使用你的 iPhone",
   "Read from your iPhone": "读取 iPhone 上的信息",

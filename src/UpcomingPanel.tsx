@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CalendarClock, LoaderCircle, X } from "lucide-react";
 import { formatLocale, t } from "../shared/i18n";
+import { onAndroid } from "./platform";
 import {
   describeSchedule,
   nextOccurrence,
@@ -231,9 +232,13 @@ export function UpcomingPanel({
                   "Reminders arrive in the main chat when Open Muse is open at or after their time.",
                 )}{" "}
           {reminderNotificationsSupported()
-            ? t(
-                "This iPhone also shows a notification when an item falls due, if you allow notifications.",
-              )
+            ? onAndroid()
+              ? t(
+                  "This phone also shows a notification when an item falls due, if you allow notifications.",
+                )
+              : t(
+                  "This iPhone also shows a notification when an item falls due, if you allow notifications.",
+                )
             : t("This device does not show notifications for reminders.")}
         </p>
       )}

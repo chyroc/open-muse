@@ -1,4 +1,5 @@
 import { t, systemLanguage, type Language } from "../shared/i18n";
+import { onAndroid } from "./platform";
 import { isWebhookPrompt } from "../shared/webhooks";
 import { z } from "zod";
 import { ArkClient, ApiError } from "../shared/ark";
@@ -2434,7 +2435,9 @@ export class Client {
   ) {
     if (permission === "allow" && source !== "health")
       throw new Error(
-        t("Only Apple Health reads can be allowed without asking."),
+        onAndroid()
+          ? t("Only Health Connect reads can be allowed without asking.")
+          : t("Only Apple Health reads can be allowed without asking."),
       );
     if (source === "health")
       await this.setHealthConnected(permission === "allow");

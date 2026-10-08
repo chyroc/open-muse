@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from "react";
 import { Check, HeartPulse, LoaderCircle, X } from "lucide-react";
 import { t } from "../shared/i18n";
+import { onAndroid } from "./platform";
 import {
   healthDeclined,
   healthTurnedOff,
@@ -85,7 +86,7 @@ export function HealthRequestCard({
           text = await readHealth(query);
         } catch (reason) {
           // A HealthKit failure is reported to the agent, never retried here.
-          text = `Apple Health could not be read: ${(reason as Error).message}`;
+          text = `${onAndroid() ? "Health Connect" : "Apple Health"} could not be read: ${(reason as Error).message}`;
           failed = true;
         }
       }
@@ -110,7 +111,7 @@ export function HealthRequestCard({
     return (
       <p className="health-auto" role="status">
         <HeartPulse size={15} aria-hidden="true" />
-        {t("Reading Apple Health…")}
+        {onAndroid() ? t("Reading Health Connect…") : t("Reading Apple Health…")}
       </p>
     );
   return (
@@ -153,7 +154,11 @@ export function HealthRequestCard({
             <HeartPulse size={19} aria-hidden="true" />
           </span>
           <div className="permission-heading-copy">
-            <h3 id={`${id}-title`}>{t("Share Apple Health data?")}</h3>
+            <h3 id={`${id}-title`}>
+              {onAndroid()
+                ? t("Share Health Connect data?")
+                : t("Share Apple Health data?")}
+            </h3>
             <code>
               {query
                 ? `${healthMetricLabel(query.metric)} · ${healthRangeLabel(query)}`
@@ -164,15 +169,20 @@ export function HealthRequestCard({
         <p className="permission-description">
           {!query
             ? t("{name} sent a request this app cannot read.", { name })
-            : supported
+            : supported && onAndroid()
               ? t(
-                  "{name} asked to read this from Apple Health. Only this summary is shared with your MA agent.",
+                  "{name} asked to read this from Health Connect. Only this summary is shared with your MA agent.",
                   { name },
                 )
-              : t(
-                  "{name} asked to read this from Apple Health. Open Open Muse on your iPhone to share it.",
-                  { name },
-                )}
+              : supported
+                ? t(
+                    "{name} asked to read this from Apple Health. Only this summary is shared with your MA agent.",
+                    { name },
+                  )
+                : t(
+                    "{name} asked to read this from your phone's health data. Open Open Muse on your iPhone or Android phone to share it.",
+                    { name },
+                  )}
         </p>
         {error && (
           <p className="inline-error" role="alert">
