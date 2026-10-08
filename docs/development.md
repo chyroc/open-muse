@@ -110,17 +110,52 @@ site/                 The getopenmuse.com website
 
 `site/` holds the public website at [getopenmuse.com](https://getopenmuse.com):
 static pages in `site/public` (an English home page, a Chinese one under
-`/zh/`, and bilingual privacy and support pages). The build copies them, the
-README screenshots from `docs/images`, and the app icons into `.build/site`,
-and Cloudflare serves that directory as a Worker's static assets:
+`/zh/`, and bilingual privacy and support pages). `node site/build.mjs` builds
+two copies with the README screenshots from `docs/images` (as WebP), the app
+icons, and the current Android release from `site/downloads.json`:
+
+- `.build/site`, served by Cloudflare behind `site/worker.js`. Cloudflare is
+  slow to reach from mainland China, so the Worker sends visitors there to the
+  mirror (`?mirror=global` keeps someone on the main site), and
+  `/download/android` sends each visitor to the nearer copy of the APK.
+- `.build/site-cn`, the mirror at `cn.getopenmuse.com`: Alibaba Cloud OSS in
+  Hong Kong behind Alibaba Cloud CDN limited to nodes outside mainland China,
+  which needs no ICP filing. It links its APK directly and points search
+  engines at the main site.
+
+`site/mirrors.json` names both download mirrors: the mirror bucket's
+`android/` folder for mainland China and the Cloudflare R2 bucket at
+`download.getopenmuse.com` everywhere else. Mainland object storage refuses to
+serve APKs from its default domains, which is why both go through a domain of
+the site's own.
 
 ```bash
-node site/build.mjs
-CLOUDFLARE_ACCOUNT_ID=<account> npx wrangler deploy --config site/wrangler.jsonc
+ALIYUN_PROFILE=<profile> CLOUDFLARE_ACCOUNT_ID=<account> \
+CLOUDFLARE_API_TOKEN=<token> node site/deploy.mjs
 ```
+
+The deploy uploads the mirror to OSS, refreshes the CDN, and deploys the
+Worker. The mirror's HTTPS certificate comes from Let's Encrypt and lasts 90
+days: `node site/cn-certificate.mjs` (with `lego` installed and a token that
+may edit the zone's DNS) issues or renews it and installs it on the CDN; run
+it at least every two months.
 
 Keep its claims in step with the READMEs, and replace a README screenshot
 rather than adding one for the site.
+
+## Android releases
+
+`npm run android:release` builds the signed release of the current commit,
+cloned into `.build/android-release/`, as an account build, and writes the
+APK to `.build/android/`. The version code is the number of commits on the
+branch, so each release installs over the one before. It needs the release
+keystore in `OPEN_MUSE_ANDROID_KEYSTORE` (alias `openmuse`) and its password in
+`OPEN_MUSE_ANDROID_KEYSTORE_PASSWORD`; the key never enters the repository,
+and losing it means existing installs can no longer be updated.
+
+`npm run android:release -- --publish` also uploads the APK to both mirrors,
+checks them, and records it in `site/downloads.json`. Commit that file and
+deploy the website to offer the new release.
 
 ## Checking a commit in isolation
 

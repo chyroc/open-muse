@@ -82,7 +82,7 @@ The backend is chosen at build time with `VITE_MUSE_MA_PROVIDER` (`ark` by defau
 | iPhone | Primary app: chat, Apple Health, attachments, reminders, and notifications |
 | Mac | Native shell: computer use, Calendar and location, Quick Chat, dictation, and voice conversation |
 | Web | Mobile-first web app for chat, Feed, Ideas, Goals, and Library |
-| Android | The iPhone app on Android 9+: Health Connect (Android 14+), Calendar and Contacts, attachments, reminders, and notifications; tested on one phone |
+| Android | The iPhone app on Android 9+: Health Connect (Android 14+), Calendar and Contacts, attachments, reminders, and notifications; tested on one phone. [Download](https://getopenmuse.com/#android) |
 
 English and Simplified Chinese are built in; the apps follow your system language.
 

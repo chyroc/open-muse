@@ -84,7 +84,7 @@ Open Muse 是 **Managed Agents（MA）** 服务的客户端。MA 托管智能体
 | iPhone | 主力应用：对话、Apple 健康、附件、提醒和通知 |
 | Mac | 原生外壳：电脑操控、日历和定位、快速聊天、听写和语音对话 |
 | Web | 移动优先的网页版：对话、动态、点子、目标和资源库 |
-| Android | Android 9 及以上的 iPhone 版对应应用：Health Connect（Android 14 及以上）、日历和通讯录、附件、提醒和通知；已在一台手机上测试 |
+| Android | Android 9 及以上的 iPhone 版对应应用：Health Connect（Android 14 及以上）、日历和通讯录、附件、提醒和通知；已在一台手机上测试。[下载](https://getopenmuse.com/zh/#android) |
 
 内置英文和简体中文，跟随系统语言。
 

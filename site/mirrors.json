@@ -1,11 +1,12 @@
 {
   "cn": {
-    "bucket": "open-muse-public",
-    "region": "cn-beijing",
-    "endpoint": "tos-cn-beijing.volces.com",
-    "base": "https://open-muse-public.tos-cn-beijing.volces.com"
+    "provider": "aliyun",
+    "bucket": "open-muse-cn",
+    "region": "cn-hongkong",
+    "base": "https://cn.getopenmuse.com"
   },
   "global": {
+    "provider": "r2",
     "bucket": "open-muse-downloads",
     "base": "https://download.getopenmuse.com"
   }

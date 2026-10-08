@@ -13,7 +13,8 @@
 //   OPEN_MUSE_ANDROID_KEYSTORE           release keystore (alias "openmuse")
 //   OPEN_MUSE_ANDROID_KEYSTORE_PASSWORD  its password
 // For --publish:
-//   the Volcengine CLI (`ve`) signed in, for the mainland China mirror on TOS
+//   the Alibaba Cloud CLI (`aliyun`) signed in, for the mainland China mirror
+//   (ALIYUN_PROFILE selects a profile)
 //   CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID, for the R2 mirror
 // Optional:
 //   JAVA_HOME  a JDK 21 or newer
@@ -37,8 +38,8 @@ import {
 } from "./account-config.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
-// Where releases are downloaded from: TOS in Beijing for mainland China and
-// R2 everywhere else (see site/worker.js).
+// Where releases are downloaded from: Alibaba Cloud (OSS in Hong Kong behind
+// its CDN) for mainland China and R2 everywhere else (see site/worker.js).
 const mirrors = JSON.parse(
   readFileSync(path.join(root, "site/mirrors.json"), "utf8"),
 );
@@ -148,23 +149,21 @@ console.log(`\n${path.relative(root, out)}  ${size} bytes  sha256 ${sha256}`);
 if (!publish) process.exit(0);
 
 const type = "application/vnd.android.package-archive";
-step("Uploading to the mainland China mirror (TOS)");
-run("ve", [
-  "ve-tos-cli",
+step("Uploading to the mainland China mirror (Alibaba Cloud OSS)");
+run("aliyun", [
+  "ossutil",
   "cp",
   out,
-  `tos://${mirrors.cn.bucket}/android/${file}`,
+  `oss://${mirrors.cn.bucket}/android/${file}`,
   "--acl",
   "public-read",
   "--content-type",
   type,
-  "--auth-mode",
-  "unified",
   "--region",
   mirrors.cn.region,
-  "--endpoint",
-  mirrors.cn.endpoint,
-  "--no-progress",
+  ...(process.env.ALIYUN_PROFILE
+    ? ["--profile", process.env.ALIYUN_PROFILE]
+    : []),
 ]);
 
 step("Uploading to the global mirror (R2)");

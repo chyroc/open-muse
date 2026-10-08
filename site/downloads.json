@@ -1,0 +1,10 @@
+{
+  "android": {
+    "version": "0.2.0",
+    "versionCode": 502,
+    "commit": "aab061f",
+    "file": "OpenMuse-0.2.0-502.apk",
+    "size": 12356952,
+    "sha256": "3802949ecfcd47f956230c0f752a2698f79c46ae7ca5c023f84cb1b7b6fc4713"
+  }
+}

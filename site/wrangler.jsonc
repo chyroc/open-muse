@@ -1,12 +1,16 @@
-// The public website at getopenmuse.com: static assets only, no Worker code.
-// Build with `node site/build.mjs`, then deploy from the repository root with
-// `npx wrangler deploy --config site/wrangler.jsonc` (see docs/development.md).
+// The public website at getopenmuse.com: the static pages built into
+// .build/site, behind site/worker.js, which sends mainland China visitors to
+// the cn.getopenmuse.com mirror and Android downloads to the nearer mirror.
+// Deploy with `node site/deploy.mjs` (see docs/development.md).
 {
   "name": "open-muse-site",
+  "main": "worker.js",
   "compatibility_date": "2026-10-06",
   "assets": {
     "directory": "../.build/site",
-    "not_found_handling": "404-page"
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "run_worker_first": true
   },
   "workers_dev": false,
   "routes": [
