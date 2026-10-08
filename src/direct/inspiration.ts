@@ -9,6 +9,7 @@ import {
 } from "../../shared/types";
 import {
   defaultFeedInstructions,
+  newIdeas,
   parseInspiration,
   type InspirationItem,
   type InspirationKind,
@@ -227,7 +228,18 @@ export class DirectInspiration {
           ["complete", "failed"].includes(current.phase)
         )
           return;
-        const items: InspirationItem[] = content.map((item, i) => ({
+        // An idea that repeats one the person already has is left out, even
+        // when the model was told not to suggest it again.
+        const fresh =
+          kind === "ideas"
+            ? newIdeas(
+                content,
+                state.items
+                  .filter((item) => item.kind === "ideas")
+                  .map((item) => item.title),
+              )
+            : content;
+        const items: InspirationItem[] = fresh.map((item, i) => ({
           ...item,
           id: `${run!.token}-${i}`,
           kind,

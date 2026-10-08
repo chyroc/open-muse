@@ -322,7 +322,7 @@ export function InspirationPage({
     ? found.filter((item) => !catalogState.hidden.includes(item.id))
     : found;
   const sections = ideas ? catalogSections(catalogState.hidden) : [];
-  function remember(id: string, reaction: "liked" | "hidden") {
+  function remember(id: string, reaction: "liked" | "hidden" | "started") {
     void client
       .reactToCatalogIdea(id, reaction)
       .then((state) => alive.current && setCatalogState(state))
@@ -332,6 +332,8 @@ export function InspirationPage({
   // chat, for a catalog idea and one made for this person alike; without a
   // main chat to send to, a made-for-you idea opens as a draft.
   function startIdea(shown: ShownIdea) {
+    // Remembered so that generation does not suggest it again.
+    remember(shown.id, "started");
     if (onStart) onStart(ideaStartMessage(shown));
     else if (shown.generated) onDiscuss(shown.generated);
   }

@@ -727,7 +727,12 @@ editable side-chat draft; it does not send a message until the user presses
 Send, and an existing discussion reopens its linked conversation. Ideas made
 for the person lead the Ideas page, above the catalog. Get started on an idea,
 from the catalog or made for the person, sends a short "Let's get started!"
-quoting the idea's title to the main chat.
+quoting the idea's title to the main chat, and the device remembers the idea
+as started. Ideas generation is given the earlier ideas and the ones the person
+started, discussed, or hid, and is asked to suggest only new ones, nothing the
+recent conversation shows is done or under way; a generated idea whose title
+repeats one the person already has, or one earlier in the same set, even
+slightly reworded, is left out.
 
 Generation runs persist submission markers and recover from real session
 history after relaunch. Ambiguous session or message submissions are never

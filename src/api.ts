@@ -675,6 +675,25 @@ export class Client {
           const idea = catalogIdea(id);
           return idea ? [t(idea.title)] : [];
         });
+        // Ideas the person started, discussed, or hid, from the catalog or
+        // made for them: not suggested again.
+        const handledIds = new Set([
+          ...(catalog?.started ?? []),
+          ...(catalog?.hidden ?? []),
+        ]);
+        const handled = [
+          ...state.items
+            .filter(
+              (i) =>
+                i.kind === "ideas" &&
+                (Boolean(i.discussion_id) || handledIds.has(i.id)),
+            )
+            .map((i) => i.title),
+          ...[...handledIds].flatMap((id) => {
+            const idea = catalogIdea(id);
+            return idea ? [t(idea.title)] : [];
+          }),
+        ].slice(0, 30);
         r.abort.signal.throwIfAborted();
         return r.redact(
           inspirationPrompt(kind, {
@@ -696,8 +715,9 @@ export class Client {
             ].slice(0, 6),
             previous: state.items
               .filter((i) => i.kind === kind)
-              .slice(0, 12)
+              .slice(0, kind === "ideas" ? 30 : 12)
               .map((i) => i.title),
+            handled,
           }),
         );
       },
@@ -772,9 +792,12 @@ export class Client {
     );
     return { ...emptyIdeaCatalogState(), ...saved };
   }
-  async reactToCatalogIdea(id: string, reaction: "liked" | "hidden") {
+  async reactToCatalogIdea(
+    id: string,
+    reaction: "liked" | "hidden" | "started",
+  ) {
     const key = z.string().max(200).parse(id);
-    const field = z.enum(["liked", "hidden"]).parse(reaction);
+    const field = z.enum(["liked", "hidden", "started"]).parse(reaction);
     return this.db.update<IdeaCatalogState>(
       this.ideaCatalogStorage(),
       (old) => {

@@ -19,7 +19,12 @@ import {
   catalogIdeas,
   ideaCatalog,
 } from "../shared/idea-catalog";
-import { defaultFeedInstructions } from "../shared/inspiration";
+import {
+  defaultFeedInstructions,
+  inspirationPrompt,
+  newIdeas,
+  sameIdea,
+} from "../shared/inspiration";
 import { t } from "../shared/i18n";
 import { zhCN } from "../shared/locales/zh-CN";
 import { uuid } from "../shared/crypto";
@@ -312,13 +317,19 @@ describe("Ideas this device turned away or wants more of", () => {
     const client = new Client({
       database: new LocalDatabase(`ideas-${uuid()}`),
     });
-    expect(await client.ideaCatalogState()).toEqual({ liked: [], hidden: [] });
+    expect(await client.ideaCatalogState()).toEqual({
+      liked: [],
+      hidden: [],
+      started: [],
+    });
     await client.reactToCatalogIdea("fare-drop", "hidden");
     await client.reactToCatalogIdea("fare-drop", "hidden");
     await client.reactToCatalogIdea("pet-care", "liked");
+    await client.reactToCatalogIdea("inbox-triage", "started");
     expect(await client.ideaCatalogState()).toEqual({
       liked: ["pet-care"],
       hidden: ["fare-drop"],
+      started: ["inbox-triage"],
     });
     await expect(
       client.reactToCatalogIdea("pet-care", "shared" as "liked"),
@@ -347,5 +358,54 @@ describe("Messages that quote", () => {
     const app = readFileSync("src/App.tsx", "utf8");
     expect(app).toContain("splitQuote(eventText(event))");
     expect(app).toContain("<MessageQuote text={sent.quote} />");
+  });
+});
+
+describe("Ideas made for the person", () => {
+  it("leave out ones that repeat a known idea, even reworded", () => {
+    const known = ["Plan a weekend hiking trip", "整理本周的会议纪要"];
+    const fresh = newIdeas(
+      [
+        { title: "Plan a weekend hiking trip!" },
+        { title: "Plan a weekend hiking trips" },
+        { title: "整理本周会议纪要" },
+        { title: "Compare phone plans for you" },
+        { title: "Compare phone plans for you." },
+        { title: "Draft a birthday message" },
+      ],
+      known,
+    );
+    expect(fresh.map((item) => item.title)).toEqual([
+      "Compare phone plans for you",
+      "Draft a birthday message",
+    ]);
+    expect(sameIdea("Read more", "Run more")).toBe(false);
+    expect(sameIdea("", "")).toBe(false);
+  });
+
+  it("are asked not to repeat previous or handled ideas", () => {
+    const prompt = inspirationPrompt("ideas", {
+      instructions: "",
+      recent: "",
+      goals: "[]",
+      liked: [],
+      previous: ["Old idea"],
+      handled: ["Started idea"],
+    });
+    expect(prompt).toContain(
+      "never repeat or reword a previous or handled idea",
+    );
+    expect(prompt).toContain('"handled":["Started idea"]');
+    // Feed posts carry no handled list.
+    expect(
+      inspirationPrompt("feed", {
+        instructions: "",
+        recent: "",
+        goals: "[]",
+        liked: [],
+        previous: [],
+        handled: ["Started idea"],
+      }),
+    ).not.toContain('"handled"');
   });
 });

@@ -558,10 +558,17 @@ export function catalogCopy() {
 
 // What this device remembers about catalog ideas: ones the person wants more
 // of, and ones they asked not to see again.
-export type IdeaCatalogState = { liked: string[]; hidden: string[] };
+// Ideas, from the catalog or made for the person, they asked for more of,
+// hid, or got started on; generation does not suggest the last two again.
+export type IdeaCatalogState = {
+  liked: string[];
+  hidden: string[];
+  started: string[];
+};
 export const emptyIdeaCatalogState = (): IdeaCatalogState => ({
   liked: [],
   hidden: [],
+  started: [],
 });
 // Where that is kept for one workspace (or for this device while signed out).
 export const ideaCatalogKey = (scope: string) =>

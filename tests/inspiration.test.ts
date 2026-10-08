@@ -119,6 +119,42 @@ describe("Personalized feed and ideas", () => {
     });
     expect(state.runs.feed?.phase).toBe("complete");
   });
+  it("leaves out generated ideas that repeat one the person already has", async () => {
+    const f = fixture();
+    const reply = async (id: string, titles: string[]) => {
+      f.events.push(
+        {
+          id,
+          type: "agent.message",
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                items: titles.map((title) => ({ ...content, title })),
+              }),
+            },
+          ],
+        },
+        {
+          id: `${id}-idle`,
+          type: "session.status_idle",
+          stop_reason: { type: "end_turn" },
+        },
+      );
+      await f.client.refresh("ideas");
+    };
+    await f.client.generate("ideas");
+    await reply("first", ["Plan a weekend hike"]);
+    await f.client.generate("ideas");
+    await reply("second", [
+      "Plan a weekend hike!",
+      "Sort your photo library",
+      "Sort your photo library.",
+    ]);
+    const titles = (await f.client.snapshot()).items.map((item) => item.title);
+    expect(titles).toEqual(["Sort your photo library", "Plan a weekend hike"]);
+  });
+
   it("waits for the final idle event, not partial assistant output or initial idle", async () => {
     const f = fixture();
     f.events.push({ id: "old-idle", type: "session.status_idle" });
