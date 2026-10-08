@@ -1,0 +1,12 @@
+{
+  "cn": {
+    "bucket": "open-muse-public",
+    "region": "cn-beijing",
+    "endpoint": "tos-cn-beijing.volces.com",
+    "base": "https://open-muse-public.tos-cn-beijing.volces.com"
+  },
+  "global": {
+    "bucket": "open-muse-downloads",
+    "base": "https://download.getopenmuse.com"
+  }
+}

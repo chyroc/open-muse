@@ -19,6 +19,7 @@
     "ios": "cap open ios",
     "android": "cap open android",
     "android:install": "node scripts/install-android-device.mjs",
+    "android:release": "node scripts/android-release.mjs",
     "macos:build": "npm run build && node scripts/build-macos.mjs",
     "ios:build": "node scripts/build-ios-simulator.mjs",
     "ios:build:device": "npm run build && cap sync ios && xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath .build/ios-device CODE_SIGN_STYLE=Automatic build -quiet",

@@ -7,7 +7,8 @@ android {
         applicationId "app.openmuse.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+        // Release builds pass a growing code (see scripts/android-release.mjs).
+        versionCode (System.getenv("OPEN_MUSE_ANDROID_VERSION_CODE") ?: "1") as int
         versionName "0.2.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -16,8 +17,22 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // The release key comes from the environment and never enters the
+    // repository; without it, release builds stay unsigned.
+    def releaseKeystore = System.getenv("OPEN_MUSE_ANDROID_KEYSTORE")
+    signingConfigs {
+        if (releaseKeystore) {
+            release {
+                storeFile file(releaseKeystore)
+                storePassword System.getenv("OPEN_MUSE_ANDROID_KEYSTORE_PASSWORD")
+                keyAlias "openmuse"
+                keyPassword System.getenv("OPEN_MUSE_ANDROID_KEYSTORE_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         release {
+            if (releaseKeystore) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
