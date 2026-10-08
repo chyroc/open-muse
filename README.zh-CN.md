@@ -2,7 +2,7 @@
 
 **一个会记事、会跟进、能动手的个人 AI 助手。它在你的 iPhone 上，在你的 Mac 上，也在一台云端电脑上——你关掉 App，它还在继续干活。**
 
-[English](README.md) | 简体中文
+[English](README.md) | 简体中文 | [官网](https://getopenmuse.com/zh/)
 
 <table>
   <tr>

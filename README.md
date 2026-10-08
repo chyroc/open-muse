@@ -2,7 +2,7 @@
 
 **A personal AI agent that remembers, follows up, and gets things done — on your iPhone, on your Mac, and on a cloud computer that keeps working when you close the app.**
 
-English | [简体中文](README.zh-CN.md)
+English | [简体中文](README.zh-CN.md) | [Website](https://getopenmuse.com)
 
 <table>
   <tr>

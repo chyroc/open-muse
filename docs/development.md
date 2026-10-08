@@ -95,8 +95,25 @@ android/              Android shell and Keystore plugin
 tests/                Direct-client, protocol, UI, and migration tests
 tests/legacy-server/  Test-only migration harness; never shipped or started
 scripts/              Builds and asset generation
+site/                 The getopenmuse.com website
 .build/               Ignored local builds and test artifacts
 ```
+
+## Website
+
+`site/` holds the public website at [getopenmuse.com](https://getopenmuse.com):
+static pages in `site/public` (an English home page, a Chinese one under
+`/zh/`, and bilingual privacy and support pages). The build copies them, the
+README screenshots from `docs/images`, and the app icons into `.build/site`,
+and Cloudflare serves that directory as a Worker's static assets:
+
+```bash
+node site/build.mjs
+CLOUDFLARE_ACCOUNT_ID=<account> npx wrangler deploy --config site/wrangler.jsonc
+```
+
+Keep its claims in step with the READMEs, and replace a README screenshot
+rather than adding one for the site.
 
 ## Checking a commit in isolation
 

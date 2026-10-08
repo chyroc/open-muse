@@ -1,0 +1,16 @@
+// The public website at getopenmuse.com: static assets only, no Worker code.
+// Build with `node site/build.mjs`, then deploy from the repository root with
+// `npx wrangler deploy --config site/wrangler.jsonc` (see docs/development.md).
+{
+  "name": "open-muse-site",
+  "compatibility_date": "2026-10-06",
+  "assets": {
+    "directory": "../.build/site",
+    "not_found_handling": "404-page"
+  },
+  "workers_dev": false,
+  "routes": [
+    { "pattern": "getopenmuse.com", "custom_domain": true },
+    { "pattern": "www.getopenmuse.com", "custom_domain": true }
+  ]
+}
