@@ -36,6 +36,7 @@ import {
   accountConfig,
   checkService,
 } from "./account-config.mjs";
+import { checkPurposeStrings } from "./check-purpose-strings.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 const publish = process.argv.includes("--publish");
@@ -128,6 +129,8 @@ run("npm", ["run", "macos:build"], {
   env: { ...accountBuildEnv(config), OPEN_MUSE_MAC_UNIVERSAL: "1" },
 });
 const app = path.join(work, ".build/macos/Open Muse.app");
+// App Review would reject placeholder permission prompts; so would people.
+checkPurposeStrings(app);
 
 // A keychain of its own holds the identity only while this runs.
 const scratch = mkdtempSync(path.join(os.tmpdir(), "open-muse-release-"));

@@ -34,6 +34,7 @@ import {
   accountConfig,
   checkService,
 } from "./account-config.mjs";
+import { checkPurposeStrings } from "./check-purpose-strings.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 const bundleID = "app.openmuse.mobile";
@@ -247,6 +248,10 @@ run("xcodebuild", [
   "archive",
   "-quiet",
 ]);
+
+step("Checking the purpose strings");
+// App Review rejects a build whose permission prompts show placeholders.
+checkPurposeStrings(path.join(archive, "Products/Applications/App.app"));
 
 step("Uploading to App Store Connect");
 const temp = mkdtempSync(path.join(os.tmpdir(), "open-muse-export-"));
