@@ -134,10 +134,24 @@ const out = path.join(root, ".build/macos");
 mkdirSync(out, { recursive: true });
 const file = `OpenMuse-${version}-${build}.dmg`;
 const dmg = path.join(out, file);
+// codesign finds identities only in keychains on the search list, so the
+// release keychain joins it for the run and the list is restored after.
+const searchList = read("security", ["list-keychains", "-d", "user"])
+  .split("\n")
+  .map((line) => line.trim().replace(/^"|"$/g, ""))
+  .filter(Boolean);
 try {
   step("Signing with Developer ID");
   run("security", ["create-keychain", "-p", keychainPassword, keychain]);
   run("security", ["unlock-keychain", "-p", keychainPassword, keychain]);
+  run("security", [
+    "list-keychains",
+    "-d",
+    "user",
+    "-s",
+    keychain,
+    ...searchList,
+  ]);
   run("security", [
     "import",
     p12,
@@ -245,6 +259,13 @@ try {
     dmg,
   ]);
 } finally {
+  execFileSync("security", [
+    "list-keychains",
+    "-d",
+    "user",
+    "-s",
+    ...searchList,
+  ]);
   execFileSync("security", ["delete-keychain", keychain], { stdio: "ignore" });
   rmSync(scratch, { recursive: true, force: true });
 }
