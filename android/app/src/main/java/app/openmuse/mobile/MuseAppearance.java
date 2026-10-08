@@ -1,7 +1,10 @@
 package app.openmuse.mobile;
 
 import android.app.Activity;
+import android.app.UiModeManager;
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Rect;
 import android.os.Build;
@@ -14,9 +17,10 @@ import android.widget.ImageView;
 import androidx.appcompat.app.AppCompatDelegate;
 
 // The light or dark mode chosen in Settings > Appearance. It overrides the
-// system's for this app, which the WebView follows for prefers-color-scheme,
-// and is kept for the next launch so the app opens in the chosen mode before
-// the page loads.
+// system's for this app, which the WebView follows for prefers-color-scheme.
+// From Android 12 the system keeps the choice for the app, so launch screens
+// open in it too; earlier versions keep it here and apply it before the
+// activity is created.
 final class MuseAppearance {
     private static final String PREFERENCES = "open-muse";
     private static final String KEY = "appearance";
@@ -31,18 +35,38 @@ final class MuseAppearance {
         }
     }
 
-    // Before the activity is created, so the first frame is already right.
+    private static int systemMode(String mode) {
+        switch (mode) {
+            case "light": return UiModeManager.MODE_NIGHT_NO;
+            case "dark": return UiModeManager.MODE_NIGHT_YES;
+            default: return UiModeManager.MODE_NIGHT_AUTO;
+        }
+    }
+
+    // Before the activity's context is set up, so the first frame is right.
     static void restore(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) return;
         String mode = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).getString(KEY, "system");
         AppCompatDelegate.setDefaultNightMode(nightMode(mode));
     }
 
     static void choose(Activity activity, String mode) {
         if (!mode.equals("system") && !mode.equals("light") && !mode.equals("dark")) return;
-        activity.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit().putString(KEY, mode).apply();
+        SharedPreferences preferences = activity.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE);
+        String previous = preferences.getString(KEY, "system");
+        preferences.edit().putString(KEY, mode).apply();
         activity.runOnUiThread(() -> {
-            if (AppCompatDelegate.getDefaultNightMode() == nightMode(mode)) return;
-            crossfade(activity, () -> AppCompatDelegate.setDefaultNightMode(nightMode(mode)));
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                // Applied when the choice changed or the app does not show it yet.
+                boolean night = (activity.getResources().getConfiguration().uiMode
+                    & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+                boolean shown = mode.equals("system") || mode.equals("dark") == night;
+                if (shown && previous.equals(mode)) return;
+                UiModeManager manager = activity.getSystemService(UiModeManager.class);
+                crossfade(activity, () -> manager.setApplicationNightMode(systemMode(mode)));
+            } else if (AppCompatDelegate.getDefaultNightMode() != nightMode(mode)) {
+                crossfade(activity, () -> AppCompatDelegate.setDefaultNightMode(nightMode(mode)));
+            }
         });
     }
 

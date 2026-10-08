@@ -244,11 +244,13 @@ public class MuseBridgePlugin extends Plugin {
     // downward pull would; with nothing open it leaves the app running in the
     // background, as going home does, instead of closing the conversation.
     // The page hears it as its own Escape and cancel events, so no keyboard
-    // focus ring appears as a real key press would make it.
+    // focus ring appears as a real key press would make it. The conversation
+    // sidebar is an open dialog without modality, so it counts too.
     private static final String BACK =
         "(function(){var a=document.activeElement;"
-      + "var d=a&&a.closest&&a.closest('dialog:modal');"
-      + "if(!d){var all=document.querySelectorAll('dialog');for(var i=all.length-1;i>=0;i--)if(all[i].matches(':modal')){d=all[i];break;}}"
+      + "var d=a&&a.closest&&a.closest('dialog[open]');"
+      + "var all=[].slice.call(document.querySelectorAll('dialog[open]'));"
+      + "if(!d)d=all.filter(function(x){return x.matches(':modal');}).pop()||all.pop();"
       + "if(!d)return 'none';"
       + "var k=new KeyboardEvent('keydown',{key:'Escape',code:'Escape',bubbles:true,cancelable:true});"
       + "(d.contains(a)?a:d).dispatchEvent(k);if(k.defaultPrevented)return 'closed';"

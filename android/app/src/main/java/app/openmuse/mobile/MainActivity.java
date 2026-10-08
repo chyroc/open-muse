@@ -21,8 +21,13 @@ public class MainActivity extends BridgeActivity {
     private String[] permissionAsked;
 
     @Override
+    protected void attachBaseContext(Context base) {
+        MuseAppearance.restore(base);
+        super.attachBaseContext(base);
+    }
+
+    @Override
     public void onCreate(Bundle savedInstanceState) {
-        MuseAppearance.restore(this);
         permissionRequest = registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), this::permissionsAnswered);
         registerPlugin(MuseBridgePlugin.class);
         super.onCreate(savedInstanceState);

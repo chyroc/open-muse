@@ -16,7 +16,11 @@
     </style>
 
 
+    <!-- Launch: the page color of the current appearance behind the icon, so
+         the first frame matches the page in light and dark mode. -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
+        <item name="windowSplashScreenBackground">@color/page</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
 </resources>
