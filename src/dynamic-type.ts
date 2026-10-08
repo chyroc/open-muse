@@ -45,3 +45,15 @@ export function followDynamicType(
     if (visibility.visibilityState === "visible") apply();
   });
 }
+
+// Android hands the page its text scale, computed from the system font size
+// the same way; the WebView enlarges the text itself, so only the layout
+// metrics that follow --type-scale need it.
+export function followAndroidTextScale(
+  root: Root = document.documentElement,
+  scale: unknown = (globalThis as { __OPEN_MUSE_TYPE_SCALE__?: unknown })
+    .__OPEN_MUSE_TYPE_SCALE__,
+) {
+  if (typeof scale !== "number" || !Number.isFinite(scale)) return;
+  root.style.setProperty("--type-scale", String(Math.min(Math.max(scale, 1), 3)));
+}

@@ -4,4 +4,6 @@
     <string name="title_activity_main">Open Muse</string>
     <string name="package_name">app.openmuse.mobile</string>
     <string name="custom_url_scheme">app.openmuse.mobile</string>
+    <string name="channel_replies">Replies</string>
+    <string name="channel_reminders">Reminders</string>
 </resources>

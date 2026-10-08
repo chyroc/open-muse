@@ -1,14 +1,10 @@
 import { t } from "../../shared/i18n";
-import { Capacitor, registerPlugin } from "@capacitor/core";
+import { Capacitor } from "@capacitor/core";
 
 export interface CredentialStore {
   read(): Promise<string>;
   write(value: string): Promise<void>;
 }
-const android = registerPlugin<{
-  read(input?: { namespace?: string }): Promise<{ value: string }>;
-  write(input: { value: string; namespace?: string }): Promise<void>;
-}>("MuseCredentials");
 const credentialKey = "muse.direct.credentials.v1";
 export const backgroundCredentials: CredentialStore = {
   read: () => vault("read", "", "background") as Promise<string>,
@@ -47,13 +43,7 @@ async function vault(
         value,
         ...(namespace === "background" ? { namespace } : {}),
       });
-    else if (Capacitor.getPlatform() === "android") {
-      // Android keeps both namespaces in Keystore-backed storage, like iOS.
-      request =
-        operation === "read"
-          ? android.read({ namespace }).then((r) => r.value)
-          : android.write({ value, namespace });
-    } else if (Capacitor.isNativePlatform())
+    else if (Capacitor.isNativePlatform())
       throw new Error(t("Missing secure storage bridge"));
     else {
       // Web credentials never go to localStorage, IndexedDB, caches, or a server.

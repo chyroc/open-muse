@@ -10,7 +10,7 @@ import "./dark.css";
 import "./appearance.css";
 import { applyAppearance } from "./appearance";
 import { initializeLanguage } from "../shared/i18n";
-import { followDynamicType } from "./dynamic-type";
+import { followAndroidTextScale, followDynamicType } from "./dynamic-type";
 
 initializeLanguage();
 applyAppearance();
@@ -21,7 +21,9 @@ const desktop = Boolean(
 );
 if (desktop) document.documentElement.classList.add("native-desktop");
 if (Capacitor.getPlatform() === "ios") followDynamicType();
-// The display's corner radius, from the iOS app, for concentric sheets.
+if (Capacitor.getPlatform() === "android") followAndroidTextScale();
+// The display's corner radius, from the iPhone or Android app, for concentric
+// sheets.
 const corner = (window as unknown as { __OPEN_MUSE_DEVICE_CORNER__?: number })
   .__OPEN_MUSE_DEVICE_CORNER__;
 if (typeof corner === "number" && corner > 0 && corner < 200)

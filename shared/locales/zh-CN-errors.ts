@@ -184,8 +184,6 @@ export const zhErrors: Record<string, string> = {
   "Files must be at most 10 MB.": "文件大小不能超过 10 MB。",
   "Skills must be ZIP files.": "技能必须是 ZIP 文件。",
   "Choose a file to upload first.": "请先选择要上传的文件。",
-  "Background service is not supported on Android.":
-    "Android 暂不支持后台服务。",
   "Missing secure storage bridge": "缺少安全存储桥接",
   "Secure storage timeout": "安全存储超时",
   "Couldn't access secure storage. Unlock your device and retry; your login has not been changed.":
