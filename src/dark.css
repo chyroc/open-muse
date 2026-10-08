@@ -93,6 +93,9 @@
   .dictation-button {
     color: #636366;
   }
+  .header-notices-dot {
+    box-shadow: 0 0 0 2px #2c2c2e;
+  }
   .queued-messages {
     background: rgb(36 36 38 / 92%);
     border-color: #38383a;

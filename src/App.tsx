@@ -86,6 +86,16 @@ import {
 } from "./reminderNotifications";
 import { listenForEdgePull, type EdgePull } from "./gesture";
 import { notifyReply, reportReplying } from "./notifications";
+import { NoticesSheet } from "./NoticesSheet";
+import {
+  emptyNoticeRecords,
+  noticeList,
+  noticePreview,
+  noticesFromHistory,
+  unreadNotices,
+  type Notice,
+  type NoticeRecords,
+} from "../shared/notices";
 import { listenForShake } from "./shake";
 import { ReportSheet } from "./ReportSheet";
 import { backgroundClient } from "./background-client";
@@ -313,7 +323,12 @@ function Workspace({
       }),
     [],
   );
-  const [panel, setPanel] = useState<"actions" | "status">();
+  const [panel, setPanel] = useState<"actions" | "status" | "notices">();
+  // The notification list: what the device keeps, and the notices last read
+  // from the main chat, so the unread dot holds while another chat is open.
+  const [noticeRecords, setNoticeRecords] =
+    useState<NoticeRecords>(emptyNoticeRecords);
+  const [mainNotices, setMainNotices] = useState<Notice[]>([]);
   const [selectedMessage, setSelectedMessage] = useState<AgentEvent>();
   const [selectedBubble, setSelectedBubble] = useState<HTMLElement>();
   const [selectingText, setSelectingText] = useState<string>();
@@ -578,10 +593,53 @@ function Workspace({
   const wasRunning = useRef(false);
   useEffect(() => {
     const running = state === "running";
-    if (wasRunning.current && !running && document.hidden)
+    if (wasRunning.current && !running && document.hidden) {
       notifyReply(currentEvents, companion.name);
+      // Kept for the notification list too, whether or not the system
+      // shows notifications.
+      const reply = [...currentEvents]
+        .reverse()
+        .find(
+          (event) =>
+            event.type === "user.message" ||
+            (event.type === "agent.message" && eventText(event).trim()),
+        );
+      if (activeId && reply?.type === "agent.message")
+        void client
+          .recordReplyNotice({
+            id: reply.id,
+            kind: "reply",
+            session_id: activeId,
+            at:
+              reply.processed_at ??
+              reply.created_at ??
+              new Date().toISOString(),
+            preview: noticePreview(eventText(reply)),
+          })
+          .then(setNoticeRecords, () => {});
+    }
     wasRunning.current = running;
   }, [state]);
+  // What the device keeps for the notification list, read once connected.
+  useEffect(() => {
+    if (config?.mode !== "ark") return;
+    void client.noticeRecords().then(setNoticeRecords, () => {});
+  }, [client, config?.mode]);
+  // The main chat's notices, read from its history while it is open.
+  const mainNoticeKey =
+    activeId && activeId === index.mainId
+      ? noticesFromHistory(currentEvents, activeId)
+          .map((notice) => notice.id)
+          .join(",")
+      : undefined;
+  useEffect(() => {
+    if (mainNoticeKey === undefined || !activeId) return;
+    setMainNotices(noticesFromHistory(currentEvents, activeId));
+  }, [mainNoticeKey]);
+  const unreadCount = unreadNotices(
+    noticeList(mainNotices, noticeRecords),
+    noticeRecords,
+  );
   const alive = useRef(true);
   const [toast, setToast] = useState("");
   const [awayFromBottom, setAwayFromBottom] = useState(false);
@@ -1482,6 +1540,11 @@ function Workspace({
             status={status}
             activity={activity}
             sideTitle={sideTitle}
+            notices={
+              isChat && config?.mode === "ark"
+                ? { unread: unreadCount, onOpen: () => setPanel("notices") }
+                : undefined
+            }
           />
         ) : (
           <header className="utility-header">
@@ -2095,6 +2158,24 @@ function Workspace({
               setIndex(await client.archiveConversation(id, archived));
             })
           }
+        />
+      )}
+      {panel === "notices" && (
+        <NoticesSheet
+          client={client}
+          onClose={() => {
+            setPanel(undefined);
+            void client.noticeRecords().then(setNoticeRecords, () => {});
+          }}
+          onOpen={(notice) => {
+            setPanel(undefined);
+            void client.noticeRecords().then(setNoticeRecords, () => {});
+            navigate(
+              notice.session_id === index.mainId
+                ? "/"
+                : `/task/${notice.session_id}`,
+            );
+          }}
         />
       )}
       {panel === "actions" && (

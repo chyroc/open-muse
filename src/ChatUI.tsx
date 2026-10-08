@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
+  Bell,
   ChevronDown,
   LoaderCircle,
   MessageCircle,
@@ -160,6 +161,7 @@ export function ChatHeader({
   showMore = true,
   moreLabel,
   activity,
+  notices,
 }: {
   onSidebar: () => void;
   onStatus: () => void;
@@ -173,6 +175,8 @@ export function ChatHeader({
   moreLabel?: string;
   // What the companion is doing, shown under its name while not idle.
   activity?: CompanionActivity;
+  // The notification list's button, with how many notices are unread.
+  notices?: { unread: number; onOpen: () => void };
 }) {
   return (
     <header className="companion-header">
@@ -227,6 +231,22 @@ export function ChatHeader({
             <SlidersHorizontal size={20} />
           ) : (
             <MoreHorizontal size={22} strokeWidth={2.2} />
+          )}
+        </button>
+      )}
+      {notices && (
+        <button
+          className="glass-button header-notices"
+          aria-label={
+            notices.unread
+              ? t("Notifications, {count} unread", { count: notices.unread })
+              : t("Notifications")
+          }
+          onClick={notices.onOpen}
+        >
+          <Bell size={19} strokeWidth={2} />
+          {notices.unread > 0 && (
+            <span className="header-notices-dot" aria-hidden="true" />
           )}
         </button>
       )}

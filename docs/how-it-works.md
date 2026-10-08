@@ -472,6 +472,19 @@ for both kinds: turning it off clears the announced reminders and stops reply
 notifications on this device, turning it on asks iOS the first time, and
 when iOS has refused it points to the app's page in iOS Settings.
 
+The bell beside the conversation options opens **Notifications**, an in-app
+list of what happened while the person was not watching, newest first:
+reminders, check-ins, goal follow-ups, Lark messages, and webhook events the
+companion answered in the main chat, read from its latest history, and
+replies that finished in the open conversation after the person left the
+app, recorded on the device when they finish, whether or not system
+notifications are on.
+Each entry shows its kind, when it came, and the start of the companion's
+reply, and opens its conversation. Opening the list marks it read, and a dot
+on the bell shows unread entries from the main chat's history last loaded and
+the recorded replies; **Clear all** empties it. What was read or cleared and
+the recorded replies stay on the device, per identity.
+
 ### Incoming webhooks
 
 With an Open Muse account, the **Webhooks** card under Settings > Connection >

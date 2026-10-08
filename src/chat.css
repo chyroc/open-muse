@@ -131,6 +131,25 @@ html.sidebar-dragging .sidebar-panel {
   width: 36px;
   height: 36px;
 }
+/* The notification list sits beside it, the same size, with a dot while
+   something is unread. */
+.header-notices {
+  position: absolute;
+  top: calc(4px + env(safe-area-inset-top));
+  right: 66px;
+  width: 36px;
+  height: 36px;
+}
+.header-notices-dot {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff3b30;
+  box-shadow: 0 0 0 2px #fafafa;
+}
 .companion-status {
   position: absolute;
   top: env(safe-area-inset-top);
@@ -1389,7 +1408,8 @@ html.sidebar-dragging .sidebar-panel {
     top: 24px;
   }
   .header-left,
-  .header-right {
+  .header-right,
+  .header-notices {
     top: 28px;
   }
   .chat-timeline {

@@ -103,6 +103,15 @@ import {
   ideaCatalogKey,
   type IdeaCatalogState,
 } from "../shared/idea-catalog";
+import {
+  emptyNoticeRecords,
+  noticeKey,
+  noticeList,
+  noticeReplyLimit,
+  noticesFromHistory,
+  type Notice,
+  type NoticeRecords,
+} from "../shared/notices";
 import { AccountSync, syncAdapters } from "./direct/account-sync";
 import {
   defaultFeedInstructions,
@@ -780,6 +789,52 @@ export class Client {
       z.boolean().parse(liked),
     );
     this.accountSync()?.changed();
+  }
+  // The in-app notification list (see shared/notices.ts): notices read from
+  // the main chat's latest history, with the background replies this device
+  // announced, and how far the person has read or cleared them.
+  private noticeStorage() {
+    return noticeKey(this.signedIn() ? this.context().key : "device");
+  }
+  async noticeRecords(): Promise<NoticeRecords> {
+    return {
+      ...emptyNoticeRecords(),
+      ...(await this.db.get<NoticeRecords>(this.noticeStorage())),
+    };
+  }
+  async notices(signal?: AbortSignal) {
+    const records = await this.noticeRecords();
+    const mainId = (await this.conversationIndex()).mainId;
+    const history = mainId
+      ? noticesFromHistory(await this.events(mainId, signal), mainId)
+      : [];
+    return { list: noticeList(history, records), records };
+  }
+  async recordReplyNotice(notice: Notice) {
+    return this.db.update<NoticeRecords>(this.noticeStorage(), (old) => {
+      const records = { ...emptyNoticeRecords(), ...old };
+      if (records.replies.some((reply) => reply.id === notice.id))
+        return records;
+      return {
+        ...records,
+        replies: [notice, ...records.replies].slice(0, noticeReplyLimit),
+      };
+    });
+  }
+  // Everything up to `at` counts as read, or, cleared, leaves the list.
+  async markNotices(change: "read" | "cleared", at: string) {
+    return this.db.update<NoticeRecords>(this.noticeStorage(), (old) => {
+      const records = { ...emptyNoticeRecords(), ...old };
+      const field = change === "read" ? "readAt" : "clearedAt";
+      if (records[field] && records[field] >= at) return records;
+      return {
+        ...records,
+        [field]: at,
+        ...(change === "cleared" && (!records.readAt || records.readAt < at)
+          ? { readAt: at }
+          : {}),
+      };
+    });
   }
   // What this device remembers about the Ideas catalog. Signed out, it is
   // kept apart from every workspace and never carried into one.

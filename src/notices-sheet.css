@@ -1,0 +1,74 @@
+/* The notification list: grouped rows with the kind's icon, a heading with
+   when it came, and two lines of the companion's reply. */
+.notice-row .settings-row-text {
+  min-width: 0;
+}
+.notice-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+.notice-heading strong {
+  font-size: 16px;
+  font-weight: 600;
+}
+.notice-heading time {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: #8e8e93;
+}
+.notice-row .settings-row-text small {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 15px;
+  line-height: 1.35;
+  color: #6e6e73;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.settings-list.notices-actions {
+  margin-top: 22px;
+}
+.settings-list-row.notices-clear > span:first-child {
+  display: block;
+  flex: 1;
+  color: #ff3b30;
+}
+.notices-loading {
+  display: flex;
+  justify-content: center;
+  margin: 32px 0;
+  color: #8e8e93;
+}
+.notices-empty {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  margin: 56px 24px;
+  text-align: center;
+  color: #8e8e93;
+}
+.notices-empty h3 {
+  margin: 8px 0 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: #1c1c1e;
+}
+.notices-empty p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+}
+@media (prefers-color-scheme: dark) {
+  .notice-row .settings-row-text small {
+    color: #98989d;
+  }
+  .settings-list-row.notices-clear > span:first-child {
+    color: #ff453a;
+  }
+  .notices-empty h3 {
+    color: #f5f5f7;
+  }
+}
