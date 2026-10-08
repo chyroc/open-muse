@@ -44,6 +44,29 @@ for (const file of readdirSync(path.join(root, "docs/images"))) {
 }
 
 const megabytes = (size) => `${(size / 1048576).toFixed(1)} MB`;
+
+// The repository's star count for the Star buttons, read once per build so
+// visitors never call GitHub; without it the buttons show no count.
+// GITHUB_TOKEN, when set, avoids GitHub's anonymous rate limit.
+async function starCount() {
+  try {
+    const response = await fetch(
+      "https://api.github.com/repos/chyroc/open-muse",
+      {
+        headers: process.env.GITHUB_TOKEN
+          ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` }
+          : {},
+        signal: AbortSignal.timeout(15_000),
+      },
+    );
+    const { stargazers_count: stars } = await response.json();
+    return Number.isInteger(stars) ? stars.toLocaleString("en-US") : "";
+  } catch {
+    return "";
+  }
+}
+const stars = await starCount();
+if (!stars) console.warn("The GitHub star count could not be read.");
 const html = (directory) =>
   readdirSync(directory, { recursive: true })
     .map(String)
@@ -69,6 +92,7 @@ function build(out, cn) {
     });
   }
   Object.assign(values, {
+    "github.stars": stars,
     "mirror.switch.en": cn
       ? `<a href="${site}/?mirror=global">Global site</a>`
       : `<a href="${mirrors.cn.base}/">Mainland China mirror</a>`,

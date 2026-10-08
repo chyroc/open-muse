@@ -44,6 +44,18 @@ a:hover { text-decoration: underline; }
 .top .brand { display: flex; align-items: center; gap: 10px; color: var(--fg); font-weight: 600; margin-right: auto; }
 .top .brand img { width: 28px; height: 28px; border-radius: 7px; }
 .top a:not(.brand) { color: var(--muted); }
+.top a.star { color: var(--fg); font-weight: 600; padding: 6px 12px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; }
+.top a.star:hover { text-decoration: none; opacity: 0.8; }
+/* The star count, filled in at build time; hidden when it could not be read. */
+.count { margin-left: 8px; padding-left: 8px; border-left: 1px solid currentColor; font-variant-numeric: tabular-nums; opacity: 0.85; }
+.count:empty { display: none; }
+.open-source { text-align: center; }
+section.block.open-source > p.lead { margin: 0 auto; }
+/* Narrow screens keep the language switch and Star; the section links go. */
+@media (max-width: 560px) {
+  .top { gap: 14px; }
+  .top a[href^="#"] { display: none; }
+}
 
 .hero { text-align: center; padding: 56px 24px 32px; }
 .hero img.icon { width: 96px; height: 96px; border-radius: 22px; box-shadow: var(--shadow); }

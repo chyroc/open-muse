@@ -136,7 +136,9 @@ CLOUDFLARE_API_TOKEN=<token> node site/deploy.mjs
 ```
 
 The deploy uploads the mirror to OSS, refreshes the CDN, and deploys the
-Worker. The mirror's HTTPS certificate comes from Let's Encrypt and lasts 90
+Worker. The build reads the repository's star count from GitHub for the Star
+buttons (set `GITHUB_TOKEN` to avoid GitHub's anonymous rate limit); when it
+cannot, the buttons show no count. The mirror's HTTPS certificate comes from Let's Encrypt and lasts 90
 days: `node site/cn-certificate.mjs` (with `lego` installed and a token that
 may edit the zone's DNS) issues or renews it and installs it on the CDN; run
 it at least every two months.
