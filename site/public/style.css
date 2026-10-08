@@ -85,9 +85,12 @@ section.block { max-width: 1120px; margin: 0 auto; padding: 64px 24px 0; }
 section.block > h2 { font-size: clamp(28px, 4vw, 40px); letter-spacing: -0.015em; line-height: 1.15; margin: 0 0 8px; }
 section.block > p.lead { color: var(--muted); font-size: 19px; margin: 0 0 28px; max-width: 720px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
-.card { background: var(--card); border-radius: 18px; padding: 24px; box-shadow: var(--shadow); }
+.card { background: var(--card); border-radius: 18px; padding: 24px; box-shadow: var(--shadow); min-width: 0; }
 .card h3 { font-size: 19px; margin: 0 0 8px; }
 .card p { margin: 0; color: var(--muted); font-size: 16px; }
+/* Checksums are one long word; let them wrap inside the card. */
+.card .note { margin-top: 12px; }
+.card code { display: block; margin-top: 2px; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; word-break: break-all; }
 
 footer {
   max-width: 1120px;
