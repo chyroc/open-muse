@@ -5,7 +5,6 @@ import type { Client } from "./api";
 import { backgroundClient, type BackgroundClient } from "./background-client";
 import { exportText } from "./platform";
 import { Sheet } from "./MusePages";
-import { WebhooksSettings } from "./WebhooksSettings";
 import { WorkspacePanel } from "./WorkspacePanel";
 import "./account-sheet.css";
 
@@ -14,10 +13,10 @@ interface Status {
   project?: string;
 }
 
-// Account and workspace for a signed-in Open Muse account, as grouped rows:
-// who is signed in, the Ark API key the account keeps, the workspace, and
-// webhooks, then the actions that remove things, each confirmed by the system
-// before it runs.
+// A signed-in Open Muse account, as grouped rows: who is signed in, the Ark
+// API key the account keeps, exporting its data, then signing out and the
+// actions that remove things, each confirmed by the system before it runs.
+// The workspace prepares itself and shows here only when it needs attention.
 export function AccountSheet({
   client,
   onClose,
@@ -134,17 +133,21 @@ export function AccountSheet({
     });
   const label = email ?? t("Open Muse account");
   return (
-    <Sheet title={t("Account and workspace")} onClose={onClose} grouped>
+    <Sheet title={t("Open Muse account")} onClose={onClose} grouped>
       <div className="account-hero">
-        <span className="account-avatar" aria-hidden="true">
-          {label.slice(0, 1).toUpperCase()}
-        </span>
-        <h2>{label}</h2>
-        {owner && (
-          <p>
-            {t("Account ID: {id}", { id: owner.slice("muse_user_".length) })}
-          </p>
-        )}
+        <AccountAvatar label={label} />
+        {/* A long email may wrap, and then before its domain. */}
+        <h2>
+          {label.includes("@") ? (
+            <>
+              {label.slice(0, label.indexOf("@"))}
+              <wbr />
+              {label.slice(label.indexOf("@"))}
+            </>
+          ) : (
+            label
+          )}
+        </h2>
       </div>
       {error && (
         <p className="settings-footnote" role="alert">
@@ -237,60 +240,15 @@ export function AccountSheet({
                 disabled={busy}
                 onClick={() => setReplacing(true)}
               >
-                <span className="settings-row-text">
-                  {t("Replace API key")}
-                </span>
+                <span>{t("Replace API key")}</span>
               </button>
             </li>
           )
         )}
-      </ul>
-      <p className="settings-footnote">
-        {t(
-          "Your assistant runs on Ark Managed Agents with your own key. Real calls may be billed.",
-        )}
-      </p>
-      {status?.ready && (
-        <>
-          <h3 className="settings-group-title">{t("Workspace")}</h3>
-          <WorkspacePanel client={client} compact />
-        </>
-      )}
-      <WebhooksSettings service={service} />
-      <ul className="settings-list account-actions">
-        <li>
-          <button
-            className="settings-list-row account-link-row"
-            disabled={busy || !owner}
-            onClick={() => void exportData()}
-          >
-            <span className="settings-row-text">
-              {t("Export my data")}
-              <small>
-                {t(
-                  "Saves a JSON copy of everything the Open Muse service keeps for this account: settings, devices, background work, Feed, and reminder delivery. Your Ark API key is shown only by its last four characters. Keep the file private.",
-                )}
-              </small>
-            </span>
-          </button>
-        </li>
-        <li>
-          <button
-            className="settings-list-row account-link-row"
-            disabled={busy}
-            onClick={() => void signOut()}
-          >
-            <span className="settings-row-text">
-              {t("Sign out of Open Muse")}
-            </span>
-          </button>
-        </li>
-      </ul>
-      <ul className="settings-list account-actions">
         {status?.ready && (
           <li>
             <button
-              className="settings-list-row settings-destructive"
+              className="settings-list-row account-danger-row"
               disabled={busy}
               onClick={removeKey}
             >
@@ -298,9 +256,42 @@ export function AccountSheet({
             </button>
           </li>
         )}
+      </ul>
+      <p className="settings-footnote">
+        {t(
+          "Your assistant runs on Ark Managed Agents with your own key. Real calls may be billed.",
+        )}
+      </p>
+      {status?.ready && <WorkspacePanel client={client} compact />}
+      <ul className="settings-list account-actions">
         <li>
           <button
-            className="settings-list-row settings-destructive"
+            className="settings-list-row account-link-row"
+            disabled={busy || !owner}
+            onClick={() => void exportData()}
+          >
+            <span>{t("Export my data")}</span>
+          </button>
+        </li>
+      </ul>
+      <p className="settings-footnote">
+        {t(
+          "Saves a JSON copy of everything the Open Muse service keeps for this account: settings, devices, background work, Feed, and reminder delivery. Your Ark API key is shown only by its last four characters. Keep the file private.",
+        )}
+      </p>
+      <ul className="settings-list account-actions">
+        <li>
+          <button
+            className="settings-list-row account-danger-row"
+            disabled={busy}
+            onClick={() => void signOut()}
+          >
+            <span>{t("Sign out of Open Muse")}</span>
+          </button>
+        </li>
+        <li>
+          <button
+            className="settings-list-row account-danger-row"
             disabled={busy || !owner}
             onClick={deleteAccount}
           >
@@ -310,7 +301,7 @@ export function AccountSheet({
         {onReset && (
           <li>
             <button
-              className="settings-list-row settings-destructive"
+              className="settings-list-row account-danger-row"
               disabled={busy}
               onClick={onReset}
             >
@@ -325,6 +316,29 @@ export function AccountSheet({
           {t("Working, please don't submit again…")}
         </p>
       )}
+      {owner && (
+        <p className="account-id">
+          {t("Account ID: {id}", { id: owner.slice("muse_user_".length) })}
+        </p>
+      )}
     </Sheet>
+  );
+}
+
+// The account's initial on a tinted disc, in the page's accent color.
+export function AccountAvatar({
+  label,
+  small = false,
+}: {
+  label: string;
+  small?: boolean;
+}) {
+  return (
+    <span
+      className={small ? "account-avatar small" : "account-avatar"}
+      aria-hidden="true"
+    >
+      {label.slice(0, 1).toUpperCase()}
+    </span>
   );
 }

@@ -157,19 +157,6 @@
     color: #aeaeb2;
   }
   /* settings-home.css */
-  .settings-status {
-    background: #1c1c1e;
-  }
-  .settings-status-badge {
-    color: #aeaeb2;
-  }
-  .settings-status p {
-    color: #aeaeb2;
-  }
-  .settings-status button {
-    border-top: 1px solid #38383a;
-    color: #0e82ff;
-  }
   .settings-list {
     background: #1c1c1e;
   }
@@ -1025,7 +1012,6 @@
   .attach-sheet {
     background: #1c1c1e;
   }
-  .page-sheet .settings-status,
   .page-sheet .settings-list,
   .attach-tile,
   .attach-rows {

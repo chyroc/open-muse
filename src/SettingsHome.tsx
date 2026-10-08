@@ -7,7 +7,6 @@ import {
   FileText,
   Info,
   Check,
-  CircleUserRound,
   Languages,
   LayoutGrid,
   MessageCircle,
@@ -29,7 +28,7 @@ import { CheckInSettings } from "./CheckInSettings";
 import { ConnectorsSheet } from "./ConnectorsSheet";
 import { AboutSheet } from "./AboutSheet";
 import { AppearanceSheet } from "./AppearanceSheet";
-import { AccountSheet } from "./AccountSheet";
+import { AccountAvatar, AccountSheet } from "./AccountSheet";
 import { backgroundClient } from "./background-client";
 import { ChannelsSheet } from "./ChannelsSheet";
 import { DevicesSheet } from "./DevicesSheet";
@@ -65,8 +64,8 @@ type Section =
 // Each language is named in itself, as system language pickers do.
 const languageNames = { en: "English", "zh-CN": "简体中文" } as const;
 
-// Settings as a status card and one list of sections, each in its own sheet.
-// Until the app is connected, sign-in stays on the page itself.
+// Settings as the signed-in account and one list of sections, each in its own
+// sheet. Until the app is connected, sign-in stays on the page itself.
 export function SettingsHome({
   client,
   name,
@@ -124,6 +123,8 @@ export function SettingsHome({
       );
   }
   const signedIn = client.signedIn();
+  const accountLabel =
+    backgroundClient.accountEmail() ?? t("Open Muse account");
   const close = () => setSection(undefined);
   // The chosen model and thinking level, named on the Model row.
   const [model, setModel] = useState<ModelChoice>();
@@ -134,20 +135,23 @@ export function SettingsHome({
   return (
     <div className="settings-home">
       {signedIn ? (
-        <section className="settings-status">
-          <div>
-            <strong>Volcano Ark MA</strong>
-            <span className="settings-status-badge">{t("Connected")}</span>
-          </div>
-          <p>
-            {t(
-              "Your assistant runs on Ark Managed Agents with your own key. Real calls may be billed.",
-            )}
-          </p>
-          <button onClick={() => setSection("account")}>
-            {t("Account and workspace")}
-          </button>
-        </section>
+        // The signed-in account heads the page; its sheet holds the Ark API
+        // key, exporting data, and the actions that remove things.
+        <ul className="settings-list">
+          <li>
+            <button
+              className="settings-list-row settings-profile-row"
+              onClick={() => setSection("account")}
+            >
+              <AccountAvatar label={accountLabel} small />
+              <span className="settings-row-text">
+                <span className="settings-profile-name">{accountLabel}</span>
+                <small>{t("Open Muse account")}</small>
+              </span>
+              <RowChevron />
+            </button>
+          </li>
+        </ul>
       ) : (
         <AuthPanel client={client} onChanged={onConnection} />
       )}
@@ -244,28 +248,8 @@ export function SettingsHome({
       </ul>
       {signedIn ? (
         <>
-          {/* The account the app is signed in to, then signing out of it;
-              resetting the device sits inside the account's sheet. */}
-          <h3 className="settings-group-title settings-account-title">
-            {t("Your account")}
-          </h3>
-          <ul className="settings-list">
-            <li>
-              <button
-                className="settings-list-row settings-account-row"
-                onClick={() => setSection("account")}
-              >
-                <span aria-hidden="true">
-                  <CircleUserRound size={22} strokeWidth={2} />
-                </span>
-                <span className="settings-row-text">
-                  {t("Open Muse account")}
-                  <small>{t("Ark API key, workspace, and your data")}</small>
-                </span>
-                <RowChevron />
-              </button>
-            </li>
-          </ul>
+          {/* Signing out closes the page; deleting the account and resetting
+              the device sit inside the account's sheet. */}
           <ul className="settings-list">
             <li>
               <button
@@ -388,7 +372,7 @@ export function SettingsHome({
             onReset={() => setSection("reset")}
           />
         ) : (
-          <Sheet title={t("Account and workspace")} onClose={close} grouped>
+          <Sheet title={t("Open Muse account")} onClose={close} grouped>
             <AuthPanel client={client} onChanged={onConnection} />
           </Sheet>
         ))}

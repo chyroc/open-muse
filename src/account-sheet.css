@@ -1,47 +1,63 @@
-/* Account and workspace for a signed-in account: who it is, then grouped
-   rows in the system settings style. */
+/* A signed-in Open Muse account: who it is, then grouped rows in the system
+   settings style, tinted with the page's accent blue. */
 .account-hero {
   display: grid;
   justify-items: center;
-  gap: 4px;
-  margin: 8px 0 18px;
+  gap: 10px;
+  margin: 8px 16px 6px;
   text-align: center;
 }
 .account-avatar {
   display: grid;
-  width: 72px;
-  height: 72px;
-  margin-bottom: 8px;
+  flex: 0 0 auto;
+  width: 76px;
+  height: 76px;
   place-items: center;
   border-radius: 50%;
-  background: linear-gradient(180deg, #a4a9b4, #868b96);
-  font-size: 30px;
+  background: #dfeafb;
+  font-size: 32px;
   font-weight: 600;
-  color: #fff;
+  color: #0064d0;
 }
+/* In a settings row the avatar takes the icon slot at its own size. */
+.settings-list-row > span.account-avatar:first-child {
+  flex: 0 0 auto;
+  color: #0064d0;
+}
+.account-avatar.small {
+  width: 44px;
+  height: 44px;
+  font-size: 19px;
+}
+/* The whole email stays readable: a long one wraps before its domain. */
 .account-hero h2 {
+  max-width: 100%;
   margin: 0;
   font-size: 20px;
   font-weight: 600;
-  word-break: break-all;
-}
-.account-hero p {
-  max-width: 100%;
-  margin: 0;
-  padding: 0 24px;
-  font-size: 12px;
-  color: #6e6e73;
+  line-height: 1.3;
   overflow-wrap: anywhere;
 }
-.account-link-row .settings-row-text {
+
+/* Text-only rows: a blue action, or a red one that removes something. Their
+   label takes the row instead of the icon slot. */
+.settings-list-row.account-link-row > span:first-child,
+.settings-list-row.account-danger-row > span:first-child {
+  display: block;
+  flex: 1;
   color: #0064d0;
 }
-.account-link-row .settings-row-text small {
-  color: #8e8e93;
+.settings-list-row.account-danger-row > span:first-child {
+  color: #ff3b30;
+}
+.settings-list-row.account-link-row:disabled,
+.settings-list-row.account-danger-row:disabled {
+  opacity: 0.45;
 }
 .settings-list.account-actions {
   margin-top: 22px;
 }
+
 .account-key-form {
   display: flex;
   align-items: center;
@@ -63,14 +79,36 @@
   gap: 4px;
 }
 .muse-sheet .workspace-card {
+  margin-top: 22px;
   border-radius: 24px;
 }
+
+/* The account's identifier, quiet at the foot of the page. */
+.account-id {
+  margin: 28px 16px 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+  color: #8e8e93;
+  overflow-wrap: anywhere;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 @media (prefers-color-scheme: dark) {
-  .account-hero p {
-    color: #98989d;
-  }
-  .account-link-row .settings-row-text {
+  .account-avatar,
+  .settings-list-row > span.account-avatar:first-child {
+    background: #1b2d47;
     color: #4a9cff;
+  }
+  .settings-list-row.account-link-row > span:first-child {
+    color: #4a9cff;
+  }
+  .settings-list-row.account-danger-row > span:first-child {
+    color: #ff453a;
+  }
+  .account-id {
+    color: #98989d;
   }
   .account-key-form input {
     color: #fff;

@@ -7,8 +7,6 @@ export const zhAccount: Record<string, string> = {
     "账号登录凭据被拒绝或已过期。请重新登录。",
   "Open Muse account login": "Open Muse 账号登录",
   "Open Muse account": "Open Muse 账号",
-  "Your account": "你的账号",
-  "Ark API key, workspace, and your data": "Ark API Key、工作区和你的数据",
   "Sign out of Open Muse on this device?": "要在这台设备上退出 Open Muse 吗？",
   "Account email": "账号邮箱",
   "Account password": "账号密码",

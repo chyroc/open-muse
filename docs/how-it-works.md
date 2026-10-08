@@ -37,6 +37,13 @@ conversations, memory, and the agent stay in the person's Ark account.
 **Export my data** saves a JSON copy of everything the service keeps for the
 account, with the Ark API key shown only by its last four characters.
 
+On iPhone the signed-in account heads Settings as a row with its email; it
+opens the account page: the Ark API key (replace it, or remove it from the
+account), **Export my data**, then **Sign out of Open Muse**, **Delete
+account**, and **Reset this device** together, with the account ID at the foot.
+The workspace prepares itself and appears on that page only when it needs
+review or its setup failed.
+
 Open Muse needs an Open Muse account: there is no single-user or device-key
 mode, and a build without the account service cannot connect.
 
@@ -457,8 +464,8 @@ when iOS has refused it points to the app's page in iOS Settings.
 
 ### Incoming webhooks
 
-With an Open Muse account, the **Webhooks** card in Settings > Account and
-workspace on iPhone creates webhook
+With an Open Muse account, the **Webhooks** card under Settings > Connection >
+Manage connection on the Mac creates webhook
 URLs that other services can post events to: a Lark (Feishu) event
 subscription, a script, or IFTTT. Each event becomes one hidden
 app-generated message in the main chat, and the companion tells you what

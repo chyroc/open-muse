@@ -199,7 +199,7 @@ describe("Companion avatar", () => {
 });
 
 describe("Settings home", () => {
-  it("shows a status card and one list of sections when signed in", () => {
+  it("opens on the signed-in account, then one list of sections", () => {
     const html = renderToStaticMarkup(
       <SettingsHome
         client={client(true)}
@@ -207,24 +207,30 @@ describe("Settings home", () => {
         onDraft={() => {}}
       />,
     );
-    expect(html).toContain("Volcano Ark MA");
+    // The account heads the page as a profile row; there is no status card
+    // and no account section at the foot.
+    expect(html).toContain("settings-profile-row");
+    expect(html).toContain("account-avatar small");
+    expect(html.indexOf("settings-profile-row")).toBeLessThan(
+      html.indexOf("Connectors"),
+    );
+    expect(html).not.toContain("Volcano Ark MA");
+    expect(html).not.toContain("Account and workspace");
+    expect(html).not.toContain("Your account");
     for (const label of [
       "Connectors",
       "Devices",
       "Message channels",
       "Check-ins",
-      "Account and workspace",
+      "Open Muse account",
       "About",
     ])
       expect(html).toContain(label);
     // Studio is not listed in Settings.
     expect(html).not.toContain("MA Studio");
-    // The page ends with the account and signing out of it, in that order;
-    // resetting the device moved into the account's sheet.
-    expect(html.indexOf("Your account")).toBeGreaterThan(html.indexOf("About"));
-    expect(html.indexOf("Sign out")).toBeGreaterThan(
-      html.indexOf("Your account"),
-    );
+    // Signing out stays at the foot; resetting the device is in the account
+    // page.
+    expect(html.indexOf("Sign out")).toBeGreaterThan(html.indexOf("About"));
     expect(html).not.toContain("Reset this device");
     // Permissions come before message channels.
     expect(html.indexOf("Permissions")).toBeLessThan(
@@ -235,6 +241,6 @@ describe("Settings home", () => {
     expect(t("Follow system", {}, "zh-CN")).toBe("跟随系统");
     // Account details open in their own sheet instead of filling the page.
     expect(html).not.toContain("settings-card auth-card");
-    expect(t("Account and workspace", {}, "zh-CN")).toBe("账号与工作区");
+    expect(t("Open Muse account", {}, "zh-CN")).toBe("Open Muse 账号");
   });
 });

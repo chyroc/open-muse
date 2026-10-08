@@ -134,6 +134,7 @@ describe("Settings pages", () => {
         client={{ auth: async () => ({ ready: false }) } as unknown as Client}
         onClose={() => {}}
         onChanged={() => {}}
+        onReset={() => {}}
         service={
           {
             accountOwner: () => "muse_user_abc",
@@ -144,10 +145,26 @@ describe("Settings pages", () => {
         }
       />,
     );
-    expect(html).toContain("person@example.com");
+    // The email may wrap only before its domain.
+    expect(html).toContain("person<wbr/>@example.com");
     expect(html).toContain("Account ID: abc");
-    expect(html).toContain("settings-destructive");
+    expect(html).toContain("account-danger-row");
     expect(html).toContain("Delete account");
+    // Signing out, deleting the account, and resetting the device form one
+    // group; the account ID closes the page.
+    const group = html.slice(html.lastIndexOf('<ul class="settings-list'));
+    for (const label of [
+      "Sign out of Open Muse",
+      "Delete account",
+      "Reset this device",
+    ])
+      expect(group).toContain(label);
+    expect(html.indexOf("Account ID")).toBeGreaterThan(
+      html.indexOf("Reset this device"),
+    );
+    // No workspace row, no webhooks.
+    expect(html).not.toContain("Personal workspace");
+    expect(html).not.toContain("Webhook");
     // No checkbox consent and no separate Start button.
     expect(html).not.toContain('type="checkbox"');
     expect(html).not.toContain("Start something new");

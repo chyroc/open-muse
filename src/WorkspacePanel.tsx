@@ -80,8 +80,8 @@ export function WorkspacePanel({
   compact = false,
 }: {
   client: Client;
-  // As one settings row while the workspace is ready and nothing needs
-  // review; the full card otherwise.
+  // Nothing at all unless the workspace needs review or its setup failed;
+  // the full card otherwise.
   compact?: boolean;
 }) {
   const [status, setStatus] = useState<WorkspaceStatus>();
@@ -171,24 +171,10 @@ export function WorkspacePanel({
   }
   const adoptable =
     comparison && !comparison.unusable.length && !comparison.tooLarge;
-  if (compact && status?.state === "ready" && !status.review && !error)
-    return (
-      <ul className="settings-list" aria-label={t("Personal workspace")}>
-        <li>
-          <div className="settings-list-row">
-            <span className="settings-row-text">
-              {t("Personal workspace")}
-              <small>
-                {t(
-                  "The assistant and runtime are managed automatically by Muse, no manual setup needed.",
-                )}
-              </small>
-            </span>
-            <span className="settings-row-value">{t("Ready")}</span>
-          </div>
-        </li>
-      </ul>
-    );
+  // In the account page the workspace stays out of sight: it prepares itself
+  // on first use, so the card appears only when it needs the person.
+  if (compact && !error && !status?.review && status?.state !== "error")
+    return null;
   return (
     <section className="workspace-card" aria-label={t("Personal workspace")}>
       <div className="workspace-heading">
