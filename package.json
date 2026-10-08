@@ -26,7 +26,8 @@
     "ios:build": "node scripts/build-ios-simulator.mjs",
     "ios:build:device": "npm run build && cap sync ios && xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath .build/ios-device CODE_SIGN_STYLE=Automatic build -quiet",
     "ios:install": "node scripts/install-ios-device.mjs",
-    "ios:testflight": "node scripts/ios-testflight.mjs"
+    "ios:testflight": "node scripts/ios-testflight.mjs",
+    "server:deploy": "node server/deploy/volcengine/deploy.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",

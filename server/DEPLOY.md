@@ -33,6 +33,32 @@ Cloudflare Worker with D1 (see the last section).
 Clients call Ark directly with the account's key; the service never proxies
 chat traffic. Everything is reachable from mainland networks.
 
+## One command
+
+`npm run server:deploy` (from the repository root) does sections 1 to 3 below
+for you, or updates an existing deployment:
+
+```sh
+ve login                                 # once
+npm run server:deploy -- --dry-run       # read and report the plan only
+OPEN_MUSE_DB_HOST=<postgres host> npm run server:deploy   # first deployment
+npm run server:deploy                    # every later update
+```
+
+It finds the workspace named `open-muse` (or `OPEN_MUSE_SUPABASE_WORKSPACE`),
+creating it in `VOLC_PROJECT` / `VOLC_REGION` when there is none, reads its
+public endpoint and anon key, and checks whether the function already has its
+secrets. On a first deployment it generates the `open_muse_service` database
+role's password, the keyring, and the scheduler secret, keeps them in
+`~/.open-muse/deploy/<workspace>.json` (mode 0600; override with
+`OPEN_MUSE_DEPLOY_SECRETS`) before using them, and deploys the function and
+the scheduler with them; back that file up somewhere private. The Postgres
+host is the one value it cannot read with the CLI: take it from the
+workspace's connection details in the console. Later runs keep every secret,
+deploy the current code, and redeploy the scheduler only when the file holds
+its secret. `OPEN_MUSE_ALLOWED_ORIGINS` sets the accepted app origins first.
+It ends by checking `/health` and printing the three values for app builds.
+
 ## 1. Supabase workspace
 
 ```sh

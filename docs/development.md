@@ -20,6 +20,7 @@ npm run ios:build     # iOS Simulator app
 npm run ios:install   # Muse-account build, signed and installed on a paired iPhone
 npm run ios:testflight # Muse-account Release build, uploaded to TestFlight
 npm run native:sync   # Build and sync the iOS and Android bundles
+npm run server:deploy # Deploy or update the Open Muse service on Volcengine
 ```
 
 Open [http://127.0.0.1:4310](http://127.0.0.1:4310). Deploy `dist/` to any
