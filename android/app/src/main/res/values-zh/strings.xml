@@ -2,4 +2,6 @@
 <resources>
     <string name="channel_replies">回复</string>
     <string name="channel_reminders">提醒</string>
+    <string name="channel_working">进行中的回复</string>
+    <string name="finishing_reply">正在完成回复</string>
 </resources>

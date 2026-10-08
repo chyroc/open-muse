@@ -1,10 +1,14 @@
 import { Capacitor } from "@capacitor/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { followAndroidTextScale } from "../src/dynamic-type";
+import { reportReplying } from "../src/notifications";
 import { personalSources } from "../src/personal";
 import { appSurface } from "../src/platform";
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe("Android app", () => {
   it("names itself and reads only the sources Android has", () => {
@@ -29,5 +33,17 @@ describe("Android app", () => {
     values.clear();
     followAndroidTextScale(root, "large");
     expect(values.size).toBe(0);
+  });
+  it("tells the Android app while a reply is under way", () => {
+    const postMessage = vi.fn();
+    vi.stubGlobal("webkit", {
+      messageHandlers: { museReplying: { postMessage } },
+    });
+    reportReplying(true);
+    reportReplying(false);
+    expect(postMessage.mock.calls).toEqual([[true], [false]]);
+    // The iPhone app has no such handler; nothing is sent.
+    vi.stubGlobal("webkit", { messageHandlers: {} });
+    expect(() => reportReplying(true)).not.toThrow();
   });
 });

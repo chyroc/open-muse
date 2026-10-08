@@ -6,4 +6,6 @@
     <string name="custom_url_scheme">app.openmuse.mobile</string>
     <string name="channel_replies">Replies</string>
     <string name="channel_reminders">Reminders</string>
+    <string name="channel_working">Replies in progress</string>
+    <string name="finishing_reply">Finishing your reply</string>
 </resources>

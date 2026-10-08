@@ -88,6 +88,13 @@ public class MuseBridgePlugin extends Plugin {
         features.put("musePersonal", new MusePersonal(activity));
         features.put("museFiles", new MuseFiles(activity));
         if (MuseHealth.supported()) features.put("museHealth", new MuseHealth(activity));
+        if (MuseReplyService.supported()) {
+            features.put("museReplying", (body, reply) -> {
+                MuseReplyService.replying = Boolean.TRUE.equals(body);
+                if (!MuseReplyService.replying) MuseReplyService.stop(getContext());
+                reply.ok(null);
+            });
+        }
 
         WebView webView = getBridge().getWebView();
         // Text keeps the app's own type scale at everyday font sizes and grows
@@ -300,6 +307,14 @@ public class MuseBridgePlugin extends Plugin {
         return true;
     }
 
+    // The page runs in the WebView's own process, which Android ranks below
+    // the app once the WebView is out of sight; while a reply finishes in the
+    // background it keeps the app's rank, so it is not frozen with the page
+    // half-written.
+    private void keepRenderer(boolean keep) {
+        getBridge().getWebView().setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, !keep);
+    }
+
     void evaluate(String script) {
         WebView webView = getBridge().getWebView();
         webView.post(() -> webView.evaluateJavascript(script, null));
@@ -308,6 +323,8 @@ public class MuseBridgePlugin extends Plugin {
     @Override
     protected void handleOnResume() {
         super.handleOnResume();
+        MuseReplyService.stop(getContext());
+        keepRenderer(false);
         shake.start();
         MuseReminders.foreground = true;
         MuseNotifications.foreground = true;
@@ -316,6 +333,8 @@ public class MuseBridgePlugin extends Plugin {
     @Override
     protected void handleOnPause() {
         super.handleOnPause();
+        // Started while Open Muse is still in front, as Android requires.
+        if (MuseReplyService.start(getContext())) keepRenderer(true);
         shake.stop();
         MuseReminders.foreground = false;
         MuseNotifications.foreground = false;

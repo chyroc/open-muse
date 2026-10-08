@@ -75,6 +75,19 @@ export function replyNotice(events: readonly AgentEvent[], name: string) {
   };
 }
 
+type ReplyingBridge = { postMessage: (running: boolean) => unknown };
+
+// Whether a reply is being written. The Android app keeps running for a
+// short while after the person leaves it only while one is, so it can finish
+// and be announced; iOS grants that time on its own and has no such handler.
+export function reportReplying(running: boolean) {
+  void (
+    globalThis as unknown as {
+      webkit?: { messageHandlers?: { museReplying?: ReplyingBridge } };
+    }
+  ).webkit?.messageHandlers?.museReplying?.postMessage(running);
+}
+
 // Announces a reply that finished while the app was in the background.
 export function notifyReply(events: readonly AgentEvent[], name: string) {
   const native = bridge();

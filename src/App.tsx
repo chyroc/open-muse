@@ -85,7 +85,7 @@ import {
   reminderNotificationsSupported,
 } from "./reminderNotifications";
 import { listenForEdgePull, type EdgePull } from "./gesture";
-import { notifyReply } from "./notifications";
+import { notifyReply, reportReplying } from "./notifications";
 import { listenForShake } from "./shake";
 import { ReportSheet } from "./ReportSheet";
 import { backgroundClient } from "./background-client";
@@ -1214,6 +1214,10 @@ function Workspace({
   );
   // The message being sent in this chat, until its history has it.
   const pendingSend = pendingOutgoing(outgoing, draftKey, messageEvents);
+  // From the moment a message is sent until its reply is done, the Android
+  // app may keep running briefly after the person leaves it.
+  const replying = state === "running" || Boolean(pendingSend);
+  useEffect(() => reportReplying(replying), [replying]);
   const reminders = remindersByReply(upcoming, events);
   // The companion's reaction to a message of the person's, from the first of
   // its replies that opens with one; the person's own reaction wins.
