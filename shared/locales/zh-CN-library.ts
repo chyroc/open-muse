@@ -22,8 +22,6 @@ export const zhLibrary: Record<string, string> = {
   "MA did not return a supported file download address.":
     "MA 未返回受支持的文件下载地址。",
   "MA returned an invalid file list.": "MA 返回的文件列表格式有误。",
-  "File pagination did not finish. Refresh the Library to try again.":
-    "文件列表未能加载完成，请刷新资源库后重试。",
   "This file is not available in your Library.": "资源库中无法访问此文件。",
   "This file is not ready to open. Refresh the Library to check its status.":
     "此文件尚不可打开，请刷新资源库查看状态。",

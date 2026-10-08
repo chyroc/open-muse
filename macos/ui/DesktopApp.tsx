@@ -833,6 +833,34 @@ export function DesktopApp({ client }: { client: Client }) {
     if (!away && scroll.current)
       scroll.current.scrollTop = scroll.current.scrollHeight;
   }, [id, events.at(-1)?.id, away]);
+  // Earlier history is read as the person nears the top, and what they were
+  // reading stays in place when it arrives above.
+  const olderAnchor = useRef<number | undefined>(undefined);
+  const readOlder = () => {
+    const element = scroll.current;
+    if (!element || !task.hasOlder || task.loadingOlder || task.loading) return;
+    olderAnchor.current = element.scrollHeight - element.scrollTop;
+    void task.loadOlder();
+  };
+  const firstEventId = events[0]?.id;
+  useLayoutEffect(() => {
+    const element = scroll.current;
+    if (!element || olderAnchor.current === undefined) return;
+    element.scrollTop = element.scrollHeight - olderAnchor.current;
+    if (!task.loadingOlder) olderAnchor.current = undefined;
+  }, [firstEventId, task.loadingOlder]);
+  // History too short to scroll, or a stretch that added nothing new while
+  // the person waits at the top, reads the next one straight away.
+  useEffect(() => {
+    const element = scroll.current;
+    if (
+      element &&
+      task.hasOlder &&
+      (element.scrollHeight <= element.clientHeight + 200 ||
+        element.scrollTop < 600)
+    )
+      readOlder();
+  });
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(""), 5000);
@@ -1583,15 +1611,22 @@ export function DesktopApp({ client }: { client: Client }) {
               aria-busy={task.loading}
               onScroll={() => {
                 const element = scroll.current;
-                if (element)
+                if (element) {
                   setAway(
                     element.scrollHeight -
                       element.clientHeight -
                       element.scrollTop >
                       90,
                   );
+                  if (element.scrollTop < 600) readOlder();
+                }
               }}
             >
+              {task.hasOlder && !task.loading && (
+                <div className="chat-older" role="status">
+                  {task.loadingOlder && t("Loading earlier messages…")}
+                </div>
+              )}
               {!messages.length && !task.loading && (
                 <Empty
                   title={

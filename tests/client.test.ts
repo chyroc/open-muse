@@ -124,7 +124,10 @@ function fixture() {
         rows.push(...incoming);
         return Response.json({ data: incoming });
       }
-      return Response.json({ data: rows });
+      return Response.json({
+        data:
+          url.searchParams.get("order") === "desc" ? [...rows].reverse() : rows,
+      });
     }
     if (path === "/files" && init.method === "POST") {
       const form = init.body as FormData;
@@ -184,7 +187,17 @@ function fixture() {
       return resources[group].some((r) => r.id === id)
         ? Response.json(resources[group].find((r) => r.id === id))
         : Response.json({}, { status: 404 });
-    return Response.json({ data: resources[group] });
+    // Like Ark, sessions can be listed per agent, and lists honor a limit.
+    const agentId = url.searchParams.get("agent_id");
+    const listed = resources[group].filter(
+      (row) =>
+        !agentId ||
+        (typeof row.agent === "string"
+          ? row.agent
+          : (row.agent as { id?: string } | undefined)?.id) === agentId,
+    );
+    const limit = Number(url.searchParams.get("limit")) || listed.length;
+    return Response.json({ data: listed.slice(0, limit) });
   });
   const account = testAccount(fetcher);
   const client = new Client({
@@ -1467,25 +1480,73 @@ describe("Direct MA client", () => {
       `${ARK_BASE_URL}/sessions/session/events/stream`,
     );
   });
-  it("paginates directly and rejects repeated cursors", async () => {
+  it("reads the latest events first and never loops on page tokens", async () => {
     const f = fixture();
     await f.login();
     f.fetcher
       .mockResolvedValueOnce(
         Response.json({
-          data: [{ id: "1", type: "agent.message" }],
+          data: [{ id: "2", type: "agent.message" }],
           next_page: "opaque+/=",
         }),
       )
       .mockResolvedValueOnce(
-        Response.json({ data: [{ id: "2", type: "agent.message" }] }),
+        Response.json({ data: [{ id: "1", type: "agent.message" }] }),
       );
-    expect(await f.client.events("session")).toHaveLength(2);
+    expect((await f.client.events("session")).map((e) => e.id)).toEqual([
+      "1",
+      "2",
+    ]);
+    expect(f.fetcher.mock.calls.at(-2)![0]).toContain("order=desc");
     expect(f.fetcher.mock.calls.at(-1)![0]).toContain("page=opaque%2B%2F%3D");
+    // A token Ark gives twice ends the read instead of failing it.
     f.fetcher.mockImplementation(async () =>
-      Response.json({ data: [], next_page: "repeat" }),
+      Response.json({
+        data: [{ id: "same", type: "agent.message" }],
+        next_page: "repeat",
+      }),
     );
-    await expect(f.client.events("session")).rejects.toThrow("pagination");
+    expect((await f.client.events("session")).map((e) => e.id)).toEqual([
+      "same",
+    ]);
+    // An endless history opens with its latest part and reads the rest on
+    // request, a few pages at a time.
+    let page = 0;
+    f.fetcher.mockImplementation(async () => {
+      page++;
+      return Response.json({
+        data: Array.from({ length: 200 }, (_, row) => ({
+          id: `${page}-${row}`,
+          type: "agent.message",
+        })),
+        next_page: `page-${page}`,
+      });
+    });
+    const window = await f.client.eventWindow("session");
+    expect(window.events).toHaveLength(400);
+    expect(window.older).toEqual({ session: "session", page: "page-2" });
+    expect(page).toBe(2);
+    const older = await f.client.olderEvents("session", window.older!);
+    expect(older.events).toHaveLength(400);
+    expect(older.older).toEqual({ session: "session", page: "page-4" });
+    // Later reads only take what came after the events already shown.
+    page = 10;
+    const known = new Set(window.events.map((event) => event.id));
+    f.fetcher.mockImplementation(async () =>
+      Response.json({
+        data: [
+          { id: "new", type: "agent.message" },
+          { id: window.events.at(-1)!.id, type: "agent.message" },
+        ],
+        next_page: "more",
+      }),
+    );
+    const update = await f.client.eventWindow("session", undefined, known);
+    expect(update.replace).toBe(false);
+    expect(update.events.map((event) => event.id)).toEqual([
+      window.events.at(-1)!.id,
+      "new",
+    ]);
   });
   it("keeps failures real without manufacturing assistant replies", async () => {
     const f = fixture();

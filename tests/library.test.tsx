@@ -149,13 +149,17 @@ describe("DirectLibrary", () => {
     ).toEqual([]);
     expect(request).not.toHaveBeenCalled();
   });
-  it("stops on repeated cursors and malformed pages without guessing", async () => {
-    const repeat = ark(() => ({ data: [], has_more: true, last_id: "file-a" }));
-    await expect(
-      new DirectLibrary(repeat.ark, async () => sessions).list(),
-    ).rejects.toThrow(
-      t("File pagination did not finish. Refresh the Library to try again."),
-    );
+  it("ends the list on a repeated cursor and refuses malformed pages", async () => {
+    const repeat = ark(() => ({
+      data: [raw("file-a")],
+      has_more: true,
+      last_id: "file-a",
+    }));
+    const files = await new DirectLibrary(
+      repeat.ark,
+      async () => sessions,
+    ).list();
+    expect(files.map((file) => file.id)).toEqual(["file-a"]);
     expect(repeat.request).toHaveBeenCalledTimes(2);
     const invalid = ark(() => ({ data: [], next_page: "x" }));
     await expect(

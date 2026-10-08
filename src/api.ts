@@ -210,6 +210,8 @@ type Runtime = {
   vault?: DirectVault;
   redact: (text: string) => string;
   abort: AbortController;
+  // This identity's agents, read at most every few minutes.
+  agents?: { at: number; ids: Promise<ReadonlySet<string>> };
 };
 const validId = (id: string) => {
   if (!/^[\w-]{1,200}$/.test(id))
@@ -218,6 +220,15 @@ const validId = (id: string) => {
 };
 
 // The session fields that tell which identity's workspace a session runs on.
+// Where the earlier part of a conversation continues (see olderEvents).
+export type OlderEvents = { session: string; page?: string };
+export type EventWindow = {
+  events: AgentEvent[];
+  older?: OlderEvents;
+  // Whether these events replace what was shown, rather than add to it.
+  replace: boolean;
+};
+
 type OwnedSessionRow = {
   id: string;
   agent?: string | { id?: string; metadata?: Record<string, string> } | null;
@@ -690,8 +701,7 @@ export class Client {
           }),
         );
       },
-      list: () =>
-        this.collect<Session>(r.ark, "/sessions?limit=100&order=desc"),
+      list: () => this.recentSessions(r),
       create: async (title) => {
         if (!selection)
           throw new ApiError(400, t("Generation preparation did not finish."));
@@ -699,11 +709,7 @@ export class Client {
         await this.remember(r, [session]);
         return session;
       },
-      events: (id) =>
-        this.collect<AgentEvent>(
-          r.ark,
-          `/sessions/${validId(id)}/events?order=asc&limit=200`,
-        ),
+      events: (id) => this.recentEvents(r, id),
       send: (id, event) =>
         r.ark.request(`/sessions/${validId(id)}/events`, {
           method: "POST",
@@ -802,33 +808,93 @@ export class Client {
     await workspace.start();
     await workspace.wait();
   }
+  // The rows of an Ark list, in the order Ark returns them, each once by id.
+  // Ark has returned a page token it gave before; that, or a page with
+  // nothing new, ends the read rather than looping. A list longer than
+  // maxPages pages is cut there: callers that show or search recent items ask
+  // for fewer pages, and nothing reads without end.
   private async collect<T>(
     ark: ArkClient,
     path: string,
     signal?: AbortSignal,
+    maxPages = 1000,
   ): Promise<T[]> {
     const data: T[] = [];
+    const ids = new Set<string>();
     const seen = new Set<string>();
     let page = "";
-    do {
+    for (let read = 0; read < maxPages; read++) {
       const result = await ark.request<Page<T>>(
         `${path}${page ? `&page=${encodeURIComponent(page)}` : ""}`,
         { signal },
       );
       if (!Array.isArray(result.data))
         throw new ApiError(502, t("Ark returned an invalid list response."));
-      data.push(...result.data);
+      let fresh = 0;
+      for (const row of result.data) {
+        const id = (row as { id?: unknown }).id;
+        if (typeof id === "string") {
+          if (ids.has(id)) continue;
+          ids.add(id);
+        }
+        data.push(row);
+        fresh++;
+      }
       page = result.next_page ?? "";
-      if (page && (seen.has(page) || seen.size >= 100))
-        throw new ApiError(
-          502,
-          t(
-            "History pagination repeated or exceeded the safety limit. No writes were retried.",
-          ),
-        );
+      if (!page || seen.has(page) || (result.data.length && !fresh)) break;
       seen.add(page);
-    } while (page);
+    }
     return data;
+  }
+  // The newest events of a session, oldest first: enough for readers that
+  // look at the latest turns, such as confirming a message just sent or
+  // finding the tool calls that wait for an answer.
+  private async recentEvents(r: Runtime, id: string, signal?: AbortSignal) {
+    return (await this.latestEvents(r.ark, id, { pages: 5, signal })).rows;
+  }
+  // A session's events newest first, a few pages at a time: from `page`, or
+  // from the newest, until `pages` pages are read or an event in `until` is
+  // reached. Returns them oldest first, with the token for the events before
+  // them when the session has more.
+  private async latestEvents(
+    ark: ArkClient,
+    id: string,
+    options: {
+      pages: number;
+      page?: string;
+      until?: ReadonlySet<string>;
+      signal?: AbortSignal;
+    },
+  ): Promise<{ rows: AgentEvent[]; older?: string; reached: boolean }> {
+    const rows: AgentEvent[] = [];
+    const ids = new Set<string>();
+    const seen = new Set<string>();
+    let page = options.page ?? "";
+    for (let read = 0; read < options.pages; read++) {
+      const result = await ark.request<Page<AgentEvent>>(
+        `/sessions/${validId(id)}/events?order=desc&limit=200${page ? `&page=${encodeURIComponent(page)}` : ""}`,
+        { signal: options.signal },
+      );
+      if (!Array.isArray(result.data))
+        throw new ApiError(502, t("Ark returned an invalid list response."));
+      let fresh = 0;
+      let reached = false;
+      for (const event of result.data) {
+        if (options.until?.has(event.id)) reached = true;
+        if (ids.has(event.id)) continue;
+        ids.add(event.id);
+        rows.push(event);
+        fresh++;
+      }
+      const next = result.next_page ?? "";
+      // The start of the session, or a token Ark already gave.
+      if (!next || seen.has(next) || (result.data.length && !fresh))
+        return { rows: rows.reverse(), reached };
+      seen.add(next);
+      page = next;
+      if (reached) return { rows: rows.reverse(), older: page, reached };
+    }
+    return { rows: rows.reverse(), older: page, reached: false };
   }
   private async remember(runtime: Runtime, rows: Session[]) {
     const saved = await this.db.update<Record<string, Session>>(
@@ -856,22 +922,37 @@ export class Client {
     );
     return rows.map((row) => saved[row.id]);
   }
+  // The agents of this identity's workspace, by their workspace label. The
+  // list is short and changes only when a workspace is set up again.
+  private ownAgents(r: Runtime): Promise<ReadonlySet<string>> {
+    const now = this.now();
+    if (!r.agents || now - r.agents.at > 5 * 60_000) {
+      const ids = this.collect<{
+        id: string;
+        metadata?: Record<string, string>;
+      }>(r.ark, "/agents?limit=100").then(
+        (agents) =>
+          new Set(
+            agents
+              .filter((agent) => agent.metadata?.open_muse_workspace === r.key)
+              .map((agent) => agent.id),
+          ),
+      );
+      r.agents = { at: now, ids };
+      ids.catch(() => {
+        if (r.agents?.ids === ids) r.agents = undefined;
+      });
+    }
+    return r.agents.ids;
+  }
   // Sessions under a shared Ark key may belong to other identities. One is
   // this identity's when it runs on an agent of this identity's workspace or
   // when this identity's conversation index tracks it.
   private async ownedSessions(r: Runtime) {
-    const [agents, index] = await Promise.all([
-      this.collect<{ id: string; metadata?: Record<string, string> }>(
-        r.ark,
-        "/agents?limit=100",
-      ),
+    const [ownAgents, index] = await Promise.all([
+      this.ownAgents(r),
       this.conversations(r).index(),
     ]);
-    const ownAgents = new Set(
-      agents
-        .filter((agent) => agent.metadata?.open_muse_workspace === r.key)
-        .map((agent) => agent.id),
-    );
     const tracked = new Set<string>();
     if (index.mainId) tracked.add(index.mainId);
     for (const [id, entry] of Object.entries(index.entries)) {
@@ -889,18 +970,60 @@ export class Client {
       return ownAgents.has(agent ?? row.agent_id ?? "");
     };
   }
+  // This identity's sessions, newest first. They are read per agent of its
+  // workspace, so the other sessions under a shared Ark key, however many,
+  // are never paged through; conversations it tracks on other agents, as
+  // after a workspace was set up again, are read one by one.
+  private async ownedSessionRows(r: Runtime, signal?: AbortSignal) {
+    const [agents, index] = await Promise.all([
+      this.ownAgents(r),
+      this.conversations(r).index(),
+    ]);
+    const lists = await Promise.all(
+      [...agents].map((agent) =>
+        this.collect<Session & OwnedSessionRow>(
+          r.ark,
+          `/sessions?limit=100&order=desc&agent_id=${encodeURIComponent(agent)}`,
+          signal,
+          50,
+        ),
+      ),
+    );
+    const rows = new Map(lists.flat().map((row) => [row.id, row]));
+    const missing = [index.mainId, ...Object.keys(index.entries)]
+      .filter((id): id is string => Boolean(id) && !rows.has(id!))
+      .filter((id) => !index.entries[id]?.continuedBy)
+      .slice(0, 20);
+    for (const row of await Promise.all(
+      missing.map((id) =>
+        r.ark
+          .request<Session & OwnedSessionRow>(`/sessions/${validId(id)}`, {
+            signal,
+          })
+          .catch(() => undefined),
+      ),
+    ))
+      if (row) rows.set(row.id, row);
+    return [...rows.values()].sort((a, b) =>
+      (b.created_at ?? "").localeCompare(a.created_at ?? ""),
+    );
+  }
+  // The newest sessions under the key, to find one just created by its
+  // marker title.
+  private recentSessions(r: Runtime) {
+    return this.collect<Session>(
+      r.ark,
+      "/sessions?limit=100&order=desc",
+      undefined,
+      5,
+    );
+  }
   async sessions(): Promise<Page<Session>> {
     if (!this.signedIn()) return { data: [] };
     const r = this.context();
-    const [rows, owned] = await Promise.all([
-      this.collect<Session & OwnedSessionRow>(
-        r.ark,
-        "/sessions?limit=100&order=desc",
-      ),
-      this.ownedSessions(r),
-    ]);
+    const rows = await this.ownedSessionRows(r, r.abort.signal);
     r.abort.signal.throwIfAborted();
-    return { data: await this.remember(r, rows.filter(owned)) };
+    return { data: await this.remember(r, rows) };
   }
   async session(id: string, signal?: AbortSignal) {
     const r = this.context();
@@ -947,8 +1070,7 @@ export class Client {
         }
       | undefined;
     return new Conversations(r.key, this.db, {
-      list: () =>
-        this.collect<Session>(r.ark, "/sessions?limit=100&order=desc"),
+      list: () => this.recentSessions(r),
       get: (id) => r.ark.get(validId(id)),
       needsContinuation: async (session) => {
         if (["running", "rescheduling"].includes(session.status)) return false;
@@ -1193,41 +1315,26 @@ export class Client {
           )
         )
           return false;
-        const [agents, sessions] = await Promise.all([
-          this.collect<{ id: string; metadata?: Record<string, string> }>(
-            r.ark,
-            "/agents?limit=100",
-          ),
-          this.collect<
-            Session & {
-              agent?:
-                string | { id?: string; metadata?: Record<string, string> };
-              agent_id?: string;
-            }
-          >(r.ark, "/sessions?limit=100&order=desc"),
-        ]);
-        const owned = new Set(
-          agents
-            .filter((agent) => agent.metadata?.open_muse_workspace === r.key)
-            .map((agent) => agent.id),
-        );
-        return !sessions.some(
+        // Any session on one of this identity's agents means it has used
+        // the workspace before; one row per agent is enough to tell.
+        for (const agent of await this.ownAgents(r)) {
+          const page = await r.ark.request<Page<Session>>(
+            `/sessions?limit=1&order=desc&agent_id=${encodeURIComponent(agent)}`,
+          );
+          if (page.data?.length) return false;
+        }
+        // A session whose agent has since been removed still carries the
+        // workspace's label.
+        const recent = (await this.recentSessions(r)) as (Session &
+          OwnedSessionRow)[];
+        return !recent.some(
           (session) =>
-            owned.has(
-              typeof session.agent === "string"
-                ? session.agent
-                : (session.agent?.id ?? session.agent_id ?? ""),
-            ) ||
-            (typeof session.agent === "object" &&
-              session.agent?.metadata?.open_muse_workspace === r.key),
+            typeof session.agent === "object" &&
+            session.agent?.metadata?.open_muse_workspace === r.key,
         );
       },
       open: () => this.openConversationFor(r, "main", "Main chat", "general"),
-      history: (id) =>
-        this.collect<AgentEvent>(
-          r.ark,
-          `/sessions/${validId(id)}/events?order=asc&limit=200`,
-        ),
+      history: (id) => this.recentEvents(r, id),
       send: (id, text, eventId) =>
         this.submit(id, { type: "user.message", text }, undefined, {
           runtime: r,
@@ -1247,11 +1354,7 @@ export class Client {
         const { mainId } = await this.conversations(r).index();
         return mainId ? r.ark.get(validId(mainId)) : undefined;
       },
-      history: (id) =>
-        this.collect<AgentEvent>(
-          r.ark,
-          `/sessions/${validId(id)}/events?order=asc&limit=200`,
-        ),
+      history: (id) => this.recentEvents(r, id),
       send: (id, text, eventId) =>
         this.submit(id, { type: "user.message", text }, undefined, {
           runtime: r,
@@ -1311,11 +1414,7 @@ export class Client {
       mainId: async () => (await this.conversations(r).index()).mainId,
       server: () => this.serverUpcoming(r),
       register: (session) => this.saveServerUpcoming(r, true, session),
-      history: (id) =>
-        this.collect<AgentEvent>(
-          r.ark,
-          `/sessions/${validId(id)}/events?order=asc&limit=200`,
-        ),
+      history: (id) => this.recentEvents(r, id),
       send: (id, text, eventId) =>
         this.submit(id, { type: "user.message", text }, undefined, {
           runtime: r,
@@ -1463,10 +1562,7 @@ export class Client {
     r.abort.signal.throwIfAborted();
     const index = await this.conversations(r).index();
     if (index.sending) {
-      const history = await this.collect<AgentEvent>(
-        r.ark,
-        `/sessions/${validId(index.sending.session)}/events?order=asc&limit=200`,
-      );
+      const history = await this.recentEvents(r, index.sending.session);
       await this.conversations(r).confirmSend(
         index.sending.session,
         history.map((event) => event.id),
@@ -1498,11 +1594,7 @@ export class Client {
   }
   private choiceService(r: Runtime) {
     return (r.choices ??= new DirectChoices(r.key, this.db, {
-      history: (id) =>
-        this.collect<AgentEvent>(
-          r.ark,
-          `/sessions/${validId(id)}/events?order=asc&limit=200`,
-        ),
+      history: (id) => this.recentEvents(r, id),
       session: (id) => r.ark.get(validId(id)),
       send: (id, text, eventId) =>
         this.submit(id, { type: "user.message", text }, undefined, {
@@ -1595,44 +1687,131 @@ export class Client {
     for (const old of evicted)
       await this.db.set(`${r.key}:events:${old}`, null);
   }
-  async events(id: string, signal?: AbortSignal) {
+  // Where the earlier part of a conversation continues: a page of one of its
+  // chapters, or the newest events of the chapter before.
+  private async readChapter(
+    r: Runtime,
+    id: string,
+    source: string,
+    options: {
+      pages: number;
+      page?: string;
+      until?: ReadonlySet<string>;
+      signal?: AbortSignal;
+    },
+  ) {
+    const read = await this.latestEvents(r.ark, source, options);
+    await this.choiceService(r).reconcile(source, read.rows);
+    await this.welcomeService(r).reconcile(source, read.rows);
+    if (source === id)
+      await this.conversations(r).confirmSend(
+        id,
+        read.rows.map((event) => event.id),
+      );
+    const events = await Promise.all(
+      read.rows.map(async (event) =>
+        source === id
+          ? this.annotate(r, id, event)
+          : {
+              ...(await this.annotate(r, source, event)),
+              id: `history-${source}-${event.id}`,
+              source_session_id: source,
+              source_event_id: event.id,
+            },
+      ),
+    );
+    return { ...read, events };
+  }
+  // The latest part of a conversation, across its chapters: a few hundred
+  // events on the first read, so even a very long history opens at once.
+  // Given the events already shown, only what came after them is read. When
+  // the gap is too large to bridge, a fresh latest part replaces what was
+  // shown (`replace`). `older` says where the earlier part continues, read
+  // with olderEvents as the person scrolls up.
+  async eventWindow(
+    id: string,
+    signal?: AbortSignal,
+    known?: ReadonlySet<string>,
+  ): Promise<EventWindow> {
     const r = this.context();
-    const index = await this.conversations(r).index();
-    const previous: AgentEvent[] = [];
-    for (const source of index.entries[id]?.previousIds ?? []) {
+    const chapters =
+      (await this.conversations(r).index()).entries[id]?.previousIds ?? [];
+    const incremental = Boolean(known?.size);
+    const read = await this.readChapter(r, id, id, {
+      pages: incremental ? 5 : 2,
+      until: incremental ? known : undefined,
+      signal,
+    });
+    if (incremental && read.reached)
+      return { events: read.events, replace: false };
+    let events = read.events;
+    let older: OlderEvents | undefined = read.older
+      ? { session: id, page: read.older }
+      : chapters.length
+        ? { session: chapters.at(-1)! }
+        : undefined;
+    // A chapter that has only begun shows the end of the one before.
+    while (events.length < 100 && older) {
+      const more = await this.olderEvents(id, older, signal);
+      events = [...more.events, ...events];
+      older = more.older;
+    }
+    return { events, ...(older ? { older } : {}), replace: true };
+  }
+  // The part of a conversation before `from`, a few hundred events at a time.
+  async olderEvents(
+    id: string,
+    from: OlderEvents,
+    signal?: AbortSignal,
+  ): Promise<{ events: AgentEvent[]; older?: OlderEvents }> {
+    const r = this.context();
+    const chapters =
+      (await this.conversations(r).index()).entries[id]?.previousIds ?? [];
+    const position =
+      from.session === id ? chapters.length : chapters.indexOf(from.session);
+    if (position < 0) throw new ApiError(400, t("Invalid resource ID."));
+    const read = await this.readChapter(r, id, from.session, {
+      pages: 2,
+      page: from.page,
+      signal,
+    });
+    const older: OlderEvents | undefined = read.older
+      ? { session: from.session, page: read.older }
+      : position > 0
+        ? { session: chapters[position - 1] }
+        : undefined;
+    return { events: read.events, ...(older ? { older } : {}) };
+  }
+  // The latest part of a conversation, for readers that look at recent
+  // turns; see eventWindow.
+  async events(id: string, signal?: AbortSignal) {
+    return (await this.eventWindow(id, signal)).events;
+  }
+  // A conversation's whole history across its chapters, for an export.
+  async allEvents(id: string, signal?: AbortSignal) {
+    const r = this.context();
+    const chapters =
+      (await this.conversations(r).index()).entries[id]?.previousIds ?? [];
+    const events: AgentEvent[] = [];
+    for (const source of [...chapters, id]) {
       const rows = await this.collect<AgentEvent>(
         r.ark,
         `/sessions/${validId(source)}/events?order=asc&limit=200`,
         signal,
       );
-      await this.choiceService(r).reconcile(source, rows);
-      await this.welcomeService(r).reconcile(source, rows);
-      previous.push(
-        ...(await Promise.all(
-          rows.map(async (event) => ({
-            ...(await this.annotate(r, source, event)),
-            id: `history-${source}-${event.id}`,
-            source_session_id: source,
-            source_event_id: event.id,
-          })),
-        )),
-      );
+      for (const event of rows)
+        events.push(
+          source === id
+            ? await this.annotate(r, id, event)
+            : {
+                ...(await this.annotate(r, source, event)),
+                id: `history-${source}-${event.id}`,
+                source_session_id: source,
+                source_event_id: event.id,
+              },
+        );
     }
-    const rows = await this.collect<AgentEvent>(
-      r.ark,
-      `/sessions/${validId(id)}/events?order=asc&limit=200`,
-      signal,
-    );
-    await this.choiceService(r).reconcile(id, rows);
-    await this.welcomeService(r).reconcile(id, rows);
-    await this.conversations(r).confirmSend(
-      id,
-      rows.map((event) => event.id),
-    );
-    return [
-      ...previous,
-      ...(await Promise.all(rows.map((event) => this.annotate(r, id, event)))),
-    ];
+    return events;
   }
   send(
     id: string,
@@ -1730,11 +1909,7 @@ export class Client {
       )
         mainWrite = event.id;
       if (input.type === "user.tool_confirmation") {
-        const history = await this.collect<AgentEvent>(
-          r.ark,
-          `/sessions/${validId(id)}/events?order=asc&limit=200`,
-          signal,
-        );
+        const history = await this.recentEvents(r, id, signal);
         const key = this.approvalKey(r, id, input.tool_use_id);
         const previous = await this.db.get<Approval>(key);
         if (input.automatic) {
@@ -1871,11 +2046,7 @@ export class Client {
       );
     this.sends.add(lock);
     try {
-      const history = await this.collect<AgentEvent>(
-        r.ark,
-        `/sessions/${validId(id)}/events?order=asc&limit=200`,
-        signal,
-      );
+      const history = await this.recentEvents(r, id, signal);
       const pending = new Set(pendingCustomTools(history).map((e) => e.id));
       if (
         new Set(input.map((item) => item.custom_tool_use_id)).size !==
@@ -2025,10 +2196,7 @@ export class Client {
   // explicitly tracks locally, may contribute files to the Library.
   private async librarySessionTitles(r: Runtime) {
     const [rows, index, saved] = await Promise.all([
-      this.collect<Session & { agent?: { metadata?: Record<string, string> } }>(
-        r.ark,
-        "/sessions?limit=100&order=desc",
-      ),
+      this.ownedSessionRows(r),
       this.conversations(r).index(),
       this.db.get<LibraryItem[]>(`${r.key}:library`),
     ]);
@@ -2043,11 +2211,9 @@ export class Client {
       known.set(index.mainId, t("Main chat"));
     for (const item of saved ?? [])
       if (!known.has(item.session_id)) known.set(item.session_id, item.title);
+    // Every row is on one of this identity's agents or tracked by it.
     for (const row of rows)
-      if (
-        !known.has(row.id) &&
-        row.agent?.metadata?.open_muse_workspace === r.key
-      )
+      if (!known.has(row.id))
         known.set(row.id, row.title || t("Untitled conversation"));
     return known;
   }
@@ -2387,10 +2553,7 @@ export class Client {
     if (!main) return false;
     const events = cached
       ? await this.cachedEvents(main)
-      : await this.collect<AgentEvent>(
-          r.ark,
-          `/sessions/${validId(main)}/events?order=asc&limit=200`,
-        );
+      : await this.recentEvents(r, main);
     const shown = larkSignedIn(events);
     if (shown !== undefined) return shown;
     return false;
@@ -2470,11 +2633,12 @@ export class Client {
   async saveReply(session_id: string, event_id: string) {
     const r = this.context();
     const session = await r.ark.get(validId(session_id));
-    const history = await this.collect<AgentEvent>(
-      r.ark,
-      `/sessions/${validId(session_id)}/events?order=asc&limit=200`,
-    );
-    const event = history.find((e) => e.id === event_id);
+    // Newest first until the reply is found: it is usually recent.
+    const history = await this.latestEvents(r.ark, session_id, {
+      pages: 100,
+      until: new Set([event_id]),
+    });
+    const event = history.rows.find((e) => e.id === event_id);
     if (event?.type !== "agent.message" || !eventText(event).trim())
       throw new ApiError(
         404,

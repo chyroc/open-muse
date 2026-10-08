@@ -441,8 +441,15 @@ describe("Personal identity documents", () => {
       wait: async () => {},
     });
     await expect(reader.read()).rejects.toThrow("Multiple personal");
+    // A token Ark repeats ends the list rather than failing the read.
     f.fetcher.mockImplementation(async () =>
       Response.json({ data: [], next_page: "loop" }),
+    );
+    await expect(reader.read()).resolves.toBeDefined();
+    // A list that never ends is refused before anything is written.
+    let page = 0;
+    f.fetcher.mockImplementation(async () =>
+      Response.json({ data: [], next_page: `page-${++page}` }),
     );
     await expect(reader.read()).rejects.toThrow("pagination did not finish");
     expect(f.writes()).toHaveLength(0);

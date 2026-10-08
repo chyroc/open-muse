@@ -8,8 +8,6 @@ export const zhErrors: Record<string, string> = {
   "Add an Ark API key in Settings first.": "请先在设置中添加 Ark API Key。",
   "Generation preparation did not finish.": "生成准备尚未完成。",
   "Ark returned an invalid list response.": "Ark 返回的列表响应无效。",
-  "History pagination repeated or exceeded the safety limit. No writes were retried.":
-    "历史记录分页重复或超出安全限制。未重试任何写入操作。",
   "Wait for the current response to finish before continuing this conversation.":
     "请等待当前回复完成后再继续此对话。",
   "Conversation history links are inconsistent. No history was replaced.":

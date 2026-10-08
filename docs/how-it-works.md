@@ -741,6 +741,15 @@ discussion links belong to the device's own posts.
 
 Conversations support streamed events, history backfill, interruption, tool
 approvals, Markdown export, goals, and saving real replies with source links.
+
+A conversation opens on its latest few hundred events, read newest first;
+earlier ones, across its chapters, load as the person scrolls up, and an
+export reads the whole history. Keeping an open conversation current reads
+only what came after the events already shown. The conversation list reads the
+account's own agents' sessions rather than every session under the Ark key.
+List reads end at a page token that repeats or a page with nothing new instead
+of failing, and very long lists are cut at a fixed number of pages; only lists
+a write depends on, such as personal memory, refuse to act on a partial read.
 MA Studio retains 52 operations covering agents, environments, sessions, memory,
 connections, skills, and files. Studio writes require confirmation; deletion
 requires checking the target ID. See [MA coverage](ma-coverage.md).

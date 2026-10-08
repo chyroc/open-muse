@@ -847,6 +847,35 @@ function Workspace({
     reactions,
     outgoing?.at,
   ]);
+  // Earlier history is read as the person nears the top, and what they were
+  // reading stays where it was when it arrives above. WebKit has no scroll
+  // anchoring, so the distance from the bottom is kept by hand.
+  const olderAnchor = useRef<number | undefined>(undefined);
+  const readOlder = () => {
+    const body = conversationBody.current;
+    if (!body || !task.hasOlder || task.loadingOlder || task.loading) return;
+    olderAnchor.current = body.scrollHeight - body.scrollTop;
+    void task.loadOlder();
+  };
+  const firstEventId = events[0]?.id;
+  useLayoutEffect(() => {
+    const body = conversationBody.current;
+    if (!body || olderAnchor.current === undefined) return;
+    body.scrollTop = body.scrollHeight - olderAnchor.current;
+    if (!task.loadingOlder) olderAnchor.current = undefined;
+  }, [firstEventId, task.loadingOlder]);
+  // A short stretch of history that does not fill the screen cannot be
+  // scrolled up, and one that added nothing new leaves the person at the
+  // top with no scroll to come, so the next one is read straight away.
+  useEffect(() => {
+    const body = conversationBody.current;
+    if (
+      body &&
+      task.hasOlder &&
+      (body.scrollHeight <= body.clientHeight + 200 || body.scrollTop < 600)
+    )
+      readOlder();
+  });
   // Content that grows after it is shown, such as history merged in or
   // pictures that finish loading, keeps the pin unless the person scrolled
   // away from the bottom.
@@ -938,7 +967,11 @@ function Workspace({
         view: origin,
         text,
         at: Date.now(),
-        attachments: sending.map(({ key, name, kind }) => ({ key, name, kind })),
+        attachments: sending.map(({ key, name, kind }) => ({
+          key,
+          name,
+          kind,
+        })),
       });
       setDrafts((current) => ({ ...current, [origin]: "" }));
       setStaged([]);
@@ -1103,9 +1136,18 @@ function Workspace({
     navigate("/new");
   }
   async function exportConversation() {
+    // The whole conversation, not only the part shown so far.
+    let all = events;
+    if (activeId && task.hasOlder)
+      try {
+        all = await client.allEvents(activeId);
+      } catch (error) {
+        setActionError((error as Error).message);
+        return;
+      }
     const text =
       `# ${index.entries[activeId ?? ""]?.title ?? task.session?.title ?? t("Main chat")}\n\n` +
-      events
+      all
         .filter(
           (event) =>
             !event.app_initiation &&
@@ -1311,8 +1353,15 @@ function Workspace({
   });
   if (seenMessages.current.conversation !== activeId)
     seenMessages.current = { conversation: activeId, ids: new Set() };
+  // Only messages after the ones already shown arrive; earlier history read
+  // as the person scrolls up appears in place.
+  let lastSeen = -1;
+  messageEvents.forEach((event, position) => {
+    if (seenMessages.current.ids.has(event.id)) lastSeen = position;
+  });
   const unseen = messageEvents.filter(
-    (event) => !seenMessages.current.ids.has(event.id),
+    (event, position) =>
+      position > lastSeen && !seenMessages.current.ids.has(event.id),
   );
   // A message already shown while it was being sent is in place, so it
   // takes the bubble's spot without rising in again.
@@ -1413,8 +1462,19 @@ function Workspace({
                 setAwayFromBottom(
                   body.scrollHeight - body.scrollTop - body.clientHeight > 100,
                 );
+                if (body.scrollTop < 600) readOlder();
               }}
             >
+              {task.hasOlder && !task.loading && (
+                <div className="chat-older" role="status">
+                  {task.loadingOlder && (
+                    <>
+                      <LoaderCircle size={16} className="spin" />
+                      <span>{t("Loading earlier messages…")}</span>
+                    </>
+                  )}
+                </div>
+              )}
               {!isSideDraft && !taskRoute && (
                 <WelcomeStatus
                   state={welcome}

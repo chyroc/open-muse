@@ -36,7 +36,7 @@ export async function agentDataMarkdown(client: Client, name: string) {
       session.id === index.mainId
         ? t("Main chat")
         : (index.entries[session.id]?.title ?? session.title);
-    const events: AgentEvent[] = await client.events(session.id);
+    const events: AgentEvent[] = await client.allEvents(session.id);
     lines.push("", `### ${title}`, "");
     for (const event of events) {
       if (event.app_initiation) continue;

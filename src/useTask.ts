@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentEvent, Session } from "../shared/types";
-import { mergeEvents, mergeHistorySnapshot } from "../shared/types";
-import type { Client } from "./api";
+import {
+  mergeEvents,
+  mergeHistorySnapshot,
+  mergeHistoryWindow,
+} from "../shared/types";
+import type { Client, OlderEvents } from "./api";
 import { isTransientFailure } from "../shared/network-error";
 import { AutoApprover } from "./autoApprove";
 
@@ -17,8 +21,13 @@ export function useTask(client: Client, id?: string) {
   const [autoApprovalFailures, setAutoApprovalFailures] = useState<string[]>(
     [],
   );
+  // Whether earlier events remain to be read as the person scrolls up.
+  const [hasOlder, setHasOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const syncRef = useRef<() => Promise<void>>(async () => {});
+  const olderRef = useRef<() => Promise<void>>(async () => {});
   const refresh = useCallback(() => syncRef.current(), []);
+  const loadOlder = useCallback(() => olderRef.current(), []);
   useEffect(() => {
     setEvents([]);
     setSession(undefined);
@@ -27,6 +36,8 @@ export function useTask(client: Client, id?: string) {
     setCurrent(id);
     setConnected(false);
     setAutoApprovalFailures([]);
+    setHasOlder(false);
+    setLoadingOlder(false);
     if (!id) return;
     const controller = new AbortController();
     const { signal } = controller;
@@ -38,6 +49,12 @@ export function useTask(client: Client, id?: string) {
     let quietFailures = 0;
     let historyLoaded = false;
     let knownEvents: AgentEvent[] = [];
+    let older: OlderEvents | undefined;
+    let readingOlder = false;
+    const setOlder = (next: OlderEvents | undefined) => {
+      older = next;
+      setHasOlder(Boolean(next));
+    };
     const receive = (incoming: AgentEvent[]) => {
       if (signal.aborted) return;
       knownEvents = mergeEvents(knownEvents, incoming);
@@ -57,14 +74,27 @@ export function useTask(client: Client, id?: string) {
       if (syncing || signal.aborted) return;
       syncing = true;
       const beforeRead = knownEvents;
+      // After the first read only what came after the events already shown
+      // is read, so a long conversation stays cheap to keep current.
+      const known = historyLoaded
+        ? new Set(
+            knownEvents
+              .filter((event) => !event.source_session_id)
+              .map((event) => event.id),
+          )
+        : undefined;
       try {
-        const [history, remote] = await Promise.all([
-          client.events(id, signal),
+        const [window, remote] = await Promise.all([
+          client.eventWindow(id, signal, known),
           client.session(id, signal),
         ]);
         if (signal.aborted) return;
         historyLoaded = true;
-        receive(mergeHistorySnapshot(beforeRead, knownEvents, history));
+        if (window.replace) {
+          receive(mergeHistorySnapshot(beforeRead, knownEvents, window.events));
+          setOlder(window.older);
+        } else
+          receive(mergeHistoryWindow(beforeRead, knownEvents, window.events));
         setSession(remote);
         setError("");
         quietFailures = 0;
@@ -90,6 +120,25 @@ export function useTask(client: Client, id?: string) {
       if (!signal.aborted) setLoading(false);
     };
     syncRef.current = sync;
+    // Earlier events, a few hundred at a time, as the person scrolls up.
+    olderRef.current = async () => {
+      if (!older || readingOlder || !historyLoaded || signal.aborted) return;
+      readingOlder = true;
+      setLoadingOlder(true);
+      try {
+        const from = older;
+        const more = await client.olderEvents(id, from, signal);
+        if (signal.aborted || older !== from) return;
+        knownEvents = mergeEvents(knownEvents, more.events);
+        setEvents(knownEvents);
+        setOlder(more.older);
+      } catch {
+        // Reading earlier history is tried again on the next scroll.
+      } finally {
+        readingOlder = false;
+        if (!signal.aborted) setLoadingOlder(false);
+      }
+    };
     const connect = async () => {
       if (signal.aborted) return;
       try {
@@ -142,6 +191,7 @@ export function useTask(client: Client, id?: string) {
       document.removeEventListener("visibilitychange", foreground);
       window.removeEventListener("online", foreground);
       syncRef.current = async () => {};
+      olderRef.current = async () => {};
     };
   }, [client, id]);
   const stale = current !== id;
@@ -153,5 +203,8 @@ export function useTask(client: Client, id?: string) {
     connected,
     refresh,
     autoApprovalFailures,
+    hasOlder: stale ? false : hasOlder,
+    loadingOlder: stale ? false : loadingOlder,
+    loadOlder,
   };
 }

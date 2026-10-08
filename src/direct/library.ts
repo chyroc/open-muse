@@ -45,17 +45,15 @@ export class DirectLibrary {
       }
       if (!result.data.has_more) break;
       after = result.data.last_id;
+      // A cursor that repeats or does not look like a file ends the list
+      // with what was read, as does the page limit: the Library only shows
+      // files, so a long or inconsistent list is cut rather than refused.
       if (
         !fileId.safeParse(after).success ||
         cursors.has(after) ||
         cursors.size >= 100
       )
-        throw new ApiError(
-          502,
-          t(
-            "File pagination did not finish. Refresh the Library to try again.",
-          ),
-        );
+        break;
       cursors.add(after);
     } while (after);
     return [...files.values()].sort((a, b) =>

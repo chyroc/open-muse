@@ -127,6 +127,30 @@ export function mergeHistorySnapshot(
   );
 }
 
+// A read of the latest part of a conversation is authoritative for the span
+// it covers; events before that span, such as earlier ones loaded as the
+// person scrolled up, stay.
+export function mergeHistoryWindow(
+  beforeRead: AgentEvent[],
+  current: AgentEvent[],
+  history: AgentEvent[],
+) {
+  if (!history.length) return current;
+  const time = (event: AgentEvent) =>
+    event.processed_at ?? event.created_at ?? "";
+  const from = history.reduce(
+    (earliest, event) => (time(event) < earliest ? time(event) : earliest),
+    time(history[0]),
+  );
+  const before = new Map(beforeRead.map((event) => [event.id, event]));
+  return mergeEvents(
+    history,
+    current.filter(
+      (event) => time(event) < from || before.get(event.id) !== event,
+    ),
+  );
+}
+
 export function taskState(
   events: AgentEvent[],
   status: SessionStatus = "idle",

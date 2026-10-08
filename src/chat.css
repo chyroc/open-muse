@@ -575,6 +575,16 @@ html.sidebar-dragging .sidebar-panel {
   font-size: 14px;
   color: #77777b;
 }
+/* Room at the top while earlier messages are read. */
+.chat-older {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  font-size: 13px;
+  color: #77777b;
+}
 .chat-message-group {
   display: flex;
   flex-direction: column;

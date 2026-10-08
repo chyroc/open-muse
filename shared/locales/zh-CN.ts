@@ -74,6 +74,7 @@ export const zhCN: Record<string, string> = {
   "Add an Ark API key to start chatting": "添加 Ark API Key 后开始对话",
   "Refresh history": "刷新历史记录",
   "Loading conversation…": "正在加载对话…",
+  "Loading earlier messages…": "正在加载更早的消息…",
   "Start a side chat": "开始旁聊",
   "Your main chat": "主要聊天",
   "One conversation you can always come back to.": "随时回来，继续这段对话。",

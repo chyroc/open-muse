@@ -70,8 +70,12 @@ export class DirectIdentity {
   ) {
     this.key = `${owner}:identity:v1`;
   }
+  // Every row of a memory list, each once by id. A page token Ark gives
+  // twice, or a page with nothing new, ends the list. Writes rely on the
+  // whole list, so one too long to read refuses rather than being cut.
   private async collect<T>(path: string) {
     const rows: T[] = [],
+      ids = new Set<string>(),
       seen = new Set<string>();
     let page = "";
     do {
@@ -83,9 +87,19 @@ export class DirectIdentity {
           502,
           t("Invalid memory list. No changes were made."),
         );
-      rows.push(...result.data);
+      let fresh = 0;
+      for (const row of result.data) {
+        const id = (row as { id?: unknown }).id;
+        if (typeof id === "string") {
+          if (ids.has(id)) continue;
+          ids.add(id);
+        }
+        rows.push(row);
+        fresh++;
+      }
       page = result.next_page ?? "";
-      if (page && (seen.has(page) || seen.size >= 100))
+      if (!page || seen.has(page) || (result.data.length && !fresh)) break;
+      if (seen.size >= 1000)
         throw new ApiError(
           502,
           t("Memory pagination did not finish. No changes were made."),
