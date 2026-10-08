@@ -55,5 +55,8 @@ export function followAndroidTextScale(
     .__OPEN_MUSE_TYPE_SCALE__,
 ) {
   if (typeof scale !== "number" || !Number.isFinite(scale)) return;
-  root.style.setProperty("--type-scale", String(Math.min(Math.max(scale, 1), 3)));
+  root.style.setProperty(
+    "--type-scale",
+    String(Math.min(Math.max(scale, 1), 3)),
+  );
 }

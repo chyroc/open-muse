@@ -72,7 +72,9 @@ function pickDevice() {
         : "No Android phone found. Connect it with a cable, turn on USB debugging, and allow this computer.",
     );
   if (matches.length > 1)
-    fail(`Several devices are connected; set OPEN_MUSE_DEVICE to one of:\n${list}`);
+    fail(
+      `Several devices are connected; set OPEN_MUSE_DEVICE to one of:\n${list}`,
+    );
   return matches[0];
 }
 

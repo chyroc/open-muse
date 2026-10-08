@@ -47,7 +47,9 @@ describe("Apple Health request card", () => {
     const elsewhere = render(steps);
     expect(elsewhere).toContain("Share Apple Health data?");
     expect(elsewhere).toContain("Steps · Oct 1");
-    expect(elsewhere).toContain("Open Open Muse on your iPhone or Android phone");
+    expect(elsewhere).toContain(
+      "Open Open Muse on your iPhone or Android phone",
+    );
     expect(elsewhere).toContain("Don’t share");
     expect(elsewhere).not.toContain(">Share<");
     vi.stubGlobal("webkit", {

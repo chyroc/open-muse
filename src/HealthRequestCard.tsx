@@ -111,7 +111,9 @@ export function HealthRequestCard({
     return (
       <p className="health-auto" role="status">
         <HeartPulse size={15} aria-hidden="true" />
-        {onAndroid() ? t("Reading Health Connect…") : t("Reading Apple Health…")}
+        {onAndroid()
+          ? t("Reading Health Connect…")
+          : t("Reading Apple Health…")}
       </p>
     );
   return (

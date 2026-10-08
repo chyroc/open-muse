@@ -178,9 +178,7 @@ function SourcePermission({
       </ul>
       <p className="settings-footnote">
         {onAndroid()
-          ? t(
-              "You can manage what Open Muse can access in Android's Settings.",
-            )
+          ? t("You can manage what Open Muse can access in Android's Settings.")
           : t(
               "You can manage what Open Muse can access in the iPhone's Settings.",
             )}
