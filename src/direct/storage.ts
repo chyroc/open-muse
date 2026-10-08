@@ -6,8 +6,8 @@ export interface CredentialStore {
   write(value: string): Promise<void>;
 }
 const android = registerPlugin<{
-  read(): Promise<{ value: string }>;
-  write(input: { value: string }): Promise<void>;
+  read(input?: { namespace?: string }): Promise<{ value: string }>;
+  write(input: { value: string; namespace?: string }): Promise<void>;
 }>("MuseCredentials");
 const credentialKey = "muse.direct.credentials.v1";
 export const backgroundCredentials: CredentialStore = {
@@ -48,13 +48,11 @@ async function vault(
         ...(namespace === "background" ? { namespace } : {}),
       });
     else if (Capacitor.getPlatform() === "android") {
-      if (namespace === "background")
-        throw new Error(t("Background service is not supported on Android."));
-      else
-        request =
-          operation === "read"
-            ? android.read().then((r) => r.value)
-            : android.write({ value });
+      // Android keeps both namespaces in Keystore-backed storage, like iOS.
+      request =
+        operation === "read"
+          ? android.read({ namespace }).then((r) => r.value)
+          : android.write({ value, namespace });
     } else if (Capacitor.isNativePlatform())
       throw new Error(t("Missing secure storage bridge"));
     else {
