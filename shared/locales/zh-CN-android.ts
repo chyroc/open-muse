@@ -39,4 +39,5 @@ export const zhAndroid: Record<string, string> = {
   "Notifications are off for Open Muse in Android.":
     "Android 已关闭 Open Muse 的通知。",
   "Shake your phone to report a problem": "摇晃手机来报告问题",
+  "Using your phone": "正在使用你的手机",
 };

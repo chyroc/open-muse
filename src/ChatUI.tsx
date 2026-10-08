@@ -1,4 +1,5 @@
 import { t } from "../shared/i18n";
+import { onAndroid } from "./platform";
 import type { CompanionActivity } from "../shared/companion-activity";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -28,6 +29,11 @@ import { motionToken, useDragToDismiss, type EdgePull } from "./gesture";
 import type { ConversationIndex } from "./direct/conversations";
 import { Sheet } from "./MusePages";
 import "./message-quote.css";
+
+// The Android app's words where the iPhone app names the iPhone.
+const androidActivity: Record<string, string> = {
+  "Using your iPhone": "Using your phone",
+};
 
 // The companion, drawn in CSS. While it works it puts on headphones and
 // types on a laptop. Where it is shown large and alive it idles: it looks
@@ -199,7 +205,11 @@ export function ChatHeader({
               key={activity.label}
               className={`companion-subtitle${activity.attention ? " attention" : ""}`}
             >
-              {t(activity.label)}
+              {t(
+                onAndroid()
+                  ? (androidActivity[activity.label] ?? activity.label)
+                  : activity.label,
+              )}
             </span>
           )}
         </span>
