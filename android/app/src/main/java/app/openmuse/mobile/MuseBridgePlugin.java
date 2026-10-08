@@ -68,7 +68,8 @@ public class MuseBridgePlugin extends Plugin {
     public void load() {
         AppCompatActivity activity = getActivity();
         MuseDialogs dialogs = new MuseDialogs(getBridge());
-        getBridge().getWebView().setWebChromeClient(dialogs);
+        // Capacitor sets its own client once every plugin has loaded.
+        main.post(() -> getBridge().getWebView().setWebChromeClient(dialogs));
 
         features.put("museCredentials", new MuseCredentials(getContext()));
         features.put("museHaptics", (body, reply) -> {
