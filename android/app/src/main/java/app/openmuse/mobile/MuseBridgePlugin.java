@@ -87,6 +87,7 @@ public class MuseBridgePlugin extends Plugin {
         features.put("museReminders", new MuseReminders(activity));
         features.put("musePersonal", new MusePersonal(activity));
         features.put("museFiles", new MuseFiles(activity));
+        features.put("museShare", new MuseShare(activity));
         if (MuseHealth.supported()) features.put("museHealth", new MuseHealth(activity));
         if (MuseReplyService.supported()) {
             features.put("museReplying", (body, reply) -> {
@@ -206,6 +207,17 @@ public class MuseBridgePlugin extends Plugin {
             .append("p.postMessage(JSON.stringify({id:id,name:n,body:b===undefined?null:b}));});}};}")
             .append("var mh={};").append(names).append(".forEach(function(n){mh[n]=make(n);});")
             .append("window.webkit={messageHandlers:mh};")
+            // Android's WebView has no Web Share; the system share sheet
+            // stands in, files included (see MuseShare).
+            .append("if(!navigator.share){")
+            .append("navigator.canShare=function(d){if(!d)return false;var f=d.files?[].slice.call(d.files):[];")
+            .append("return f.every(function(x){return x instanceof Blob;})&&(f.length>0||!!(d.text||d.title||d.url));};")
+            .append("navigator.share=function(d){d=d||{};var f=d.files?[].slice.call(d.files):[];")
+            .append("return Promise.all(f.map(function(x){return new Promise(function(res,rej){var r=new FileReader();")
+            .append("r.onload=function(){res({name:x.name||'file',type:x.type||'',data:String(r.result).split(',')[1]||''});};")
+            .append("r.onerror=function(){rej(r.error);};r.readAsDataURL(x);});}))")
+            .append(".then(function(files){return mh.museShare.postMessage({title:d.title||'',text:d.text||'',url:d.url||'',files:files});})")
+            .append(".then(function(){});};}")
             .append("window.__OPEN_MUSE_LANGUAGES__=").append(languages).append(';')
             .append("window.__OPEN_MUSE_DEVICE__=").append(new JSONObject(deviceInfo)).append(';')
             .append("window.__OPEN_MUSE_VERSION__=").append(JSONObject.quote(version)).append(';')
