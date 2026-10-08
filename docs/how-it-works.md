@@ -508,28 +508,6 @@ to show the two steps, opens each Lark page in the browser, and follows along
 until Lark confirms. Asking the assistant to sign in with lark-cli in a chat
 still works; the account keeps that sign-in for new conversations too.
 
-### McDonald's connection
-
-On iPhone, **Connect** next to McDonald's in Settings > **Connectors** opens
-McDonald's own sign-in page in a web view inside the app. The person signs in
-with their phone number and the code McDonald's texts them, and activates their
-access token on that page; the sign-in, including any security check, happens
-entirely on McDonald's page. The app reads back the resulting token and keeps
-it in the iPhone Keychain.
-
-The token is then stored as a connection credential in the account's secure
-storage (the workspace vault) so the person's MA agent can reach McDonald's
-remote service for them. The agent declares the McDonald's MCP server, and the
-vault credential (matched by its URL) supplies the request authorization; the
-vault is attached to every new conversation. So in conversations started after
-connecting, the assistant can order food, find nearby restaurants, collect
-coupons, and check points when asked. An already-open conversation keeps its
-earlier agent version and does not gain the connector until a new conversation
-starts. Orders and other changes are confirmed in the chat first, like any
-other action. **Disconnect** removes the connection credential, stops the agent
-declaring the server, and clears the token from this iPhone. This connector
-appears only in the iPhone app.
-
 ### Lark message channel
 
 Settings > **Message channels** on iPhone connects Lark (Feishu), so the

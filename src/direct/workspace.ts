@@ -9,7 +9,6 @@ import type { WorkspaceStatus } from "../../shared/types";
 import { LocalDatabase } from "./storage";
 import { systemWithIdentity } from "../../shared/identity";
 import { canonicalJson } from "../../shared/session-refresh";
-import { MCD_MCP_SERVER_NAME, MCD_MCP_URL } from "../../shared/mcd";
 import {
   DEFAULT_MODEL,
   MUSE_SYSTEM as system,
@@ -59,9 +58,6 @@ export class DirectWorkspace {
       kind: "agent" | "environment",
       changes: Record<string, unknown>,
     ) => Promise<void>,
-    // Whether the person connected the remote MCP for this workspace, so the
-    // agent declares that MCP server only while a connection exists.
-    private mcdConnected: () => Promise<boolean> = async () => false,
   ) {
     this.storageKey = `${key}:workspace`;
   }
@@ -255,7 +251,6 @@ export class DirectWorkspace {
           name?: string;
           default_config?: { permission_policy?: { type: string } };
         }[];
-        mcp_servers?: { name?: string; url?: string }[];
       }
     >(path);
     if (agent.metadata?.open_muse_workspace !== this.key) return;
@@ -288,19 +283,9 @@ export class DirectWorkspace {
     const updatedSystem = systemWithIdentity(
       owned ? systemWithTools(baseSystem) : baseSystem,
     );
-    // Declare the remote MCP server only while the connection exists, keeping
-    // any other server the agent already has.
-    const others = (agent.mcp_servers ?? []).filter(
-      (server) => server?.url !== MCD_MCP_URL,
-    );
-    const mcpServers = (await this.mcdConnected())
-      ? [...others, { name: MCD_MCP_SERVER_NAME, url: MCD_MCP_URL }]
-      : others;
-    const current = agent.mcp_servers ?? [];
     if (
       canonicalJson(tools) === canonicalJson(agent.tools) &&
-      updatedSystem === agent.system &&
-      canonicalJson(mcpServers) === canonicalJson(current)
+      updatedSystem === agent.system
     )
       return;
     if (!agent.version || !Number.isInteger(agent.version))
@@ -312,7 +297,6 @@ export class DirectWorkspace {
       version: agent.version,
       tools,
       system: updatedSystem,
-      mcp_servers: mcpServers,
     });
   }
   private change(

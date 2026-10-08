@@ -20,17 +20,7 @@ describe("connector app icons", () => {
     expect(web).toContain("lucide-search");
     expect(hasAppIcon("memory")).toBe(false);
   });
-  it("uses a bundled image when present and falls back to the glyph otherwise", () => {
-    for (const id of appIconIds)
-      expect(hasAppIcon(id), id).toBe(Boolean(appIconSource(id)));
-    // A reserved slot whose image is not bundled yet shows the connector glyph
-    // instead of a broken image.
-    if (!hasAppIcon("mcd")) {
-      const mcd = renderToStaticMarkup(
-        <ConnectorIcon id="mcd" Icon={Search} />,
-      );
-      expect(mcd).not.toContain("app-icon");
-      expect(mcd).toContain("lucide-search");
-    }
+  it("carries an icon for every listed app", () => {
+    for (const id of appIconIds) expect(appIconSource(id), id).toBeTruthy();
   });
 });

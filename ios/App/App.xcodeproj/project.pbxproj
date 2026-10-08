@@ -23,7 +23,6 @@
 		A20000000000000000000002 /* MuseFiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* MuseFiles.swift */; };
 		A30000000000000000000002 /* MuseHealth.swift in Sources */ = {isa = PBXBuildFile; fileRef = A30000000000000000000001 /* MuseHealth.swift */; };
 		A40000000000000000000002 /* MusePersonal.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000001 /* MusePersonal.swift */; };
-		A50000000000000000000002 /* MuseMcd.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000001 /* MuseMcd.swift */; };
 		A30000000000000000000007 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = A30000000000000000000004 /* InfoPlist.strings */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
@@ -40,7 +39,6 @@
 		A20000000000000000000001 /* MuseFiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuseFiles.swift; sourceTree = "<group>"; };
 		A30000000000000000000001 /* MuseHealth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuseHealth.swift; sourceTree = "<group>"; };
 		A40000000000000000000001 /* MusePersonal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusePersonal.swift; sourceTree = "<group>"; };
-		A50000000000000000000001 /* MuseMcd.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuseMcd.swift; sourceTree = "<group>"; };
 		A30000000000000000000003 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 		A30000000000000000000005 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		A30000000000000000000006 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
@@ -94,7 +92,6 @@
 				A20000000000000000000001 /* MuseFiles.swift */,
 				A30000000000000000000001 /* MuseHealth.swift */,
 				A40000000000000000000001 /* MusePersonal.swift */,
-				A50000000000000000000001 /* MuseMcd.swift */,
 				A30000000000000000000003 /* App.entitlements */,
 				A30000000000000000000004 /* InfoPlist.strings */,
 				9582B6822FE993A50072D4E8 /* SceneDelegate.swift */,
@@ -198,7 +195,6 @@
 				A20000000000000000000002 /* MuseFiles.swift in Sources */,
 				A30000000000000000000002 /* MuseHealth.swift in Sources */,
 				A40000000000000000000002 /* MusePersonal.swift in Sources */,
-				A50000000000000000000002 /* MuseMcd.swift in Sources */,
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 			);
