@@ -8,7 +8,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Release builds pass a growing code (see scripts/android-release.mjs).
-        versionCode (System.getenv("OPEN_MUSE_ANDROID_VERSION_CODE") ?: "1") as int
+        versionCode Integer.parseInt(System.getenv("OPEN_MUSE_ANDROID_VERSION_CODE") ?: "1")
         versionName "0.2.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
