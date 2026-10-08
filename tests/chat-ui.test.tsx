@@ -1,7 +1,13 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ChatComposer, ChatHeader, ConversationSidebar } from "../src/ChatUI";
+import {
+  ChatComposer,
+  ChatHeader,
+  ConversationSidebar,
+  QueuedMessages,
+} from "../src/ChatUI";
+import { t } from "../shared/i18n";
 import { emptyConversations } from "../src/direct/conversations";
 
 describe("Conversation controls", () => {
@@ -41,6 +47,80 @@ describe("Conversation controls", () => {
     );
     expect(running).toContain('aria-label="Stop response"');
     expect(running).not.toContain('aria-label="Send message"');
+  });
+  it("queues text typed while a reply runs, and stops when there is none", () => {
+    const props = {
+      setValue() {},
+      onSend() {},
+      onQueue() {},
+      onStop() {},
+      onAttach() {},
+      busy: false,
+      disabled: false,
+      running: true,
+    };
+    const typed = renderToStaticMarkup(
+      <ChatComposer {...props} value="One more thing" />,
+    );
+    expect(typed).toContain('aria-label="Send after this reply"');
+    expect(typed).not.toContain('aria-label="Stop response"');
+    expect(
+      renderToStaticMarkup(<ChatComposer {...props} value="  " />),
+    ).toContain('aria-label="Stop response"');
+    // Attachments are never queued: stop stays until the reply finishes.
+    expect(
+      renderToStaticMarkup(
+        <ChatComposer {...props} value="With a photo" attachmentsReady />,
+      ),
+    ).toContain('aria-label="Stop response"');
+    // Without a queue the composer only stops, as before.
+    expect(
+      renderToStaticMarkup(
+        <ChatComposer {...props} onQueue={undefined} value="Hi" />,
+      ),
+    ).toContain('aria-label="Stop response"');
+  });
+  it("lists queued messages, removable, with a resume action once held", () => {
+    const items = [
+      { id: "a", text: "First follow-up" },
+      { id: "b", text: "Second follow-up" },
+    ];
+    const next = renderToStaticMarkup(
+      <QueuedMessages
+        items={items}
+        paused={false}
+        onRemove={() => {}}
+        onResume={() => {}}
+      />,
+    );
+    expect(next).toContain("Up next");
+    expect(next.indexOf("First follow-up")).toBeLessThan(
+      next.indexOf("Second follow-up"),
+    );
+    expect(next.match(/Remove queued message/g)).toHaveLength(2);
+    expect(next).not.toContain("Send queued messages");
+    const held = renderToStaticMarkup(
+      <QueuedMessages
+        items={items}
+        paused
+        onRemove={() => {}}
+        onResume={() => {}}
+      />,
+    );
+    expect(held).toContain("Messages on hold");
+    expect(held).toContain("Send queued messages");
+    expect(
+      renderToStaticMarkup(
+        <QueuedMessages
+          items={[]}
+          paused={false}
+          onRemove={() => {}}
+          onResume={() => {}}
+        />,
+      ),
+    ).toBe("");
+    expect(t("Send after this reply", {}, "zh-CN")).toBe("这条回复结束后发送");
+    expect(t("Send queued messages", {}, "zh-CN")).toBe("继续发送");
   });
   it("provides persistent main-chat navigation and side-chat creation/search", () => {
     const html = renderToStaticMarkup(

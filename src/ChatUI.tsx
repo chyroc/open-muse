@@ -242,6 +242,7 @@ export function ChatComposer({
   value,
   setValue,
   onSend,
+  onQueue,
   onStop,
   running,
   busy,
@@ -256,6 +257,8 @@ export function ChatComposer({
   value: string;
   setValue: (value: string) => void;
   onSend: () => void;
+  // While a reply runs, typed text goes into the queue to send after it.
+  onQueue?: () => void;
   onStop: () => void;
   running: boolean;
   busy: boolean;
@@ -276,6 +279,19 @@ export function ChatComposer({
   const [dictationHint, setDictationHint] = useState(false);
   const sendable =
     (Boolean(value.trim()) || attachmentsReady) && !attachmentsPending;
+  // Only text waits for the reply to finish; attachments go with a message
+  // sent once it has.
+  const queueable =
+    running &&
+    Boolean(onQueue) &&
+    Boolean(value.trim()) &&
+    !attachmentsReady &&
+    !attachmentsPending &&
+    !disabled;
+  const submit = () => {
+    if (queueable) onQueue!();
+    else if (sendable && !busy && !disabled && !running) onSend();
+  };
   useEffect(() => {
     const element = input.current;
     if (!element) return;
@@ -300,7 +316,7 @@ export function ChatComposer({
         className="chat-composer"
         onSubmit={(event) => {
           event.preventDefault();
-          if (sendable && !busy && !disabled && !running) onSend();
+          submit();
         }}
       >
         {attaching && (
@@ -336,11 +352,19 @@ export function ChatComposer({
               !event.nativeEvent.isComposing
             ) {
               event.preventDefault();
-              if (sendable && !busy && !disabled && !running) onSend();
+              submit();
             }
           }}
         />
-        {running ? (
+        {queueable ? (
+          <button
+            className="composer-action composer-send"
+            type="submit"
+            aria-label={t("Send after this reply")}
+          >
+            <ArrowUp size={20} strokeWidth={2.6} />
+          </button>
+        ) : running ? (
           <button
             className="composer-action composer-send"
             type="button"
@@ -678,5 +702,54 @@ export function ScrollToLatest({ onClick }: { onClick: () => void }) {
     >
       <ChevronDown size={18} />
     </button>
+  );
+}
+
+export interface QueuedMessage {
+  id: string;
+  text: string;
+}
+
+// Messages typed while a reply runs, sent in order once it finishes. Stop
+// holds them until the person sends them on.
+export function QueuedMessages({
+  items,
+  paused,
+  onRemove,
+  onResume,
+}: {
+  items: QueuedMessage[];
+  paused: boolean;
+  onRemove: (id: string) => void;
+  onResume: () => void;
+}) {
+  if (!items.length) return null;
+  return (
+    <section
+      className="queued-messages"
+      aria-label={paused ? t("Messages on hold") : t("Up next")}
+    >
+      <header>
+        <span>{paused ? t("Messages on hold") : t("Up next")}</span>
+        {paused && (
+          <button className="queued-resume" onClick={onResume}>
+            {t("Send queued messages")}
+          </button>
+        )}
+      </header>
+      <ul>
+        {items.map((item) => (
+          <li key={item.id}>
+            <span>{item.text}</span>
+            <button
+              aria-label={t("Remove queued message")}
+              onClick={() => onRemove(item.id)}
+            >
+              <X size={15} />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

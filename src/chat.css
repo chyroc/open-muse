@@ -938,6 +938,87 @@ html.sidebar-dragging .sidebar-panel {
 .approval-notice-action:disabled {
   opacity: 0.4;
 }
+/* Messages typed while a reply runs: a quiet list above the composer, each
+   removable, sent in order once the reply finishes. */
+.queued-messages {
+  margin: 0 4px 8px;
+  padding: 10px 12px 6px 16px;
+  border-radius: 18px;
+  background: rgb(247 247 247 / 92%);
+  border: 1px solid #ececec;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  animation: queued-in var(--motion-release-duration) var(--motion-release-ease);
+}
+.queued-messages header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 24px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6e6e73;
+}
+.queued-messages ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.queued-messages li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  line-height: 1.35;
+  color: #161618;
+  animation: queued-in var(--motion-release-duration) var(--motion-release-ease);
+}
+.queued-messages li span {
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.queued-messages li button {
+  display: flex;
+  flex-shrink: 0;
+  padding: 8px;
+  color: #8e8e93;
+  transition: transform var(--motion-press-duration) ease-out;
+}
+.queued-messages li button:active,
+.queued-resume:active {
+  transform: scale(var(--motion-press-scale));
+}
+.queued-resume {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #007aff;
+  background: rgb(0 122 255 / 10%);
+  transition: transform var(--motion-press-duration) ease-out;
+}
+@keyframes queued-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .queued-messages,
+  .queued-messages li {
+    animation: queued-fade var(--motion-fade-duration) ease-out;
+  }
+  @keyframes queued-fade {
+    from {
+      opacity: 0;
+    }
+  }
+}
 .scroll-to-latest {
   position: absolute;
   left: 50%;

@@ -326,6 +326,16 @@ the archive is not inserted as a fake user message. Old execution records remain
 at their original source, including source links for saved replies. Running
 tools and sandbox files are not migrated to the new session.
 
+While a reply runs, text typed in the composer can still be sent: the send
+arrow replaces the stop square and puts the message in **Up next** above the
+composer, where each queued message can be removed. Queued messages go out in
+order, each once the reply before it has finished and nothing waits for
+approval. **Stop** holds the queue (**Messages on hold**) until **Send queued
+messages**; a queued message that fails to send goes back to the head of the
+queue, which holds, instead of being retried. Only text is queued, and the
+queue lives in the open app, per conversation: closing or reloading the app
+drops it.
+
 Local write guards serialize continuation and message submission. Interrupted
 preparation can resume; an uncertain session-creation result is queried by its
 unique marker before any further creation. A message with an uncertain result

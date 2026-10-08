@@ -122,7 +122,9 @@ import {
   ConversationSidebar,
   MessageBubble,
   MessageQuote,
+  QueuedMessages,
   ScrollToLatest,
+  type QueuedMessage,
 } from "./ChatUI";
 import { splitQuote } from "../shared/message-quote";
 import {
@@ -354,6 +356,24 @@ function Workspace({
   // conversation's id once one is opened for it.
   const [outgoing, setOutgoing] = useState<Outgoing>();
   const draft = drafts[draftKey] ?? "";
+  // Messages typed while a reply runs, per conversation, held in this app
+  // until each goes out after the reply before it.
+  const [queues, setQueues] = useState<
+    Record<string, { items: QueuedMessage[]; paused: boolean }>
+  >({});
+  const queue = queues[draftKey] ?? { items: [], paused: false };
+  function updateQueue(
+    key: string,
+    change: (current: { items: QueuedMessage[]; paused: boolean }) => {
+      items: QueuedMessage[];
+      paused: boolean;
+    },
+  ) {
+    setQueues((current) => ({
+      ...current,
+      [key]: change(current[key] ?? { items: [], paused: false }),
+    }));
+  }
   // Staged attachments belong to the conversation being written; switching
   // conversations drops them (the uploaded copies simply expire in MA).
   const [staged, setStaged] = useState<StagedAttachment[]>([]);
@@ -938,11 +958,18 @@ function Workspace({
   function setDraft(value: string) {
     setDrafts((current) => ({ ...current, [draftKey]: value }));
   }
-  const sendMessage = () =>
+  // Sends the composer's message, or the first queued one once the reply
+  // before it has finished.
+  const sendMessage = (queued?: QueuedMessage) =>
     action(async () => {
-      const text = draft.trim();
-      const sending = staged;
+      const text = queued ? queued.text : draft.trim();
+      const sending = queued ? [] : staged;
       if (!text && !sending.length) return;
+      if (queued)
+        updateQueue(draftKey, (current) => ({
+          ...current,
+          items: current.items.filter((item) => item.id !== queued.id),
+        }));
       if (!sending.every(sendable))
         throw new Error(
           t("Wait for uploads to finish or remove failed attachments."),
@@ -973,8 +1000,10 @@ function Workspace({
           kind,
         })),
       });
-      setDrafts((current) => ({ ...current, [origin]: "" }));
-      setStaged([]);
+      if (!queued) {
+        setDrafts((current) => ({ ...current, [origin]: "" }));
+        setStaged([]);
+      }
       setAwayFromBottom(false);
       let sessionId = activeId;
       try {
@@ -1060,14 +1089,22 @@ function Workspace({
         }
       } catch (error) {
         // Nothing is resent on its own: the text goes back to the composer,
+        // or a queued message back to the head of its queue, which holds,
         // and the error asks to check history first.
         if (alive.current) {
           setOutgoing(undefined);
-          setDrafts((current) => {
-            const key = sessionId ?? origin;
-            return current[key] ? current : { ...current, [key]: text };
-          });
-          setStaged((current) => (current.length ? current : unsent));
+          if (queued)
+            updateQueue(origin, (current) => ({
+              items: [queued, ...current.items],
+              paused: true,
+            }));
+          else {
+            setDrafts((current) => {
+              const key = sessionId ?? origin;
+              return current[key] ? current : { ...current, [key]: text };
+            });
+            setStaged((current) => (current.length ? current : unsent));
+          }
         }
         throw error;
       }
@@ -1102,8 +1139,24 @@ function Workspace({
       }
     });
   };
+  // Typed while a reply runs: it waits in the queue. Stopping the reply
+  // holds the queue until the person sends it on.
+  function queueMessage() {
+    const text = draft.trim();
+    if (!text) return;
+    updateQueue(draftKey, (current) => ({
+      items: [
+        ...current.items,
+        { id: `queued-${Date.now()}-${current.items.length}`, text },
+      ],
+      paused: current.items.length ? current.paused : false,
+    }));
+    setDrafts((current) => ({ ...current, [draftKey]: "" }));
+  }
   const stop = () =>
     action(async () => {
+      if (queue.items.length)
+        updateQueue(draftKey, (current) => ({ ...current, paused: true }));
       if (activeId) {
         await client.send(activeId, { type: "user.interrupt" });
         await task.refresh();
@@ -1256,6 +1309,24 @@ function Workspace({
   );
   // The message being sent in this chat, until its history has it.
   const pendingSend = pendingOutgoing(outgoing, draftKey, messageEvents);
+  // The next queued message goes out once the reply before it has finished
+  // and nothing waits for the person; it stays queued while anything is busy.
+  const nextQueued = queue.paused ? undefined : queue.items[0];
+  const queueReady =
+    Boolean(nextQueued) &&
+    !busy &&
+    Boolean(activeId) &&
+    config?.mode === "ark" &&
+    // A stopped reply counts as finished, unless the session itself ended.
+    (state === "idle" ||
+      state === "complete" ||
+      (state === "stopped" && task.session?.status !== "terminated")) &&
+    !pendingSend &&
+    !pendingTools.length;
+  useEffect(() => {
+    // Keyed by the message, so each goes out once.
+    if (queueReady && nextQueued) void sendMessage(nextQueued);
+  }, [queueReady, nextQueued?.id]);
   // From the moment a message is sent until its reply is done, the Android
   // app may keep running briefly after the person leaves it.
   const replying = state === "running" || Boolean(pendingSend);
@@ -1823,12 +1894,29 @@ function Workspace({
                   )}
                 </div>
               )}
+              <QueuedMessages
+                items={queue.items}
+                paused={queue.paused}
+                onRemove={(id) =>
+                  updateQueue(draftKey, (current) => ({
+                    ...current,
+                    items: current.items.filter((item) => item.id !== id),
+                  }))
+                }
+                onResume={() =>
+                  updateQueue(draftKey, (current) => ({
+                    ...current,
+                    paused: false,
+                  }))
+                }
+              />
               <ChatComposer
                 name={companion.name}
                 newSideChat={isSideDraft}
                 value={draft}
                 setValue={setDraft}
-                onSend={sendMessage}
+                onSend={() => void sendMessage()}
+                onQueue={queueMessage}
                 onStop={stop}
                 running={state === "running"}
                 busy={busy || welcomeBusy}

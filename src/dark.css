@@ -93,6 +93,20 @@
   .dictation-button {
     color: #636366;
   }
+  .queued-messages {
+    background: rgb(36 36 38 / 92%);
+    border-color: #38383a;
+  }
+  .queued-messages header {
+    color: #98989d;
+  }
+  .queued-messages li {
+    color: #f5f5f7;
+  }
+  .queued-resume {
+    color: #4a9cff;
+    background: rgb(74 156 255 / 16%);
+  }
   .dictation-hint,
   .approval-notice {
     color: #aeaeb2;
