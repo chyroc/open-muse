@@ -174,8 +174,9 @@ the chat list and main chat update as soon as a change arrives.
 
 ## Storage and security
 
-- iOS and macOS keep Open Muse account sessions in Keychain. Android encrypts credentials with an Android Keystore-backed
-  AES-GCM key and disables backup; Open Muse accounts are not supported on Android.
+- iOS and macOS keep Open Muse account sessions in Keychain. Android encrypts
+  them with an Android Keystore-backed AES-GCM key per namespace and disables
+  backup.
 - The web app keeps credentials in `sessionStorage`, not persistent local
   storage. A page reload preserves the browser session; signing out clears it.
   Browser extensions or injected scripts can still access browser-held secrets:
@@ -442,6 +443,9 @@ time there is something to announce and are not shown while the app is in
 front, where the main chat delivers the item itself. There are no remote push
 notifications, and the Mac and web apps show no notifications.
 
+The Android app does the same with exact alarms (see [The Android
+app](#the-android-app)).
+
 A reply that finishes after the person leaves the iPhone app is announced
 too, with the companion's name and the start of the reply. Leaving the app
 keeps it running for the short time iOS allows (usually under a minute), so
@@ -568,6 +572,31 @@ way. Calendar, Reminders, and Contacts are listed in Connectors: connecting
 one explains it in a sheet and then asks iOS for access, and iOS Settings >
 Open Muse changes that access. Both tools wait while the iPhone app is
 closed; the Mac and web apps say they are waiting for the iPhone.
+
+### The Android app
+
+The Android app (Android 9 and later) is the iPhone app with Android's own
+sources and conventions; everything not listed here works as on the iPhone.
+
+- `health_read` reads Health Connect, part of Android from version 14, with
+  the same metrics and summaries as Apple Health. Earlier versions offer no
+  health connector.
+- `iphone_personal` reads Calendar and Contacts. Android has no system
+  reminders list, so Reminders is not offered and the agent is told not to
+  ask for it. Access is changed in Android Settings > Apps > Open Muse.
+- Due Upcoming items are scheduled as exact alarms and scheduled again after
+  the phone restarts or the app updates. A reply under way when the person
+  leaves the app keeps it running in a short foreground service, up to the
+  few minutes Android allows, so it can finish and be announced; it ends
+  when the reply does or when the person returns.
+- Library previews open in the phone's own viewer and sharing uses the
+  system share sheet.
+- Back closes the sheet, menu, or sidebar on top, one at a time, and with
+  nothing open sends the app to the background without closing it.
+- Light or dark mode chosen in the app becomes the app's own system night
+  mode (Android 12 and later), so the launch screen follows it too. Text
+  keeps the app's type scale at font sizes up to 130% and grows beyond them.
+- The device list shows the phone under its model name as an Android device.
 
 Settings > **Permissions** > **Connectors** lists these sources on the
 iPhone and sets how each one's requests are answered, kept per identity on

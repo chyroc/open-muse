@@ -80,9 +80,16 @@ notifications.
 The package contains no Node executable or server bundle and opens no listening
 port. The build targets macOS 14+ and is not notarized.
 
-**Android:** the Capacitor app uses the same direct client and includes a native
-credential-storage plugin. Open with `npm run android`; build the Gradle project
-with JDK 21 and SDK 36. See verification notes for platform coverage.
+**Android:** the Capacitor app answers the same
+`window.webkit.messageHandlers` contract as the iPhone app through a native
+bridge (`android/app/src/main/java/app/openmuse/mobile/`), so the web layer
+needs no Android branches for native features. `npm run android:install`
+builds an account build with the same three values as the iPhone install and
+installs it on the phone connected with USB debugging (set `OPEN_MUSE_DEVICE`
+to its adb serial when several are connected). It needs a JDK 21 or newer and
+Android SDK 36; `npm run android` opens the project in Android Studio. The
+WebView serves the app from `https://localhost`, which the Open Muse service
+must allow (see `server/DEPLOY.md`).
 
 ## Project layout
 
@@ -91,7 +98,7 @@ src/                  UI and the direct, device-local application runtime
 shared/               Ark/OAuth adapters, signing, API catalog, tool payloads
 ios/                  iOS shell and UI tests
 macos/                Serverless macOS shell
-android/              Android shell and Keystore plugin
+android/              Android shell and native bridge
 tests/                Direct-client, protocol, UI, and migration tests
 tests/legacy-server/  Test-only migration harness; never shipped or started
 scripts/              Builds and asset generation
