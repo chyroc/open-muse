@@ -107,3 +107,11 @@ Requires Node.js 22.21+ and, for the Apple apps, Xcode.
 - [Verification](docs/verification.md) — what has been tested on which platform
 - [Open Muse service](server/README.md) — accounts, encrypted keys, and background work
 - [Contributing](CONTRIBUTING.md) · [Third-party notices](THIRD_PARTY_NOTICES.md)
+
+## Community
+
+Thanks to the [LINUX DO](https://linux.do) community, where Open Muse is shared and discussed.
+
+## License
+
+[MIT](LICENSE)

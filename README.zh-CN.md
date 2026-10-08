@@ -111,3 +111,11 @@ npm run ios:build     # iOS 模拟器应用
 - [Verification](docs/verification.md)：各平台的验证情况
 - [Open Muse service](server/README.md)：账号、加密的 Key 和后台任务
 - [Contributing](CONTRIBUTING.md) · [Third-party notices](THIRD_PARTY_NOTICES.md)
+
+## 社区
+
+感谢 [LINUX DO](https://linux.do) 社区，Open Muse 在这里分享和交流。
+
+## 许可证
+
+[MIT](LICENSE)
