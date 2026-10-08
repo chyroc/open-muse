@@ -123,7 +123,10 @@ run("git", ["update-index", "--assume-unchanged", "macos/Info.plist"], {
 });
 
 step("Building the Mac app with Open Muse accounts");
-run("npm", ["run", "macos:build"], { cwd: work, env: accountBuildEnv(config) });
+run("npm", ["run", "macos:build"], {
+  cwd: work,
+  env: { ...accountBuildEnv(config), OPEN_MUSE_MAC_UNIVERSAL: "1" },
+});
 const app = path.join(work, ".build/macos/Open Muse.app");
 
 // A keychain of its own holds the identity only while this runs.

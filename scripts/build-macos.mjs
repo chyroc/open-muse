@@ -64,51 +64,72 @@ await writeFile(
   path.join(resources, "Editor-LICENSES.txt"),
   await editorLicenseNotices(root),
 );
+// Releases run on Apple silicon and Intel Macs (OPEN_MUSE_MAC_UNIVERSAL=1);
+// everyday builds compile for this Mac only.
+const architectures =
+  process.env.OPEN_MUSE_MAC_UNIVERSAL === "1"
+    ? ["arm64", "x86_64"]
+    : [process.arch === "arm64" ? "arm64" : "x86_64"];
+for (const architecture of architectures)
+  execFileSync(
+    "xcrun",
+    [
+      "swiftc",
+      "-parse-as-library",
+      "-O",
+      "-target",
+      `${architecture}-apple-macos14.0`,
+      "-framework",
+      "AppKit",
+      "-framework",
+      "WebKit",
+      "-framework",
+      "Security",
+      "-framework",
+      "ServiceManagement",
+      "-framework",
+      "ScreenCaptureKit",
+      "-framework",
+      "AVFoundation",
+      "-framework",
+      "Speech",
+      "-framework",
+      "CoreAudio",
+      "-framework",
+      "AudioToolbox",
+      "-framework",
+      "EventKit",
+      "-framework",
+      "CoreLocation",
+      // Acceptance builds can include the snapshot tour; releases never do.
+      ...(process.env.OPEN_MUSE_SNAPSHOT_TOUR === "1"
+        ? ["-D", "SNAPSHOT_TOUR"]
+        : []),
+      path.join(root, "macos/OpenMuse.swift"),
+      path.join(root, "macos/Computer.swift"),
+      path.join(root, "macos/Dictation.swift"),
+      path.join(root, "macos/LocalCalendar.swift"),
+      path.join(root, "macos/LocalLocation.swift"),
+      path.join(root, "macos/Speaker.swift"),
+      "-o",
+      path.join(contents, `MacOS/OpenMuse-${architecture}`),
+    ],
+    { stdio: "inherit" },
+  );
 execFileSync(
-  "xcrun",
+  "lipo",
   [
-    "swiftc",
-    "-parse-as-library",
-    "-O",
-    "-target",
-    `${process.arch === "arm64" ? "arm64" : "x86_64"}-apple-macos14.0`,
-    "-framework",
-    "AppKit",
-    "-framework",
-    "WebKit",
-    "-framework",
-    "Security",
-    "-framework",
-    "ServiceManagement",
-    "-framework",
-    "ScreenCaptureKit",
-    "-framework",
-    "AVFoundation",
-    "-framework",
-    "Speech",
-    "-framework",
-    "CoreAudio",
-    "-framework",
-    "AudioToolbox",
-    "-framework",
-    "EventKit",
-    "-framework",
-    "CoreLocation",
-    // Acceptance builds can include the snapshot tour; releases never do.
-    ...(process.env.OPEN_MUSE_SNAPSHOT_TOUR === "1"
-      ? ["-D", "SNAPSHOT_TOUR"]
-      : []),
-    path.join(root, "macos/OpenMuse.swift"),
-    path.join(root, "macos/Computer.swift"),
-    path.join(root, "macos/Dictation.swift"),
-    path.join(root, "macos/LocalCalendar.swift"),
-    path.join(root, "macos/LocalLocation.swift"),
-    path.join(root, "macos/Speaker.swift"),
-    "-o",
+    "-create",
+    ...architectures.map((architecture) =>
+      path.join(contents, `MacOS/OpenMuse-${architecture}`),
+    ),
+    "-output",
     path.join(contents, "MacOS/OpenMuse"),
   ],
   { stdio: "inherit" },
 );
+for (const architecture of architectures)
+  await rm(path.join(contents, `MacOS/OpenMuse-${architecture}`));
 await copyFile(
   path.join(root, "macos/Info.plist"),
   path.join(contents, "Info.plist"),
