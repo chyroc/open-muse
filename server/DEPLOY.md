@@ -76,6 +76,19 @@ The script then checks that the function already has its secrets and the
 `open_muse_service` role exists, applies new migrations, and deploys without
 changing any secret or the role's password.
 
+The function accepts requests only from the app origins in
+`OPEN_MUSE_ALLOWED_ORIGINS` (comma-separated exact origins; default
+`capacitor://localhost,muse://app`). To let a locally run web app reach the
+service, include its origin, then deploy again: a changed secret takes effect
+only after the next deployment.
+
+```bash
+ve byted-supabase-cli secrets set \
+  "OPEN_MUSE_ALLOWED_ORIGINS=capacitor://localhost,muse://app,http://127.0.0.1:4310,http://localhost:4310" \
+  --workspace-id <workspace>
+SUPABASE_WORKSPACE=<workspace> node server/deploy/volcengine/deploy-function.mjs
+```
+
 ## 3. Scheduled tasks
 
 ```sh
