@@ -63,7 +63,7 @@ const env: Env = {
   SUPABASE_ANON_KEY: required("OPEN_MUSE_ANON_KEY"),
   ALLOWED_ORIGINS:
     Deno.env.get("OPEN_MUSE_ALLOWED_ORIGINS") ??
-    "capacitor://localhost,muse://app",
+    "capacitor://localhost,https://localhost,muse://app",
   BACKGROUND_ENABLED: Deno.env.get("OPEN_MUSE_BACKGROUND_ENABLED") ?? "true",
   // Volcano Ark unless the apps were built for another MA backend.
   MA_PROVIDER: Deno.env.get("OPEN_MUSE_MA_PROVIDER"),

@@ -361,7 +361,8 @@ Configure local bindings in ignored `.dev.vars`:
   key checks, workspace preparation, background work, and reminders all call
   that backend.
 - `ALLOWED_ORIGINS`: comma-separated exact origins for the native WebViews,
-  typically `capacitor://localhost,muse://app`. Verify the actual app origins.
+  typically `capacitor://localhost,https://localhost,muse://app` (iPhone,
+  Android, Mac). Verify the actual app origins.
   Requests with no Origin still require authentication. Opaque `null` origins
   and non-allowlisted origins are rejected.
 

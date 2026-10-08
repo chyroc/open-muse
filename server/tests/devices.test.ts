@@ -91,6 +91,24 @@ describe("Account device registry", () => {
     }
   });
 
+  it("registers the Android app", async () => {
+    const android = "5d4c3b2a-1908-4f7e-8d6c-5b4a39281706";
+    const saved = await call(
+      ALICE,
+      `/v1/account/devices/${android}`,
+      "PUT",
+      device("Pixel 10a", "android"),
+    );
+    expect(await saved.json()).toMatchObject({
+      id: android,
+      name: "Pixel 10a",
+      platform: "android",
+    });
+    expect(
+      (await call(ALICE, `/v1/account/devices/${android}`, "DELETE")).status,
+    ).toBe(200);
+  });
+
   it("never shows or changes another account's devices", async () => {
     expect(
       await (await call(BOB, "/v1/account/devices")).json(),
@@ -166,7 +184,7 @@ describe("Account device registry", () => {
 
   it("validates input and keeps the registry to accounts", async () => {
     for (const body of [
-      { ...device("Mac"), platform: "android" },
+      { ...device("Mac"), platform: "windows" },
       { ...device("") },
       { ...device("Two\nlines") },
       { ...device("Mac"), app_version: "1.0 beta" },

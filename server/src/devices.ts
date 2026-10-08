@@ -25,7 +25,7 @@ export function deviceInput(input: Record<string, unknown>) {
   if (
     typeof input.name !== "string" ||
     !/^[^\r\n\u0000-\u001f]{1,80}$/.test(input.name.trim()) ||
-    !["mac", "ios"].includes(input.platform as string) ||
+    !["mac", "ios", "android"].includes(input.platform as string) ||
     typeof input.app_version !== "string" ||
     !/^[0-9A-Za-z.+-]{1,40}$/.test(input.app_version) ||
     Object.keys(input).some(
@@ -35,7 +35,7 @@ export function deviceInput(input: Record<string, unknown>) {
     throw new HttpError(400, "Describe this device with a name and platform.");
   return {
     name: input.name.trim(),
-    platform: input.platform as "mac" | "ios",
+    platform: input.platform as "mac" | "ios" | "android",
     app_version: input.app_version,
   };
 }

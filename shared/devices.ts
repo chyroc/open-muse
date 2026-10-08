@@ -13,7 +13,7 @@ export const deviceRegistration = z
       .min(1)
       .max(80)
       .regex(/^[^\r\n]+$/),
-    platform: z.enum(["mac", "ios"]),
+    platform: z.enum(["mac", "ios", "android"]),
     app_version: z.string().regex(/^[0-9A-Za-z.+-]{1,40}$/),
   })
   .strict();
@@ -28,8 +28,8 @@ export const deviceList = z.object({ devices: z.array(deviceRecord).max(50) });
 // reinstall, a separate profile) makes its own. A Mac reports the computer's
 // own name, so Mac records that share a name stand for one Mac: keep the most
 // recently seen and carry the other ids so removing it forgets them all.
-// iPhones are never merged, because iOS reports the same generic name for
-// every phone.
+// Phones are never merged, because iOS reports the same generic name for
+// every iPhone and Android the same model name for every phone of a model.
 export function mergeDevices(records: readonly DeviceRecord[]) {
   const merged: (DeviceRecord & { ids: string[] })[] = [];
   const macs = new Map<string, DeviceRecord & { ids: string[] }>();
