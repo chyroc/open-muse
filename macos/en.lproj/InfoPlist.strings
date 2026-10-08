@@ -1,5 +1,5 @@
-"NSMicrophoneUsageDescription" = "Open Muse uses the microphone when you dictate a message.";
-"NSSpeechRecognitionUsageDescription" = "Open Muse turns your dictation into text for the message you are writing.";
+"NSMicrophoneUsageDescription" = "Open Muse uses the microphone when you dictate a message or talk with your assistant in a voice conversation.";
+"NSSpeechRecognitionUsageDescription" = "Open Muse turns what you say into text, for a message you dictate or what you say in a voice conversation.";
 "NSCalendarsFullAccessUsageDescription" = "Open Muse reads your calendar events when you ask your assistant about your schedule. It never changes them.";
 "NSRemindersFullAccessUsageDescription" = "Open Muse reads your open reminders when you ask your assistant about your to-dos. It never changes them.";
 "NSLocationUsageDescription" = "Open Muse finds this Mac's approximate location when you ask your assistant about where you are.";
