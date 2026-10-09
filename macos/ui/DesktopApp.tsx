@@ -1544,8 +1544,8 @@ export function DesktopApp({ client }: { client: Client }) {
                   }
                   onClick={() => chooseStatusOpen(true)}
                 >
-                  <span className="companion-face">
-                    <Avatar />
+                  <span className="companion-portrait">
+                    <Avatar working={state === "running"} />
                   </span>
                   <span className="companion-name">
                     {name && <span>{name}</span>}

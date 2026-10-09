@@ -9,6 +9,7 @@ import {
   X,
   createLucideIcon,
 } from "lucide-react";
+import { CompanionAvatar } from "../../src/ChatUI";
 import type { Page } from "./model";
 import { navLabel } from "./labels";
 
@@ -101,20 +102,18 @@ export const LibraryIcon = createLucideIcon("shape-grid", [
   ],
 ]);
 
-export function Avatar({ large = false }: { large?: boolean }) {
+// The companion, as on iPhone: the plush avatar that idles and, while it
+// works, puts on headphones at its laptop.
+export function Avatar({
+  large = false,
+  working = false,
+}: {
+  large?: boolean;
+  working?: boolean;
+}) {
   return (
-    <span
-      className={`desktop-avatar ${large ? "large" : ""}`}
-      aria-hidden="true"
-    >
-      <span className="avatar-body" />
-      <span className="avatar-arm left" />
-      <span className="avatar-arm right" />
-      <span className="avatar-face">
-        <i />
-        <i />
-        <b />
-      </span>
+    <span className={`desktop-avatar${large ? " large" : ""}`}>
+      <CompanionAvatar alive working={working} />
     </span>
   );
 }
@@ -227,7 +226,7 @@ export function Rail({
             })}
             onClick={companion.onOpen}
           >
-            <span className="companion-face">
+            <span className="companion-portrait">
               <Avatar />
             </span>
             <RailTip label={companion.name} />

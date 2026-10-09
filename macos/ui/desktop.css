@@ -969,7 +969,7 @@ h3 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 66px;
+  padding-top: 48px;
 }
 .status-profile h2 {
   margin: 20px 0 4px;
@@ -1098,104 +1098,30 @@ h3 {
   max-height: 180px;
   overflow: auto;
 }
+/* The companion: the same plush avatar as on iPhone, scaled from its 68pt
+   design size to each place it sits. */
 .desktop-avatar {
   display: block;
-  position: relative;
-  width: 43px;
-  height: 48px;
-  filter: drop-shadow(0 4px 4px #7d705020);
+  line-height: 0;
 }
-.avatar-body {
-  position: absolute;
-  left: 8px;
-  top: 3px;
-  width: 29px;
-  height: 40px;
-  border-radius: 46% 46% 37% 37%;
-  background: linear-gradient(110deg, #f0e7d2, #d8cbae);
-  box-shadow:
-    inset 2px 0 4px #ffffffba,
-    inset -3px -3px 5px #b7a98c55;
+.desktop-avatar .companion-avatar {
+  zoom: 0.706;
 }
-.avatar-body:before,
-.avatar-body:after {
-  content: "";
-  position: absolute;
-  bottom: -4px;
-  width: 8px;
-  height: 9px;
-  background: #d7c9a9;
-  border-radius: 0 0 4px 4px;
+.companion-portrait .desktop-avatar .companion-avatar {
+  zoom: 0.824;
 }
-.avatar-body:before {
-  left: 5px;
-}
-.avatar-body:after {
-  right: 5px;
-}
-.avatar-face {
-  position: absolute;
-  left: 12px;
-  top: 9px;
-  width: 21px;
-  height: 18px;
-  border-radius: 43%;
-  background: linear-gradient(#f7eccf, #ecdbb4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  box-shadow: inset 0 1px 2px #c4b39266;
-}
-.avatar-face i {
-  width: 2px;
-  height: 3px;
-  background: #493f2d;
-  border-radius: 50%;
-  margin-top: 1px;
-}
-.avatar-face b {
-  position: absolute;
-  top: 11px;
-  left: 9px;
-  width: 4px;
-  height: 3px;
-  border-bottom: 1px solid #86684a;
-  border-radius: 50%;
-}
-.avatar-arm {
-  position: absolute;
-  width: 7px;
-  height: 20px;
-  top: 21px;
-  background: #d6c8a7;
-  border-radius: 70%;
-  box-shadow: inset 1px 0 2px #fbefdb;
-}
-.avatar-arm.left {
-  left: 4px;
-  transform: rotate(15deg);
-}
-.avatar-arm.right {
-  right: 0;
-  transform: rotate(-17deg);
+.rail-companion .companion-portrait .desktop-avatar .companion-avatar,
+.quick-portrait .desktop-avatar .companion-avatar {
+  zoom: 0.706;
 }
 .desktop-avatar.large {
-  transform: scale(1.9);
-  transform-origin: center center;
-  margin: 15px 0 25px;
+  margin: 0 0 6px;
 }
-.status-profile > .desktop-avatar {
-  isolation: isolate;
-}
-.status-profile > .desktop-avatar:before {
-  content: "";
-  position: absolute;
-  inset: -3px -6px;
-  border-radius: 50%;
-  border: 1px solid var(--fill-strong);
-  background: var(--bg);
-  z-index: -1;
+.desktop-avatar.large .companion-avatar {
+  zoom: 1.65;
+  box-shadow:
+    0 0 0 1px var(--fill-strong),
+    0 4px 18px #0000000f;
 }
 .thinking {
   color: var(--text-2);
@@ -1233,10 +1159,14 @@ h3 {
     typing-turn 1.2s step-end infinite;
 }
 .typing-bubble i:nth-child(2) {
-  animation-delay: 0.15s, -0.8s;
+  animation-delay:
+    0.15s,
+    -0.8s;
 }
 .typing-bubble i:nth-child(3) {
-  animation-delay: 0.3s, -0.4s;
+  animation-delay:
+    0.3s,
+    -0.4s;
 }
 @keyframes typing-bounce {
   0%,
@@ -2389,7 +2319,7 @@ h3 {
   align-items: center;
   max-width: 320px;
 }
-.companion-face {
+.companion-portrait {
   position: relative;
   z-index: 1;
   display: grid;
@@ -2403,9 +2333,6 @@ h3 {
     0 0 6px 0 #00000008,
     0 6px 30px 0 #00000012;
   overflow: hidden;
-}
-.companion-face .desktop-avatar {
-  transform: scale(0.95) translateY(3px);
 }
 .companion-name {
   position: relative;
@@ -2470,7 +2397,7 @@ h3 {
     transform: scale(0.85);
   }
 }
-.rail-companion .companion-face {
+.rail-companion .companion-portrait {
   width: 48px;
   height: 48px;
   transform: translateY(-8px);
@@ -2479,10 +2406,7 @@ h3 {
     0 4px 12px #0000001f;
   transition: transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
 }
-.rail-companion .companion-face .desktop-avatar {
-  transform: scale(0.85) translateY(3px);
-}
-.rail-companion:active .companion-face {
+.rail-companion:active .companion-portrait {
   transform: translateY(-8px) scale(0.92);
 }
 .rail-companion > .rail-tip {

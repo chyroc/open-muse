@@ -51,9 +51,6 @@ body:has(.quick-stage),
     0 0 0 1px var(--line),
     0 2px 8px var(--quick-shadow-near);
 }
-.quick-portrait .desktop-avatar {
-  transform: scale(0.82) translateY(4px);
-}
 .quick-icon {
   width: 32px;
   height: 32px;

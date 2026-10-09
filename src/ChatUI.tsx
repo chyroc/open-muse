@@ -3,6 +3,7 @@ import { onAndroid } from "./platform";
 import type { CompanionActivity } from "../shared/companion-activity";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import "./companion-avatar.css";
 import {
   Archive,
   ArrowDownToLine,

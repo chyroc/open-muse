@@ -186,7 +186,7 @@ describe("Companion avatar", () => {
     expect(renderToStaticMarkup(<CompanionAvatar working alive />)).toContain(
       'class="companion-avatar working alive"',
     );
-    const css = readFileSync("src/chat.css", "utf8");
+    const css = readFileSync("src/companion-avatar.css", "utf8");
     // The plush body is a rendered image the face sits on.
     expect(css).toContain('url("./assets/companion/plush.png")');
     expect(
