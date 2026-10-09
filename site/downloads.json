@@ -8,11 +8,11 @@
     "sha256": "f6287ddc40e25997d272fd5c4cdd01fc423273a3757e9be3fa977e4db7577273"
   },
   "macos": {
-    "version": "20261009-8782234",
-    "build": 553,
-    "commit": "8782234",
-    "file": "OpenMuse-20261009-8782234.dmg",
-    "size": 1582510,
-    "sha256": "c2c7318ad79d97062158613ed575ccb288e7f3a72716b9a71d24a50394d34187"
+    "version": "20261009-4b024fd",
+    "build": 562,
+    "commit": "4b024fd",
+    "file": "OpenMuse-20261009-4b024fd.dmg",
+    "size": 1593303,
+    "sha256": "b168da0c59cc08b78a911466cf0479299afb0dd1124f190ae91425ac894cb896"
   }
 }
