@@ -324,4 +324,28 @@ export const zhDesktop: Record<string, string> = {
   Email: "邮箱",
   // Quick Chat composer placeholder, worded as the desktop app does.
   "Message in Quick Chat": "发消息",
+  "This build doesn't update itself. Releases from getopenmuse.com do.":
+    "此版本不会自动更新，从 getopenmuse.com 下载的正式版会。",
+  "Check now": "立即检查",
+  "Download progress": "下载进度",
+  "Update automatically": "自动更新",
+  "Checks for a new version every few hours and downloads it in the background. It installs when you quit Open Muse.":
+    "每隔几小时检查一次新版本，并在后台下载，退出 Open Muse 时安装。",
+  "Checking for updates…": "正在检查更新…",
+  "Open Muse is up to date": "Open Muse 已是最新版本",
+  "Last checked {time}": "上次检查：{time}",
+  "Version {version} is available": "有新版本 {version}",
+  "Download and install": "下载并安装",
+  "Open Muse can't replace itself where it is now. Move it to the Applications folder, or download the new version.":
+    "Open Muse 在当前位置无法替换自身。请把它移到“应用程序”文件夹，或下载新版本。",
+  "Downloading version {version}…": "正在下载 {version}…",
+  "Version {version} is ready": "新版本 {version} 已准备好",
+  "It installs when you quit Open Muse.": "退出 Open Muse 时会自动安装。",
+  "Restart to update": "重新启动以更新",
+  "Couldn't check for updates": "无法检查更新",
+  "Check your internet connection and try again.": "请检查网络连接后重试。",
+  "The update couldn't be verified, so it wasn't installed":
+    "无法验证此更新，因此没有安装",
+  "Couldn't download the update": "无法下载更新",
+  "Checks a little after Open Muse starts.": "Open Muse 启动后不久会自动检查。",
 };

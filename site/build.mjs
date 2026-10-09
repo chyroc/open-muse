@@ -8,7 +8,8 @@
 //
 // Both get the README screenshots from docs/images as smaller WebP files,
 // the app icons, and the current Android and Mac releases from
-// site/downloads.json.
+// site/downloads.json, with the Mac release also at /download/macos.json
+// for the app's own update check.
 // The screenshots are converted at build time so the repository keeps one
 // copy of each.
 import {
@@ -100,6 +101,17 @@ function build(out, cn) {
       ? `<a href="${site}/zh/?mirror=global">海外站点</a>`
       : `<a href="${mirrors.cn.base}/zh/">中国大陆镜像</a>`,
   });
+  // The Mac app checks this for updates. On the main site the Worker answers
+  // instead, naming the nearer mirror.
+  if (downloads.macos) {
+    const { version, build: number, size, sha256, file } = downloads.macos;
+    const mirror = cn ? mirrors.cn : mirrors.global;
+    mkdirSync(path.join(out, "download"), { recursive: true });
+    writeFileSync(
+      path.join(out, "download/macos.json"),
+      `${JSON.stringify({ version, build: number, size, sha256, url: `${mirror.base}/macos/${file}` })}\n`,
+    );
+  }
   for (const file of html(out)) {
     const page = path.join(out, file);
     let text = readFileSync(page, "utf8")

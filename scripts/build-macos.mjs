@@ -111,6 +111,7 @@ for (const architecture of architectures)
       path.join(root, "macos/LocalCalendar.swift"),
       path.join(root, "macos/LocalLocation.swift"),
       path.join(root, "macos/Speaker.swift"),
+      path.join(root, "macos/Updater.swift"),
       "-o",
       path.join(contents, `MacOS/OpenMuse-${architecture}`),
     ],

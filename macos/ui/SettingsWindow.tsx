@@ -36,6 +36,7 @@ import {
 import type { Client } from "../../src/api";
 import { backgroundClient } from "../../src/background-client";
 import { AccountSettings } from "./AccountSettings";
+import { UpdateSettings } from "./UpdateSettings";
 import { MuseMark } from "../../src/components";
 import { Modal } from "./Chrome";
 import { PresenceSettings } from "./PresenceSettings";
@@ -450,14 +451,7 @@ export function SettingsWindow({ client }: { client: Client }) {
               </span>
               <small>Volcano Ark Managed Agents</small>
             </div>
-            <div className="settings-group">
-              <Row
-                title={t("Updates")}
-                detail={t(
-                  "Automatic update checks are not built yet. Install a newer build yourself.",
-                )}
-              />
-            </div>
+            <UpdateSettings />
           </>
         )}
         {active.id === "computer-use" && <ComputerSettings />}

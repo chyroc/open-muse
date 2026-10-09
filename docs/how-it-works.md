@@ -598,6 +598,21 @@ its version (with "-modified" when the build had uncommitted changes); tap it
 to copy. The Mac shows the same version in Settings > General and in the
 About Open Muse window.
 
+A Mac release (signed with Developer ID) keeps itself up to date. A little
+after it starts and every six hours it reads the current release from
+`getopenmuse.com/download/macos.json` (the mainland China mirror answers when
+the main site cannot be reached) and, with **Update automatically** on,
+downloads the disk image from the nearer mirror in the background. It installs
+the app inside only when the image matches the published size and SHA-256, the
+app carries a valid Developer ID signature from the same team as the running
+app, and Gatekeeper accepts it as notarized. The new version replaces the app
+when Open Muse quits, or at once with **Restart to update** in Settings >
+General or the app menu; another running copy of the app postpones it to a
+later quit. Checks that run on their own fail quietly; a check or download the
+person started says what went wrong. A copy run from the disk image or from a
+folder this user cannot write offers the download instead, and development
+builds never update themselves.
+
 ### Data on your iPhone
 
 The iPhone app answers two device tools. `health_read` reads one Apple Health

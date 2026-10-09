@@ -159,7 +159,9 @@ Application identity as a `.p12` in `OPEN_MUSE_MAC_P12` with its password in
 `OPEN_MUSE_MAC_P12_PASSWORD`, imported only into a keychain made for the run,
 and an App Store Connect API key in `ASC_KEY_ID`, `ASC_ISSUER_ID`, and
 `ASC_KEY_PATH` for notarization. `-- --publish` uploads the image to both
-mirrors and records it in `site/downloads.json`, as for Android.
+mirrors and records it in `site/downloads.json`, as for Android. Installed
+Mac releases learn about the new one from `/download/macos.json` on the website,
+so they start updating once that file is committed and the website deployed.
 
 ## Android releases
 

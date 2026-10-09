@@ -1136,8 +1136,6 @@ export const zhCN: Record<string, string> = {
   Dark: "深色",
   System: "系统",
   Updates: "更新",
-  "Automatic update checks are not built yet. Install a newer build yourself.":
-    "自动检查更新尚未实现，请自行安装新版本。",
   Status: "状态",
   "Manage connection": "管理连接",
   "Credentials for this Mac live in the macOS Keychain and are read through the native bridge. They are never written into the page, a file, or a server.":

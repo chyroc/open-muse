@@ -47,6 +47,8 @@ const upload = (include, cacheControl) =>
     ...profile,
   ]);
 upload("*.html", "public, max-age=300");
+// The Mac app's update check reads download/macos.json.
+upload("*.json", "public, max-age=300");
 for (const pattern of ["*.webp", "*.png", "*.svg", "*.css"])
   upload(pattern, "public, max-age=86400");
 run("aliyun", [

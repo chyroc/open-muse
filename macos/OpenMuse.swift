@@ -391,6 +391,10 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     private let dictation = Dictation()
     // Read aloud reports back to the window that asked.
     private let speaker = Speaker()
+    private let updater = Updater()
+    private var updateItem: NSMenuItem?
+    // Restart to Update asked for the app to open again once replaced.
+    private var relaunchAfterUpdate = false
     private weak var speechView: WKWebView?
     private weak var dictationView: WKWebView?
     private let floatingButtonKey = "presence.floatingButton"
@@ -431,6 +435,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museDictation")
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museShortcut")
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museSpeech")
+        configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museUpdate")
         configuration.userContentController.add(self, name: "museExport")
         configuration.userContentController.add(self, name: "museWindow")
         configuration.userContentController.addUserScript(WKUserScript(source: "window.__OPEN_MUSE_DESKTOP__ = true;", injectionTime: .atDocumentStart, forMainFrameOnly: true))
@@ -476,6 +481,9 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         NSApplication.shared.activate(ignoringOtherApps: true)
         updateStatusItem()
         registerHotKeys()
+        updater.onChange = { [weak self] in self?.updateChanged() }
+        updater.start()
+        updateChanged()
         #if SNAPSHOT_TOUR
         startSnapshotTour()
         #endif
@@ -538,6 +546,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         if message.name == "museDictation" { dictate(body, from: message.webView, replyHandler: replyHandler); return }
         if message.name == "museShortcut" { shortcut(body, replyHandler: replyHandler); return }
         if message.name == "museSpeech" { speech(body, from: message.webView, replyHandler: replyHandler); return }
+        if message.name == "museUpdate" { update(body, replyHandler: replyHandler); return }
         // Keychain can wait for an OS authorization dialog. Never block AppKit
         // or discard the eventual reply while the user is deciding.
         DispatchQueue.global(qos: .userInitiated).async { [self] in
@@ -1131,6 +1140,37 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         companionState = state
         (floatingPanel?.contentView as? FloatingButtonView)?.show(name: name, state: state)
     }
+    // Updates for this app: the page reads the state, starts a check or a
+    // download, and asks to restart into a staged update.
+    private func update(_ body: [String: String], replyHandler: @escaping (Any?, String?) -> Void) {
+        switch body["operation"] {
+        case "read": break
+        case "check": updater.check(userInitiated: true)
+        case "download":
+            if updater.installable { updater.download(userInitiated: true) }
+            else { NSWorkspace.shared.open(Updater.downloadPage) }
+        case "automatic": updater.setAutomatic(body["value"] == "true")
+        case "restart": restartToUpdate()
+        default: replyHandler(nil, "Invalid update request"); return
+        }
+        replyHandler(updater.state(), nil)
+    }
+    private func updateChanged() {
+        broadcast("muse-update-changed", except: nil)
+        updateItem?.isHidden = !updater.supported
+        updateItem?.title = updater.hasStagedUpdate ? localized("Restart to Update") : localized("Check for Updates…")
+    }
+    @objc private func updateMenuAction() {
+        if updater.hasStagedUpdate { restartToUpdate(); return }
+        updater.check(userInitiated: true)
+        showSettings(section: "general")
+        settingsWebView?.evaluateJavaScript("window.dispatchEvent(new Event('muse-update-reveal'))", completionHandler: nil)
+    }
+    private func restartToUpdate() {
+        guard updater.hasStagedUpdate else { return }
+        relaunchAfterUpdate = true
+        NSApp.terminate(nil)
+    }
     // Every window shares one connection; tell the others what changed.
     private func broadcast(_ event: String, except sender: WKWebView?) {
         for view in [webView, settingsWebView, quickWebView] where view != nil && view !== sender {
@@ -1507,6 +1547,10 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         let appMenu = NSMenu()
         let about = appMenu.addItem(withTitle: localized("About Open Muse"), action: #selector(showAbout), keyEquivalent: "")
         about.target = self
+        let update = appMenu.addItem(withTitle: localized("Check for Updates…"), action: #selector(updateMenuAction), keyEquivalent: "")
+        update.target = self
+        update.isHidden = true
+        updateItem = update
         appMenu.addItem(.separator())
         let settings = appMenu.addItem(withTitle: localized("Settings…"), action: #selector(openSettings), keyEquivalent: ",")
         settings.target = self
@@ -1594,8 +1638,15 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         return false
     }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        confirmDiscard { allowed in sender.reply(toApplicationShouldTerminate: allowed) }
+        confirmDiscard { allowed in
+            if !allowed { self.relaunchAfterUpdate = false }
+            sender.reply(toApplicationShouldTerminate: allowed)
+        }
         return .terminateLater
+    }
+    // A downloaded update replaces the app once it has quit.
+    func applicationWillTerminate(_ notification: Notification) {
+        updater.installOnExit(relaunch: relaunchAfterUpdate)
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag { showWorkspace() }

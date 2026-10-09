@@ -968,3 +968,18 @@
   text-align: right;
   color: var(--text-2);
 }
+/* A download in progress: a thin bar under the update row. */
+.settings-update-progress {
+  height: 4px;
+  margin: 0 12px 10px;
+  border-radius: 2px;
+  background: var(--fill-strong);
+  overflow: hidden;
+}
+.settings-update-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.3s ease-out;
+}

@@ -6,7 +6,8 @@
 // is remembered in a cookie. /download/android and /download/macos send each
 // visitor to the current release on the nearer mirror: Alibaba Cloud for
 // mainland China, Cloudflare R2 everywhere else (?mirror=cn or ?mirror=global
-// picks one).
+// picks one), and /download/macos.json tells the Mac app about the current
+// release.
 import downloads from "./downloads.json";
 import mirrors from "./mirrors.json";
 
@@ -33,6 +34,21 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const mirror = chosenMirror(request, url);
+
+    // The Mac app's update check: the current release, from the nearer mirror.
+    if (url.pathname === "/download/macos.json" && downloads.macos) {
+      const { version, build, size, sha256, file } = downloads.macos;
+      return Response.json(
+        {
+          version,
+          build,
+          size,
+          sha256,
+          url: `${mirrors[mirror].base}/macos/${file}`,
+        },
+        { headers: { "Cache-Control": "no-store" } },
+      );
+    }
 
     const platform = /^\/download\/(android|macos)$/.exec(url.pathname)?.[1];
     if (platform && downloads[platform])
