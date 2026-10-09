@@ -51,9 +51,6 @@
 .settings-sidebar button[aria-current] svg {
   color: var(--text);
 }
-.settings-sign-out {
-  margin-top: auto !important;
-}
 .settings-main {
   flex: 1;
   min-width: 0;

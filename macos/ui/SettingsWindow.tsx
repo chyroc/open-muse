@@ -15,7 +15,6 @@ import {
   Hand,
   LayoutGrid,
   Lock,
-  LogOut,
   MessageCircle,
   Mic,
   Monitor,
@@ -282,10 +281,6 @@ export function SettingsWindow({ client }: { client: Client }) {
             );
           })}
         </div>
-        <button className="settings-sign-out" onClick={() => setSignOut(true)}>
-          <LogOut size={15} strokeWidth={1.75} />
-          {t("Sign out")}
-        </button>
       </nav>
       <main className="settings-main" ref={main}>
         {active.id === "general" && languagePage ? (
@@ -364,6 +359,7 @@ export function SettingsWindow({ client }: { client: Client }) {
               <AccountSettings
                 client={client}
                 onChanged={() => void readStatus()}
+                onSignOut={() => setSignOut(true)}
               />
             </div>
             <div className="settings-group">

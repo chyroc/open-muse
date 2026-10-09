@@ -46,8 +46,9 @@ account**, and **Reset this device** together, with the account ID at the foot.
 The workspace prepares itself and appears on that page only when it needs
 review or its setup failed. On the Mac, Settings > General starts with the same account in grouped rows:
 the email, the Ark API key (replace or remove it), **Export my data**, and
-**Delete account**, with the account ID at the foot; signing out is at the
-foot of the settings sidebar and **Reset this device** is in Data controls.
+**Sign out of Open Muse** and **Delete account** together, with the account
+ID at the foot; signing out asks for confirmation first, and **Reset this
+device** is in Data controls.
 Signed out, the section is only the email and password form, with the switch
 to creating an account; the Ark API key is added after signing in.
 Signed out, the section is the sign-in form.

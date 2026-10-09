@@ -232,9 +232,10 @@ describe("Mac settings window", () => {
         language === "zh-CN" ? "通用" : "General",
       );
       expect(host!.textContent).toContain("0.2.0");
-      expect(host!.textContent).toContain(
-        language === "zh-CN" ? "退出" : "Sign out",
-      );
+      // Signing out is in the account section, not the sidebar.
+      expect(
+        host!.querySelector(".settings-sidebar")?.textContent,
+      ).not.toContain(language === "zh-CN" ? "退出" : "Sign out");
     },
   );
   it("shows the real permission policy instead of editable controls", async () => {
@@ -457,8 +458,12 @@ describe("Mac settings window", () => {
       .spyOn(backgroundClient, "signOutAccount")
       .mockResolvedValue({ revoked: true });
     const changed = vi.spyOn(client, "accountChanged");
+    signedInAccount();
     await mount(<SettingsWindow client={client} />);
-    await click("Sign out");
+    // It sits with deleting the account.
+    const group = button("Sign out of Open Muse").closest(".settings-group");
+    expect(group?.textContent).toContain("Delete account");
+    await click("Sign out of Open Muse");
     expect(host!.querySelector("dialog")?.textContent).toContain(
       "Other devices stay signed in. Nothing is deleted.",
     );
@@ -470,7 +475,7 @@ describe("Mac settings window", () => {
         .click(),
     );
     expect(signOut).not.toHaveBeenCalled();
-    await click("Sign out");
+    await click("Sign out of Open Muse");
     await act(async () =>
       host!
         .querySelector<HTMLButtonElement>(

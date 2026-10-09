@@ -10,14 +10,18 @@ import { WorkspacePanel } from "../../src/WorkspacePanel";
 // The account section of Settings > General, in the same grouped rows as the
 // other settings: who is signed in, the Ark API key the account keeps,
 // exporting its data, and deleting it. Signed out, it is the sign-in form.
-// Signing out lives at the foot of the sidebar and resetting this Mac in Data
-// controls; the workspace shows only when it needs attention.
+// Signing out sits with deleting the account, after a confirmation; resetting
+// this Mac is in Data controls. The workspace shows only when it needs
+// attention.
 export function AccountSettings({
   client,
   onChanged,
+  onSignOut,
 }: {
   client: Client;
   onChanged: () => void;
+  // Asks to sign this Mac out; the caller confirms first.
+  onSignOut: () => void;
 }) {
   if (!backgroundClient.accountOwner())
     return backgroundClient.accountConfigured() &&
@@ -34,7 +38,9 @@ export function AccountSettings({
         </div>
       </>
     );
-  return <SignedIn client={client} onChanged={onChanged} />;
+  return (
+    <SignedIn client={client} onChanged={onChanged} onSignOut={onSignOut} />
+  );
 }
 
 // Signed out, the section is only the sign-in form: the Ark API key is added
@@ -202,9 +208,11 @@ function SignedOut({
 function SignedIn({
   client,
   onChanged,
+  onSignOut,
 }: {
   client: Client;
   onChanged: () => void;
+  onSignOut: () => void;
 }) {
   const {
     status,
@@ -340,6 +348,13 @@ function SignedIn({
         )}
       </p>
       <div className="settings-group settings-gap">
+        <button
+          className="settings-row settings-nav-row"
+          disabled={busy}
+          onClick={onSignOut}
+        >
+          <span>{t("Sign out of Open Muse")}</span>
+        </button>
         <button
           className="settings-row settings-nav-row settings-danger-row"
           disabled={busy || !owner}
