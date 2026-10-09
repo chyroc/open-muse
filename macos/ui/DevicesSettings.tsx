@@ -105,7 +105,12 @@ export function DevicesSettings() {
               <div>
                 <strong>{device.name}</strong>
                 <p>
-                  {device.platform === "ios" ? "iPhone" : "Mac"} ·{" "}
+                  {device.platform === "ios"
+                    ? "iPhone"
+                    : device.platform === "android"
+                      ? "Android"
+                      : "Mac"}{" "}
+                  ·{" "}
                   {lastSeen(device.last_seen_at)}
                 </p>
               </div>

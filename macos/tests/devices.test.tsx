@@ -83,6 +83,12 @@ describe("Mac devices", () => {
       .mockResolvedValue([
         { ...iphone, id: self, name: "This one", platform: "mac" },
         iphone,
+        {
+          ...iphone,
+          id: "66666666-7777-4888-9999-000000000000",
+          name: "Pixel",
+          platform: "android",
+        },
       ]);
     const forget = vi
       .spyOn(backgroundClient, "forgetDevice")
@@ -91,6 +97,7 @@ describe("Mac devices", () => {
     expect(host!.textContent).not.toContain("This one");
     expect(host!.textContent).toContain("Phone");
     expect(host!.textContent).toContain("iPhone · 2 hours ago");
+    expect(host!.textContent).toContain("Android · 2 hours ago");
     const button = (label: string) =>
       [...host!.querySelectorAll("button")].find(
         (item) => item.textContent === label,
