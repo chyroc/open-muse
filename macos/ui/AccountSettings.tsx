@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { t } from "../../shared/i18n";
 import type { Client } from "../../src/api";
@@ -20,7 +20,13 @@ export function AccountSettings({
   onChanged: () => void;
 }) {
   if (!backgroundClient.accountOwner())
-    return (
+    return backgroundClient.accountConfigured() &&
+      !backgroundClient.retiredConnection() &&
+      !backgroundClient.accountSessionUnconfirmed() ? (
+      <SignedOut client={client} onChanged={onChanged} />
+    ) : (
+      // A build without the account service, an old device token, or an
+      // unconfirmed session renewal: the shared panel explains each case.
       <>
         <h2>{t("Open Muse account")}</h2>
         <div className="settings-group settings-auth">
@@ -29,6 +35,168 @@ export function AccountSettings({
       </>
     );
   return <SignedIn client={client} onChanged={onChanged} />;
+}
+
+// Signed out, the section is only the sign-in form: the Ark API key is added
+// after signing in, to the account.
+function SignedOut({
+  client,
+  onChanged,
+}: {
+  client: Client;
+  onChanged: () => void;
+}) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [register, setRegister] = useState(false);
+  const [consent, setConsent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const lock = useRef(false);
+  async function submit() {
+    if (lock.current || (register && !consent)) return;
+    lock.current = true;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    const address = email.trim();
+    try {
+      if (register) {
+        await backgroundClient.signUpAccount(address, password);
+        setRegister(false);
+        setConsent(false);
+      }
+      // A new account signs in through the ordinary sign-in; the signup
+      // response itself is never adopted as a session.
+      try {
+        await backgroundClient.signInAccount(address, password);
+      } catch (failure) {
+        if (!register) throw failure;
+        setNotice(
+          t(
+            "Registration submitted. Check your email if verification is required, then sign in. This does not confirm that a new account was created.",
+          ),
+        );
+        return;
+      }
+      try {
+        await client.accountChanged();
+      } finally {
+        onChanged();
+      }
+    } catch (failure) {
+      setError((failure as Error).message);
+    } finally {
+      setPassword("");
+      lock.current = false;
+      setBusy(false);
+    }
+  }
+  return (
+    <>
+      <h2>{t("Open Muse account")}</h2>
+      <form
+        className="settings-auth"
+        aria-label={t("Open Muse account login")}
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submit();
+        }}
+      >
+        <div className="settings-group">
+          <label className="settings-row settings-field-row">
+            <span>{t("Account email")}</span>
+            <input
+              type="email"
+              value={email}
+              required
+              maxLength={254}
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              disabled={busy}
+              placeholder="name@example.com"
+              onChange={(event) => setEmail(event.target.value)}
+            />
+          </label>
+          <label className="settings-row settings-field-row">
+            <span>{t("Account password")}</span>
+            <input
+              type="password"
+              value={password}
+              required
+              minLength={8}
+              maxLength={1024}
+              autoComplete={register ? "new-password" : "current-password"}
+              disabled={busy}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+          </label>
+          {register && (
+            <label className="settings-row settings-consent-row">
+              <input
+                type="checkbox"
+                checked={consent}
+                disabled={busy}
+                onChange={(event) => setConsent(event.target.checked)}
+              />
+              <span>
+                {t(
+                  "Create an Open Muse account with this email. The Auth provider will receive the email and password.",
+                )}
+              </span>
+            </label>
+          )}
+        </div>
+        <div className="settings-signin-actions">
+          <button
+            className="settings-primary-button"
+            disabled={
+              busy ||
+              !email.trim() ||
+              password.length < 8 ||
+              (register && !consent)
+            }
+          >
+            {register
+              ? t("Create Open Muse account")
+              : t("Sign in to Open Muse")}
+          </button>
+          <button
+            type="button"
+            className="settings-inline-button"
+            disabled={busy}
+            onClick={() => {
+              setRegister(!register);
+              setPassword("");
+              setConsent(false);
+              setError("");
+            }}
+          >
+            {register
+              ? t("Use an existing account")
+              : t("Create an account instead")}
+          </button>
+        </div>
+      </form>
+      <p className="settings-footnote settings-signin-note">
+        {t(
+          "Your identity on every device. Your Ark API key, workspace, and history belong to it.",
+        )}
+      </p>
+      {(notice || busy) && (
+        <p className="settings-lead settings-after" role="status">
+          {notice || t("Working, please don't submit again…")}
+        </p>
+      )}
+      {error && (
+        <p className="settings-error" role="alert">
+          {error}
+        </p>
+      )}
+    </>
+  );
 }
 
 function SignedIn({

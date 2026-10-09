@@ -983,3 +983,52 @@
   background: var(--accent);
   transition: width 0.3s ease-out;
 }
+/* Signing in: labelled fields in one group, the actions under it. */
+.settings-field-row > span {
+  flex-shrink: 0;
+  width: 96px;
+  margin-left: 0;
+  font-size: 14px;
+  color: var(--text);
+}
+.settings-field-row input {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+.settings-field-row input:focus {
+  outline: 2px solid var(--accent-soft);
+  border-color: var(--accent);
+}
+.settings-consent-row {
+  align-items: flex-start;
+}
+.settings-consent-row > span {
+  margin-left: 0;
+  white-space: normal;
+  font-size: 13px;
+  line-height: 18px;
+}
+.settings-consent-row input {
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+.settings-signin-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.settings-signin-actions .settings-inline-button {
+  margin-left: 0;
+}
+.settings-signin-note {
+  margin-bottom: 28px;
+}
