@@ -42,9 +42,11 @@ export const directFetch: typeof fetch = async (input, init = {}) => {
   return response;
 };
 
+// Ark answers a rejected key without CORS headers, so the app sees that as
+// an unreachable server too.
 const unreachable = () =>
   t(
-    "Couldn't reach Volcano directly. Check your network; the endpoint must allow this app's origin (CORS). No request is retried automatically.",
+    "Couldn't reach Volcano Ark. Check your network and try again. If this keeps happening while other sites load, Ark may have rejected the API key; check it in Settings.",
   );
 const interrupted = () =>
   t(

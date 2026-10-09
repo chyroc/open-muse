@@ -17,6 +17,7 @@ import type {
 } from "../../shared/account-sync";
 import type { ClaimInput, ClaimResult } from "../../shared/proactive";
 import { MA, MA_BASE_URL, directFetch } from "./transport";
+import { isNetworkFailure } from "../../shared/network-error";
 
 const projectName = z
   .string()
@@ -217,7 +218,12 @@ export class DirectAuth {
   // service revokes background access tied to the previous key.
   private async store(credential: AccountCredential) {
     const owner = this.signedInOwner();
-    await this.verify(credential);
+    // Ark answers a rejected key without CORS headers, which reads here as
+    // an unreachable server. The service checks the key again without that
+    // limit and says whether Ark rejected it.
+    await this.verify(credential).catch((error: unknown) => {
+      if (!isNetworkFailure(error)) throw error;
+    });
     const result = await this.account!.saveAccountCredential(
       credential,
       this.revision,

@@ -192,8 +192,8 @@ export const zhErrors: Record<string, string> = {
     "无法保存本地数据。请检查设备存储后重试。",
   "This is not an allowed Volcano API endpoint.":
     "此火山引擎 API 地址不在允许范围内。",
-  "Couldn't reach Volcano directly. Check your network; the endpoint must allow this app's origin (CORS). No request is retried automatically.":
-    "无法直接连接火山引擎。请检查网络；接口必须允许此应用的来源（CORS）。请求不会自动重试。",
+  "Couldn't reach Volcano Ark. Check your network and try again. If this keeps happening while other sites load, Ark may have rejected the API key; check it in Settings.":
+    "无法连接火山方舟。请检查网络后重试；如果其他网站都能打开却一直这样，可能是方舟拒绝了这个 API Key，请在设置中检查。",
   "Welcome state changed. Refresh before continuing.":
     "欢迎流程状态已更改。请刷新后继续。",
   "Another view is starting this conversation. Refresh its history.":
@@ -268,4 +268,32 @@ export const zhErrors: Record<string, string> = {
     "响应返回前，与火山引擎的连接中断了。请求不会自动重试。",
   "Volcano did not answer in time. No request is retried automatically.":
     "火山引擎未能及时响应。请求不会自动重试。",
+  Ark: "方舟",
+  "{service} rejected this API key. Check it, or replace it in Settings.":
+    "{service}拒绝了这个 API Key。请检查它，或在设置中更换。",
+  "{service} cannot use the model this needs with this API key.":
+    "这个 API Key 无法在{service}上使用所需的模型。",
+  "Your Ark account cannot use the model {model} yet. Enable it under Model activation in the Ark console, then try again.":
+    "你的方舟账号还不能使用模型 {model}。请在方舟控制台的「开通管理」中开通后再试。",
+  "Your Ark account cannot use the model this needs yet. Enable it under Model activation in the Ark console, then try again.":
+    "你的方舟账号还不能使用所需的模型。请在方舟控制台的「开通管理」中开通后再试。",
+  "Your Volcengine account is overdue or out of balance. Top it up, then try again.":
+    "火山引擎账号已欠费或余额不足，充值后再试。",
+  "Your {service} account is out of credit. Add credit, then try again.":
+    "你的{service}账号余额不足，充值后再试。",
+  "This API key is not allowed to do this. Check the key's project and permissions in the Ark console.":
+    "这个 API Key 没有执行此操作的权限。请在方舟控制台检查 Key 所属的项目和权限。",
+  "This API key is not allowed to do this.":
+    "这个 API Key 没有执行此操作的权限。",
+  "{service} is receiving too many requests right now. Try again in a moment.":
+    "{service}当前请求过多，请稍后再试。",
+  "The {service} resource this needs no longer exists.":
+    "所需的{service}资源不存在或已被删除。",
+  "{service} did not accept this request.": "{service}没有接受这个请求。",
+  "{service} is temporarily unavailable. Try again later.":
+    "{service}暂时不可用，请稍后再试。",
+  "API keys were checked too many times in the last hour. Try again in an hour; the saved key is unchanged.":
+    "过去一小时内校验 API Key 的次数太多了。请一小时后再试，已保存的 Key 不受影响。",
+  "Workspace setup ran too many times in the last hour. Try again in an hour.":
+    "过去一小时内配置工作区的次数太多了，请一小时后再试。",
 };

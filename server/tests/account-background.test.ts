@@ -35,8 +35,9 @@ const ark: Record<string, Record<string, Resource>> = {
   memory_stores: {},
 };
 let sequence = 0;
-// Makes the next creation fail before or after Ark stored the resource.
-let failNextCreate: "before" | "after" | undefined;
+// Makes the next creation fail before or after Ark stored the resource, or
+// refuse it the way Ark refuses a model the account has not enabled.
+let failNextCreate: "before" | "after" | "model" | undefined;
 const upstream = vi.fn<typeof fetch>(async (input, init) => {
   const url = new URL(String(input));
   const bearer = (new Headers(init?.headers).get("Authorization") ?? "").slice(
@@ -56,6 +57,17 @@ const upstream = vi.fn<typeof fetch>(async (input, init) => {
     const failure = failNextCreate;
     failNextCreate = undefined;
     if (failure === "before") throw new TypeError("network down");
+    if (failure === "model")
+      return Response.json(
+        {
+          error: {
+            code: "InvalidParameter",
+            message:
+              'model.id: endpoint "doubao-seed-2-1-pro-260915" is invalid: get endpoint meta doubao-seed-2-1-pro-260915: the model or endpoint does not exist or you do not have access to it',
+          },
+        },
+        { status: 400 },
+      );
     const body = JSON.parse(String(init!.body));
     const row = { id: `${collection}-${++sequence}`, metadata: body.metadata };
     rows[row.id] = row;
@@ -412,7 +424,9 @@ describe("Background work for Open Muse account workspaces", () => {
       ).workspace.memoryStoreId
     ];
     const stores = Object.keys(ark.memory_stores).length;
-    expect((await provision(DAVE)).status).toBe(429);
+    const limited = await provision(DAVE);
+    expect(limited.status).toBe(429);
+    expect(await limited.json()).toMatchObject({ code: "workspace_limit" });
     expect(Object.keys(ark.memory_stores).length).toBe(stores);
   });
 
@@ -499,5 +513,23 @@ describe("Background work for Open Muse account workspaces", () => {
       "PUT",
     );
     expect(stale.status).toBe(409);
+  });
+
+  it("names the model Ark refused, and continues once it is enabled", async () => {
+    const agent = (
+      (await (await request(BOB, "/v1/account/workspace")).json()) as {
+        workspace: { agentId: string };
+      }
+    ).workspace.agentId;
+    delete ark.agents[agent];
+    failNextCreate = "model";
+    const refused = await provision(BOB);
+    expect(refused.status).toBe(422);
+    expect(await refused.json()).toMatchObject({
+      code: "ark_rejected",
+      details: ["model_unavailable", "doubao-seed-2-1-pro-260915"],
+    });
+    // Nothing is left pending: continuing setup creates the agent.
+    expect((await provision(BOB)).status).toBe(200);
   });
 });

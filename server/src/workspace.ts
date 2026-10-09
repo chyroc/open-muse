@@ -19,7 +19,7 @@ import { digest } from "../../shared/crypto";
 import { canonicalJson } from "../../shared/session-refresh";
 import { AccountCredentials } from "./account";
 import { ConnectionStore, revokeBackground, seal, unseal } from "./connection";
-import { HttpError, maEndpoint, type Env } from "./env";
+import { HttpError, arkRefusal, maEndpoint, type Env } from "./env";
 
 type Kind = "environment" | "memory_store" | "agent";
 const kinds: Record<
@@ -318,6 +318,7 @@ export class AccountWorkspaces {
       throw new HttpError(
         429,
         "Too many workspace changes for this account. Try again in an hour.",
+        "workspace_limit",
       );
   }
   // Only ever lists; the result decides whether a new creation is safe.
@@ -489,7 +490,8 @@ export class AccountWorkspaces {
           ).includes(error.status)
         ) {
           await this.write(workspaceKey, revision, workspace, null, now);
-          throw new HttpError(
+          throw arkRefusal(
+            error,
             422,
             `Ark refused to create the workspace ${kind.replace("_", " ")} (HTTP ${error.status}).`,
           );
@@ -638,7 +640,8 @@ export class AccountWorkspaces {
           .catch(() => false);
       if (rejected) {
         await this.write(workspaceKey, held, workspace, null, now);
-        throw new HttpError(
+        throw arkRefusal(
+          error,
           422,
           `Ark refused the change (HTTP ${(error as ApiError).status}). Nothing was saved.`,
         );

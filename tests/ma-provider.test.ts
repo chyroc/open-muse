@@ -128,12 +128,12 @@ describe("Managed Agents backends", () => {
     await expect(
       client(arkProvider, failing("x-request-id")).ark.request("/agents"),
     ).rejects.toThrow(
-      /^Ark request failed \(HTTP 400; Request ID req_0123456789/,
+      /^Ark did not accept this request\. \(HTTP 400; Request ID req_0123456789/,
     );
     await expect(
       client(claudeProvider, failing("request-id")).ark.request("/agents"),
     ).rejects.toThrow(
-      /^Claude request failed \(HTTP 400; Request ID req_0123456789/,
+      /^Claude did not accept this request\. \(HTTP 400; Request ID req_0123456789/,
     );
   });
 });

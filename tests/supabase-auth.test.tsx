@@ -252,9 +252,12 @@ describe("Native Supabase Auth trial", () => {
   });
   it("reports registration failures without provider status codes", async () => {
     const f = fixture();
-    for (const code of [400, 422, 429]) {
+    for (const code of [400, 422]) {
       f.authFetch.mockResolvedValueOnce(
-        Response.json({ code: "user_already_exists" }, { status: code }),
+        Response.json(
+          { code, error_code: "user_already_exists" },
+          { status: code },
+        ),
       );
       const error = await f.client
         .signUpAccount("person@example.com", password)
@@ -262,7 +265,26 @@ describe("Native Supabase Auth trial", () => {
       expect(String(error)).toContain("not accepted");
       expect(String(error)).not.toMatch(/HTTP|\d{3}|user_already_exists/);
     }
-    expect(f.authFetch).toHaveBeenCalledTimes(3);
+    // Reasons that say nothing about the email are named.
+    for (const [response, text] of [
+      [
+        Response.json({ error_code: "weak_password" }, { status: 422 }),
+        "longer password",
+      ],
+      [
+        Response.json(
+          { error_code: "over_request_rate_limit" },
+          { status: 429 },
+        ),
+        "Too many sign-in attempts",
+      ],
+    ] as const) {
+      f.authFetch.mockResolvedValueOnce(response);
+      await expect(
+        f.client.signUpAccount("person@example.com", password),
+      ).rejects.toThrow(text);
+    }
+    expect(f.authFetch).toHaveBeenCalledTimes(4);
     expect(f.vault.write).not.toHaveBeenCalled();
   });
   it("rejects renewal subject changes and remains blocked rather than adopting another user's tokens", async () => {
@@ -346,6 +368,71 @@ describe("Native Supabase Auth trial", () => {
     ).rejects.not.toThrow(password);
     expect(f.authFetch).toHaveBeenCalledTimes(4);
     expect(f.vault.write).not.toHaveBeenCalled();
+  });
+  it("says why a login was refused, from the provider's error code", async () => {
+    const f = fixture();
+    for (const [body, status, text] of [
+      [
+        { error_code: "invalid_credentials" },
+        400,
+        "email or password is incorrect",
+      ],
+      [{ error_code: "email_not_confirmed" }, 400, "Confirm your email"],
+      [
+        { error_code: "over_request_rate_limit" },
+        429,
+        "Too many sign-in attempts",
+      ],
+      [{}, 503, "temporarily unavailable"],
+    ] as const) {
+      f.authFetch.mockResolvedValueOnce(Response.json(body, { status }));
+      const error = await f.auth
+        .signIn("person@example.com", password)
+        .catch((value: Error) => value);
+      expect(String(error)).toContain(text);
+      expect(String(error)).not.toContain(password);
+    }
+  });
+  it("shows why the service could not set up the workspace or save a key", async () => {
+    const f = fixture();
+    await f.client.signInAccount("person@example.com", password);
+    f.serviceFetch.mockImplementation(async (input) => {
+      if (String(input).includes("/v1/status")) return Response.json(status());
+      if (String(input).includes("/v1/account/workspace"))
+        return Response.json(
+          {
+            error: "Ark refused to create the workspace agent (HTTP 400).",
+            code: "ark_rejected",
+            details: ["model_unavailable", "doubao-seed-2-1-pro-260915"],
+          },
+          { status: 422 },
+        );
+      return Response.json(
+        { error: "Too many API key checks.", code: "key_check_limit" },
+        { status: 429 },
+      );
+    });
+    await expect(f.client.provisionAccountWorkspace(1)).rejects.toThrow(
+      "Your Ark account cannot use the model doubao-seed-2-1-pro-260915 yet.",
+    );
+    await expect(
+      f.client.saveAccountCredential(
+        { apiKey: "test-ark-api-key-000001", project: "" },
+        1,
+      ),
+    ).rejects.toThrow("API keys were checked too many times in the last hour");
+  });
+  it("keeps the session when renewal is only rate-limited", async () => {
+    const f = fixture();
+    await f.client.signInAccount("person@example.com", password);
+    f.authFetch.mockResolvedValueOnce(
+      Response.json({ error_code: "over_request_rate_limit" }, { status: 429 }),
+    );
+    await expect(f.client.renewAccountLogin()).rejects.toThrow(
+      "Too many sign-in attempts",
+    );
+    expect(f.client.accountOwner()).toBe(supabaseOwner(origin, subject));
+    expect(JSON.parse(f.read()).account.refreshPending).toBeUndefined();
   });
   it("rejects unsafe origins, incomplete configuration, and service-role keys", () => {
     for (const value of [

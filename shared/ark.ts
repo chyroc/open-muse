@@ -1,6 +1,12 @@
 import type { AgentEvent, Category, Page, Session } from "../shared/types";
 import { boundedSignal } from "./abort";
 import { arkProvider, type MAProvider } from "./ma-provider";
+import {
+  arkProblem,
+  arkProblemText,
+  refusedModel,
+  type ArkProblem,
+} from "./ark-problem";
 export interface ArkConfig {
   // Base URL of the MA API, normally `provider.baseUrl`.
   arkBaseUrl: string;
@@ -18,6 +24,9 @@ export class ApiError extends Error {
     message: string,
     // The backend's own error code, when it gave one.
     public code?: string,
+    // Why the model service refused, and the model it named, when known.
+    public problem?: ArkProblem,
+    public model?: string,
   ) {
     super(message);
   }
@@ -67,12 +76,26 @@ export class ArkClient {
           this.config.arkKey,
           this.provider.requestIdHeader,
         );
+        // What to do about it first; the status, code, and request ID
+        // follow for anyone reporting the problem.
+        const problem = arkProblem(
+          response.status,
+          diagnostic.code,
+          diagnostic.message,
+        );
+        const named =
+          problem === "model_unavailable"
+            ? refusedModel(diagnostic.message)
+            : undefined;
+        const model = named === this.config.arkKey ? undefined : named;
         throw new ApiError(
           [400, 401, 403, 404, 409, 413, 429].includes(response.status)
             ? response.status
             : 502,
-          `${this.provider.name} request failed (HTTP ${response.status}${diagnostic.text ? `; ${diagnostic.text}` : ""}). Check your Ark connection or try again later.`,
+          `${arkProblemText(problem, { service: this.provider.name, model })} (HTTP ${response.status}${diagnostic.text ? `; ${diagnostic.text}` : ""})`,
           diagnostic.code,
+          problem,
+          model,
         );
       }
       if (response.status === 204) return { ok: true } as T;
@@ -182,7 +205,13 @@ async function errorDiagnostic(
 ) {
   const parts: string[] = [];
   let errorCode: string | undefined;
-  const result = () => ({ text: parts.join("; "), code: errorCode });
+  // The backend's message, kept only to tell why it refused; never shown.
+  let upstream = "";
+  const result = () => ({
+    text: parts.join("; "),
+    code: errorCode,
+    message: upstream,
+  });
   const requestId = response.headers.get(requestIdHeader);
   if (
     requestId &&
@@ -222,6 +251,7 @@ async function errorDiagnostic(
     )
       parts.unshift(code);
     const message = typeof error?.message === "string" ? error.message : "";
+    upstream = message.slice(0, 2000);
     const fields = [
       "config.networking.type",
       "config.networking.allowed_hosts",

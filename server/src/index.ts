@@ -1,7 +1,8 @@
 import { edgeFetch } from "./fetch";
 import { checkOrigin, verifiedAccount } from "./auth";
 import { deleteAccount } from "./account-deletion";
-import { backgroundReady, HttpError, json, maEndpoint, type Env } from "./env";
+import { arkRefusal, backgroundReady, HttpError, json, maEndpoint, type Env } from "./env";
+import { ApiError } from "../../shared/ark";
 import { Repository } from "./repository";
 import { validateTime } from "./schedule";
 import { tick } from "./jobs";
@@ -661,7 +662,12 @@ export async function handle(
         response = json({ ok: true });
       } else throw new HttpError(404, "Endpoint not found.");
     }
-  } catch (error) {
+  } catch (caught) {
+    // A refusal from the model service names its reason for the app.
+    const error =
+      caught instanceof ApiError
+        ? arkRefusal(caught, 502, "The model service refused the request.")
+        : caught;
     response = json(
       {
         error:

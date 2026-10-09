@@ -11,7 +11,53 @@ import {
 } from "../shared/supabase-auth";
 
 // The provider answered with an error status: the request definitely failed.
-export class AccountRequestError extends Error {}
+export class AccountRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status?: number,
+    // Auth's own reason, such as "invalid_credentials".
+    readonly code?: string,
+  ) {
+    super(message);
+  }
+}
+// What a person can do about a refused login, sign-up, or renewal.
+function accountProblem(status: number, code = "") {
+  switch (code) {
+    case "invalid_credentials":
+      return t("The email or password is incorrect.");
+    case "user_already_exists":
+    case "email_exists":
+      return t("An account with this email already exists. Sign in instead.");
+    case "weak_password":
+      return t("Choose a longer password, at least 8 characters.");
+    case "email_not_confirmed":
+      return t("Confirm your email with the link sent to it, then sign in.");
+    case "signup_disabled":
+      return t("New accounts cannot be created right now.");
+    case "user_banned":
+      return t("This account cannot sign in.");
+    case "over_request_rate_limit":
+    case "over_email_send_rate_limit":
+      return t("Too many sign-in attempts. Wait a few minutes and try again.");
+    case "refresh_token_not_found":
+    case "refresh_token_already_used":
+    case "session_not_found":
+    case "session_expired":
+    case "bad_jwt":
+      return t("Your sign-in has expired. Sign in again.");
+  }
+  if (status === 429)
+    return t("Too many sign-in attempts. Wait a few minutes and try again.");
+  if (status >= 500)
+    return t(
+      "The account service is temporarily unavailable. Try again later.",
+    );
+  return t(
+    "Account request failed (HTTP {status}). Check your login or provider configuration; no request was retried.",
+    { status },
+  );
+}
 const login = z
   .object({
     email: z.string().trim().email().max(254),
@@ -65,13 +111,20 @@ export class SupabaseAuth {
           ...init.headers,
         },
       });
-      if (!response.ok)
+      if (!response.ok) {
+        const reason = (await response.json().catch(() => undefined)) as
+          { error_code?: unknown } | undefined;
+        const code =
+          typeof reason?.error_code === "string" &&
+          /^[a-z_]{1,60}$/.test(reason.error_code)
+            ? reason.error_code
+            : undefined;
         throw new AccountRequestError(
-          t(
-            "Account request failed (HTTP {status}). Check your login or provider configuration; no request was retried.",
-            { status: response.status },
-          ),
+          accountProblem(response.status, code),
+          response.status,
+          code,
         );
+      }
       return response.status === 204
         ? {}
         : ((await response.json()) as unknown);
@@ -134,7 +187,15 @@ export class SupabaseAuth {
         body: JSON.stringify(input),
       });
     } catch (error) {
-      // Provider status codes can reveal whether an email is registered.
+      // Provider status codes can reveal whether an email is registered,
+      // so only reasons that say nothing about the email are passed on.
+      if (
+        error instanceof AccountRequestError &&
+        (error.code === "weak_password" ||
+          error.status === 429 ||
+          (error.status ?? 0) >= 500)
+      )
+        throw error;
       if (error instanceof AccountRequestError)
         throw new Error(
           t(

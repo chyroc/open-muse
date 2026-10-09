@@ -106,6 +106,12 @@ const reasons = (): Record<string, string> => ({
   settings_changed: t(
     "Ark's settings changed after you reviewed them. Review them again; nothing was saved.",
   ),
+  key_check_limit: t(
+    "API keys were checked too many times in the last hour. Try again in an hour; the saved key is unchanged.",
+  ),
+  workspace_limit: t(
+    "Workspace setup ran too many times in the last hour. Try again in an hour.",
+  ),
 });
 const RENEW_MARGIN = 120_000;
 const credentialStatus = z.object({
@@ -114,6 +120,8 @@ const credentialStatus = z.object({
   updatedAt: z.number().nullable(),
 });
 import { z } from "zod";
+import { arkProblemText, isArkProblem } from "../shared/ark-problem";
+import { MA } from "./direct/transport";
 import { backgroundOrigin } from "../shared/background-origin";
 import { digest, uuid } from "../shared/crypto";
 import { boundedSignal } from "../shared/abort";
@@ -323,11 +331,21 @@ export class BackgroundClient {
         if (response.status === 401) await this.expire(token);
         // A machine-readable reason, when the service gives one; its wording
         // is never shown.
-        const code = z
-          .object({ code: z.string().max(40) })
-          .safeParse(await response.json().catch(() => undefined)).data?.code;
+        const reason = z
+          .object({
+            code: z.string().max(40),
+            details: z.array(z.string().max(100)).max(8).optional(),
+          })
+          .safeParse(await response.json().catch(() => undefined)).data;
+        const code = reason?.code;
         throw new BackgroundRequestError(
-          (code && reasons()[code]) ??
+          (code === "ark_rejected" && isArkProblem(reason?.details?.[0])
+            ? arkProblemText(reason.details[0], {
+                service: MA.name,
+                model: reason.details[1],
+              })
+            : undefined) ??
+            (code && reasons()[code]) ??
             messages[response.status] ??
             (response.status === 401
               ? t("The account session was rejected or expired. Sign in again.")
@@ -346,7 +364,7 @@ export class BackgroundClient {
                           "Ark could not verify this key or workspace. Check it and try again; nothing was saved.",
                         )
                       : t(
-                          "Background service request failed (HTTP {status}).",
+                          "The Open Muse service could not complete this (HTTP {status}). Try again later.",
                           {
                             status: response.status,
                           },
@@ -492,7 +510,13 @@ export class BackgroundClient {
         } catch (error) {
           // A definite rejection means the refresh token can never work
           // again; an unconfirmed result keeps the pending marker instead.
-          if (error instanceof AccountRequestError) await this.expire(c.token);
+          // Rate limiting means the token was not used, so the session
+          // stays as it was and is renewed again later.
+          if (error instanceof AccountRequestError && error.status === 429) {
+            await this.vault.write(JSON.stringify(c));
+            this.current = c;
+          } else if (error instanceof AccountRequestError)
+            await this.expire(c.token);
           throw error;
         }
         // The old refresh token is spent. Persist the verified same-user

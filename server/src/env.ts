@@ -1,5 +1,7 @@
 import type { Database } from "./database";
 import { maProvider } from "../../shared/ma-provider";
+import { ApiError } from "../../shared/ark";
+import { arkProblem } from "../../shared/ark-problem";
 
 export interface Env {
   DB: Database;
@@ -63,6 +65,22 @@ export class HttpError extends Error {
   ) {
     super(message);
   }
+}
+
+// The model service refused or failed a request made with an account's key.
+// The app explains why from `details`: the reason, then the model it named.
+export function arkRefusal(error: unknown, status: number, message: string) {
+  const problem =
+    error instanceof ApiError
+      ? (error.problem ?? arkProblem(error.status, error.code))
+      : "unavailable";
+  const model = error instanceof ApiError ? error.model : undefined;
+  return new HttpError(
+    status,
+    message,
+    "ark_rejected",
+    model ? [problem, model] : [problem],
+  );
 }
 
 export const json = (body: unknown, status = 200) =>

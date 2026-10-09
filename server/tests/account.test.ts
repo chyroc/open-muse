@@ -268,12 +268,19 @@ describe("Per-account encrypted Ark credentials", () => {
 
   it("limits how many keys one account can test with Ark", async () => {
     const checks = provider(401);
-    for (let i = 0; i < 10; i++)
-      expect(
-        (await put(env, carol, `${rotatedKey}-${i}`, 0, checks)).status,
-      ).toBe(422);
+    for (let i = 0; i < 10; i++) {
+      const refused = await put(env, carol, `${rotatedKey}-${i}`, 0, checks);
+      expect(refused.status).toBe(422);
+      expect(await refused.json()).toMatchObject({
+        code: "ark_rejected",
+        details: ["invalid_key"],
+      });
+    }
     const limited = await put(env, carol, sharedKey, 0, checks);
     expect(limited.status).toBe(429);
+    expect(await limited.clone().json()).toMatchObject({
+      code: "key_check_limit",
+    });
     expect(await limited.text()).not.toContain(sharedKey);
     // Ten Ark calls plus eleven session verifications; the eleventh key never
     // reached Ark.

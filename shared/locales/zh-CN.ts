@@ -991,8 +991,8 @@ export const zhCN: Record<string, string> = {
     "读取个人记忆中最新的目标记录。如果缺少重要信息，请提出一个具体问题。仅根据我实际报告的情况更新进展，并回读已保存的更改。执行外部操作前，请先征求批准。",
   "The action conflicts with current server state. Refresh and review the schedule or active run.":
     "此操作与服务器当前状态冲突。请刷新并检查计划或正在运行的任务。",
-  "Background service request failed (HTTP {status}).":
-    "后台服务请求失败（HTTP {status}）。",
+  "The Open Muse service could not complete this (HTTP {status}). Try again later.":
+    "Open Muse 服务暂时无法完成这个操作（HTTP {status}），请稍后再试。",
   "Preparing your personal workspace…": "正在准备个人工作区…",
   "Preparation was interrupted. Resume to verify existing cloud resources first.":
     "准备已中断。请继续，以先验证现有云端资源。",

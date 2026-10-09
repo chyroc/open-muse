@@ -144,4 +144,18 @@ export const zhAccount: Record<string, string> = {
   "Delete account": "删除账号",
   "Your Open Muse account was deleted.": "你的 Open Muse 账号已删除。",
   "This service cannot delete accounts.": "此服务不支持删除账号。",
+  "The email or password is incorrect.": "邮箱或密码不正确。",
+  "An account with this email already exists. Sign in instead.":
+    "这个邮箱已经注册过，请直接登录。",
+  "Choose a longer password, at least 8 characters.":
+    "请设置更长的密码，至少 8 个字符。",
+  "Confirm your email with the link sent to it, then sign in.":
+    "请先点击发到邮箱里的链接完成验证，再登录。",
+  "New accounts cannot be created right now.": "目前无法创建新账号。",
+  "This account cannot sign in.": "这个账号无法登录。",
+  "Too many sign-in attempts. Wait a few minutes and try again.":
+    "登录尝试次数过多，请等几分钟再试。",
+  "Your sign-in has expired. Sign in again.": "登录已过期，请重新登录。",
+  "The account service is temporarily unavailable. Try again later.":
+    "账号服务暂时不可用，请稍后再试。",
 };

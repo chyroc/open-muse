@@ -6,7 +6,7 @@ import {
   type AccountCredentialStatus,
 } from "../../shared/account-credential";
 import { revokeBackground, seal, unseal } from "./connection";
-import { HttpError, maEndpoint, type Env } from "./env";
+import { HttpError, arkRefusal, maEndpoint, type Env } from "./env";
 import { supabaseOrigin } from "../../shared/supabase-auth";
 
 type Row = { revision: number; encrypted: string | null; updated_at: number };
@@ -116,6 +116,7 @@ export class AccountCredentials {
       throw new HttpError(
         429,
         "Too many API key checks for this account. Try again in an hour.",
+        "key_check_limit",
       );
     // Read-only check. Saving a key never creates cloud resources.
     try {
@@ -128,7 +129,8 @@ export class AccountCredentials {
         fetcher,
       ).request("/agents?limit=1");
     } catch (error) {
-      throw new HttpError(
+      throw arkRefusal(
+        error,
         422,
         error instanceof ApiError
           ? `Ark rejected this API key (HTTP ${error.status}). Check the key and project.`

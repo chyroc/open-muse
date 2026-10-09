@@ -78,6 +78,16 @@ environment, and memory store and records them; apps never create or discover
 them. Uncertain creation results are checked before another write; they are
 never blindly retried or adopted.
 
+When Ark refuses a request, the app says why and what to do: the key was
+rejected, the account has not enabled the model, it is overdue, the key lacks
+permission, or Ark is busy or unavailable. The HTTP status, Ark's error code,
+and the request ID follow in parentheses for support. The service passes the
+same reason to the app when it is the one calling Ark, as when it prepares
+the workspace, and names its own limits (ten key checks and twenty workspace
+creations per account per hour) instead of a generic error. A setup step
+Ark refused leaves nothing pending, so Continue setup works once the cause
+is fixed.
+
 ### What an account stores
 
 | Setting | Where it lives | Protection | On another device |
@@ -132,8 +142,8 @@ session output files cannot be cited there. Changes made directly at Ark
 outside Open Muse are not recorded in the account's sealed settings.
 
 Existing agents retain their model. New agents use the public tool-calling model
-`doubao-seed-2-1-pro-260915`; the Ark project must have access to it. Model access
-errors remain visible. The inference `/models` endpoint currently has invalid
+`doubao-seed-2-1-pro-260915`; the Ark account must enable it under Model
+activation in the Ark console, and setup names the model when it has not. The inference `/models` endpoint currently has invalid
 CORS responses, so neither sign-in nor workspace preparation depends on it.
 
 ### Sync across devices
