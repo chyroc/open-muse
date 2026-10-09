@@ -8,7 +8,8 @@ const POLL_MS = 3000;
 export type LarkSetupService = Pick<
   BackgroundClient,
   "larkConnection" | "startLarkConnection"
->;
+> &
+  Partial<Pick<BackgroundClient, "resetLarkConnection">>;
 
 // Connecting Lark through the Open Muse service, shared by the iPhone sheet
 // and the Mac settings: starts (or resumes) setup, then follows it, checking

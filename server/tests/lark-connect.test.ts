@@ -249,6 +249,26 @@ describe("Lark connection set up by the service", () => {
     expect(await status(ALICE)).toEqual({ phase: "none" });
   });
 
+  it("starts over without the chosen app when asked", async () => {
+    const begins = () =>
+      feishu.requests.filter((r) => r.body.includes("action=begin")).length;
+    // Choose an app, then stop before authorizing.
+    await status(ALICE, "DELETE");
+    feishu.appApproved = true;
+    feishu.userApproved = false;
+    expect(await status(ALICE, "POST")).toMatchObject({ phase: "app" });
+    later(6);
+    expect(await status(ALICE)).toMatchObject({ phase: "user" });
+    // Forgetting the app as well: the next setup chooses an app again.
+    expect(
+      await (await call(ALICE, "/v1/lark/connect?app=forget", "DELETE")).json(),
+    ).toEqual({ phase: "none" });
+    const before = begins();
+    expect(await status(ALICE, "POST")).toMatchObject({ phase: "app" });
+    expect(begins()).toBe(before + 1);
+    feishu.userApproved = true;
+  });
+
   it("lets a setup step expire", async () => {
     await status(BOB, "POST");
     later(3601);

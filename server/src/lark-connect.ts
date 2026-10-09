@@ -373,11 +373,12 @@ export class LarkConnections {
     return this.publicStatus(next);
   }
 
-  // Forgets the user token and any setup; the app is kept for next time.
-  async disconnect(): Promise<LarkConnectionStatus> {
+  // Forgets the user token and any setup. The app is kept for next time,
+  // unless the person starts over to choose a different one.
+  async disconnect(forgetApp = false): Promise<LarkConnectionStatus> {
     const { revision, value } = await this.read();
     if (revision === 0) return { phase: "none" };
-    const next: Value = value.app ? { app: value.app } : {};
+    const next: Value = value.app && !forgetApp ? { app: value.app } : {};
     await this.write(revision, next);
     return { phase: "none" };
   }

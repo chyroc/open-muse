@@ -1,7 +1,14 @@
 import { edgeFetch } from "./fetch";
 import { checkOrigin, verifiedAccount } from "./auth";
 import { deleteAccount } from "./account-deletion";
-import { arkRefusal, backgroundReady, HttpError, json, maEndpoint, type Env } from "./env";
+import {
+  arkRefusal,
+  backgroundReady,
+  HttpError,
+  json,
+  maEndpoint,
+  type Env,
+} from "./env";
 import { ApiError } from "../../shared/ark";
 import { Repository } from "./repository";
 import { validateTime } from "./schedule";
@@ -379,11 +386,16 @@ export async function handle(
         response = json(await new LarkStates(env, owner).issue(Date.now()));
       } else if (url.pathname === "/v1/lark/connect") {
         const connection = new LarkConnections(env, owner, fetcher);
-        if (request.method === "GET") response = json(await connection.status());
+        if (request.method === "GET")
+          response = json(await connection.status());
         else if (request.method === "POST")
           response = json(await connection.start());
         else if (request.method === "DELETE")
-          response = json(await connection.disconnect());
+          response = json(
+            await connection.disconnect(
+              url.searchParams.get("app") === "forget",
+            ),
+          );
         else throw new HttpError(404, "Endpoint not found.");
       } else if (url.pathname === "/v1/lark/state") {
         const states = new LarkStates(env, owner);
@@ -393,9 +405,7 @@ export async function handle(
         else throw new HttpError(404, "Endpoint not found.");
       } else if (url.pathname.startsWith("/v1/account/webhooks")) {
         const webhooks = new AccountWebhooks(env, owner);
-        const id = /^\/v1\/account\/webhooks\/([^/]+)$/.exec(
-          url.pathname,
-        )?.[1];
+        const id = /^\/v1\/account\/webhooks\/([^/]+)$/.exec(url.pathname)?.[1];
         if (url.pathname === "/v1/account/webhooks" && request.method === "GET")
           response = json(await webhooks.list(await ready()));
         else if (
@@ -424,7 +434,9 @@ export async function handle(
         const upcoming = new UpcomingDelivery(env, owner, fetcher);
         if (request.method === "GET") response = json(await upcoming.read());
         else if (request.method === "PUT")
-          response = json(await upcoming.save(upcomingInput(await body(request))));
+          response = json(
+            await upcoming.save(upcomingInput(await body(request))),
+          );
         else throw new HttpError(405, "Method not allowed.");
       } else if (
         url.pathname === "/v1/account/claims" &&
@@ -441,7 +453,10 @@ export async function handle(
         request.method === "GET"
       ) {
         response = json(await exportAccount(env, owner, Date.now()));
-      } else if (url.pathname === "/v1/account" && request.method === "DELETE") {
+      } else if (
+        url.pathname === "/v1/account" &&
+        request.method === "DELETE"
+      ) {
         const input = await body(request);
         if (input.confirm !== true || Object.keys(input).length !== 1)
           throw new HttpError(400, "Confirm deleting the Open Muse account.");
@@ -498,9 +513,7 @@ export async function handle(
             "Encrypted credential storage is not configured.",
           );
         const input = await body(request, 8192);
-        const workspace = backgroundWorkspaceSchema.safeParse(
-          input.workspace,
-        );
+        const workspace = backgroundWorkspaceSchema.safeParse(input.workspace);
         if (
           input.confirm !== true ||
           !Number.isSafeInteger(input.revision) ||
@@ -522,19 +535,14 @@ export async function handle(
             "Confirm allowing background work for a valid workspace.",
           );
         const stored = await new AccountCredentials(env, owner).read();
-        if (
-          !stored.credential ||
-          stored.revision !== input.credentialRevision
-        )
+        if (!stored.credential || stored.revision !== input.credentialRevision)
           throw new HttpError(
             409,
             "Your Ark API key changed. Refresh before allowing background work.",
           );
         // Background sessions use the live agent and environment, so they
         // wait until the saved settings are confirmed again.
-        if (
-          (await new AccountWorkspaces(env, owner, fetcher).read()).settings
-        )
+        if ((await new AccountWorkspaces(env, owner, fetcher).read()).settings)
           throw new HttpError(
             409,
             "Check the workspace settings before allowing background work.",

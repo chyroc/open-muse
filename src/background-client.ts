@@ -652,7 +652,8 @@ export class BackgroundClient {
       | "/v1/browser/views"
       | "/v1/lark/tokens"
       | "/v1/lark/state"
-      | "/v1/lark/connect",
+      | "/v1/lark/connect"
+      | "/v1/lark/connect?app=forget",
     schema: z.ZodType<T>,
     init?: RequestInit,
     messages?: Partial<Record<number, string>>,
@@ -756,6 +757,13 @@ export class BackgroundClient {
     return this.accountRequest("/v1/lark/connect", larkConnection, {
       method: "POST",
       body: "{}",
+    });
+  }
+  // Starts Lark setup over: forgets the setup in progress and the chosen app,
+  // so the next setup chooses an app again.
+  resetLarkConnection() {
+    return this.accountRequest("/v1/lark/connect?app=forget", larkConnection, {
+      method: "DELETE",
     });
   }
   // Reminder delivery by the service while the apps are closed. Enabling it
