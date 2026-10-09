@@ -104,6 +104,7 @@ export const zhCN: Record<string, string> = {
   Copied: "已复制",
   Code: "代码",
   "Copy code": "复制代码",
+  "Download code": "下载代码",
   "Copy text": "复制文本",
   "Saved to Library": "已保存到资源库",
   "Save reply": "保存回复",

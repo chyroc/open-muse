@@ -83,7 +83,11 @@ export function AssistantContent({
                   onClick={() => onChoose(option.id)}
                 >
                   <span>{option.label}</span>
-                  {selected && <Check size={15} strokeWidth={2.6} />}
+                  {selected && (
+                    <span className="mac-choice-check" aria-hidden="true">
+                      <Check size={11} strokeWidth={3.2} />
+                    </span>
+                  )}
                 </button>
               );
             })}

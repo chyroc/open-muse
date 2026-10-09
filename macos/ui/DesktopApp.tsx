@@ -17,6 +17,7 @@ import {
   MessageCircle,
   Mic,
   Plus,
+  Reply,
   ShieldCheck,
   Square,
   X,
@@ -47,7 +48,8 @@ const LibraryPage = lazy(() =>
   import("./LibraryPage").then((module) => ({ default: module.LibraryPage })),
 );
 import { MacGoals } from "./goals";
-import { libraryPath } from "./library";
+import { codeFileName, exportTextFile, libraryPath } from "./library";
+import { CodeDownload } from "../../src/CodeBlock";
 import { connectionRoute, openNativeSettings } from "./settings";
 import { navLabel } from "./labels";
 import { connectionError, connectionReady } from "./startup";
@@ -153,6 +155,7 @@ import {
   messageAttachments,
 } from "../../shared/attachments";
 import { uuid } from "../../shared/crypto";
+import { quoteMessage, splitQuote } from "../../shared/message-quote";
 import type { UpcomingItem } from "../../shared/upcoming";
 import { remindersByReply } from "../../src/reminder-cards";
 import { ReminderCard } from "./ReminderCard";
@@ -325,6 +328,12 @@ export function DesktopApp({ client }: { client: Client }) {
         : undefined;
   const draftKey = id ?? (route.newSide ? "new-side" : "main");
   const draft = drafts[draftKey] ?? "";
+  // The message a draft replies to, shown as a card in the composer and sent
+  // as a quote ahead of the text.
+  const [replyingBy, setReplyingBy] = useState<
+    Record<string, { name: string; text: string }>
+  >({});
+  const replying = replyingBy[draftKey];
   const staged = stagedBy[draftKey] ?? [];
   const stagedRef = useRef(staged);
   stagedRef.current = staged;
@@ -367,6 +376,19 @@ export function DesktopApp({ client }: { client: Client }) {
     };
   }, [client, lastEventId]);
   const reminders = remindersByReply(upcoming, events);
+  // A code block's download button saves its code through the save panel.
+  const downloadCode = useCallback(
+    (code: string, language?: string) =>
+      void exportTextFile(
+        codeFileName(language),
+        code,
+        new AbortController().signal,
+      ).then(
+        (message) => alive.current && setNotice(message),
+        (failure: Error) => alive.current && setError(failure.message),
+      ),
+    [],
+  );
   const latestMessage = [...events]
     .reverse()
     .find(
@@ -876,6 +898,23 @@ export function DesktopApp({ client }: { client: Client }) {
     if (!away && scroll.current)
       scroll.current.scrollTop = scroll.current.scrollHeight;
   }, [id, events.at(-1)?.id, away]);
+  // While following the latest message, the view stays at the bottom as
+  // replies, cards and images grow; only the person scrolling leaves it.
+  const awayRef = useRef(away);
+  awayRef.current = away;
+  const lastScrollInput = useRef(0);
+  const markScrollInput = () => {
+    lastScrollInput.current = Date.now();
+  };
+  useEffect(() => {
+    const element = scroll.current;
+    if (!element || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      if (!awayRef.current) element.scrollTop = element.scrollHeight;
+    });
+    for (const child of Array.from(element.children)) observer.observe(child);
+    return () => observer.disconnect();
+  }, [id, events.length]);
   // Earlier history is read as the person nears the top, and what they were
   // reading stays in place when it arrives above.
   const olderAnchor = useRef<number | undefined>(undefined);
@@ -1085,9 +1124,11 @@ export function DesktopApp({ client }: { client: Client }) {
     }
     const quote =
       !route.newSide && (!id || id === index.mainId) ? quotedPost : undefined;
+    const reply = replyingBy[draftKey];
+    const replyText = reply ? quoteMessage(reply.text, text) : text;
     const message = quote
-      ? `${discussionPrompt(quote)}\n\n${t("My message:")}\n${text}`
-      : text;
+      ? `${discussionPrompt(quote)}\n\n${t("My message:")}\n${replyText}`
+      : replyText;
     if (message.length > 16000) {
       setError(
         t(
@@ -1118,6 +1159,7 @@ export function DesktopApp({ client }: { client: Client }) {
     });
     setDrafts((old) => ({ ...old, [sentKey]: "" }));
     setStagedBy((old) => ({ ...old, [sentKey]: [] }));
+    setReplyingBy(({ [sentKey]: _sent, ...rest }) => rest);
     setAway(false);
     const settle = () =>
       setOutgoing((old) => (old?.event.id === local.id ? undefined : old));
@@ -1163,6 +1205,8 @@ export function DesktopApp({ client }: { client: Client }) {
           ...old,
           [back]: old[back]?.length ? old[back] : sentStaged,
         }));
+        if (reply)
+          setReplyingBy((old) => ({ ...old, [back]: old[back] ?? reply }));
         void refreshTask.current().catch(() => {});
         throw failure;
       }
@@ -1278,1014 +1322,1069 @@ export function DesktopApp({ client }: { client: Client }) {
       : navLabel("chat");
 
   return (
-    <div
-      className={`desktop-shell ${inspirationPage && splitChat ? "side-split" : ""} ${route.page === "library" && splitChat ? "library-split" : ""}`}
-    >
-      <Rail
-        page={route.page}
-        onNavigate={goPage}
-        companion={
-          route.page === "chat" || document
-            ? undefined
-            : {
-                name,
-                onOpen: () => goPage("chat"),
-              }
-        }
-        onSearch={() => {
-          setQuery("");
-          setSearch(true);
-        }}
-        onShortcuts={() => setShortcutsOpen(true)}
-        onSettings={() =>
-          document || feedEditorOpen.current
-            ? setNotice(
-                t(
-                  "Close the document before switching accounts. Your draft is preserved.",
-                ),
-              )
-            : openSettings()
-        }
-      />
-      {/* Away from a pinned panel, the rail's edge opens side chats: a click,
+    <CodeDownload.Provider value={downloadCode}>
+      <div
+        className={`desktop-shell ${inspirationPage && splitChat ? "side-split" : ""} ${route.page === "library" && splitChat ? "library-split" : ""}`}
+      >
+        <Rail
+          page={route.page}
+          onNavigate={goPage}
+          companion={
+            route.page === "chat" || document
+              ? undefined
+              : {
+                  name,
+                  onOpen: () => goPage("chat"),
+                }
+          }
+          onSearch={() => {
+            setQuery("");
+            setSearch(true);
+          }}
+          onShortcuts={() => setShortcutsOpen(true)}
+          onSettings={() =>
+            document || feedEditorOpen.current
+              ? setNotice(
+                  t(
+                    "Close the document before switching accounts. Your draft is preserved.",
+                  ),
+                )
+              : openSettings()
+          }
+        />
+        {/* Away from a pinned panel, the rail's edge opens side chats: a click,
           or a pull to the right that the panel follows. */}
-      {!drawer && !document && (route.page === "chat" || !keepPanel) && (
-        <div
-          className="rail-edge"
-          // The hint follows the pointer and steps aside during a pull.
-          onPointerMove={(event) =>
-            setEdgeHint(event.buttons ? undefined : event.clientY)
-          }
-          onPointerLeave={() => setEdgeHint(undefined)}
-        >
-          <PanelEdgeHandle
-            mode="open"
-            side="left"
-            tooltip={false}
-            width={drawerWidth}
-            label={t("Click or drag to open side chats")}
-            onDrag={(drag) => {
-              setEdgeHint(undefined);
-              setDrawerPull(drag.kind === "opening" ? drag.reveal : undefined);
-            }}
-            onCommit={(open) => {
-              setDrawerPull(undefined);
-              if (open) setDrawer(true);
-            }}
-          />
-          {edgeHint !== undefined && (
-            <div
-              className="rail-edge-hint"
-              style={{ top: edgeHint }}
-              aria-hidden="true"
-            >
-              <strong>{t("Side chats")}</strong>
-              <span>{t("Click or drag to open")}</span>
-            </div>
-          )}
-        </div>
-      )}
-      {/* A pinned panel docks on the chat page only; elsewhere it waits there
-          until the person comes back to the chat. */}
-      {(drawer || drawerPull !== undefined) &&
-        !document &&
-        (route.page === "chat" || !keepPanel) && (
-          <PullFrame pull={drawer ? undefined : drawerPull} width={drawerWidth}>
-            <SideChatsPanel
-              chats={sideChats(sessions, index, "").map(panelRow)}
-              archivedChats={sideChats(sessions, index, "", true).map(panelRow)}
-              main={(() => {
-                const session = sessions.find(
-                  (item) => item.id === index.mainId,
-                );
-                return session
-                  ? { updatedAt: panelRow(session).updatedAt }
-                  : {};
-              })()}
-              activeId={id}
-              mainActive={
-                route.page === "chat" &&
-                !route.newSide &&
-                (!id || id === index.mainId)
-              }
-              drafting={route.page === "chat" && Boolean(route.newSide)}
-              query={query}
-              onQuery={setQuery}
-              keepVisible={keepPanel}
-              onKeepVisible={(value) => {
-                setKeepChatPanelVisible(value);
-                setKeepPanel(value);
-              }}
+        {!drawer && !document && (route.page === "chat" || !keepPanel) && (
+          <div
+            className="rail-edge"
+            // The hint follows the pointer and steps aside during a pull.
+            onPointerMove={(event) =>
+              setEdgeHint(event.buttons ? undefined : event.clientY)
+            }
+            onPointerLeave={() => setEdgeHint(undefined)}
+          >
+            <PanelEdgeHandle
+              mode="open"
+              side="left"
+              tooltip={false}
               width={drawerWidth}
-              onWidth={(value, done) => {
-                setDrawerWidth(value);
-                if (done) storeChatPanelWidth(value);
+              label={t("Click or drag to open side chats")}
+              onDrag={(drag) => {
+                setEdgeHint(undefined);
+                setDrawerPull(
+                  drag.kind === "opening" ? drag.reveal : undefined,
+                );
               }}
-              onClose={() => {
-                setKeepChatPanelVisible(false);
-                setKeepPanel(false);
-                setDrawer(false);
+              onCommit={(open) => {
+                setDrawerPull(undefined);
+                if (open) setDrawer(true);
               }}
-              onOpenMain={() => {
-                navigate("/");
-                settleDrawer();
-              }}
-              onOpenChat={(chat) => {
-                const session = sessions.find((item) => item.id === chat);
-                if (session) openChat(session);
-              }}
-              onNewChat={() => {
-                navigate("/new");
-                settleDrawer();
-              }}
-              onUnarchive={(chat) =>
-                void action(async () => {
-                  await client.archiveConversation(chat, false);
-                  await reload();
-                })
-              }
             />
-          </PullFrame>
+            {edgeHint !== undefined && (
+              <div
+                className="rail-edge-hint"
+                style={{ top: edgeHint }}
+                aria-hidden="true"
+              >
+                <strong>{t("Side chats")}</strong>
+                <span>{t("Click or drag to open")}</span>
+              </div>
+            )}
+          </div>
         )}
-      {document && (
-        <Suspense
-          fallback={
-            <main className="workspace">
-              <Empty title={t("Opening document…")} />
-            </main>
-          }
-        >
-          <DocumentEditor
-            key={document.name}
-            initial={document}
-            client={client}
-            connected={ready}
-            onSaved={setIdentity}
-            onClose={() => setDocument(undefined)}
-            onChat={() => {
-              setDocument(undefined);
-              location.hash = "/";
-            }}
-          />
-        </Suspense>
-      )}
-      {route.page === "feed" && !document && (
-        <main className="workspace">
-          <FeedPage
-            key={connectionEpoch}
-            client={client}
-            split={splitChat}
-            onToggleChat={() => setSplitChat((value) => !value)}
-            onEditorChange={onFeedEditorChange}
-            onConnect={openConnection}
-            onDiscuss={(item) => {
-              setQuotedPost(item);
-              setSplitChat(true);
-            }}
-          />
-        </main>
-      )}
-      {route.page === "ideas" && !document && (
-        <main className="workspace">
-          <Suspense fallback={<Empty title={t("Opening ideas…")} />}>
-            <IdeasPage
+        {/* A pinned panel docks on the chat page only; elsewhere it waits there
+          until the person comes back to the chat. */}
+        {(drawer || drawerPull !== undefined) &&
+          !document &&
+          (route.page === "chat" || !keepPanel) && (
+            <PullFrame
+              pull={drawer ? undefined : drawerPull}
+              width={drawerWidth}
+            >
+              <SideChatsPanel
+                chats={sideChats(sessions, index, "").map(panelRow)}
+                archivedChats={sideChats(sessions, index, "", true).map(
+                  panelRow,
+                )}
+                main={(() => {
+                  const session = sessions.find(
+                    (item) => item.id === index.mainId,
+                  );
+                  return session
+                    ? { updatedAt: panelRow(session).updatedAt }
+                    : {};
+                })()}
+                activeId={id}
+                mainActive={
+                  route.page === "chat" &&
+                  !route.newSide &&
+                  (!id || id === index.mainId)
+                }
+                drafting={route.page === "chat" && Boolean(route.newSide)}
+                query={query}
+                onQuery={setQuery}
+                keepVisible={keepPanel}
+                onKeepVisible={(value) => {
+                  setKeepChatPanelVisible(value);
+                  setKeepPanel(value);
+                }}
+                width={drawerWidth}
+                onWidth={(value, done) => {
+                  setDrawerWidth(value);
+                  if (done) storeChatPanelWidth(value);
+                }}
+                onClose={() => {
+                  setKeepChatPanelVisible(false);
+                  setKeepPanel(false);
+                  setDrawer(false);
+                }}
+                onOpenMain={() => {
+                  navigate("/");
+                  settleDrawer();
+                }}
+                onOpenChat={(chat) => {
+                  const session = sessions.find((item) => item.id === chat);
+                  if (session) openChat(session);
+                }}
+                onNewChat={() => {
+                  navigate("/new");
+                  settleDrawer();
+                }}
+                onUnarchive={(chat) =>
+                  void action(async () => {
+                    await client.archiveConversation(chat, false);
+                    await reload();
+                  })
+                }
+              />
+            </PullFrame>
+          )}
+        {document && (
+          <Suspense
+            fallback={
+              <main className="workspace">
+                <Empty title={t("Opening document…")} />
+              </main>
+            }
+          >
+            <DocumentEditor
+              key={document.name}
+              initial={document}
+              client={client}
+              connected={ready}
+              onSaved={setIdentity}
+              onClose={() => setDocument(undefined)}
+              onChat={() => {
+                setDocument(undefined);
+                location.hash = "/";
+              }}
+            />
+          </Suspense>
+        )}
+        {route.page === "feed" && !document && (
+          <main className="workspace">
+            <FeedPage
               key={connectionEpoch}
               client={client}
               split={splitChat}
               onToggleChat={() => setSplitChat((value) => !value)}
               onEditorChange={onFeedEditorChange}
               onConnect={openConnection}
-              onMainChat={async (id) => {
-                const conversations = await client.conversationIndex();
-                if (
-                  !alive.current ||
-                  connectionVersion.current !== connectionEpoch
-                )
-                  return;
-                setIndex(conversations);
-                setQuotedPost(undefined);
-                if (
-                  currentConversation(conversations, id) ===
-                  conversations.mainId
-                )
-                  setSplitChat(true);
-                else navigate(`/chat/${id}`);
-                await reload();
+              onDiscuss={(item) => {
+                setQuotedPost(item);
+                setSplitChat(true);
               }}
             />
-          </Suspense>
-        </main>
-      )}
-      {route.page === "goals" && !document && (
-        <main className="workspace">
-          <WorkspaceBoundary key={connectionEpoch}>
-            <Suspense fallback={<Empty title={t("Opening goals…")} />}>
-              <GoalsPage
+          </main>
+        )}
+        {route.page === "ideas" && !document && (
+          <main className="workspace">
+            <Suspense fallback={<Empty title={t("Opening ideas…")} />}>
+              <IdeasPage
                 key={connectionEpoch}
                 client={client}
-                selectedId={route.goal}
-                onSelect={(id) => navigate(id ? `/goals/${id}` : "/goals")}
                 split={splitChat}
                 onToggleChat={() => setSplitChat((value) => !value)}
                 onEditorChange={onFeedEditorChange}
                 onConnect={openConnection}
-                onOpenChat={(id) => navigate(`/chat/${id}`)}
-                onConversation={async (id) => {
-                  const [conversations, labels] = await Promise.all([
-                    client.conversationIndex(),
-                    new MacGoals(client).labels(),
-                  ]);
+                onMainChat={async (id) => {
+                  const conversations = await client.conversationIndex();
                   if (
                     !alive.current ||
-                    connectionVersion.current !== connectionEpoch ||
-                    routePage.current !== "goals"
+                    connectionVersion.current !== connectionEpoch
                   )
-                    throw new Error(
-                      t(
-                        "The workspace changed. Reopen Goals to continue the saved conversation.",
-                      ),
-                    );
+                    return;
                   setIndex(conversations);
-                  setGoalLabels(labels);
-                  setGoalConversation(id);
                   setQuotedPost(undefined);
-                  setSplitChat(true);
+                  if (
+                    currentConversation(conversations, id) ===
+                    conversations.mainId
+                  )
+                    setSplitChat(true);
+                  else navigate(`/chat/${id}`);
                   await reload();
                 }}
-                onDraft={(text) => {
-                  const key = index.mainId ?? "main";
-                  setGoalConversation(undefined);
-                  setQuotedPost(undefined);
-                  setSplitChat(true);
-                  if (drafts[key]?.trim() && drafts[key] !== text)
-                    setGoalDraftReplacement({ key, text, goal: true });
-                  else {
-                    setDrafts((old) => ({ ...old, [key]: text }));
-                    setGoalDrafts((old) => ({ ...old, [key]: true }));
-                  }
-                }}
               />
             </Suspense>
-          </WorkspaceBoundary>
-        </main>
-      )}
-      {route.page === "library" && !document && (
-        <main className="workspace library-workspace">
-          <WorkspaceBoundary key={connectionEpoch}>
-            <Suspense fallback={<Empty title={t("Opening Library…")} />}>
-              <LibraryPage
-                key={connectionEpoch}
-                client={client}
-                identity={identity}
-                view={route.libraryView ?? "all"}
-                split={splitChat}
-                onView={(view) => navigate(libraryPath(view))}
-                onConnect={openConnection}
-                onOpenChat={(id) => navigate(`/chat/${id}`)}
-                onDocument={openDocument}
-                onDraft={(text) => {
-                  const key = index.mainId ?? "main";
-                  setQuotedPost(undefined);
-                  setSplitChat(true);
-                  if (drafts[key]?.trim() && drafts[key] !== text)
-                    setGoalDraftReplacement({ key, text });
-                  else {
-                    setDrafts((old) => ({ ...old, [key]: text }));
-                    setGoalDrafts((old) => ({ ...old, [key]: false }));
-                  }
-                }}
-              />
-            </Suspense>
-          </WorkspaceBoundary>
-        </main>
-      )}
-      <main
-        className={`workspace ${inspirationPage ? "feed-split-chat" : ""} ${route.page === "library" ? "library-split-chat" : ""}`}
-        hidden={Boolean(document) || (inspirationPage && !splitChat)}
-      >
-        {route.page === "chat" || (inspirationPage && splitChat) ? (
-          <>
-            <header className="chat-toolbar">
-              {/* A pinned panel stands in for its own toggle. */}
-              {!(drawer && keepPanel && route.page === "chat") && (
-                <button
-                  className="glass-pill"
-                  aria-label={t("Open chats and side chats")}
-                  aria-expanded={drawer}
-                  onClick={() => setDrawer((value) => !value)}
-                >
-                  <Menu size={19} />
-                  <span className="glass-pill-label">{chatTitle}</span>
-                </button>
-              )}
-              <div className="toolbar-spacer" />
-              {route.page === "chat" && !statusOpen && (
-                // With the status panel closed, the companion sits at the top
-                // of the conversation and opens it.
-                <button
-                  className="toolbar-avatar companion-float"
-                  aria-label={
-                    approvals.length
-                      ? t("{name} is waiting for your approval", { name })
-                      : name || t("Assistant status")
-                  }
-                  onClick={() => chooseStatusOpen(true)}
-                >
-                  <span className="companion-portrait">
-                    <Avatar working={state === "running"} />
-                  </span>
-                  <span className="companion-name">
-                    {name && <span>{name}</span>}
-                    {presence && (
-                      <span className={`companion-state is-${presence.tone}`}>
-                        {presence.label}
-                      </span>
-                    )}
-                  </span>
-                </button>
-              )}
-              {route.page === "chat" &&
-                voiceAvailable &&
-                voice.state === "off" && (
-                  // A voice conversation starts from the top of the chat; the
-                  // voice bar above the composer ends it.
+          </main>
+        )}
+        {route.page === "goals" && !document && (
+          <main className="workspace">
+            <WorkspaceBoundary key={connectionEpoch}>
+              <Suspense fallback={<Empty title={t("Opening goals…")} />}>
+                <GoalsPage
+                  key={connectionEpoch}
+                  client={client}
+                  selectedId={route.goal}
+                  onSelect={(id) => navigate(id ? `/goals/${id}` : "/goals")}
+                  split={splitChat}
+                  onToggleChat={() => setSplitChat((value) => !value)}
+                  onEditorChange={onFeedEditorChange}
+                  onConnect={openConnection}
+                  onOpenChat={(id) => navigate(`/chat/${id}`)}
+                  onConversation={async (id) => {
+                    const [conversations, labels] = await Promise.all([
+                      client.conversationIndex(),
+                      new MacGoals(client).labels(),
+                    ]);
+                    if (
+                      !alive.current ||
+                      connectionVersion.current !== connectionEpoch ||
+                      routePage.current !== "goals"
+                    )
+                      throw new Error(
+                        t(
+                          "The workspace changed. Reopen Goals to continue the saved conversation.",
+                        ),
+                      );
+                    setIndex(conversations);
+                    setGoalLabels(labels);
+                    setGoalConversation(id);
+                    setQuotedPost(undefined);
+                    setSplitChat(true);
+                    await reload();
+                  }}
+                  onDraft={(text) => {
+                    const key = index.mainId ?? "main";
+                    setGoalConversation(undefined);
+                    setQuotedPost(undefined);
+                    setSplitChat(true);
+                    if (drafts[key]?.trim() && drafts[key] !== text)
+                      setGoalDraftReplacement({ key, text, goal: true });
+                    else {
+                      setDrafts((old) => ({ ...old, [key]: text }));
+                      setGoalDrafts((old) => ({ ...old, [key]: true }));
+                    }
+                  }}
+                />
+              </Suspense>
+            </WorkspaceBoundary>
+          </main>
+        )}
+        {route.page === "library" && !document && (
+          <main className="workspace library-workspace">
+            <WorkspaceBoundary key={connectionEpoch}>
+              <Suspense fallback={<Empty title={t("Opening Library…")} />}>
+                <LibraryPage
+                  key={connectionEpoch}
+                  client={client}
+                  identity={identity}
+                  view={route.libraryView ?? "all"}
+                  split={splitChat}
+                  onView={(view) => navigate(libraryPath(view))}
+                  onConnect={openConnection}
+                  onOpenChat={(id) => navigate(`/chat/${id}`)}
+                  onDocument={openDocument}
+                  onDraft={(text) => {
+                    const key = index.mainId ?? "main";
+                    setQuotedPost(undefined);
+                    setSplitChat(true);
+                    if (drafts[key]?.trim() && drafts[key] !== text)
+                      setGoalDraftReplacement({ key, text });
+                    else {
+                      setDrafts((old) => ({ ...old, [key]: text }));
+                      setGoalDrafts((old) => ({ ...old, [key]: false }));
+                    }
+                  }}
+                />
+              </Suspense>
+            </WorkspaceBoundary>
+          </main>
+        )}
+        <main
+          className={`workspace ${inspirationPage ? "feed-split-chat" : ""} ${route.page === "library" ? "library-split-chat" : ""}`}
+          hidden={Boolean(document) || (inspirationPage && !splitChat)}
+        >
+          {route.page === "chat" || (inspirationPage && splitChat) ? (
+            <>
+              <header className="chat-toolbar">
+                {/* A pinned panel stands in for its own toggle. */}
+                {!(drawer && keepPanel && route.page === "chat") && (
                   <button
-                    className="glass-pill talk-pill"
-                    aria-label={t("Start a voice conversation")}
-                    disabled={!ready}
-                    onClick={() => void voice.start()}
+                    className="glass-pill"
+                    aria-label={t("Open chats and side chats")}
+                    aria-expanded={drawer}
+                    onClick={() => setDrawer((value) => !value)}
                   >
-                    <Phone size={18} />
-                    <span>{t("Talk")}</span>
+                    <Menu size={19} />
+                    <span className="glass-pill-label">{chatTitle}</span>
                   </button>
                 )}
-              {inspirationPage && (
-                <button
-                  className="glass-pill"
-                  aria-label={t("Close side-by-side chat")}
-                  onClick={() => setSplitChat(false)}
-                >
-                  <X size={18} />
-                </button>
-              )}
-            </header>
-            {find !== undefined && (
-              <FindBar
-                query={find}
-                onQuery={(value) => {
-                  setFind(value);
-                  setFindAt(0);
-                }}
-                count={found.length}
-                position={found.length ? findAt % found.length : 0}
-                onStep={(step) =>
-                  setFindAt(
-                    (value) =>
-                      (value + step + found.length) % (found.length || 1),
-                  )
-                }
-                onClose={() => {
-                  setFind(undefined);
-                  composer.current?.focus();
-                }}
-              />
-            )}
-            <div
-              className="chat-scroll"
-              ref={scroll}
-              role="log"
-              aria-label={t("Chat messages")}
-              aria-busy={task.loading}
-              onScroll={() => {
-                const element = scroll.current;
-                if (element) {
-                  setAway(
-                    element.scrollHeight -
-                      element.clientHeight -
-                      element.scrollTop >
-                      90,
-                  );
-                  if (element.scrollTop < 600) readOlder();
-                }
-              }}
-            >
-              {task.hasOlder && !task.loading && (
-                <div className="chat-older" role="status">
-                  {task.loadingOlder && t("Loading earlier messages…")}
-                </div>
-              )}
-              {!messages.length && !task.loading && (
-                <Empty
-                  title={
-                    route.newSide
-                      ? t("Start a side chat")
-                      : t("Hello, I'm {name}", { name })
-                  }
-                >
-                  <p>
-                    {ready
-                      ? t("What's on your mind?")
-                      : t("Connect to Ark MA to start your conversation.")}
-                  </p>
-                  {!ready && (
-                    <button className="pill-button" onClick={openConnection}>
-                      {t("Connect to Ark MA")}
-                    </button>
-                  )}
-                </Empty>
-              )}
-              {task.loading && !messages.length && (
-                <p className="subtle loading-label">
-                  {t("Loading your conversation…")}
-                </p>
-              )}
-              <div className="message-stack">
-                {parts.map(({ event, part }, index) => (
-                  <Fragment
-                    key={`${echoKeys.current.get(event.id) ?? event.id}:${part}`}
+                <div className="toolbar-spacer" />
+                {route.page === "chat" && !statusOpen && (
+                  // With the status panel closed, the companion sits at the top
+                  // of the conversation and opens it.
+                  <button
+                    className="toolbar-avatar companion-float"
+                    aria-label={
+                      approvals.length
+                        ? t("{name} is waiting for your approval", { name })
+                        : name || t("Assistant status")
+                    }
+                    onClick={() => chooseStatusOpen(true)}
                   >
-                    {markers[index] && (
-                      <p
-                        className={`message-time${index === 0 ? " first" : ""}`}
-                      >
-                        <time dateTime={event.processed_at ?? event.created_at}>
-                          {timeMarkerLabel(
-                            (event.processed_at ?? event.created_at)!,
-                            formatLocale(),
-                          )}
-                        </time>
-                      </p>
-                    )}
-                    <article
-                      data-part={partKey({ event, part })}
-                      aria-busy={event.id === pendingEvent?.id || undefined}
-                      className={`message ${event.type === "user.message" ? "from-user" : "from-assistant"}${event.id === pendingEvent?.id ? " sending" : ""}${links[index].prev ? " grouped-prev" : ""}${links[index].next ? " grouped-next" : ""}${found.includes(partKey({ event, part })) ? " found" : ""}${current === partKey({ event, part }) ? " current" : ""}`}
-                    >
-                      <div className="message-bubble">
-                        {event.type === "agent.message" ? (
-                          <AssistantContent
-                            text={eventText(event)}
-                            part={part}
-                            reply={event.choice_reply}
-                            active={
-                              !event.source_session_id &&
-                              activeChoice === event.id
-                            }
-                            busy={busy || task.loading}
-                            streaming={running}
-                            onChoose={(option) =>
-                              void action(async () => {
-                                if (!id) return;
-                                try {
-                                  await client.answerChoice(
-                                    id,
-                                    event.id,
-                                    option,
-                                    digest(eventText(event)),
-                                  );
-                                  setAway(false);
-                                } finally {
-                                  await task.refresh();
-                                }
-                              })
-                            }
-                          />
-                        ) : (
-                          <>
-                            <SentFiles
-                              items={messageAttachments(event, fileNames)}
-                              load={sentMedia}
-                            />
-                            {eventText(event) && (
-                              <Markdown text={eventText(event)} />
-                            )}
-                          </>
-                        )}
-                      </div>
-                      {reactions[event.id] && part !== "intro" && (
-                        <span
-                          className="message-mood"
-                          aria-label={t("Your mood: {mood}", {
-                            mood: reactions[event.id],
-                          })}
-                        >
-                          {reactions[event.id]}
+                    <span className="companion-portrait">
+                      <Avatar working={state === "running"} />
+                    </span>
+                    <span className="companion-name">
+                      {name && <span>{name}</span>}
+                      {presence && (
+                        <span className={`companion-state is-${presence.tone}`}>
+                          {presence.label}
                         </span>
                       )}
-                      <MessageActions
-                        fromAssistant={event.type === "agent.message"}
-                        mood={reactions[event.id]}
-                        busy={busy}
-                        onMood={(mood) =>
-                          void setReaction(client, event.id, mood).then(
-                            (next) => alive.current && setReactions(next),
-                          )
-                        }
-                        onCopy={() =>
-                          void action(async () => {
-                            await navigator.clipboard.writeText(
-                              eventText(event),
-                            );
-                            setNotice(t("Message copied"));
-                          })
-                        }
-                        onReply={() => {
-                          setDrafts((old) => ({
-                            ...old,
-                            [draftKey]: `> ${eventText(event).replaceAll("\n", "\n> ")}\n\n`,
-                          }));
-                          composer.current?.focus();
-                        }}
-                        onSave={
-                          event.type === "agent.message"
-                            ? () =>
+                    </span>
+                  </button>
+                )}
+                {route.page === "chat" &&
+                  voiceAvailable &&
+                  voice.state === "off" && (
+                    // A voice conversation starts from the top of the chat; the
+                    // voice bar above the composer ends it.
+                    <button
+                      className="glass-pill talk-pill"
+                      aria-label={t("Start a voice conversation")}
+                      disabled={!ready}
+                      onClick={() => void voice.start()}
+                    >
+                      <Phone size={18} />
+                      <span>{t("Talk")}</span>
+                    </button>
+                  )}
+                {inspirationPage && (
+                  <button
+                    className="glass-pill"
+                    aria-label={t("Close side-by-side chat")}
+                    onClick={() => setSplitChat(false)}
+                  >
+                    <X size={18} />
+                  </button>
+                )}
+              </header>
+              {find !== undefined && (
+                <FindBar
+                  query={find}
+                  onQuery={(value) => {
+                    setFind(value);
+                    setFindAt(0);
+                  }}
+                  count={found.length}
+                  position={found.length ? findAt % found.length : 0}
+                  onStep={(step) =>
+                    setFindAt(
+                      (value) =>
+                        (value + step + found.length) % (found.length || 1),
+                    )
+                  }
+                  onClose={() => {
+                    setFind(undefined);
+                    composer.current?.focus();
+                  }}
+                />
+              )}
+              <div
+                className="chat-scroll"
+                ref={scroll}
+                role="log"
+                aria-label={t("Chat messages")}
+                aria-busy={task.loading}
+                onWheel={markScrollInput}
+                onPointerDown={markScrollInput}
+                onKeyDown={markScrollInput}
+                onTouchMove={markScrollInput}
+                onScroll={() => {
+                  const element = scroll.current;
+                  if (element) {
+                    const distance =
+                      element.scrollHeight -
+                      element.clientHeight -
+                      element.scrollTop;
+                    // Content changing height moves the view too; only the
+                    // person's own scrolling leaves the bottom, and reaching
+                    // it again always returns.
+                    if (distance <= 90) setAway(false);
+                    else if (Date.now() - lastScrollInput.current < 1500)
+                      setAway(true);
+                    if (element.scrollTop < 600) readOlder();
+                  }
+                }}
+              >
+                {task.hasOlder && !task.loading && (
+                  <div className="chat-older" role="status">
+                    {task.loadingOlder && t("Loading earlier messages…")}
+                  </div>
+                )}
+                {!messages.length && !task.loading && (
+                  <Empty
+                    title={
+                      route.newSide
+                        ? t("Start a side chat")
+                        : t("Hello, I'm {name}", { name })
+                    }
+                  >
+                    <p>
+                      {ready
+                        ? t("What's on your mind?")
+                        : t("Connect to Ark MA to start your conversation.")}
+                    </p>
+                    {!ready && (
+                      <button className="pill-button" onClick={openConnection}>
+                        {t("Connect to Ark MA")}
+                      </button>
+                    )}
+                  </Empty>
+                )}
+                {task.loading && !messages.length && (
+                  <p className="subtle loading-label">
+                    {t("Loading your conversation…")}
+                  </p>
+                )}
+                <div className="message-stack">
+                  {parts.map(({ event, part }, index) => (
+                    <Fragment
+                      key={`${echoKeys.current.get(event.id) ?? event.id}:${part}`}
+                    >
+                      {markers[index] && (
+                        <p
+                          className={`message-time${index === 0 ? " first" : ""}`}
+                        >
+                          <time
+                            dateTime={event.processed_at ?? event.created_at}
+                          >
+                            {timeMarkerLabel(
+                              (event.processed_at ?? event.created_at)!,
+                              formatLocale(),
+                            )}
+                          </time>
+                        </p>
+                      )}
+                      {event.type === "user.message" &&
+                        splitQuote(eventText(event)).quote && (
+                          <div className="message-replied">
+                            <span>
+                              <Reply size={12} aria-hidden="true" />
+                              {t("You replied")}
+                            </span>
+                            <p>{splitQuote(eventText(event)).quote}</p>
+                          </div>
+                        )}
+                      <article
+                        data-part={partKey({ event, part })}
+                        aria-busy={event.id === pendingEvent?.id || undefined}
+                        className={`message ${event.type === "user.message" ? "from-user" : "from-assistant"}${event.id === pendingEvent?.id ? " sending" : ""}${links[index].prev ? " grouped-prev" : ""}${links[index].next ? " grouped-next" : ""}${found.includes(partKey({ event, part })) ? " found" : ""}${current === partKey({ event, part }) ? " current" : ""}`}
+                      >
+                        <div className="message-bubble">
+                          {event.type === "agent.message" ? (
+                            <AssistantContent
+                              text={eventText(event)}
+                              part={part}
+                              reply={event.choice_reply}
+                              active={
+                                !event.source_session_id &&
+                                activeChoice === event.id
+                              }
+                              busy={busy || task.loading}
+                              streaming={running}
+                              onChoose={(option) =>
                                 void action(async () => {
-                                  await client.saveReply(
-                                    event.source_session_id ?? id!,
-                                    event.source_event_id ?? event.id,
-                                  );
-                                  setNotice(t("Saved to Library"));
-                                  window.dispatchEvent(
-                                    new Event("muse-library-changed"),
-                                  );
+                                  if (!id) return;
+                                  try {
+                                    await client.answerChoice(
+                                      id,
+                                      event.id,
+                                      option,
+                                      digest(eventText(event)),
+                                    );
+                                    setAway(false);
+                                  } finally {
+                                    await task.refresh();
+                                  }
                                 })
-                            : undefined
-                        }
-                        speaking={readAloud.speaking === event.id}
-                        onSpeak={
-                          event.type === "agent.message" && speechAvailable()
-                            ? () =>
-                                void readAloud
-                                  .toggle(event.id, eventText(event))
-                                  .catch((failure: Error) =>
-                                    setError(failure.message),
-                                  )
-                            : undefined
-                        }
-                        onSelect={() => {
-                          const bubble = scroll.current?.querySelector(
-                            `[data-part="${CSS.escape(partKey({ event, part }))}"] .message-bubble`,
-                          );
-                          const selection = window.getSelection();
-                          if (!bubble || !selection) return;
-                          selection.selectAllChildren(bubble);
-                        }}
-                      />
-                    </article>
-                    {parts[index + 1]?.event.id !== event.id &&
-                      reminders.get(event.id)?.map((item) => (
-                        <ReminderCard
-                          key={item.id}
-                          item={item}
-                          onOpen={() => {
-                            setStatusTab("upcoming");
-                            chooseStatusOpen(true);
+                              }
+                            />
+                          ) : (
+                            <>
+                              <SentFiles
+                                items={messageAttachments(event, fileNames)}
+                                load={sentMedia}
+                              />
+                              {splitQuote(eventText(event)).text && (
+                                <Markdown
+                                  text={splitQuote(eventText(event)).text}
+                                />
+                              )}
+                            </>
+                          )}
+                        </div>
+                        {reactions[event.id] && part !== "intro" && (
+                          <span
+                            className="message-mood"
+                            aria-label={t("Your mood: {mood}", {
+                              mood: reactions[event.id],
+                            })}
+                          >
+                            {reactions[event.id]}
+                          </span>
+                        )}
+                        <MessageActions
+                          fromAssistant={event.type === "agent.message"}
+                          mood={reactions[event.id]}
+                          busy={busy}
+                          onMood={(mood) =>
+                            void setReaction(client, event.id, mood).then(
+                              (next) => alive.current && setReactions(next),
+                            )
+                          }
+                          onCopy={() =>
+                            void action(async () => {
+                              await navigator.clipboard.writeText(
+                                eventText(event),
+                              );
+                              setNotice(t("Message copied"));
+                            })
+                          }
+                          onReply={() => {
+                            setReplyingBy((old) => ({
+                              ...old,
+                              [draftKey]: {
+                                name:
+                                  event.type === "agent.message"
+                                    ? name
+                                    : t("Me"),
+                                text: eventText(event),
+                              },
+                            }));
+                            composer.current?.focus();
+                          }}
+                          onSave={
+                            event.type === "agent.message"
+                              ? () =>
+                                  void action(async () => {
+                                    await client.saveReply(
+                                      event.source_session_id ?? id!,
+                                      event.source_event_id ?? event.id,
+                                    );
+                                    setNotice(t("Saved to Library"));
+                                    window.dispatchEvent(
+                                      new Event("muse-library-changed"),
+                                    );
+                                  })
+                              : undefined
+                          }
+                          speaking={readAloud.speaking === event.id}
+                          onSpeak={
+                            event.type === "agent.message" && speechAvailable()
+                              ? () =>
+                                  void readAloud
+                                    .toggle(event.id, eventText(event))
+                                    .catch((failure: Error) =>
+                                      setError(failure.message),
+                                    )
+                              : undefined
+                          }
+                          onSelect={() => {
+                            const bubble = scroll.current?.querySelector(
+                              `[data-part="${CSS.escape(partKey({ event, part }))}"] .message-bubble`,
+                            );
+                            const selection = window.getSelection();
+                            if (!bubble || !selection) return;
+                            selection.selectAllChildren(bubble);
                           }}
                         />
-                      ))}
-                  </Fragment>
-                ))}
-              </div>
-              {running &&
-                (approvals.length || macCalls.length || elsewhere.length ? (
+                      </article>
+                      {parts[index + 1]?.event.id !== event.id &&
+                        reminders.get(event.id)?.map((item) => (
+                          <ReminderCard
+                            key={item.id}
+                            item={item}
+                            onOpen={() => {
+                              setStatusTab("upcoming");
+                              chooseStatusOpen(true);
+                            }}
+                          />
+                        ))}
+                    </Fragment>
+                  ))}
+                </div>
+                {running &&
+                  (approvals.length || macCalls.length || elsewhere.length ? (
+                    <p className="thinking" role="status">
+                      {approvals.length || macCalls.length
+                        ? t("Waiting for your approval")
+                        : elsewhere.every(
+                              (call) =>
+                                call.name === healthToolName ||
+                                call.name?.startsWith("iphone_"),
+                            )
+                          ? t("Waiting for your iPhone")
+                          : t("Waiting for another device")}
+                    </p>
+                  ) : (
+                    parts.at(-1)?.event.type !== "agent.message" && (
+                      // Until the reply starts, three dots take turns in a
+                      // bubble of the companion's.
+                      <div className="typing" role="status">
+                        <span className="typing-bubble" aria-hidden="true">
+                          <i />
+                          <i />
+                          <i />
+                        </span>
+                        <span className="visually-hidden">
+                          {t("{name} is working…", { name })}
+                        </span>
+                      </div>
+                    )
+                  ))}
+                {pendingEvent && continuing && (
                   <p className="thinking" role="status">
-                    {approvals.length || macCalls.length
-                      ? t("Waiting for your approval")
-                      : elsewhere.every(
-                            (call) =>
-                              call.name === healthToolName ||
-                              call.name?.startsWith("iphone_"),
-                          )
-                        ? t("Waiting for your iPhone")
-                        : t("Waiting for another device")}
+                    {t(
+                      "Starting a new chapter of the main chat with your history. This can take a minute or two.",
+                    )}
                   </p>
-                ) : (
-                  parts.at(-1)?.event.type !== "agent.message" && (
-                    // Until the reply starts, three dots take turns in a
-                    // bubble of the companion's.
-                    <div className="typing" role="status">
-                      <span className="typing-bubble" aria-hidden="true">
-                        <i />
-                        <i />
-                        <i />
-                      </span>
-                      <span className="visually-hidden">
-                        {t("{name} is working…", { name })}
-                      </span>
-                    </div>
-                  )
-                ))}
-              {pendingEvent && continuing && (
-                <p className="thinking" role="status">
+                )}
+              </div>
+              {away && (
+                <button
+                  className="jump-latest"
+                  aria-label={t("Jump to latest message")}
+                  onClick={() => setAway(false)}
+                >
+                  <ArrowDown size={18} />
+                </button>
+              )}
+              {macCalls.length > 0 && (
+                <ComputerRequests
+                  calls={macCalls}
+                  busy={busy || answeringMac.current === macCallKey}
+                  onAnswer={answerMac}
+                  onSettings={(section) => {
+                    if (!openNativeSettings(section)) setSettings(true);
+                  }}
+                />
+              )}
+              {approvals.length > 0 && (
+                <button
+                  className="approval-banner"
+                  onClick={() => {
+                    if (inspirationPage)
+                      navigate(id && id !== index.mainId ? `/chat/${id}` : "/");
+                    setStatusOpen(true);
+                    setStatusTab("approvals");
+                  }}
+                >
+                  <ShieldCheck size={17} />
                   {t(
-                    "Starting a new chapter of the main chat with your history. This can take a minute or two.",
+                    approvals.length === 1
+                      ? "{count} approval needed"
+                      : "{count} approvals needed",
+                    { count: approvals.length },
+                  )}
+                </button>
+              )}
+              {quotedPost && !route.newSide && (!id || id === index.mainId) && (
+                <aside className="feed-quote">
+                  <MessageCircle size={15} />
+                  <span>{quotedPost.title}</span>
+                  <button
+                    className="icon-button"
+                    aria-label={t("Remove quoted post")}
+                    onClick={() => setQuotedPost(undefined)}
+                  >
+                    <X size={15} />
+                  </button>
+                </aside>
+              )}
+              {voice.state !== "off" && (
+                <div className={`voice-bar ${voice.state}`} role="status">
+                  <span className="voice-dot" aria-hidden="true" />
+                  <span>{t(voiceLabels[voice.state])}</span>
+                  <button
+                    type="button"
+                    className="pill-button"
+                    onClick={voice.end}
+                  >
+                    {t("End")}
+                  </button>
+                </div>
+              )}
+              <form
+                className={`desktop-composer ${staged.length || replying ? "has-files" : ""}`}
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void send();
+                }}
+                onDragOver={(event) => {
+                  if (ready && event.dataTransfer.types.includes("Files"))
+                    event.preventDefault();
+                }}
+                onDrop={(event) => {
+                  if (!ready || !event.dataTransfer.files.length) return;
+                  event.preventDefault();
+                  attach([...event.dataTransfer.files]);
+                }}
+              >
+                {replying && (
+                  <div className="composer-reply">
+                    <span>
+                      {t("Replying to {name}", { name: replying.name })}
+                    </span>
+                    <p>{replying.text}</p>
+                    <button
+                      type="button"
+                      className="composer-reply-close"
+                      aria-label={t("Cancel reply")}
+                      onClick={() =>
+                        setReplyingBy(({ [draftKey]: _gone, ...rest }) => rest)
+                      }
+                    >
+                      <X size={10} strokeWidth={2.6} />
+                    </button>
+                  </div>
+                )}
+                <StagedFiles
+                  items={staged}
+                  onRemove={(key) =>
+                    setStagedBy((old) => ({
+                      ...old,
+                      [draftKey]: (old[draftKey] ?? []).filter(
+                        (item) => item.key !== key,
+                      ),
+                    }))
+                  }
+                />
+                <input
+                  ref={filePicker}
+                  type="file"
+                  multiple
+                  hidden
+                  accept={attachmentAccept}
+                  onChange={(event) => {
+                    attach([...(event.currentTarget.files ?? [])]);
+                    event.currentTarget.value = "";
+                  }}
+                />
+                <button
+                  type="button"
+                  className="icon-button"
+                  aria-label={t("Attach files")}
+                  disabled={!ready}
+                  onClick={() => filePicker.current?.click()}
+                >
+                  <Plus size={23} />
+                </button>
+                <textarea
+                  ref={composer}
+                  rows={1}
+                  value={draft}
+                  maxLength={16000}
+                  aria-label={t("Message {name}", { name })}
+                  placeholder={t("Message")}
+                  onChange={(event) =>
+                    setDrafts((old) => ({
+                      ...old,
+                      [draftKey]: event.target.value,
+                    }))
+                  }
+                  onPaste={(event) => {
+                    const files = [...event.clipboardData.files];
+                    if (!ready || !files.length) return;
+                    event.preventDefault();
+                    attach(files);
+                  }}
+                  onKeyDown={(event) => {
+                    if (
+                      shouldSendOnKey({
+                        ...event,
+                        isComposing: event.nativeEvent.isComposing,
+                      })
+                    ) {
+                      event.preventDefault();
+                      void send();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className={`icon-button dictate ${listening ? "listening" : ""}`}
+                  aria-label={
+                    listening ? t("Stop dictation") : t("Dictate a message")
+                  }
+                  aria-pressed={listening}
+                  onClick={() => void toggleDictation()}
+                >
+                  <Mic size={20} />
+                </button>
+                {running ? (
+                  <button
+                    type="button"
+                    className="send-button stop"
+                    aria-label={t("Stop response")}
+                    disabled={busy}
+                    onClick={stop}
+                  >
+                    <Square size={14} fill="currentColor" strokeWidth={0} />
+                  </button>
+                ) : (
+                  <button
+                    className="send-button"
+                    aria-label={t("Send")}
+                    disabled={
+                      busy ||
+                      (!draft.trim() && !staged.length) ||
+                      staged.some((item) => item.state !== "ready")
+                    }
+                  >
+                    <ArrowUp size={21} />
+                  </button>
+                )}
+              </form>
+            </>
+          ) : (
+            <section className="feature-page">
+              <header>
+                <h1>{route.page[0].toUpperCase() + route.page.slice(1)}</h1>
+              </header>
+              <Empty title={t("Desktop view in progress")}>
+                <p>
+                  {t(
+                    "This Mac-specific view has not been implemented yet. No sample or simulated content is shown.",
                   )}
                 </p>
-              )}
-            </div>
-            {away && (
-              <button
-                className="jump-latest"
-                aria-label={t("Jump to latest message")}
-                onClick={() => setAway(false)}
-              >
-                <ArrowDown size={18} />
-              </button>
-            )}
-            {macCalls.length > 0 && (
-              <ComputerRequests
-                calls={macCalls}
-                busy={busy || answeringMac.current === macCallKey}
-                onAnswer={answerMac}
-                onSettings={(section) => {
-                  if (!openNativeSettings(section)) setSettings(true);
-                }}
-              />
-            )}
-            {approvals.length > 0 && (
-              <button
-                className="approval-banner"
-                onClick={() => {
-                  if (inspirationPage)
-                    navigate(id && id !== index.mainId ? `/chat/${id}` : "/");
-                  setStatusOpen(true);
-                  setStatusTab("approvals");
-                }}
-              >
-                <ShieldCheck size={17} />
-                {t(
-                  approvals.length === 1
-                    ? "{count} approval needed"
-                    : "{count} approvals needed",
-                  { count: approvals.length },
-                )}
-              </button>
-            )}
-            {quotedPost && !route.newSide && (!id || id === index.mainId) && (
-              <aside className="feed-quote">
-                <MessageCircle size={15} />
-                <span>{quotedPost.title}</span>
-                <button
-                  className="icon-button"
-                  aria-label={t("Remove quoted post")}
-                  onClick={() => setQuotedPost(undefined)}
-                >
-                  <X size={15} />
+                <button className="pill-button" onClick={() => goPage("chat")}>
+                  {t("Back to chat")}
                 </button>
-              </aside>
-            )}
-            {voice.state !== "off" && (
-              <div className={`voice-bar ${voice.state}`} role="status">
-                <span className="voice-dot" aria-hidden="true" />
-                <span>{t(voiceLabels[voice.state])}</span>
-                <button
-                  type="button"
-                  className="pill-button"
-                  onClick={voice.end}
-                >
-                  {t("End")}
-                </button>
-              </div>
-            )}
-            <form
-              className={`desktop-composer ${staged.length ? "has-files" : ""}`}
-              onSubmit={(event) => {
-                event.preventDefault();
-                void send();
-              }}
-              onDragOver={(event) => {
-                if (ready && event.dataTransfer.types.includes("Files"))
-                  event.preventDefault();
-              }}
-              onDrop={(event) => {
-                if (!ready || !event.dataTransfer.files.length) return;
-                event.preventDefault();
-                attach([...event.dataTransfer.files]);
-              }}
-            >
-              <StagedFiles
-                items={staged}
-                onRemove={(key) =>
-                  setStagedBy((old) => ({
-                    ...old,
-                    [draftKey]: (old[draftKey] ?? []).filter(
-                      (item) => item.key !== key,
-                    ),
-                  }))
-                }
-              />
-              <input
-                ref={filePicker}
-                type="file"
-                multiple
-                hidden
-                accept={attachmentAccept}
-                onChange={(event) => {
-                  attach([...(event.currentTarget.files ?? [])]);
-                  event.currentTarget.value = "";
-                }}
-              />
+              </Empty>
+            </section>
+          )}
+          {(error || task.error) && (
+            <div className="error-banner" role="alert">
+              <span>{error || task.error}</span>
               <button
-                type="button"
                 className="icon-button"
-                aria-label={t("Attach files")}
-                disabled={!ready}
-                onClick={() => filePicker.current?.click()}
-              >
-                <Plus size={23} />
-              </button>
-              <textarea
-                ref={composer}
-                rows={1}
-                value={draft}
-                maxLength={16000}
-                aria-label={t("Message {name}", { name })}
-                placeholder={t("Message")}
-                onChange={(event) =>
-                  setDrafts((old) => ({
-                    ...old,
-                    [draftKey]: event.target.value,
-                  }))
-                }
-                onPaste={(event) => {
-                  const files = [...event.clipboardData.files];
-                  if (!ready || !files.length) return;
-                  event.preventDefault();
-                  attach(files);
+                aria-label={t("Refresh history")}
+                onClick={() => {
+                  void reload();
+                  void task.refresh();
                 }}
-                onKeyDown={(event) => {
-                  if (
-                    shouldSendOnKey({
-                      ...event,
-                      isComposing: event.nativeEvent.isComposing,
-                    })
-                  ) {
-                    event.preventDefault();
-                    void send();
-                  }
-                }}
-              />
-              <button
-                type="button"
-                className={`icon-button dictate ${listening ? "listening" : ""}`}
-                aria-label={
-                  listening ? t("Stop dictation") : t("Dictate a message")
-                }
-                aria-pressed={listening}
-                onClick={() => void toggleDictation()}
               >
-                <Mic size={20} />
+                <ArrowDown size={16} />
               </button>
-              {running ? (
-                <button
-                  type="button"
-                  className="send-button stop"
-                  aria-label={t("Stop response")}
-                  disabled={busy}
-                  onClick={stop}
-                >
-                  <Square size={14} fill="currentColor" strokeWidth={0} />
-                </button>
-              ) : (
-                <button
-                  className="send-button"
-                  aria-label={t("Send")}
-                  disabled={
-                    busy ||
-                    (!draft.trim() && !staged.length) ||
-                    staged.some((item) => item.state !== "ready")
-                  }
-                >
-                  <ArrowUp size={21} />
-                </button>
-              )}
-            </form>
-          </>
-        ) : (
-          <section className="feature-page">
-            <header>
-              <h1>{route.page[0].toUpperCase() + route.page.slice(1)}</h1>
-            </header>
-            <Empty title={t("Desktop view in progress")}>
-              <p>
-                {t(
-                  "This Mac-specific view has not been implemented yet. No sample or simulated content is shown.",
-                )}
-              </p>
-              <button className="pill-button" onClick={() => goPage("chat")}>
-                {t("Back to chat")}
-              </button>
-            </Empty>
-          </section>
+            </div>
+          )}
+        </main>
+        {route.page === "chat" && !document && !statusOpen && !panelSettle && (
+          <PanelEdgeHandle
+            mode="open"
+            width={panelWidth()}
+            label={t("Click or drag to open the status panel")}
+            onDrag={setPanelDrag}
+            onCommit={commitPanel}
+          />
         )}
-        {(error || task.error) && (
-          <div className="error-banner" role="alert">
-            <span>{error || task.error}</span>
-            <button
-              className="icon-button"
-              aria-label={t("Refresh history")}
-              onClick={() => {
-                void reload();
-                void task.refresh();
-              }}
+        {route.page === "chat" &&
+          !document &&
+          (statusOpen || panelSettle || panelDrag.kind === "opening") && (
+            <div
+              ref={panelSurface}
+              className={`status-surface${panelDrag.kind !== "idle" || panelSettle ? " is-moving" : ""}`}
+              data-preview={
+                panelDrag.kind === "closing" && panelDrag.preview
+                  ? "closing"
+                  : undefined
+              }
+              style={
+                panelDrag.kind === "opening"
+                  ? {
+                      width: panelDrag.reveal,
+                      opacity: panelOpacity(panelDrag.reveal, panelWidth()),
+                    }
+                  : undefined
+              }
             >
-              <ArrowDown size={16} />
-            </button>
-          </div>
-        )}
-      </main>
-      {route.page === "chat" && !document && !statusOpen && !panelSettle && (
-        <PanelEdgeHandle
-          mode="open"
-          width={panelWidth()}
-          label={t("Click or drag to open the status panel")}
-          onDrag={setPanelDrag}
-          onCommit={commitPanel}
-        />
-      )}
-      {route.page === "chat" &&
-        !document &&
-        (statusOpen || panelSettle || panelDrag.kind === "opening") && (
-          <div
-            ref={panelSurface}
-            className={`status-surface${panelDrag.kind !== "idle" || panelSettle ? " is-moving" : ""}`}
-            data-preview={
-              panelDrag.kind === "closing" && panelDrag.preview
-                ? "closing"
-                : undefined
-            }
-            style={
-              panelDrag.kind === "opening"
-                ? {
-                    width: panelDrag.reveal,
-                    opacity: panelOpacity(panelDrag.reveal, panelWidth()),
-                  }
-                : undefined
-            }
-          >
-            {statusOpen && (
-              <PanelEdgeHandle
-                mode="close"
-                width={panelWidth()}
-                label={t("Click or drag to close the status panel")}
-                onDrag={setPanelDrag}
-                onCommit={commitPanel}
-              />
-            )}
-            <StatusPanel
-              identity={identity}
-              status={
-                !ready
-                  ? t("Not connected")
-                  : running
-                    ? t("Working")
-                    : task.connected
-                      ? t("Connected")
-                      : id
-                        ? t("Reconnecting…")
-                        : t("Ready")
-              }
-              tone={
-                !ready
-                  ? "offline"
-                  : running
-                    ? "busy"
-                    : task.connected || !id
-                      ? "online"
-                      : "offline"
-              }
-              tab={statusTab}
-              onTab={setStatusTab}
-              onClose={() => chooseStatusOpen(false)}
-              events={currentEvents}
-              client={client}
-              running={state === "running"}
-              approvals={approvals}
-              busy={busy}
-              onConfirm={confirm}
-              onDocument={openDocument}
-              onPrefill={prefillComposer}
-              upcoming={
-                <UpcomingTab
-                  client={client}
-                  connected={ready}
-                  onEdit={prefillComposer}
+              {statusOpen && (
+                <PanelEdgeHandle
+                  mode="close"
+                  width={panelWidth()}
+                  label={t("Click or drag to close the status panel")}
+                  onDrag={setPanelDrag}
+                  onCommit={commitPanel}
                 />
-              }
-            />
-          </div>
+              )}
+              <StatusPanel
+                identity={identity}
+                status={
+                  !ready
+                    ? t("Not connected")
+                    : running
+                      ? t("Working")
+                      : task.connected
+                        ? t("Connected")
+                        : id
+                          ? t("Reconnecting…")
+                          : t("Ready")
+                }
+                tone={
+                  !ready
+                    ? "offline"
+                    : running
+                      ? "busy"
+                      : task.connected || !id
+                        ? "online"
+                        : "offline"
+                }
+                tab={statusTab}
+                onTab={setStatusTab}
+                onClose={() => chooseStatusOpen(false)}
+                events={currentEvents}
+                client={client}
+                running={state === "running"}
+                approvals={approvals}
+                busy={busy}
+                onConfirm={confirm}
+                onDocument={openDocument}
+                onPrefill={prefillComposer}
+                upcoming={
+                  <UpcomingTab
+                    client={client}
+                    connected={ready}
+                    onEdit={prefillComposer}
+                  />
+                }
+              />
+            </div>
+          )}
+        {shortcutsOpen && (
+          <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />
         )}
-      {shortcutsOpen && (
-        <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />
-      )}
-      {settings && (
-        <Modal title={t("Settings")} wide onClose={() => setSettings(false)}>
-          <AuthPanel
-            client={client}
-            onChanged={() => {
-              void reload();
-              setDrafts({});
-              setQuotedPost(undefined);
-              setGoalConversation(undefined);
-              setGoalLabels({});
-              setGoalDrafts({});
-              setGoalDraftReplacement(undefined);
-              setConnectionEpoch((value) => value + 1);
+        {settings && (
+          <Modal title={t("Settings")} wide onClose={() => setSettings(false)}>
+            <AuthPanel
+              client={client}
+              onChanged={() => {
+                void reload();
+                setDrafts({});
+                setQuotedPost(undefined);
+                setGoalConversation(undefined);
+                setGoalLabels({});
+                setGoalDrafts({});
+                setGoalDraftReplacement(undefined);
+                setConnectionEpoch((value) => value + 1);
+              }}
+            />
+          </Modal>
+        )}
+        {search && (
+          <CommandPalette
+            query={query}
+            onQuery={setQuery}
+            loading={loading}
+            items={paletteItems({
+              query,
+              chats: [
+                ...sessions.filter((session) => session.id === index.mainId),
+                ...sideChats(sessions, index, ""),
+              ].map((session) => ({
+                id: session.id,
+                title: index.entries[session.id]?.title ?? session.title,
+                // The open chat shows its latest message, as the others would
+                // once the service gives previews.
+                preview:
+                  session.preview ??
+                  (session.id === id ? latestMessageText : undefined),
+                updatedAt: session.updated_at,
+                main: session.id === index.mainId,
+              })),
+              goals: paletteGoals,
+              assistantName: name,
+              onPage: goPage,
+              onNewChat: () => navigate("/new"),
+              onSettings: openSettings,
+              onShortcuts: () => setShortcutsOpen(true),
+              onChat: (chat) => {
+                if (chat === index.mainId) return navigate("/");
+                const session = sessions.find((item) => item.id === chat);
+                if (session) openChat(session);
+              },
+              onGoal: (goal) => navigate(`/goals/${goal}`),
+              onWrite: (text) => {
+                navigate("/");
+                prefillComposer(text);
+              },
+            })}
+            onClose={() => {
+              setSearch(false);
+              setQuery("");
             }}
           />
-        </Modal>
-      )}
-      {search && (
-        <CommandPalette
-          query={query}
-          onQuery={setQuery}
-          loading={loading}
-          items={paletteItems({
-            query,
-            chats: [
-              ...sessions.filter((session) => session.id === index.mainId),
-              ...sideChats(sessions, index, ""),
-            ].map((session) => ({
-              id: session.id,
-              title: index.entries[session.id]?.title ?? session.title,
-              // The open chat shows its latest message, as the others would
-              // once the service gives previews.
-              preview:
-                session.preview ??
-                (session.id === id ? latestMessageText : undefined),
-              updatedAt: session.updated_at,
-              main: session.id === index.mainId,
-            })),
-            goals: paletteGoals,
-            assistantName: name,
-            onPage: goPage,
-            onNewChat: () => navigate("/new"),
-            onSettings: openSettings,
-            onShortcuts: () => setShortcutsOpen(true),
-            onChat: (chat) => {
-              if (chat === index.mainId) return navigate("/");
-              const session = sessions.find((item) => item.id === chat);
-              if (session) openChat(session);
-            },
-            onGoal: (goal) => navigate(`/goals/${goal}`),
-            onWrite: (text) => {
-              navigate("/");
-              prefillComposer(text);
-            },
-          })}
-          onClose={() => {
-            setSearch(false);
-            setQuery("");
-          }}
-        />
-      )}
-      {goalDraftReplacement && (
-        <Modal
-          title={t("Replace the composer draft?")}
-          onClose={() => setGoalDraftReplacement(undefined)}
-        >
-          <p>
-            {goalDraftReplacement.goal
-              ? t(
-                  "Your existing message has not been sent. Replace it with the goal prompt?",
-                )
-              : t(
-                  "Your existing message has not been sent. Replace it with the creation prompt?",
-                )}
-          </p>
-          <div className="feed-dialog-actions">
+        )}
+        {goalDraftReplacement && (
+          <Modal
+            title={t("Replace the composer draft?")}
+            onClose={() => setGoalDraftReplacement(undefined)}
+          >
+            <p>
+              {goalDraftReplacement.goal
+                ? t(
+                    "Your existing message has not been sent. Replace it with the goal prompt?",
+                  )
+                : t(
+                    "Your existing message has not been sent. Replace it with the creation prompt?",
+                  )}
+            </p>
+            <div className="feed-dialog-actions">
+              <button
+                className="pill-button"
+                onClick={() => setGoalDraftReplacement(undefined)}
+              >
+                {t("Keep my draft")}
+              </button>
+              <button
+                className="pill-button"
+                onClick={() => {
+                  const { key, text, goal } = goalDraftReplacement;
+                  setDrafts((old) => ({ ...old, [key]: text }));
+                  setGoalDrafts((old) => ({ ...old, [key]: Boolean(goal) }));
+                  setGoalDraftReplacement(undefined);
+                }}
+              >
+                {t("Replace draft")}
+              </button>
+            </div>
+          </Modal>
+        )}
+        {notice && (
+          <div className="desktop-toast" role="status">
+            {notice}
             <button
-              className="pill-button"
-              onClick={() => setGoalDraftReplacement(undefined)}
+              className="icon-button"
+              aria-label={t("Dismiss notification")}
+              onClick={() => setNotice("")}
             >
-              {t("Keep my draft")}
-            </button>
-            <button
-              className="pill-button"
-              onClick={() => {
-                const { key, text, goal } = goalDraftReplacement;
-                setDrafts((old) => ({ ...old, [key]: text }));
-                setGoalDrafts((old) => ({ ...old, [key]: Boolean(goal) }));
-                setGoalDraftReplacement(undefined);
-              }}
-            >
-              {t("Replace draft")}
+              <X size={16} />
             </button>
           </div>
-        </Modal>
-      )}
-      {notice && (
-        <div className="desktop-toast" role="status">
-          {notice}
-          <button
-            className="icon-button"
-            aria-label={t("Dismiss notification")}
-            onClick={() => setNotice("")}
-          >
-            <X size={16} />
-          </button>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </CodeDownload.Provider>
   );
 }

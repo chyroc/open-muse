@@ -268,6 +268,16 @@ export function exportFileName(title: string) {
 // Native text-only save, with bounded listeners and unmount cancellation.
 // No PDF/binary export or sharing capability is implied by this bridge.
 export function exportLibraryDocument(item: LibraryItem, signal: AbortSignal) {
+  return exportTextFile(exportFileName(item.title), item.text, signal);
+}
+
+// Offers to save any text under a suggested file name, through the same
+// native save panel.
+export function exportTextFile(
+  name: string,
+  content: string,
+  signal: AbortSignal,
+) {
   if (signal.aborted)
     return Promise.reject(
       signal.reason ?? new DOMException("Aborted", "AbortError"),
@@ -319,14 +329,46 @@ export function exportLibraryDocument(item: LibraryItem, signal: AbortSignal) {
     signal.addEventListener("abort", abort, { once: true });
     window.addEventListener("muse-export-result", listener);
     try {
-      bridge.postMessage({
-        id,
-        name: exportFileName(item.title),
-        content: item.text,
-      });
+      bridge.postMessage({ id, name, content });
     } catch (error) {
       cleanup();
       reject(error);
     }
   });
 }
+
+const codeExtensions: Record<string, string> = {
+  python: "py",
+  py: "py",
+  javascript: "js",
+  js: "js",
+  jsx: "jsx",
+  typescript: "ts",
+  ts: "ts",
+  tsx: "tsx",
+  bash: "sh",
+  sh: "sh",
+  shell: "sh",
+  zsh: "sh",
+  json: "json",
+  html: "html",
+  css: "css",
+  go: "go",
+  rust: "rs",
+  swift: "swift",
+  java: "java",
+  kotlin: "kt",
+  c: "c",
+  cpp: "cpp",
+  "c++": "cpp",
+  sql: "sql",
+  yaml: "yml",
+  yml: "yml",
+  markdown: "md",
+  md: "md",
+  ruby: "rb",
+  php: "php",
+};
+// The file name a code block suggests, from its language.
+export const codeFileName = (language?: string) =>
+  `code.${codeExtensions[language?.toLowerCase() ?? ""] ?? "txt"}`;

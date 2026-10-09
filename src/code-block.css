@@ -27,6 +27,9 @@
   color: #6e6e73;
   transition: transform var(--motion-press-duration) ease-out;
 }
+.code-block-head .code-block-download {
+  margin-left: auto;
+}
 .code-block-head button:active {
   transform: scale(var(--motion-press-scale));
   background: rgb(0 0 0 / 6%);

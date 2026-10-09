@@ -357,4 +357,7 @@ export const zhDesktop: Record<string, string> = {
   "Couldn't connect. Try again in Settings > Connectors.":
     "无法连接，请在设置 > 连接器中重试。",
   "Open Upcoming": "查看即将到来",
+  "Replying to {name}": "正在回复{name}",
+  "Cancel reply": "取消回复",
+  "You replied": "你回复了",
 };
