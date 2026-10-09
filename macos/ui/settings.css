@@ -831,7 +831,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.settings-account-avatar {
+.settings-row > .settings-account-avatar {
   display: grid;
   flex-shrink: 0;
   width: 40px;
@@ -842,6 +842,7 @@
   color: var(--accent);
   font-size: 17px;
   font-weight: 600;
+  margin-left: 0;
 }
 /* Entering a new Ark API key in place, with its buttons at the end. */
 .settings-key-row input {
@@ -858,7 +859,7 @@
   margin-left: 0;
 }
 .settings-account-id {
-  margin-top: 20px;
+  margin: 20px 0 28px;
   font-size: 11px;
   overflow-wrap: anywhere;
   user-select: text;
