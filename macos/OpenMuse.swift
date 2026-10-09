@@ -1478,6 +1478,23 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         if let url = navigationAction.request.url, url.scheme == "https" { NSWorkspace.shared.open(url) }
         return nil
     }
+    // Page confirmations, such as removing the API key or signing out, show
+    // as a sheet. Without these, WebKit answers every confirm() with Cancel.
+    func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
+        guard let host = webView.window, host.attachedSheet == nil else { completionHandler(); return }
+        let alert = NSAlert()
+        alert.messageText = message
+        alert.addButton(withTitle: localized("OK"))
+        alert.beginSheetModal(for: host) { _ in completionHandler() }
+    }
+    func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
+        guard let host = webView.window, host.attachedSheet == nil else { completionHandler(false); return }
+        let alert = NSAlert()
+        alert.messageText = message
+        alert.addButton(withTitle: localized("OK"))
+        alert.addButton(withTitle: localized("Cancel"))
+        alert.beginSheetModal(for: host) { response in completionHandler(response == .alertFirstButtonReturn) }
+    }
     func webView(_ webView: WKWebView, runOpenPanelWith parameters: WKOpenPanelParameters, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping ([URL]?) -> Void) {
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = parameters.allowsMultipleSelection
