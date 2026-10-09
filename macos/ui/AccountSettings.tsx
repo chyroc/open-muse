@@ -10,7 +10,7 @@ import { WorkspacePanel } from "../../src/WorkspacePanel";
 // The account section of Settings > General, in the same grouped rows as the
 // other settings: who is signed in, the Ark API key the account keeps,
 // exporting its data, and deleting it. Signed out, it is the sign-in form.
-// Signing out sits with deleting the account, after a confirmation; resetting
+// Signing out sits with the account itself, after a confirmation; resetting
 // this Mac is in Data controls. The workspace shows only when it needs
 // attention.
 export function AccountSettings({
@@ -246,6 +246,13 @@ function SignedIn({
             </p>
           </div>
         </div>
+        <button
+          className="settings-row settings-nav-row"
+          disabled={busy}
+          onClick={onSignOut}
+        >
+          <span>{t("Sign out of Open Muse")}</span>
+        </button>
       </div>
       <h2>Ark API Key</h2>
       <div className="settings-group">
@@ -348,13 +355,6 @@ function SignedIn({
         )}
       </p>
       <div className="settings-group settings-gap">
-        <button
-          className="settings-row settings-nav-row"
-          disabled={busy}
-          onClick={onSignOut}
-        >
-          <span>{t("Sign out of Open Muse")}</span>
-        </button>
         <button
           className="settings-row settings-nav-row settings-danger-row"
           disabled={busy || !owner}

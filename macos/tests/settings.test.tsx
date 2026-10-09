@@ -460,9 +460,10 @@ describe("Mac settings window", () => {
     const changed = vi.spyOn(client, "accountChanged");
     signedInAccount();
     await mount(<SettingsWindow client={client} />);
-    // It sits with deleting the account.
+    // It sits with the account itself.
     const group = button("Sign out of Open Muse").closest(".settings-group");
-    expect(group?.textContent).toContain("Delete account");
+    expect(group?.textContent).toContain("person@example.com");
+    expect(group?.textContent).not.toContain("Delete account");
     await click("Sign out of Open Muse");
     expect(host!.querySelector("dialog")?.textContent).toContain(
       "Other devices stay signed in. Nothing is deleted.",
