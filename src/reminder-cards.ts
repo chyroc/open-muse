@@ -9,9 +9,11 @@ const input = (event: AgentEvent) =>
 // UPCOMING.md, and its card goes under the last reply of that turn after the
 // write, so it sits right under "Done, I'll remind you…". Items made in
 // another conversation never appear in this one's writes and show no card.
-// The time an item records as its creation is written by the companion and
-// can be minutes off, so it only rules out a write far from it, such as a
-// later rewrite of the whole list when the item's own turn is not loaded.
+// The times an item records are written by the companion and can be minutes
+// off, so they only rule out a write far from them, such as a later rewrite
+// of the whole list when the item's own turn is not loaded. An item changed
+// in this conversation, rather than created, goes under the reply to the
+// write near its update time.
 export function remindersByReply(
   items: readonly UpcomingItem[],
   events: readonly AgentEvent[],
@@ -30,10 +32,17 @@ export function remindersByReply(
         ]
       : [],
   );
+  const near = (at: number, time: string) =>
+    Math.abs(at - isoTime(time)) <= 30 * 60_000;
   for (const item of items) {
-    const first = writes.find(({ text }) => text.includes(item.id));
-    if (!first || Math.abs(first.at - isoTime(item.created_at)) > 30 * 60_000)
-      continue;
+    const mentions = writes.filter(({ text }) => text.includes(item.id));
+    // Set up in this conversation, or changed in it since: a reminder the
+    // companion updated, such as merging a request into an existing one,
+    // shows under the reply that changed it.
+    const first =
+      mentions.find(({ at }) => near(at, item.created_at)) ??
+      [...mentions].reverse().find(({ at }) => near(at, item.updated_at));
+    if (!first) continue;
     let reply: string | undefined;
     for (let index = first.index + 1; index < events.length; index++) {
       const event = events[index];

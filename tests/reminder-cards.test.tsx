@@ -65,6 +65,15 @@ describe("Reminders under the reply that set them up", () => {
     ).toBe(0);
   });
 
+  it("puts a reminder changed in this chat under the reply that changed it", () => {
+    // Created days ago elsewhere, merged with a new request in this chat.
+    const report = {
+      ...item("tickets", "2026-10-01T09:00:00Z"),
+      updated_at: "2026-10-05T05:10:15Z",
+    };
+    expect(remindersByReply([report], events).get("more")).toEqual([report]);
+  });
+
   it("shows what the reminder is and when it comes", () => {
     const html = renderToStaticMarkup(
       <ReminderCard item={item("umbrella", "2026-10-05T02:24:30Z")} />,
