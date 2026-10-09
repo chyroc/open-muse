@@ -55,6 +55,8 @@ export function defaultIdentity(): CompanionIdentity {
 export class DirectIdentity {
   private key: string;
   private provisioning?: Promise<string>;
+  // A recorded store whose read got no answer in time during this run.
+  private unanswered?: string;
   private checked = false;
   constructor(
     private owner: string,
@@ -128,9 +130,22 @@ export class DirectIdentity {
       await this.db.set<Mapping>(this.key, mapping);
     }
     if (mapping?.store_id) {
-      const store = await this.ark.request<Store>(
-        `/memory_stores/${validId(mapping.store_id)}`,
-      );
+      const id = validId(mapping.store_id);
+      // Ark computes a store's usage on every read of it, and for some
+      // accounts that read never answers. The store the service recorded is
+      // then used without the check for the rest of this run.
+      if (this.resolve && this.unanswered === id) return id;
+      let store: Store;
+      try {
+        store = await this.ark.request<Store>(`/memory_stores/${id}`, {
+          timeout: this.resolve ? 5_000 : 30_000,
+        });
+      } catch (error) {
+        if (!this.resolve || (error as Error)?.name !== "TimeoutError")
+          throw error;
+        this.unanswered = id;
+        return id;
+      }
       if (store.id !== mapping.store_id)
         throw new ApiError(
           502,

@@ -238,6 +238,30 @@ describe("Personal identity documents", () => {
     expect(await restored.read()).toEqual(result);
     expect(f.writes()).toHaveLength(5);
   });
+  it("uses the recorded store when Ark does not answer reading it", async () => {
+    const f = fixture();
+    await f.client.ensure();
+    const storeReads = () =>
+      f.fetcher.mock.calls.filter(
+        ([input, init]) =>
+          (init?.method ?? "GET") === "GET" &&
+          /\/memory_stores\/[^/]+$/.test(new URL(String(input)).pathname),
+      ).length;
+    // As for some accounts: reading the store itself never answers.
+    f.fetcher.mockImplementation(async (input, init) => {
+      if (/\/memory_stores\/[^/]+$/.test(new URL(String(input)).pathname)) {
+        const timeout = new Error("Volcano did not answer in time.");
+        timeout.name = "TimeoutError";
+        throw timeout;
+      }
+      return f.handler(input, init);
+    });
+    const before = storeReads();
+    await expect(f.client.ensure()).resolves.toBe(f.recorded.get("owner"));
+    await expect(f.client.ensure()).resolves.toBe(f.recorded.get("owner"));
+    // Asked once in this run, then left alone.
+    expect(storeReads()).toBe(before + 1);
+  });
   it("finds the store by its owner label only when read without the service's record", async () => {
     const f = fixture();
     f.stores.push(
