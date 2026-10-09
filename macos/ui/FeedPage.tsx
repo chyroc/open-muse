@@ -448,11 +448,8 @@ export function FeedPage({
     </button>
   );
   return (
-    <section
-      className="desktop-feed route-scroller"
-      aria-label={t("Feed")}
-      ref={routeScroller}
-    >
+    <>
+      {/* Outside the scroller, so its scroll bar gutter never moves it. */}
       <button
         className="feed-split-toggle icon-button"
         aria-label={
@@ -463,149 +460,155 @@ export function FeedPage({
       >
         <SplitChatIcon open={split} />
       </button>
-      <div className="feed-column">
-        <header className="feed-heading route-heading">
-          <h1>{t("Feed")}</h1>
-          {custom && (
-            <button
-              type="button"
-              className="feed-icon-button flat"
-              aria-label={t("Edit feed instructions")}
-              onClick={() => setEditing(true)}
-            >
-              <SlidersIcon />
-            </button>
-          )}
-        </header>
-        {untouched && data && (
-          <div className="feed-prompt-slot">
-            <section
-              className="feed-prompt-card"
-              aria-labelledby="feed-prompt-heading"
-            >
-              <h2 id="feed-prompt-heading">{t("Your feed prompt")}</h2>
-              <p title={shownInstructions(data.instructions.content)}>
-                {shownInstructions(data.instructions.content)}
-              </p>
-              <div className="feed-prompt-actions">
-                <button
-                  type="button"
-                  className="feed-button flat with-icon"
-                  onClick={() => setEditing(true)}
-                >
-                  <PencilIcon />
-                  {t("Edit")}
-                </button>
-                {generateButton(t("Generate"), "primary")}
-              </div>
-            </section>
-          </div>
-        )}
-        <div className="feed-list">
-          {loading ? (
-            <div
-              className="feed-loading"
-              role="status"
-              aria-busy="true"
-              aria-label={t("Loading feed")}
-            >
-              <FeedPostSkeleton />
-              <FeedPostSkeleton />
-              <FeedPostSkeleton />
-            </div>
-          ) : !data ? (
-            <div className="feed-alert" role="alert">
-              <p className="feed-alert-title">{t("The feed didn't load.")}</p>
-              {error && <p className="feed-alert-detail">{error}</p>}
+      <section
+        className="desktop-feed route-scroller"
+        aria-label={t("Feed")}
+        ref={routeScroller}
+      >
+        <div className="feed-column">
+          <header className="feed-heading route-heading">
+            <h1>{t("Feed")}</h1>
+            {custom && (
               <button
                 type="button"
-                className="feed-button flat"
-                onClick={() => void refresh()}
+                className="feed-icon-button flat"
+                aria-label={t("Edit feed instructions")}
+                onClick={() => setEditing(true)}
               >
-                {t("Try again")}
+                <SlidersIcon />
               </button>
-            </div>
-          ) : (
-            <>
-              {problems.map((problem, index) => (
-                <div className="feed-alert" role="alert" key={index}>
-                  <p className="feed-alert-detail">{problem}</p>
-                </div>
-              ))}
-              {!hasPosts && (
-                <div className="feed-empty">
-                  <div className="feed-empty-content">
-                    <ReviseIcon className="feed-empty-icon" />
-                    <h2>{t("Getting your feed ready")}</h2>
-                    <p>
-                      {t(
-                        "Posts chosen for you will show up here as your companion learns what you care about.",
-                      )}
-                    </p>
-                    {custom && generateButton(t("Generate now"), "primary")}
-                  </div>
-                </div>
-              )}
-              <div
-                className="feed-posts"
-                role="log"
-                aria-live="polite"
-                aria-label={t("Feed editions")}
+            )}
+          </header>
+          {untouched && data && (
+            <div className="feed-prompt-slot">
+              <section
+                className="feed-prompt-card"
+                aria-labelledby="feed-prompt-heading"
               >
-                {posts.map((item) => (
-                  <FeedPost
-                    key={item.id}
-                    item={item}
-                    busy={busy}
-                    onLove={() =>
-                      void action(() =>
-                        client.likeInspiration(item.id, !item.liked),
-                      )
-                    }
-                    onDiscuss={() => onDiscuss(item)}
-                    onDelete={() => remove(item)}
-                  />
-                ))}
-              </div>
-              {custom && hasPosts && (
-                <div className="feed-more">
-                  {generateButton(t("Generate now"), "flat")}
+                <h2 id="feed-prompt-heading">{t("Your feed prompt")}</h2>
+                <p title={shownInstructions(data.instructions.content)}>
+                  {shownInstructions(data.instructions.content)}
+                </p>
+                <div className="feed-prompt-actions">
+                  <button
+                    type="button"
+                    className="feed-button flat with-icon"
+                    onClick={() => setEditing(true)}
+                  >
+                    <PencilIcon />
+                    {t("Edit")}
+                  </button>
+                  {generateButton(t("Generate"), "primary")}
                 </div>
-              )}
-            </>
+              </section>
+            </div>
           )}
+          <div className="feed-list">
+            {loading ? (
+              <div
+                className="feed-loading"
+                role="status"
+                aria-busy="true"
+                aria-label={t("Loading feed")}
+              >
+                <FeedPostSkeleton />
+                <FeedPostSkeleton />
+                <FeedPostSkeleton />
+              </div>
+            ) : !data ? (
+              <div className="feed-alert" role="alert">
+                <p className="feed-alert-title">{t("The feed didn't load.")}</p>
+                {error && <p className="feed-alert-detail">{error}</p>}
+                <button
+                  type="button"
+                  className="feed-button flat"
+                  onClick={() => void refresh()}
+                >
+                  {t("Try again")}
+                </button>
+              </div>
+            ) : (
+              <>
+                {problems.map((problem, index) => (
+                  <div className="feed-alert" role="alert" key={index}>
+                    <p className="feed-alert-detail">{problem}</p>
+                  </div>
+                ))}
+                {!hasPosts && (
+                  <div className="feed-empty">
+                    <div className="feed-empty-content">
+                      <ReviseIcon className="feed-empty-icon" />
+                      <h2>{t("Getting your feed ready")}</h2>
+                      <p>
+                        {t(
+                          "Posts chosen for you will show up here as your companion learns what you care about.",
+                        )}
+                      </p>
+                      {custom && generateButton(t("Generate now"), "primary")}
+                    </div>
+                  </div>
+                )}
+                <div
+                  className="feed-posts"
+                  role="log"
+                  aria-live="polite"
+                  aria-label={t("Feed editions")}
+                >
+                  {posts.map((item) => (
+                    <FeedPost
+                      key={item.id}
+                      item={item}
+                      busy={busy}
+                      onLove={() =>
+                        void action(() =>
+                          client.likeInspiration(item.id, !item.liked),
+                        )
+                      }
+                      onDiscuss={() => onDiscuss(item)}
+                      onDelete={() => remove(item)}
+                    />
+                  ))}
+                </div>
+                {custom && hasPosts && (
+                  <div className="feed-more">
+                    {generateButton(t("Generate now"), "flat")}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
-      </div>
-      {removed && (
-        <div className="feed-undo" role="status">
-          <span>{t("Post removed from this Mac.")}</span>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() =>
-              void action(async () => {
-                await store.update((state) => ({
-                  ...state,
-                  hidden: state.hidden.filter((id) => id !== removed.id),
-                }));
-                setRemoved(undefined);
-              })
+        {removed && (
+          <div className="feed-undo" role="status">
+            <span>{t("Post removed from this Mac.")}</span>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                void action(async () => {
+                  await store.update((state) => ({
+                    ...state,
+                    hidden: state.hidden.filter((id) => id !== removed.id),
+                  }));
+                  setRemoved(undefined);
+                })
+              }
+            >
+              {t("Undo")}
+            </button>
+          </div>
+        )}
+        {editing && data && (
+          <FeedInstructions
+            client={client}
+            initial={data.instructions}
+            onSaved={(instructions) =>
+              setData((old) => (old ? { ...old, instructions } : old))
             }
-          >
-            {t("Undo")}
-          </button>
-        </div>
-      )}
-      {editing && data && (
-        <FeedInstructions
-          client={client}
-          initial={data.instructions}
-          onSaved={(instructions) =>
-            setData((old) => (old ? { ...old, instructions } : old))
-          }
-          onClose={() => setEditing(false)}
-        />
-      )}
-    </section>
+            onClose={() => setEditing(false)}
+          />
+        )}
+      </section>
+    </>
   );
 }

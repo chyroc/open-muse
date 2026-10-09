@@ -923,11 +923,8 @@ export function GoalsPage({
   const unavailable = !data && !!error && !loading;
   const empty = !!data && roots.length === 0;
   return (
-    <section
-      className="desktop-goals route-scroller"
-      aria-label={t("Goals")}
-      ref={routeScroller}
-    >
+    <>
+      {/* Outside the scroller, so its scroll bar gutter never moves it. */}
       <button
         className="goals-split-toggle icon-button"
         aria-label={
@@ -938,388 +935,396 @@ export function GoalsPage({
       >
         <SplitChatIcon open={split} />
       </button>
-      <div className="goals-column">
-        <header className="goals-heading route-heading">
-          <h1>{t("Goals")}</h1>
-          {goals.length > 0 && (
-            <GoalPopover
-              className="goals-header-options"
-              label={t("Goals options")}
-            >
-              {(choose) => (
-                <>
-                  <MenuCheckbox
-                    label={t("Show subtitles")}
-                    checked={subtitles}
-                    disabled={busy}
-                    onSelect={choose(
-                      () => void action(() => service.subtitles(!subtitles)),
-                    )}
-                  />
-                  <hr />
-                  <MenuItem
-                    icon={ListCheckIcon}
-                    label={t("Completed goals")}
-                    onSelect={choose(() => setCompleted(true))}
-                  />
-                </>
-              )}
-            </GoalPopover>
-          )}
-        </header>
-        {empty && (
-          <p className="goals-description route-description">
-            {t(
-              "Pick a category and tell me what you're after, and I'll build a personalized plan that evolves with you.",
-            )}
-          </p>
-        )}
-        {!data && loading ? (
-          <GoalsSkeleton subtitles />
-        ) : unavailable ? (
-          <div className="goals-content">
-            <GoalsErrorState
-              connected={client.signedIn()}
-              detail={error}
-              busy={busy}
-              onRetry={() => void refresh()}
-            />
-          </div>
-        ) : (
-          <div className="goals-content">
-            {alert}
-            {roots.length > 0 && (
-              <GoalsSection id="goals-user" label={t("Goals")} accent>
-                <div className="goals-rows">
-                  {roots.slice(0, shown).map(row)}
-                  {roots.length > shown && (
-                    <button
-                      className="goals-show-more"
-                      onClick={() => setShown((value) => value + revealStep)}
-                    >
-                      <span aria-hidden="true">
-                        <GripIcon />
-                      </span>
-                      {t("Show {count} more", {
-                        count: Math.min(revealStep, roots.length - shown),
-                      })}
-                    </button>
-                  )}
-                </div>
-              </GoalsSection>
-            )}
-            <GoalsSection id="goals-create" label={t("Create a goal")}>
-              <div
-                className="goal-categories"
-                role="group"
-                aria-label={t("Goal categories")}
+      <section
+        className="desktop-goals route-scroller"
+        aria-label={t("Goals")}
+        ref={routeScroller}
+      >
+        <div className="goals-column">
+          <header className="goals-heading route-heading">
+            <h1>{t("Goals")}</h1>
+            {goals.length > 0 && (
+              <GoalPopover
+                className="goals-header-options"
+                label={t("Goals options")}
               >
-                {goalCategories.map((category) => {
-                  const Icon = categoryIcons[category.id];
-                  return (
-                    <button
-                      className="goal-category"
-                      key={category.id}
+                {(choose) => (
+                  <>
+                    <MenuCheckbox
+                      label={t("Show subtitles")}
+                      checked={subtitles}
                       disabled={busy}
-                      onClick={() => setCategory(category.id)}
-                    >
-                      <span className="goal-category-icon" aria-hidden="true">
-                        <Icon />
-                      </span>
-                      <span className="goal-category-label">
-                        {t(category.label)}
-                      </span>
-                      <span
-                        className="goal-category-chevron"
-                        aria-hidden="true"
-                      >
-                        <ChevronRightIcon />
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </GoalsSection>
-            {pending && (
-              <aside className="goal-pending" role="status">
-                <p>
-                  {pending.phase === "creating" || pending.phase === "sending"
-                    ? t("Checking goal submission…")
-                    : t("Goal conversation ready to continue")}
-                </p>
-                {pending.error && (
-                  <p className="goal-pending-error">{pending.error}</p>
-                )}
-                <div className="goal-pending-actions">
-                  {["preparing", "ready"].includes(pending.phase) && (
-                    <button
-                      className="goal-button primary"
-                      disabled={busy}
-                      onClick={() =>
-                        void action(() =>
-                          service.start(pending.category, onConversation),
-                        )
-                      }
-                    >
-                      {t("Continue {category} goal", {
-                        category: t(pending.category),
-                      })}
-                    </button>
-                  )}
-                  {pending.session && (
-                    <button
-                      className="goal-button"
-                      onClick={() => onOpenChat(pending.session!)}
-                    >
-                      {t("View goal conversation")}
-                    </button>
-                  )}
-                </div>
-              </aside>
-            )}
-          </div>
-        )}
-      </div>
-      {category && (
-        <Modal
-          title={categoryDialogTitle(category)}
-          className="goal-dialog goal-intro-dialog"
-          onClose={() => {
-            if (!busy) setCategory(undefined);
-          }}
-        >
-          <p className="goal-dialog-text">
-            {t(
-              "First, we'll refine the goal together in chat. I'll ask you a few questions to clarify what you're after. Once it's set, I'll track your progress here.",
-            )}
-          </p>
-          {alert}
-          <button
-            className="goal-primary"
-            disabled={busy}
-            aria-busy={busy || undefined}
-            onClick={() => {
-              if (!client.signedIn()) {
-                setCategory(undefined);
-                onConnect();
-                return;
-              }
-              if (category === "custom") {
-                onDraft(macGoalStarter(category));
-                setCategory(undefined);
-                return;
-              }
-              void action(async () => {
-                await service.start(category, onConversation);
-                if (alive.current) setCategory(undefined);
-              });
-            }}
-          >
-            {busy ? (
-              <span className="goal-spinner" aria-hidden="true" />
-            ) : (
-              <WandIcon aria-hidden="true" />
-            )}
-            {busy ? t("Starting…") : t("Let's do it")}
-          </button>
-        </Modal>
-      )}
-      {current && (
-        <Modal
-          title={current.title}
-          className="goal-detail-dialog"
-          onClose={() => {
-            if (!busy && !rename) onSelect();
-          }}
-        >
-          <div className="goal-detail-actions">
-            <GoalMenu
-              goal={current}
-              busy={busy}
-              canAdd={!current.parent_id}
-              className="goal-options elevated"
-              onComplete={() => complete(current)}
-              onAdd={() => addSubgoal(current)}
-              onRename={() => handlers.onRename(current)}
-              onDelete={() => handlers.onDelete(current)}
-            />
-          </div>
-          {current.parent_id && (
-            <button
-              className="goal-parent"
-              onClick={() => onSelect(current.parent_id)}
-            >
-              {goals.find((goal) => goal.id === current.parent_id)?.title ??
-                t("Parent goal")}
-              <ChevronRightIcon aria-hidden="true" />
-            </button>
-          )}
-          {current.status === "paused" && (
-            <p className="goal-detail-status">{t("Paused")}</p>
-          )}
-          {current.description && (
-            <div className="goal-detail-description">
-              <Markdown text={current.description} />
-            </div>
-          )}
-          {current.steps.length > 0 && (
-            <section className="goal-plan" aria-label={t("Plan steps")}>
-              <h3>{t("Plan")}</h3>
-              {current.steps.map((step) => (
-                <label key={step.id}>
-                  <input
-                    type="checkbox"
-                    checked={step.done}
-                    disabled={busy}
-                    onChange={() =>
-                      void action(() =>
-                        client.updateGoal(
-                          current.id,
-                          {
-                            steps: current.steps.map((item) =>
-                              item.id === step.id
-                                ? { ...item, done: !item.done }
-                                : item,
-                            ),
-                          },
-                          data!.revision,
-                        ),
-                      )
-                    }
-                  />
-                  <span className={step.done ? "done" : ""}>{step.title}</span>
-                </label>
-              ))}
-            </section>
-          )}
-          {goals.some((goal) => goal.parent_id === current.id) && (
-            <section
-              className="goal-detail-subgoals"
-              aria-label={t("Subgoals")}
-            >
-              <h3>{t("Subgoals")}</h3>
-              {goals.filter((goal) => goal.parent_id === current.id).map(row)}
-            </section>
-          )}
-          {alert}
-          <GoalActivity goal={current} data={data} />
-          <button
-            className="goal-talk"
-            disabled={busy}
-            onClick={() => {
-              onSelect();
-              if (current.session_id) void onConversation(current.session_id);
-              else
-                onDraft(
-                  t('Discuss the goal "{title}"', { title: current.title }),
-                  current,
-                );
-            }}
-          >
-            {t("Talk about this goal")}
-          </button>
-        </Modal>
-      )}
-      {selectedId && !current && !loading && !error && (
-        <Modal
-          title={t("Goal unavailable")}
-          className="goal-dialog"
-          onClose={() => onSelect()}
-        >
-          <p className="goal-dialog-text">
-            {t(
-              "This goal is no longer in personal memory. No data was changed.",
-            )}
-          </p>
-        </Modal>
-      )}
-      {completed && (
-        <Modal
-          title={t("Completed goals")}
-          className="goal-dialog goal-completed-dialog"
-          onClose={() => setCompleted(false)}
-        >
-          {finished.length ? (
-            <div className="goal-completed-groups">
-              {completedGoalGroups(finished).map((group) => (
-                <section key={group.key} aria-label={group.label}>
-                  <h3>{group.label}</h3>
-                  {group.goals.map((goal) => (
-                    <CompletedGoalRow
-                      key={goal.id}
-                      goal={goal}
-                      busy={busy}
-                      handlers={handlers}
+                      onSelect={choose(
+                        () => void action(() => service.subtitles(!subtitles)),
+                      )}
                     />
-                  ))}
-                </section>
-              ))}
-            </div>
-          ) : (
-            <p className="goal-completed-empty">
-              {t("No completed goals yet.")}
+                    <hr />
+                    <MenuItem
+                      icon={ListCheckIcon}
+                      label={t("Completed goals")}
+                      onSelect={choose(() => setCompleted(true))}
+                    />
+                  </>
+                )}
+              </GoalPopover>
+            )}
+          </header>
+          {empty && (
+            <p className="goals-description route-description">
+              {t(
+                "Pick a category and tell me what you're after, and I'll build a personalized plan that evolves with you.",
+              )}
             </p>
           )}
-        </Modal>
-      )}
-      {rename && (
-        <RenameGoal
-          client={client}
-          initial={rename}
-          onClose={() => setRename(undefined)}
-          onEditorChange={onEditorChange}
-          onSaved={async () => {
-            setData(await service.snapshot());
-          }}
-        />
-      )}
-      {deleting && (
-        <Modal
-          title={t("Delete this goal?")}
-          className="goal-dialog goal-delete-dialog"
-          onClose={() => {
-            if (!busy) setDeleting(undefined);
-          }}
-        >
-          <p className="goal-dialog-text">
-            {t(
-              deleting.count > 2
-                ? "“{title}” and its {count} subgoals will be removed from personal memory. This cannot be undone here. Conversation history is preserved."
-                : deleting.count === 2
-                  ? "“{title}” and its {count} subgoal will be removed from personal memory. This cannot be undone here. Conversation history is preserved."
-                  : "“{title}” will be removed from personal memory. This cannot be undone here. Conversation history is preserved.",
-              { title: deleting.goal.title, count: deleting.count - 1 },
-            )}
-          </p>
-          {alert}
-          <div className="goal-dialog-actions">
+          {!data && loading ? (
+            <GoalsSkeleton subtitles />
+          ) : unavailable ? (
+            <div className="goals-content">
+              <GoalsErrorState
+                connected={client.signedIn()}
+                detail={error}
+                busy={busy}
+                onRetry={() => void refresh()}
+              />
+            </div>
+          ) : (
+            <div className="goals-content">
+              {alert}
+              {roots.length > 0 && (
+                <GoalsSection id="goals-user" label={t("Goals")} accent>
+                  <div className="goals-rows">
+                    {roots.slice(0, shown).map(row)}
+                    {roots.length > shown && (
+                      <button
+                        className="goals-show-more"
+                        onClick={() => setShown((value) => value + revealStep)}
+                      >
+                        <span aria-hidden="true">
+                          <GripIcon />
+                        </span>
+                        {t("Show {count} more", {
+                          count: Math.min(revealStep, roots.length - shown),
+                        })}
+                      </button>
+                    )}
+                  </div>
+                </GoalsSection>
+              )}
+              <GoalsSection id="goals-create" label={t("Create a goal")}>
+                <div
+                  className="goal-categories"
+                  role="group"
+                  aria-label={t("Goal categories")}
+                >
+                  {goalCategories.map((category) => {
+                    const Icon = categoryIcons[category.id];
+                    return (
+                      <button
+                        className="goal-category"
+                        key={category.id}
+                        disabled={busy}
+                        onClick={() => setCategory(category.id)}
+                      >
+                        <span className="goal-category-icon" aria-hidden="true">
+                          <Icon />
+                        </span>
+                        <span className="goal-category-label">
+                          {t(category.label)}
+                        </span>
+                        <span
+                          className="goal-category-chevron"
+                          aria-hidden="true"
+                        >
+                          <ChevronRightIcon />
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </GoalsSection>
+              {pending && (
+                <aside className="goal-pending" role="status">
+                  <p>
+                    {pending.phase === "creating" || pending.phase === "sending"
+                      ? t("Checking goal submission…")
+                      : t("Goal conversation ready to continue")}
+                  </p>
+                  {pending.error && (
+                    <p className="goal-pending-error">{pending.error}</p>
+                  )}
+                  <div className="goal-pending-actions">
+                    {["preparing", "ready"].includes(pending.phase) && (
+                      <button
+                        className="goal-button primary"
+                        disabled={busy}
+                        onClick={() =>
+                          void action(() =>
+                            service.start(pending.category, onConversation),
+                          )
+                        }
+                      >
+                        {t("Continue {category} goal", {
+                          category: t(pending.category),
+                        })}
+                      </button>
+                    )}
+                    {pending.session && (
+                      <button
+                        className="goal-button"
+                        onClick={() => onOpenChat(pending.session!)}
+                      >
+                        {t("View goal conversation")}
+                      </button>
+                    )}
+                  </div>
+                </aside>
+              )}
+            </div>
+          )}
+        </div>
+        {category && (
+          <Modal
+            title={categoryDialogTitle(category)}
+            className="goal-dialog goal-intro-dialog"
+            onClose={() => {
+              if (!busy) setCategory(undefined);
+            }}
+          >
+            <p className="goal-dialog-text">
+              {t(
+                "First, we'll refine the goal together in chat. I'll ask you a few questions to clarify what you're after. Once it's set, I'll track your progress here.",
+              )}
+            </p>
+            {alert}
             <button
-              className="goal-button"
+              className="goal-primary"
               disabled={busy}
-              onClick={() => setDeleting(undefined)}
-            >
-              {t("Cancel")}
-            </button>
-            <button
-              className="goal-button destructive"
-              disabled={busy}
-              onClick={() =>
+              aria-busy={busy || undefined}
+              onClick={() => {
+                if (!client.signedIn()) {
+                  setCategory(undefined);
+                  onConnect();
+                  return;
+                }
+                if (category === "custom") {
+                  onDraft(macGoalStarter(category));
+                  setCategory(undefined);
+                  return;
+                }
                 void action(async () => {
-                  await service.remove(deleting.goal.id, deleting.revision);
-                  setDeleting(undefined);
-                  if (
-                    selectedId &&
-                    goalDescendants(goals, deleting.goal.id).has(selectedId)
-                  )
-                    onSelect();
-                })
-              }
+                  await service.start(category, onConversation);
+                  if (alive.current) setCategory(undefined);
+                });
+              }}
             >
-              {busy ? t("Deleting…") : t("Delete")}
+              {busy ? (
+                <span className="goal-spinner" aria-hidden="true" />
+              ) : (
+                <WandIcon aria-hidden="true" />
+              )}
+              {busy ? t("Starting…") : t("Let's do it")}
             </button>
-          </div>
-        </Modal>
-      )}
-    </section>
+          </Modal>
+        )}
+        {current && (
+          <Modal
+            title={current.title}
+            className="goal-detail-dialog"
+            onClose={() => {
+              if (!busy && !rename) onSelect();
+            }}
+          >
+            <div className="goal-detail-actions">
+              <GoalMenu
+                goal={current}
+                busy={busy}
+                canAdd={!current.parent_id}
+                className="goal-options elevated"
+                onComplete={() => complete(current)}
+                onAdd={() => addSubgoal(current)}
+                onRename={() => handlers.onRename(current)}
+                onDelete={() => handlers.onDelete(current)}
+              />
+            </div>
+            {current.parent_id && (
+              <button
+                className="goal-parent"
+                onClick={() => onSelect(current.parent_id)}
+              >
+                {goals.find((goal) => goal.id === current.parent_id)?.title ??
+                  t("Parent goal")}
+                <ChevronRightIcon aria-hidden="true" />
+              </button>
+            )}
+            {current.status === "paused" && (
+              <p className="goal-detail-status">{t("Paused")}</p>
+            )}
+            {current.description && (
+              <div className="goal-detail-description">
+                <Markdown text={current.description} />
+              </div>
+            )}
+            {current.steps.length > 0 && (
+              <section className="goal-plan" aria-label={t("Plan steps")}>
+                <h3>{t("Plan")}</h3>
+                {current.steps.map((step) => (
+                  <label key={step.id}>
+                    <input
+                      type="checkbox"
+                      checked={step.done}
+                      disabled={busy}
+                      onChange={() =>
+                        void action(() =>
+                          client.updateGoal(
+                            current.id,
+                            {
+                              steps: current.steps.map((item) =>
+                                item.id === step.id
+                                  ? { ...item, done: !item.done }
+                                  : item,
+                              ),
+                            },
+                            data!.revision,
+                          ),
+                        )
+                      }
+                    />
+                    <span className={step.done ? "done" : ""}>
+                      {step.title}
+                    </span>
+                  </label>
+                ))}
+              </section>
+            )}
+            {goals.some((goal) => goal.parent_id === current.id) && (
+              <section
+                className="goal-detail-subgoals"
+                aria-label={t("Subgoals")}
+              >
+                <h3>{t("Subgoals")}</h3>
+                {goals.filter((goal) => goal.parent_id === current.id).map(row)}
+              </section>
+            )}
+            {alert}
+            <GoalActivity goal={current} data={data} />
+            <button
+              className="goal-talk"
+              disabled={busy}
+              onClick={() => {
+                onSelect();
+                if (current.session_id) void onConversation(current.session_id);
+                else
+                  onDraft(
+                    t('Discuss the goal "{title}"', { title: current.title }),
+                    current,
+                  );
+              }}
+            >
+              {t("Talk about this goal")}
+            </button>
+          </Modal>
+        )}
+        {selectedId && !current && !loading && !error && (
+          <Modal
+            title={t("Goal unavailable")}
+            className="goal-dialog"
+            onClose={() => onSelect()}
+          >
+            <p className="goal-dialog-text">
+              {t(
+                "This goal is no longer in personal memory. No data was changed.",
+              )}
+            </p>
+          </Modal>
+        )}
+        {completed && (
+          <Modal
+            title={t("Completed goals")}
+            className="goal-dialog goal-completed-dialog"
+            onClose={() => setCompleted(false)}
+          >
+            {finished.length ? (
+              <div className="goal-completed-groups">
+                {completedGoalGroups(finished).map((group) => (
+                  <section key={group.key} aria-label={group.label}>
+                    <h3>{group.label}</h3>
+                    {group.goals.map((goal) => (
+                      <CompletedGoalRow
+                        key={goal.id}
+                        goal={goal}
+                        busy={busy}
+                        handlers={handlers}
+                      />
+                    ))}
+                  </section>
+                ))}
+              </div>
+            ) : (
+              <p className="goal-completed-empty">
+                {t("No completed goals yet.")}
+              </p>
+            )}
+          </Modal>
+        )}
+        {rename && (
+          <RenameGoal
+            client={client}
+            initial={rename}
+            onClose={() => setRename(undefined)}
+            onEditorChange={onEditorChange}
+            onSaved={async () => {
+              setData(await service.snapshot());
+            }}
+          />
+        )}
+        {deleting && (
+          <Modal
+            title={t("Delete this goal?")}
+            className="goal-dialog goal-delete-dialog"
+            onClose={() => {
+              if (!busy) setDeleting(undefined);
+            }}
+          >
+            <p className="goal-dialog-text">
+              {t(
+                deleting.count > 2
+                  ? "“{title}” and its {count} subgoals will be removed from personal memory. This cannot be undone here. Conversation history is preserved."
+                  : deleting.count === 2
+                    ? "“{title}” and its {count} subgoal will be removed from personal memory. This cannot be undone here. Conversation history is preserved."
+                    : "“{title}” will be removed from personal memory. This cannot be undone here. Conversation history is preserved.",
+                { title: deleting.goal.title, count: deleting.count - 1 },
+              )}
+            </p>
+            {alert}
+            <div className="goal-dialog-actions">
+              <button
+                className="goal-button"
+                disabled={busy}
+                onClick={() => setDeleting(undefined)}
+              >
+                {t("Cancel")}
+              </button>
+              <button
+                className="goal-button destructive"
+                disabled={busy}
+                onClick={() =>
+                  void action(async () => {
+                    await service.remove(deleting.goal.id, deleting.revision);
+                    setDeleting(undefined);
+                    if (
+                      selectedId &&
+                      goalDescendants(goals, deleting.goal.id).has(selectedId)
+                    )
+                      onSelect();
+                  })
+                }
+              >
+                {busy ? t("Deleting…") : t("Delete")}
+              </button>
+            </div>
+          </Modal>
+        )}
+      </section>
+    </>
   );
 }

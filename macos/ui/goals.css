@@ -5,7 +5,9 @@
   height: 100%;
   overflow-y: auto;
   padding: 32px 64px 40px;
-  scrollbar-gutter: stable;
+  /* Reserved on both sides so the column stays centered when scroll bars
+     take space. */
+  scrollbar-gutter: stable both-edges;
 }
 .goals-column {
   max-width: 768px;
@@ -31,6 +33,7 @@
   position: absolute;
   top: 16px;
   left: 20px;
+  z-index: 20;
   color: var(--text-2);
 }
 .goals-content {

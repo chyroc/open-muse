@@ -750,16 +750,8 @@ export function IdeasPage({
       />
     ));
   return (
-    <section
-      className="desktop-ideas route-scroller"
-      aria-label={navLabel("ideas")}
-      ref={routeScroller}
-    >
-      <IdeaToastView
-        toast={toasts.toast}
-        onDismiss={toasts.dismiss}
-        onRemove={toasts.remove}
-      />
+    <>
+      {/* Outside the scroller, so its scroll bar gutter never moves it. */}
       <button
         className="ideas-split-toggle icon-button"
         aria-label={
@@ -770,165 +762,179 @@ export function IdeasPage({
       >
         <SplitChatIcon open={split} />
       </button>
-      <div className="ideas-column">
-        <header className="ideas-heading route-heading">
-          <h1>{navLabel("ideas")}</h1>
-        </header>
-        <div className="ideas-description route-description">
-          {loading ? (
-            <span
-              className="idea-skeleton ideas-subtitle-skeleton"
-              aria-hidden="true"
-            />
-          ) : !hasIdeas && !loadFailed ? (
-            t(
-              "I'm always thinking about new and different ways to help you. I'll surface my favorite ideas here.",
-            )
-          ) : (
-            <span className="ideas-subtitle-blank" aria-hidden="true" />
-          )}
+      <section
+        className="desktop-ideas route-scroller"
+        aria-label={navLabel("ideas")}
+        ref={routeScroller}
+      >
+        <IdeaToastView
+          toast={toasts.toast}
+          onDismiss={toasts.dismiss}
+          onRemove={toasts.remove}
+        />
+        <div className="ideas-column">
+          <header className="ideas-heading route-heading">
+            <h1>{navLabel("ideas")}</h1>
+          </header>
+          <div className="ideas-description route-description">
+            {loading ? (
+              <span
+                className="idea-skeleton ideas-subtitle-skeleton"
+                aria-hidden="true"
+              />
+            ) : !hasIdeas && !loadFailed ? (
+              t(
+                "I'm always thinking about new and different ways to help you. I'll surface my favorite ideas here.",
+              )
+            ) : (
+              <span className="ideas-subtitle-blank" aria-hidden="true" />
+            )}
+          </div>
+          <div className="ideas-sections">
+            {loading && !hasIdeas && <IdeasLoading />}
+            {loadFailed && (
+              <div className="ideas-state-card" role="alert">
+                <p className="ideas-state-title">{t("Ideas didn't load.")}</p>
+                <p className="ideas-state-body">{error}</p>
+                <button
+                  type="button"
+                  className="ideas-flat-button"
+                  disabled={busy}
+                  onClick={() => void refresh()}
+                >
+                  {t("Try again")}
+                </button>
+              </div>
+            )}
+            {!loading && !loadFailed && (
+              <>
+                {hasIdeas && (
+                  <IdeaSection label={t("Featured ideas")}>
+                    {rows(sections.featured)}
+                  </IdeaSection>
+                )}
+                {sections.groups.map((group) => (
+                  <IdeaSection key={group.title} heading={group.title}>
+                    {rows(group.items)}
+                  </IdeaSection>
+                ))}
+                {!hasIdeas && (
+                  <div className="ideas-state-card">
+                    <p className="ideas-state-title">{t("No ideas yet.")}</p>
+                    <p className="ideas-state-body">
+                      {t(
+                        "New ideas show up here as your companion learns about you.",
+                      )}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+            {error && !loadFailed && (
+              <p className="feed-error" role="alert">
+                {error}
+              </p>
+            )}
+            {run?.error && (
+              <p className="feed-error" role="alert">
+                {/* Stored in English; shown in the app's language. */}
+                {t(run.error)}
+              </p>
+            )}
+            {generation.error && (
+              <p className="feed-error" role="alert">
+                {generation.error}
+              </p>
+            )}
+            {pending && (
+              <p className="feed-status" role="status">
+                {run?.phase === "creating" || run?.phase === "sending"
+                  ? t("Checking submission…")
+                  : resumable
+                    ? t("Ready to continue generation")
+                    : t("Thinking of new ways to help…")}
+              </p>
+            )}
+            {activationPending && (
+              <p className="feed-status" role="status">
+                {t(
+                  "Checking idea submission. Refresh reads history; it never resends an unconfirmed request.",
+                )}
+              </p>
+            )}
+            {!loading && (
+              <footer className="ideas-generation">
+                <button
+                  type="button"
+                  className="ideas-flat-button"
+                  disabled={busy || !data || (pending && !resumable)}
+                  onClick={() =>
+                    client.signedIn()
+                      ? void action(() => service.generate())
+                      : onConnect()
+                  }
+                >
+                  {busy
+                    ? t("Working…")
+                    : !client.signedIn()
+                      ? t("Connect to MA")
+                      : resumable
+                        ? t("Continue generation")
+                        : t("Generate")}
+                </button>
+                <button
+                  type="button"
+                  className="ideas-refresh idea-borderless-button"
+                  aria-label={refreshIdeasLabel()}
+                  disabled={busy}
+                  onClick={() => void refresh()}
+                >
+                  <RefreshCw size={16} />
+                </button>
+              </footer>
+            )}
+          </div>
         </div>
-        <div className="ideas-sections">
-          {loading && !hasIdeas && <IdeasLoading />}
-          {loadFailed && (
-            <div className="ideas-state-card" role="alert">
-              <p className="ideas-state-title">{t("Ideas didn't load.")}</p>
-              <p className="ideas-state-body">{error}</p>
-              <button
-                type="button"
-                className="ideas-flat-button"
-                disabled={busy}
-                onClick={() => void refresh()}
-              >
-                {t("Try again")}
-              </button>
-            </div>
-          )}
-          {!loading && !loadFailed && (
-            <>
-              {hasIdeas && (
-                <IdeaSection label={t("Featured ideas")}>
-                  {rows(sections.featured)}
-                </IdeaSection>
-              )}
-              {sections.groups.map((group) => (
-                <IdeaSection key={group.title} heading={group.title}>
-                  {rows(group.items)}
-                </IdeaSection>
-              ))}
-              {!hasIdeas && (
-                <div className="ideas-state-card">
-                  <p className="ideas-state-title">{t("No ideas yet.")}</p>
-                  <p className="ideas-state-body">
-                    {t(
-                      "New ideas show up here as your companion learns about you.",
-                    )}
-                  </p>
-                </div>
-              )}
-            </>
-          )}
-          {error && !loadFailed && (
-            <p className="feed-error" role="alert">
-              {error}
-            </p>
-          )}
-          {run?.error && (
-            <p className="feed-error" role="alert">
-              {/* Stored in English; shown in the app's language. */}
-              {t(run.error)}
-            </p>
-          )}
-          {generation.error && (
-            <p className="feed-error" role="alert">
-              {generation.error}
-            </p>
-          )}
-          {pending && (
-            <p className="feed-status" role="status">
-              {run?.phase === "creating" || run?.phase === "sending"
-                ? t("Checking submission…")
-                : resumable
-                  ? t("Ready to continue generation")
-                  : t("Thinking of new ways to help…")}
-            </p>
-          )}
-          {activationPending && (
-            <p className="feed-status" role="status">
-              {t(
-                "Checking idea submission. Refresh reads history; it never resends an unconfirmed request.",
-              )}
-            </p>
-          )}
-          {!loading && (
-            <footer className="ideas-generation">
-              <button
-                type="button"
-                className="ideas-flat-button"
-                disabled={busy || !data || (pending && !resumable)}
-                onClick={() =>
-                  client.signedIn()
-                    ? void action(() => service.generate())
-                    : onConnect()
-                }
-              >
-                {busy
-                  ? t("Working…")
-                  : !client.signedIn()
-                    ? t("Connect to MA")
-                    : resumable
-                      ? t("Continue generation")
-                      : t("Generate")}
-              </button>
-              <button
-                type="button"
-                className="ideas-refresh idea-borderless-button"
-                aria-label={refreshIdeasLabel()}
-                disabled={busy}
-                onClick={() => void refresh()}
-              >
-                <RefreshCw size={16} />
-              </button>
-            </footer>
-          )}
-        </div>
-      </div>
-      {detail && data && (
-        <IdeaPreview
-          key={detail.id}
-          item={detail}
-          detail={ideaDetail(detail, data)}
-          activation={data.activations[detail.id]}
-          busy={busy}
-          onClose={() => setSelected(undefined)}
-          onMoreLikeThis={() => moreLikeThis(detail)}
-          onNotInterested={() => {
-            setSelected(undefined);
-            notInterested(detail);
-          }}
-          onActivate={(selected) => {
-            if (!client.signedIn()) {
+        {detail && data && (
+          <IdeaPreview
+            key={detail.id}
+            item={detail}
+            detail={ideaDetail(detail, data)}
+            activation={data.activations[detail.id]}
+            busy={busy}
+            onClose={() => setSelected(undefined)}
+            onMoreLikeThis={() => moreLikeThis(detail)}
+            onNotInterested={() => {
               setSelected(undefined);
-              onConnect();
-              return;
-            }
-            setSelected(undefined);
-            void action(() => service.activate(detail, selected, onMainChat));
-          }}
-        />
-      )}
-      {feedback && (
-        <FeedbackDialog
-          item={feedback}
-          service={service}
-          onEditorChange={onEditorChange}
-          onClose={() => setFeedback(undefined)}
-          onSaved={async () => {
-            setData(await service.snapshot());
-            showToast({ tone: "success", text: t("Thanks for the feedback.") });
-          }}
-        />
-      )}
-    </section>
+              notInterested(detail);
+            }}
+            onActivate={(selected) => {
+              if (!client.signedIn()) {
+                setSelected(undefined);
+                onConnect();
+                return;
+              }
+              setSelected(undefined);
+              void action(() => service.activate(detail, selected, onMainChat));
+            }}
+          />
+        )}
+        {feedback && (
+          <FeedbackDialog
+            item={feedback}
+            service={service}
+            onEditorChange={onEditorChange}
+            onClose={() => setFeedback(undefined)}
+            onSaved={async () => {
+              setData(await service.snapshot());
+              showToast({
+                tone: "success",
+                text: t("Thanks for the feedback."),
+              });
+            }}
+          />
+        )}
+      </section>
+    </>
   );
 }
