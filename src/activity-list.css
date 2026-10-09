@@ -1,0 +1,71 @@
+/* Activity: requests grouped by day, each with a 44pt task symbol level with
+   a one-line 17pt title, then a one-line outcome and the time in 15pt gray,
+   20pt between entries. */
+.activity-list section + section {
+  margin-top: 20px;
+}
+.activity-list h3 {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.33;
+  font-weight: 700;
+}
+.activity-turn {
+  margin-top: 20px;
+}
+.activity-turn > button {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 0;
+  text-align: left;
+  transition: opacity var(--motion-press-duration, 120ms) ease-out;
+}
+.activity-turn > button:active {
+  opacity: 0.6;
+}
+.activity-turn-icon {
+  display: grid;
+  flex: 0 0 44px;
+  place-items: center;
+  height: 44px;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(160deg, #9a9aa6, #6f6f7d);
+}
+.activity-turn-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.activity-turn-text strong {
+  overflow: hidden;
+  font-size: 17px;
+  line-height: 1.33;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.activity-turn-text > span,
+.activity-turn-text time {
+  font-size: 15px;
+  line-height: 1.33;
+  color: #77777c;
+}
+.activity-turn-text > span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+@media (prefers-color-scheme: dark) {
+  .activity-turn-icon {
+    color: #000000;
+    background: linear-gradient(160deg, #636366, #aeaeb2);
+  }
+  .activity-turn-text > span,
+  .activity-turn-text time {
+    color: #aeaeb2;
+  }
+}

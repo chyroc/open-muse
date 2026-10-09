@@ -503,14 +503,6 @@
   .document-discard button:last-child {
     color: #d15a5a;
   }
-  .activity-turn-icon {
-    color: #000000;
-    background: linear-gradient(160deg, #636366, #aeaeb2);
-  }
-  .activity-turn-text > span,
-  .activity-turn-text time {
-    color: #aeaeb2;
-  }
   /* library.css */
   .library-segments {
     border: 1px solid #38383a;

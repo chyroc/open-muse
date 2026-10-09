@@ -7,7 +7,6 @@ import {
   type ReactNode,
 } from "react";
 import {
-  Check,
   CircleUserRound,
   Fingerprint,
   Heart,
@@ -26,7 +25,9 @@ import type { AgentEvent } from "../../shared/types";
 import { PermissionCard } from "../../src/PermissionCard";
 import { Avatar, Empty } from "./Chrome";
 import { statusTabLabel } from "./labels";
-import { activityEvents, activityLabel } from "./model";
+import { activityTurns } from "../../shared/activity";
+import { ActivityList } from "../../src/ActivityList";
+import type { Client } from "../../src/api";
 
 // Upcoming: a clock whose earlier half is still dashed.
 const UpcomingIcon = createLucideIcon("clock-half-dashed", [
@@ -135,6 +136,8 @@ export function StatusPanel({
   onPrefill,
   upcoming,
   tone = "offline",
+  client,
+  running = false,
 }: {
   identity: CompanionIdentity;
   status: string;
@@ -150,6 +153,9 @@ export function StatusPanel({
   upcoming?: ReactNode;
   // Green while connected, amber while working, grey otherwise.
   tone?: "online" | "busy" | "offline";
+  // For the activity list's short titles and summaries of each request.
+  client?: Client;
+  running?: boolean;
 }) {
   const [menu, setMenu] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -347,36 +353,16 @@ export function StatusPanel({
                 <p>{t("Requests for permission appear here.")}</p>
               </Empty>
             ))}
-          {tab === "activity" && (
-            <>
-              <h3>{statusTabLabel("activity")}</h3>
-              {activityEvents(events)
-                .slice(-30)
-                .reverse()
-                .map((event) => (
-                  <details className="activity-item" key={event.id}>
-                    <summary>
-                      <Check size={18} />
-                      <span title={event.name}>
-                        {activityLabel(event.name)}
-                      </span>
-                    </summary>
-                    <pre>
-                      {JSON.stringify(
-                        event.input ?? event.content ?? {},
-                        null,
-                        2,
-                      )}
-                    </pre>
-                  </details>
-                ))}
-              {!activityEvents(events).length && (
-                <Empty title={t("No activity yet")}>
-                  <p>{t("Your assistant's work will appear here.")}</p>
-                </Empty>
-              )}
-            </>
-          )}
+          {tab === "activity" &&
+            // One entry per request, grouped by day, as on iPhone: what it
+            // was about, how it went, and when; each opens its steps.
+            (activityTurns(events).length ? (
+              <ActivityList events={events} running={running} client={client} />
+            ) : (
+              <Empty title={t("No activity yet")}>
+                <p>{t("Your assistant's work will appear here.")}</p>
+              </Empty>
+            ))}
         </div>
       </div>
     </aside>

@@ -2092,6 +2092,8 @@ export function DesktopApp({ client }: { client: Client }) {
               onTab={setStatusTab}
               onClose={() => chooseStatusOpen(false)}
               events={currentEvents}
+              client={client}
+              running={state === "running"}
               approvals={approvals}
               busy={busy}
               onConfirm={confirm}

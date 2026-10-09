@@ -15,6 +15,7 @@ import {
 import type { Client } from "./api";
 import type { AgentEvent } from "../shared/types";
 import { ActivityDetail } from "./ActivityDetail";
+import "./activity-list.css";
 
 function dayLabel(at: string) {
   const day = activityDay(at);
