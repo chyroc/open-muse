@@ -649,6 +649,17 @@ one explains it in a sheet and then asks iOS for access, and iOS Settings >
 Open Muse changes that access. Both tools wait while the iPhone app is
 closed; the Mac and web apps say they are waiting for the iPhone.
 
+### Data on your Mac
+
+Messages from the Mac tell the companion to read the calendar, schedule, and
+reminders from the Mac (`mac_calendar`) and its whereabouts from
+`mac_location`, and to use `health_read` and the `iphone_*` tools only when
+the person asks for something on their iPhone or for health data. Both Mac
+tools only read, and each call waits for approval on the Mac. When Calendar
+and Reminders or Location is off in Connectors, the request card offers
+**Connect**, which turns the connector on and asks macOS for access; the call
+then still waits for **Allow once**, **Allow in this chat**, or **Decline**.
+
 ### The Android app
 
 The Android app (Android 9 and later) is the iPhone app with Android's own

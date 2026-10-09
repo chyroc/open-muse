@@ -98,24 +98,32 @@ describe("Mac location", () => {
   });
 
   it("asks for its own switch even when computer use is on", async () => {
-    shell({ enabled: false, permission: "allowed" });
-    const onSettings = vi.fn();
+    const post = shell({ enabled: false, permission: "allowed" });
     await mount(
       <ComputerRequests
         calls={[call("mac_screenshot"), call(LOCATION_TOOL)]}
         busy={false}
         onAnswer={vi.fn()}
-        onSettings={onSettings}
+        onSettings={vi.fn()}
       />,
     );
-    expect(host!.textContent).toContain("Location is off on this Mac.");
+    expect(host!.querySelector(".computer-connector")?.textContent).toContain(
+      "Location",
+    );
     expect(host!.textContent).not.toContain("Allow once");
     await act(async () =>
       [...host!.querySelectorAll("button")]
-        .find((item) => item.textContent === "Open Settings")!
+        .find((item) => item.textContent === "Connect")!
         .click(),
     );
-    expect(onSettings).toHaveBeenCalledWith("connectors");
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+    expect(post).toHaveBeenCalledWith({
+      operation: "location-enable",
+      value: "true",
+    });
+    // Already allowed by macOS, so it is not asked again.
+    expect(post).not.toHaveBeenCalledWith({ operation: "location-request" });
+    expect(host!.textContent).toContain("Allow once");
   });
 
   it("is turned on and granted from Connectors", async () => {

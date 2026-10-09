@@ -30,7 +30,7 @@ import {
 } from "./computer";
 
 // The installed apps' own icons; the Mac app keeps them once it has drawn them.
-function useAppIcons() {
+export function useAppIcons() {
   const [icons, setIcons] = useState<Record<string, string>>({});
   useEffect(() => {
     let alive = true;

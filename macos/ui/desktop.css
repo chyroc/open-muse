@@ -1654,6 +1654,30 @@ h3 {
   font-size: 13px;
   line-height: 1.55;
 }
+/* A connector the calls need, offered here when it is off. */
+.computer-connector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--fill);
+}
+.computer-connector > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.computer-connector strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+.computer-connector small {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-2);
+}
 .computer-off {
   margin: 8px 0 0;
   font-size: 12px;

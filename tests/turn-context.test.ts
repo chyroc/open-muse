@@ -29,8 +29,15 @@ describe("Turn context", () => {
     expect(iphone).toContain(
       "only when the person asks for something on their Mac",
     );
-    expect(turnContext(now, "UTC", "mac")).toContain(
-      "Mac app, which answers the mac_* tools",
+    // Calendar questions on the Mac stay on the Mac.
+    const mac = turnContext(now, "UTC", "mac");
+    expect(mac).toContain("Mac app, which answers the mac_* tools");
+    expect(mac).toContain(
+      "for their calendar, schedule and reminders use mac_calendar",
+    );
+    expect(mac).toContain("do not turn to another device instead");
+    expect(mac).toContain(
+      "only when the person asks for something on their iPhone",
     );
     expect(turnContext(now, "UTC", "web")).toContain("web app");
     // The Android app answers the same device tools from Android's sources,

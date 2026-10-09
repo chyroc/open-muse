@@ -109,26 +109,43 @@ describe("Mac Calendar and Reminders", () => {
     ).toEqual({ enabled: true, events: "allowed", reminders: "not-asked" });
   });
 
-  it("asks for approval with its own switch, apart from computer use", async () => {
-    shell({ enabled: false, events: "allowed", reminders: "allowed" });
-    const onSettings = vi.fn();
+  it("offers to connect the calendar right on the request, then asks for approval", async () => {
+    const post = shell({
+      enabled: false,
+      events: "not-asked",
+      reminders: "not-asked",
+    });
+    const onAnswer = vi.fn();
     await mount(
       <ComputerRequests
-        calls={[call({ kind: "events" })]}
+        calls={[call({ kind: "reminders" })]}
         busy={false}
-        onAnswer={vi.fn()}
-        onSettings={onSettings}
+        onAnswer={onAnswer}
+        onSettings={vi.fn()}
       />,
     );
-    expect(host!.textContent).toContain(
-      "Calendar and Reminders are off on this Mac.",
+    expect(host!.querySelector(".computer-connector")?.textContent).toContain(
+      "Calendar and Reminders",
     );
+    expect(buttons()).toEqual(["Decline", "Connect"]);
     await act(async () =>
       [...host!.querySelectorAll("button")]
-        .find((item) => item.textContent === "Open Settings")!
+        .find((item) => item.textContent === "Connect")!
         .click(),
     );
-    expect(onSettings).toHaveBeenCalledWith("connectors");
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+    expect(post).toHaveBeenCalledWith({
+      operation: "calendar-enable",
+      value: "true",
+    });
+    // The reminders a call reads are what macOS is asked about.
+    expect(post).toHaveBeenCalledWith({
+      operation: "calendar-request",
+      kind: "reminders",
+    });
+    // Connecting is not approval: the read still waits for the person.
+    expect(onAnswer).not.toHaveBeenCalled();
+    expect(buttons()).toEqual(["Decline", "Allow in this chat", "Allow once"]);
     await act(async () => root!.unmount());
     // Turned on, a calendar read can be allowed even with computer use off.
     shell({ enabled: true, events: "allowed", reminders: "allowed" });

@@ -350,4 +350,10 @@ export const zhDesktop: Record<string, string> = {
   "Checks a little after Open Muse starts.": "Open Muse 启动后不久会自动检查。",
   "Starting a new chapter of the main chat with your history. This can take a minute or two.":
     "正在带着历史记录开始主对话的新章节，可能需要一两分钟。",
+  "Connect to let your assistant read your calendar and reminders on this Mac. Each read still waits for your approval.":
+    "连接后，助手可以读取这台 Mac 上的日历和提醒事项，每次读取仍需你批准。",
+  "Connect to let your assistant find this Mac's approximate location. Each lookup still waits for your approval.":
+    "连接后，助手可以获取这台 Mac 的大致位置，每次获取仍需你批准。",
+  "Couldn't connect. Try again in Settings > Connectors.":
+    "无法连接，请在设置 > 连接器中重试。",
 };
