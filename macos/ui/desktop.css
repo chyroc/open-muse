@@ -475,19 +475,19 @@ h3 {
 }
 /* Lists breathe: 8 points between items, numbers indented 28 points and
    bullets 24, each bullet a small dot centred on the first line. */
-.message-bubble ul,
-.message-bubble ol {
+.message-bubble .markdown ul,
+.message-bubble .markdown ol {
   margin: 0 0 8px;
   padding-left: 28px;
 }
-.message-bubble ul {
+.message-bubble .markdown ul {
   padding-left: 24px;
   list-style: none;
 }
-.message-bubble ul > li {
+.message-bubble .markdown ul > li {
   position: relative;
 }
-.message-bubble ul > li::before {
+.message-bubble .markdown ul > li::before {
   content: "";
   position: absolute;
   left: -12px;
@@ -498,9 +498,9 @@ h3 {
   background: currentColor;
   opacity: 0.7;
 }
-.message-bubble li + li,
-.message-bubble li > ul,
-.message-bubble li > ol {
+.message-bubble .markdown li + li,
+.message-bubble .markdown li > ul,
+.message-bubble .markdown li > ol {
   margin-top: 8px;
 }
 .message-bubble img {
