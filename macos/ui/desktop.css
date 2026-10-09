@@ -432,6 +432,11 @@ h3 {
 .from-user .message-bubble {
   background: var(--blue);
 }
+/* A link the person typed reads as part of their own words: underlined, in
+   the bubble's text color. */
+.from-user .message-bubble a {
+  color: inherit;
+}
 /* A message that is still on its way shows at once, slightly faded, and
    comes to full strength when the conversation confirms it. */
 .from-user .message-bubble {
