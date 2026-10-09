@@ -957,11 +957,13 @@ h3 {
   background: var(--bg);
   padding: 0 15px;
 }
+/* Above the profile, which reaches the top of the panel. */
 .status-close {
   color: var(--text-2);
   position: absolute;
   right: 12px;
   top: 12px;
+  z-index: 2;
 }
 .status-profile {
   height: 262px;
