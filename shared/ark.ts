@@ -69,6 +69,15 @@ export class ArkClient {
         signal: bound.signal,
         redirect: "error",
         headers,
+      }).catch((error: unknown) => {
+        // A request with no answer names which one it was, without IDs, so
+        // a report shows where it stopped.
+        if (
+          error instanceof Error &&
+          ["TimeoutError", "NetworkError"].includes(error.name)
+        )
+          error.message = `${error.message} (${requestLabel(init.method, path)})`;
+        throw error;
       });
       if (!response.ok) {
         const diagnostic = await errorDiagnostic(
@@ -198,6 +207,17 @@ export class ArkClient {
 }
 
 // Return only structured diagnostics and known validation categories, never raw error text that may contain credentials or user input.
+// "GET /sessions/:id/events", from a request path with its IDs and query
+// left out.
+export function requestLabel(method = "GET", path: string) {
+  const route = path
+    .split("?")[0]
+    .split("/")
+    .map((part) => (/\d/.test(part) ? ":id" : part))
+    .join("/");
+  return `${method.toUpperCase()} ${route}`;
+}
+
 async function errorDiagnostic(
   response: Response,
   secret: string,

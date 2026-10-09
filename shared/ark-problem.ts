@@ -21,9 +21,13 @@ export const isArkProblem = (value: unknown): value is ArkProblem =>
 // A model or endpoint ID named in a refusal, when it looks like one.
 const modelId = /^[A-Za-z0-9][A-Za-z0-9._-]{2,80}$/;
 export function refusedModel(message = "") {
-  const named = message.match(
-    /(?:endpoint|model)(?:\.id)?:? ?"?([A-Za-z0-9][A-Za-z0-9._-]{2,80})"? (?:is invalid|does not exist|is not|not )/i,
-  )?.[1];
+  // Ark names a model either by its ID or as "name@version"; the console
+  // lists it as "name-version".
+  const named = message
+    .match(
+      /(?:endpoint|model)(?:\.id)?:? ?"?([A-Za-z0-9][A-Za-z0-9._@-]{2,80})"? (?:is invalid|does not exist|is not|not )/i,
+    )?.[1]
+    ?.replace("@", "-");
   return named && modelId.test(named) ? named : undefined;
 }
 

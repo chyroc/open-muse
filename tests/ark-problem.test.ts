@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ApiError, ArkClient } from "../shared/ark";
+import { ApiError, ArkClient, requestLabel } from "../shared/ark";
 import {
   arkProblem,
   arkProblemText,
@@ -43,6 +43,14 @@ describe("Ark refusals", () => {
     );
     expect(arkProblem(502)).toBe("unavailable");
     expect(refusedModel(modelMessage)).toBe("doubao-seed-2-1-pro-260915");
+    expect(
+      refusedModel(
+        "Operation is denied because model doubao-seed-2-1-pro@260915 is not enabled for this account",
+      ),
+    ).toBe("doubao-seed-2-1-pro-260915");
+    expect(arkProblem(403, "OperationDenied.ModelNotOpen")).toBe(
+      "model_unavailable",
+    );
   });
   it("leads with what to do and keeps the reference for support", async () => {
     const error = await refused(400, {
@@ -81,5 +89,27 @@ describe("Ark refusals", () => {
     expect(arkProblemText("rate_limited", { service: "Claude" })).toBe(
       "Claude is receiving too many requests right now. Try again in a moment.",
     );
+  });
+  it("names a request that got no answer, without its IDs", async () => {
+    expect(
+      requestLabel("post", "/sessions/sesn-20261009-abc/events?limit=200"),
+    ).toBe("POST /sessions/:id/events");
+    const timeout = Object.assign(new Error("Ark did not answer in time."), {
+      name: "TimeoutError",
+    });
+    const error = await new ArkClient(
+      {
+        arkBaseUrl: "https://ark.test/api/v3",
+        arkKey: "secret-key-0001",
+        project: "",
+      },
+      async () => {
+        throw timeout;
+      },
+    )
+      .request<never>("/agents/agent-20261002-r580i")
+      .catch((reason: unknown) => reason as Error);
+    expect(error.name).toBe("TimeoutError");
+    expect(error.message).toBe("Ark did not answer in time. (GET /agents/:id)");
   });
 });
