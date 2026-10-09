@@ -10,8 +10,8 @@ export const companionFlight = {
 
 export const companionFaceSelector = (page: string) =>
   page === "chat"
-    ? ".toolbar-avatar .companion-face"
-    : ".rail-companion .companion-face";
+    ? ".toolbar-avatar .companion-portrait"
+    : ".rail-companion .companion-portrait";
 
 export function flyCompanion(from: DOMRect, to: HTMLElement) {
   if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;

@@ -19,6 +19,13 @@ describe("companion flight", () => {
   it("picks the portrait at the top of the chat or of the rail", () => {
     expect(companionFaceSelector("chat")).toContain(".toolbar-avatar");
     expect(companionFaceSelector("feed")).toContain(".rail-companion");
+    // Both name the portrait wrapper the chat and the rail render.
+    document.body.innerHTML =
+      '<div class="toolbar-avatar"><span class="companion-portrait"></span></div>' +
+      '<div class="rail-companion"><span class="companion-portrait"></span></div>';
+    expect(document.querySelector(companionFaceSelector("chat"))).toBeTruthy();
+    expect(document.querySelector(companionFaceSelector("feed"))).toBeTruthy();
+    document.body.innerHTML = "";
   });
   it("flies a copy from the old place and hands over when it lands", () => {
     const to = document.createElement("span");
