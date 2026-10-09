@@ -22,6 +22,7 @@ function fixture() {
     }),
     prepare: vi.fn(async (_previous?: Session) => {}),
     needsContinuation: vi.fn(async (_session: Session) => false),
+    continuing: vi.fn((_active: boolean) => {}),
     create: vi.fn(async (title: string, category: Category) => {
       const session: Session = {
         id: uuid(),
@@ -84,6 +85,26 @@ describe("Main and side conversations", () => {
     await expect(f.store.claimSend(original.id, "new-event")).rejects.toThrow(
       "has continued",
     );
+  });
+  it("says while the main chat moves to a new chapter, even when it fails", async () => {
+    const f = fixture();
+    await f.store.create("main", "Main chat", "general");
+    expect(f.remote.continuing).not.toHaveBeenCalled();
+    f.remote.needsContinuation.mockResolvedValue(true);
+    f.remote.prepare.mockRejectedValueOnce(
+      new TypeError("Archive read failed"),
+    );
+    await expect(
+      f.store.create("main", "Main chat", "general"),
+    ).rejects.toThrow();
+    expect(f.remote.continuing.mock.calls).toEqual([[true], [false]]);
+    await f.store.create("main", "Main chat", "general");
+    expect(f.remote.continuing.mock.calls).toEqual([
+      [true],
+      [false],
+      [true],
+      [false],
+    ]);
   });
   it("retains older chapters over successive continuations", async () => {
     const f = fixture();

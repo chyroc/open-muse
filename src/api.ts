@@ -261,6 +261,9 @@ export class Client {
   private media = new MediaStore();
   // Photos the account has no copy of, so they are asked for once a launch.
   private missingImages = new Set<string>();
+  // Whether the main chat is moving to a new chapter, and who is told.
+  private continuingMain = false;
+  private continuingListeners = new Set<(active: boolean) => void>();
   private surface: Surface;
   private timeZone: () => string;
   private verifiedAt = 0;
@@ -1152,6 +1155,7 @@ export class Client {
     return new Conversations(r.key, this.db, {
       list: () => this.recentSessions(r),
       get: (id) => r.ark.get(validId(id)),
+      continuing: (active) => this.setContinuing(active),
       needsContinuation: async (session) => {
         if (["running", "rescheduling"].includes(session.status)) return false;
         if (session.status === "terminated") return true;
@@ -1617,6 +1621,21 @@ export class Client {
     return this.checkInService(this.context()).setEnabled(
       z.boolean().parse(enabled),
     );
+  }
+  // Moving the main chat to a new chapter, after the model or the app's
+  // instructions changed, copies its history first and can take a minute or
+  // two; the app says so while it runs.
+  onContinuing(listener: (active: boolean) => void) {
+    this.continuingListeners.add(listener);
+    listener(this.continuingMain);
+    return () => {
+      this.continuingListeners.delete(listener);
+    };
+  }
+  private setContinuing(active: boolean) {
+    if (this.continuingMain === active) return;
+    this.continuingMain = active;
+    for (const listener of this.continuingListeners) listener(active);
   }
   async openConversation(
     kind: ConversationKind,

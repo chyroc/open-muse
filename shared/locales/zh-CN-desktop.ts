@@ -348,4 +348,6 @@ export const zhDesktop: Record<string, string> = {
     "无法验证此更新，因此没有安装",
   "Couldn't download the update": "无法下载更新",
   "Checks a little after Open Muse starts.": "Open Muse 启动后不久会自动检查。",
+  "Starting a new chapter of the main chat with your history. This can take a minute or two.":
+    "正在带着历史记录开始主对话的新章节，可能需要一两分钟。",
 };

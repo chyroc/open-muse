@@ -294,7 +294,10 @@ Turbo, DeepSeek V4 Pro and V4.1 Flash, or GLM-5.3 Flash, each with the
 thinking levels it accepts. The Doubao models and DeepSeek V4.1 Flash read
 images; the others are text only. A conversation keeps the model it was
 created with, so the main chat moves to a new chapter, with its history kept,
-the next time it is opened after a change. Feed and Ideas keep the default.
+the next time it is opened after a change; an app update that changes the
+assistant's instructions or device tools does the same. Copying the history
+can take a minute or two for a long main chat, and while a message waits on
+it the Mac says so under the message. Feed and Ideas keep the default.
 
 ## Conversations
 

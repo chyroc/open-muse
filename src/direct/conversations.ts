@@ -34,6 +34,8 @@ type Remote = {
   get(id: string): Promise<Session>;
   prepare(previous?: Session): Promise<void>;
   needsContinuation?(session: Session): Promise<boolean>;
+  // Told while the main chat moves to a new chapter, which can take a while.
+  continuing?(active: boolean): void;
   create(title: string, category: Category): Promise<Session>;
   rename(id: string, title: string): Promise<unknown>;
 };
@@ -248,6 +250,16 @@ export class Conversations {
     return this.finish(index.pending!, session);
   }
   private async resumeContinuation(
+    pending: NonNullable<ConversationIndex["pending"]>,
+  ) {
+    this.remote.continuing?.(true);
+    try {
+      return await this.continueChapter(pending);
+    } finally {
+      this.remote.continuing?.(false);
+    }
+  }
+  private async continueChapter(
     pending: NonNullable<ConversationIndex["pending"]>,
   ) {
     if (pending.phase !== "preparing") {

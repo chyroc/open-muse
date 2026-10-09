@@ -291,6 +291,9 @@ export function DesktopApp({ client }: { client: Client }) {
   // Files staged for each draft; they are sent only with that draft.
   const [stagedBy, setStagedBy] = useState<Record<string, Staged[]>>({});
   const [fileNames, setFileNames] = useState<Record<string, string>>({});
+  // The main chat is moving to a new chapter while a message waits to send.
+  const [continuing, setContinuing] = useState(false);
+  useEffect(() => client.onContinuing?.(setContinuing), [client]);
   // A sent photo, from this Mac's copy or the account's.
   const sentMedia = useCallback(
     (fileId: string) => client.sentMedia(fileId),
@@ -1826,6 +1829,13 @@ export function DesktopApp({ client }: { client: Client }) {
                     </div>
                   )
                 ))}
+              {pendingEvent && continuing && (
+                <p className="thinking" role="status">
+                  {t(
+                    "Starting a new chapter of the main chat with your history. This can take a minute or two.",
+                  )}
+                </p>
+              )}
             </div>
             {away && (
               <button
