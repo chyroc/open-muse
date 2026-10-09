@@ -9,7 +9,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Release builds pass a growing code (see scripts/android-release.mjs).
         versionCode Integer.parseInt(System.getenv("OPEN_MUSE_ANDROID_VERSION_CODE") ?: "1")
-        versionName "0.2.0"
+        // Release builds pass YYYYMMDD-<commit> (see scripts/build-commit.mjs).
+        versionName System.getenv("OPEN_MUSE_ANDROID_VERSION_NAME") ?: "dev"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

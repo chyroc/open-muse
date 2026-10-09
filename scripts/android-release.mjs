@@ -31,6 +31,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
+import { releaseVersion } from "./build-commit.mjs";
 import {
   accountBuildEnv,
   accountConfig,
@@ -85,10 +86,7 @@ const short = commit.slice(0, 7);
 // One more for every commit on the branch, so each release installs over
 // the one before it.
 const versionCode = read("git", ["rev-list", "--count", commit]);
-const versionName = /versionName "([^"]+)"/.exec(
-  readFileSync(path.join(root, "android/app/build.gradle"), "utf8"),
-)?.[1];
-if (!versionName) fail("android/app/build.gradle names no versionName.");
+const versionName = releaseVersion(commit, root);
 const sdk =
   process.env.ANDROID_HOME ||
   /^sdk\.dir=(.+)$/m.exec(
@@ -122,6 +120,7 @@ run("./gradlew", ["assembleRelease", "-q"], {
     ...process.env,
     ANDROID_HOME: sdk,
     OPEN_MUSE_ANDROID_VERSION_CODE: versionCode,
+    OPEN_MUSE_ANDROID_VERSION_NAME: versionName,
   },
 });
 const built = path.join(
@@ -138,7 +137,7 @@ const apksigner = read("ls", [tools])
 if (!apksigner) fail("No apksigner in the Android SDK build tools.");
 run(apksigner, ["verify", built]);
 
-const file = `OpenMuse-${versionName}-${versionCode}.apk`;
+const file = `OpenMuse-${versionName}.apk`;
 const out = path.join(root, ".build/android", file);
 mkdirSync(path.dirname(out), { recursive: true });
 copyFileSync(built, out);

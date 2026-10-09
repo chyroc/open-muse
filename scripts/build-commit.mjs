@@ -14,3 +14,23 @@ export function buildCommit(cwd = process.cwd()) {
     return "";
   }
 }
+
+// The version a release is published under: the commit's date in Beijing
+// time and its short hash, as 20261009-fe0e53a. Install order comes from the
+// commit count (Android versionCode, Mac build number), not from this.
+export function releaseVersion(commit = "HEAD", cwd = process.cwd()) {
+  const git = (...args) =>
+    execFileSync("git", args, {
+      cwd,
+      encoding: "utf8",
+      env: { ...process.env, TZ: "Asia/Shanghai" },
+    }).trim();
+  const date = git(
+    "show",
+    "-s",
+    "--format=%cd",
+    "--date=format-local:%Y%m%d",
+    commit,
+  );
+  return `${date}-${git("rev-parse", "--short=7", commit)}`;
+}

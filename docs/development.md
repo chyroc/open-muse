@@ -151,7 +151,9 @@ rather than adding one for the site.
 
 `npm run macos:release` builds the current commit, cloned into
 `.build/macos-release/`, as a universal (Apple silicon and Intel) account
-build whose build number is the number of commits on the branch. It signs the
+build. Its version is the commit's date in Beijing time and its short hash,
+such as `20261009-fe0e53a`, and its build number is the number of commits on
+the branch, which is what the update check compares. It signs the
 app with Developer ID under the hardened runtime, with the entitlements in
 `macos/OpenMuse.entitlements`, notarizes and staples it, and packs it in a
 signed, notarized disk image in `.build/macos/`. It needs the Developer ID
@@ -167,7 +169,8 @@ so they start updating once that file is committed and the website deployed.
 
 `npm run android:release` builds the signed release of the current commit,
 cloned into `.build/android-release/`, as an account build, and writes the
-APK to `.build/android/`. The version code is the number of commits on the
+APK to `.build/android/`. Its version name is the commit's date and short
+hash, as for the Mac, and its version code is the number of commits on the
 branch, so each release installs over the one before. It needs the release
 keystore in `OPEN_MUSE_ANDROID_KEYSTORE` (alias `openmuse`) and its password in
 `OPEN_MUSE_ANDROID_KEYSTORE_PASSWORD`; the key never enters the repository,

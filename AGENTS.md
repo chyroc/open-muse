@@ -67,6 +67,7 @@ Requires Node.js 22.21+. Native Apple builds require Xcode. Account build values
 ## Conventions
 
 - Commit automatically: once a logical change is complete and its required checks pass, commit it without waiting to be asked. Do not push unless explicitly requested. If a required check fails or cannot be run, leave the change uncommitted and report why.
+- Releases on the website (Android APK, Mac DMG) are versioned `YYYYMMDD-<short commit>`, the commit's date in Beijing time and its 7-character hash (for example `20261009-fe0e53a`), never a semantic version such as `0.2.0`. `releaseVersion()` in `scripts/build-commit.mjs` computes it; the Android version code and the Mac build number stay the commit count so each release installs over the last. iOS keeps a numeric marketing version because App Store Connect requires one; its build number is already a timestamp.
 - Run `npm run check` and `npm run build` before committing. When changing native bridges or assets, also verify the affected platform build; state explicitly which checks were not run.
 - Chain the checks and the commit so a failure stops the commit (`&&`), or confirm every exit code first. A partial test run does not replace the full gate.
 - Report verification by the evidence it rests on: unit tests or protocol doubles, a native build, Simulator or device UI, or real cloud calls. Do not present a lower level as a higher one, and do not describe a build from a dirty worktree as the build of a commit.

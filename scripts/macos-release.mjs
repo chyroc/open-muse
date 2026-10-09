@@ -31,6 +31,7 @@ import {
 } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { releaseVersion } from "./build-commit.mjs";
 import {
   accountBuildEnv,
   accountConfig,
@@ -87,12 +88,7 @@ if (
 const commit = read("git", ["rev-parse", "HEAD"]);
 const short = commit.slice(0, 7);
 const build = read("git", ["rev-list", "--count", commit]);
-const version = read("plutil", [
-  "-extract",
-  "CFBundleShortVersionString",
-  "raw",
-  "macos/Info.plist",
-]);
+const version = releaseVersion(commit, root);
 
 step("Resolving the Open Muse account service");
 const config = accountConfig();
@@ -138,7 +134,7 @@ const keychain = path.join(scratch, "release.keychain-db");
 const keychainPassword = randomBytes(24).toString("base64");
 const out = path.join(root, ".build/macos");
 mkdirSync(out, { recursive: true });
-const file = `OpenMuse-${version}-${build}.dmg`;
+const file = `OpenMuse-${version}.dmg`;
 const dmg = path.join(out, file);
 // codesign finds identities only in keychains on the search list, so the
 // release keychain joins it for the run and the list is restored after.

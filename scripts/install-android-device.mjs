@@ -12,6 +12,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { releaseVersion } from "./build-commit.mjs";
 import {
   accountBuildEnv,
   accountConfig,
@@ -103,7 +104,13 @@ if (
 run(path.join(root, "node_modules/.bin/cap"), ["sync", "android"]);
 
 step("Building the Android app (debug)");
-run("./gradlew", ["assembleDebug", "-q"], { cwd: path.join(root, "android") });
+run("./gradlew", ["assembleDebug", "-q"], {
+  cwd: path.join(root, "android"),
+  env: {
+    ...process.env,
+    OPEN_MUSE_ANDROID_VERSION_NAME: releaseVersion("HEAD", root),
+  },
+});
 const apk = path.join(
   root,
   "android/app/build/outputs/apk/debug/app-debug.apk",
