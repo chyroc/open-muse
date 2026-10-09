@@ -835,7 +835,8 @@ export function IdeasPage({
           )}
           {run?.error && (
             <p className="feed-error" role="alert">
-              {run.error}
+              {/* Stored in English; shown in the app's language. */}
+              {t(run.error)}
             </p>
           )}
           {generation.error && (

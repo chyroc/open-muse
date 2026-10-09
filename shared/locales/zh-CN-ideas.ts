@@ -7,6 +7,11 @@ export const zhIdeas: Record<string, string> = {
   "My message:": "我的消息：",
   "Generation stopped before producing valid content. Your existing posts are unchanged.":
     "生成中途停止，没有产出有效内容。已有的内容不受影响。",
+  "This generation did not produce valid posts. Your previous content is unchanged. Try again.":
+    "这次没有生成有效的内容，已有的内容不受影响。请再试一次。",
+  // Stored by earlier releases.
+  "The response was not a valid set of posts. Your previous content is unchanged. You can inspect the generation conversation.":
+    "生成的内容无效，已有的内容不受影响。请再试一次。",
   "An action needs approval. Open the generation conversation to review it.":
     "有一个操作需要批准。打开生成对话查看。",
 };

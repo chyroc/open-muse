@@ -427,7 +427,8 @@ export function FeedPage({
     data && data.instructions.content.trim() === defaultFeedInstructions,
   );
   const custom = Boolean(data && !untouched);
-  const problems = [error, run?.error, generation.error].filter(
+  // A failed run's error is stored in English and shown in the app's language.
+  const problems = [error, run?.error && t(run.error), generation.error].filter(
     (value): value is string => Boolean(value),
   );
   const generateButton = (idle: string, variant: "primary" | "flat") => (

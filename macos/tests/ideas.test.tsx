@@ -175,6 +175,25 @@ describe("Mac Ideas adapter", () => {
     expect(() => parseMacIdeas(JSON.stringify(unsafe))).toThrow();
     expect(() => parseMacIdeas("x".repeat(65001))).toThrow("too large");
   });
+  it("reads ideas written as a Python literal", () => {
+    const python = (value: unknown): string =>
+      Array.isArray(value)
+        ? `[${value.map(python).join(", ")}]`
+        : value && typeof value === "object"
+          ? `{${Object.entries(value)
+              .map(([key, item]) => `${python(key)}: ${python(item)}`)
+              .join(", ")}}`
+          : typeof value === "string"
+            ? `'${value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`
+            : typeof value === "boolean"
+              ? value
+                ? "True"
+                : "False"
+              : String(value);
+    const parsed = parseMacIdeas(python(richContent()));
+    expect(parsed.details[0]).toEqual(detail());
+    expect(parsed.content[0].title).toBe(richContent().items[0].title);
+  });
   it("keeps four featured rows and category lists without duplicating dismissed ideas", () => {
     const items = Array.from({ length: 8 }, (_, index) =>
       item(String(index), index % 2 ? "Health" : "Learning"),

@@ -8,6 +8,7 @@ import { ApiError } from "../../shared/ark";
 import { digest, uuid } from "../../shared/crypto";
 import {
   defaultFeedInstructions,
+  parseGeneratedObject,
   parseInspiration,
   recentInspirationContext,
   type InspirationItem,
@@ -80,9 +81,7 @@ const owner = macOwner;
 export function parseMacIdeas(raw: string) {
   if (raw.length > 65000)
     throw new Error(t("The generated response is too large."));
-  const parsed = JSON.parse(
-    raw.trim().replace(/^```(?:json)?\s*\n([\s\S]*?)\n```$/, "$1"),
-  );
+  const parsed = parseGeneratedObject(raw);
   const rows = z
     .object({ items: z.array(z.record(z.string(), z.unknown())).min(1).max(6) })
     .strict()

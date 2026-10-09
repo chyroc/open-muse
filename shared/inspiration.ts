@@ -186,25 +186,30 @@ function pythonLiteralToJSON(raw: string) {
   return JSON.parse(out) as unknown;
 }
 
+// A generated reply read as a value: strict JSON, optionally in a code fence,
+// or the same object written as a Python literal.
+export function parseGeneratedObject(text: string): unknown {
+  const raw = text.trim().replace(/^```(?:json)?\s*\n([\s\S]*?)\n```$/, "$1");
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return pythonLiteralToJSON(raw);
+  }
+}
+
+export const invalidInspiration =
+  "This generation did not produce valid posts. Your previous content is unchanged. Try again.";
+
 export function parseInspiration(text: string): InspirationContent[] {
   if (text.length > 65000)
     throw new Error("The generated response is too large.");
-  const raw = text.trim().replace(/^```(?:json)?\s*\n([\s\S]*?)\n```$/, "$1");
   try {
-    let value: unknown;
-    try {
-      value = JSON.parse(raw);
-    } catch {
-      value = pythonLiteralToJSON(raw);
-    }
     return z
       .object({ items: z.array(item).min(1).max(6) })
       .strict()
-      .parse(value).items;
+      .parse(parseGeneratedObject(text)).items;
   } catch {
-    throw new Error(
-      "The response was not a valid set of posts. Your previous content is unchanged. You can inspect the generation conversation.",
-    );
+    throw new Error(invalidInspiration);
   }
 }
 

@@ -404,10 +404,10 @@ describe("Generated content boundaries", () => {
       { title: "UCLA", url: "https://example.com/a" },
     ]);
     expect(() => parseInspiration("{'items': [__import__('os')]}")).toThrow(
-      "not a valid set of posts",
+      "did not produce valid posts",
     );
     expect(() => parseInspiration("{'items': [{'title': 'x'")).toThrow(
-      "not a valid set of posts",
+      "did not produce valid posts",
     );
   });
   it("asks Feed posts for pictures from their sources and Ideas for none", () => {
