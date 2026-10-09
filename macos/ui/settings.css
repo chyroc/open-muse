@@ -51,11 +51,24 @@
 .settings-sidebar button[aria-current] svg {
   color: var(--text);
 }
+/* Labels are not text to select, as in the system's settings: a double
+   click no longer paints a selection across the groups. Fields, documents
+   and the account ID stay selectable. */
 .settings-main {
   flex: 1;
   min-width: 0;
   overflow: auto;
   padding: 0 24px 40px;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.settings-main input,
+.settings-main textarea,
+.settings-main [contenteditable],
+.settings-main pre,
+.settings-main .settings-selectable {
+  -webkit-user-select: text;
+  user-select: text;
 }
 .settings-main h1 {
   display: flex;
@@ -859,6 +872,7 @@
   margin: 20px 0 28px;
   font-size: 11px;
   overflow-wrap: anywhere;
+  -webkit-user-select: text;
   user-select: text;
 }
 
@@ -916,7 +930,55 @@
   color: var(--accent);
 }
 .lark-setup li[data-state="done"] {
-  opacity: 0.5;
+  opacity: 0.6;
+}
+.lark-setup li > div {
+  flex: 1;
+  min-width: 0;
+}
+/* Each step's own state at the end of its line: a spinner while Lark
+   waits for the person, a check once it is done. */
+.lark-setup-mark {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+}
+.lark-setup-mark svg {
+  color: var(--text-2);
+}
+.lark-setup li[data-state="done"] .lark-setup-mark svg {
+  color: var(--success, #34a853);
+}
+.lark-setup-mark .spin {
+  animation: lark-spin 0.9s linear infinite;
+}
+@keyframes lark-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lark-setup-mark .spin {
+    animation-duration: 2.4s;
+  }
+}
+.lark-setup-reopen {
+  margin-top: 4px;
+  padding: 0;
+  font-size: 12px;
+  color: var(--accent);
+}
+.lark-setup-reopen:hover {
+  text-decoration: underline;
+}
+.lark-setup-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-right: auto;
 }
 .lark-setup li strong {
   font-size: 13px;
@@ -1028,4 +1090,31 @@
 }
 .settings-signin-note {
   margin-bottom: 28px;
+}
+/* Removing a device: the button says so with a spinner, then the row fades
+   and folds away. */
+.settings-inline-button[aria-busy="true"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.settings-device-row {
+  transition:
+    opacity 0.2s ease-out,
+    max-height 0.22s ease-out,
+    padding 0.22s ease-out;
+  max-height: 80px;
+}
+.settings-device-row.leaving {
+  opacity: 0;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+/* The way to System Settings under a connector macOS refused. */
+.settings-row-action {
+  justify-content: flex-end;
+  min-height: 0;
+  padding-top: 0;
 }

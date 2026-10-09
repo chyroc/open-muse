@@ -37,13 +37,22 @@ const base = {
   fullDiskAccess: false,
   blockedFolders: [],
 };
+// Like the shell: turning a switch on asks macOS, which grants access it
+// has not been asked for and keeps a refusal.
 function shell(calendar: Record<string, unknown>, computer = false) {
   const state = { ...base, enabled: computer, calendar: { ...calendar } };
+  const ask = (kind: "events" | "reminders") => {
+    if (state.calendar[kind] === "not-asked") state.calendar[kind] = "allowed";
+  };
   const postMessage = vi.fn(async (body: Record<string, string>) => {
-    if (body.operation === "calendar-enable")
+    if (body.operation === "calendar-enable") {
       state.calendar.enabled = body.value === "true";
-    if (body.operation === "calendar-request")
-      state.calendar[body.kind] = "allowed";
+      if (body.value === "true") ask("events");
+    }
+    if (body.operation === "reminders-enable") {
+      state.calendar.remindersEnabled = body.value === "true";
+      if (body.value === "true") ask("reminders");
+    }
     return structuredClone(state);
   });
   Object.defineProperty(window, "webkit", {
@@ -99,20 +108,34 @@ describe("Mac Calendar and Reminders", () => {
     expect(parseComputerState(base)?.calendar).toEqual({
       enabled: false,
       events: "not-asked",
+      remindersEnabled: false,
       reminders: "not-asked",
     });
+    // An older shell had one switch for both.
     expect(
       parseComputerState({
         ...base,
         calendar: { enabled: true, events: "allowed", reminders: "nonsense" },
       })?.calendar,
-    ).toEqual({ enabled: true, events: "allowed", reminders: "not-asked" });
+    ).toEqual({
+      enabled: true,
+      events: "allowed",
+      remindersEnabled: true,
+      reminders: "not-asked",
+    });
+    expect(
+      parseComputerState({
+        ...base,
+        calendar: { enabled: true, remindersEnabled: false },
+      })?.calendar.remindersEnabled,
+    ).toBe(false);
   });
 
   it("offers to connect the calendar right on the request, then asks for approval", async () => {
     const post = shell({
-      enabled: false,
-      events: "not-asked",
+      enabled: true,
+      events: "allowed",
+      remindersEnabled: false,
       reminders: "not-asked",
     });
     const onAnswer = vi.fn();
@@ -124,8 +147,9 @@ describe("Mac Calendar and Reminders", () => {
         onSettings={vi.fn()}
       />,
     );
+    // A reminders read needs the Reminders switch, not Calendar's.
     expect(host!.querySelector(".computer-connector")?.textContent).toContain(
-      "Calendar and Reminders",
+      "Reminders",
     );
     expect(buttons()).toEqual(["Decline", "Connect"]);
     await act(async () =>
@@ -134,21 +158,25 @@ describe("Mac Calendar and Reminders", () => {
         .click(),
     );
     await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+    // Turning it on is what asks macOS for access.
     expect(post).toHaveBeenCalledWith({
-      operation: "calendar-enable",
+      operation: "reminders-enable",
       value: "true",
     });
-    // The reminders a call reads are what macOS is asked about.
-    expect(post).toHaveBeenCalledWith({
-      operation: "calendar-request",
-      kind: "reminders",
-    });
+    expect(post).not.toHaveBeenCalledWith(
+      expect.objectContaining({ operation: "calendar-enable" }),
+    );
     // Connecting is not approval: the read still waits for the person.
     expect(onAnswer).not.toHaveBeenCalled();
     expect(buttons()).toEqual(["Decline", "Allow in this chat", "Allow once"]);
     await act(async () => root!.unmount());
     // Turned on, a calendar read can be allowed even with computer use off.
-    shell({ enabled: true, events: "allowed", reminders: "allowed" });
+    shell({
+      enabled: true,
+      events: "allowed",
+      remindersEnabled: false,
+      reminders: "allowed",
+    });
     await mount(
       <ComputerRequests
         calls={[call({ kind: "events" })]}
@@ -160,33 +188,50 @@ describe("Mac Calendar and Reminders", () => {
     expect(buttons()).toEqual(["Decline", "Allow in this chat", "Allow once"]);
   });
 
-  it("is turned on and granted from Connectors", async () => {
+  it("turns Calendar and Reminders on separately from Connectors", async () => {
     const post = shell({
       enabled: false,
       events: "not-asked",
+      remindersEnabled: false,
       reminders: "denied",
     });
     await mount(<ConnectorsSettings onSection={vi.fn()} />);
-    const toggle = host!.querySelector<HTMLInputElement>(
-      'input[role="switch"]',
-    )!;
-    expect(toggle.checked).toBe(false);
-    await act(async () => toggle.click());
+    const toggles = () => [
+      ...host!.querySelectorAll<HTMLInputElement>('input[role="switch"]'),
+    ];
+    // Calendar, Reminders, then Location, each its own switch.
+    expect(toggles()).toHaveLength(3);
+    expect(toggles().map((item) => item.checked)).toEqual([
+      false,
+      false,
+      false,
+    ]);
+    await act(async () => toggles()[0].click());
     expect(post).toHaveBeenCalledWith({
       operation: "calendar-enable",
       value: "true",
     });
-    expect(buttons()).toContain("Open System Settings");
+    // Granted when turned on: no extra row saying so.
+    expect(host!.textContent).not.toContain("Allowed");
+    expect(buttons()).not.toContain("Open System Settings");
+    // Reminders macOS refused: its row says so and leads to System Settings.
+    await act(async () => toggles()[1].click());
+    expect(post).toHaveBeenCalledWith({
+      operation: "reminders-enable",
+      value: "true",
+    });
+    expect(host!.textContent).toContain(
+      "macOS has not allowed Open Muse to use this.",
+    );
     await act(async () =>
       [...host!.querySelectorAll("button")]
-        .find((item) => item.textContent === "Allow")!
+        .find((item) => item.textContent === "Open System Settings")!
         .click(),
     );
     expect(post).toHaveBeenCalledWith({
       operation: "calendar-request",
-      kind: "events",
+      kind: "reminders",
     });
-    expect(host!.textContent).toContain("Allowed");
   });
 
   it("keeps the native reader read-only and its copy translated", () => {
@@ -198,8 +243,9 @@ describe("Mac Calendar and Reminders", () => {
       expect(swift).not.toContain(write);
     const shellSource = readFileSync("macos/OpenMuse.swift", "utf8");
     expect(shellSource).toContain('if body["tool"] == LocalCalendar.tool');
+    // Each read follows its own switch.
     expect(shellSource).toContain(
-      "UserDefaults.standard.bool(forKey: calendarKey)",
+      "UserDefaults.standard.bool(forKey: reminders ? remindersKey : calendarKey)",
     );
     const build = readFileSync("scripts/build-macos.mjs", "utf8");
     expect(build).toContain('"macos/LocalCalendar.swift"');
@@ -217,7 +263,7 @@ describe("Mac Calendar and Reminders", () => {
     for (const language of ["en", "zh-Hans"])
       expect(
         readFileSync(`macos/${language}.lproj/Localizable.strings`, "utf8"),
-      ).toContain('"Calendar and Reminders are off on this Mac."');
+      ).toContain('"Reminders are off on this Mac."');
     for (const file of [
       "macos/ui/computer.ts",
       "macos/ui/ComputerRequests.tsx",

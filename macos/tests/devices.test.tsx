@@ -101,6 +101,9 @@ describe("Mac devices", () => {
     await act(async () => button("Confirm").click());
     await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
     expect(forget).toHaveBeenCalledWith(iphone.id);
+    // The row says it is going, then folds away before the list reloads.
+    expect(host!.querySelector(".settings-device-row.leaving")).toBeTruthy();
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 260)));
     expect(host!.textContent).toContain("No other devices yet.");
   });
   it("translates its copy and keeps the native contract", () => {

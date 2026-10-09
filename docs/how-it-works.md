@@ -556,7 +556,11 @@ the person through them:
 The sheet checks progress every few seconds and when the person returns from
 Lark, and shows who is connected once Lark confirms. A declined or expired
 step can be tried again; reconnecting reuses the app. Only Feishu accounts
-are supported.
+are supported. On the Mac, each step's Lark page opens in the browser by
+itself, each step shows a spinner while Lark waits and a check once done, and
+while an app is chosen but not yet approved, **Clear Lark setup and start
+over** forgets the setup and the chosen app (`DELETE /v1/lark/connect?app=forget`)
+so the next setup chooses an app again.
 
 The service keeps the app secret, the person's user token, and the refresh
 token sealed with the account in `lark_connections`. A conversation's cloud
@@ -655,10 +659,13 @@ Messages from the Mac tell the companion to read the calendar, schedule, and
 reminders from the Mac (`mac_calendar`) and its whereabouts from
 `mac_location`, and to use `health_read` and the `iphone_*` tools only when
 the person asks for something on their iPhone or for health data. Both Mac
-tools only read, and each call waits for approval on the Mac. When Calendar
-and Reminders or Location is off in Connectors, the request card offers
-**Connect**, which turns the connector on and asks macOS for access; the call
-then still waits for **Allow once**, **Allow in this chat**, or **Decline**.
+tools only read, and each call waits for approval on the Mac. Calendar,
+Reminders, and Location are separate switches in Connectors; turning one on
+asks macOS for its access at once, and when macOS has refused it the row says
+so and opens System Settings. A reminders read follows the Reminders switch and
+an events read the Calendar switch. When the needed one is off, the request
+card offers **Connect**, which turns it on the same way; the call then still
+waits for **Allow once**, **Allow in this chat**, or **Decline**.
 
 ### The Android app
 

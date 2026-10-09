@@ -378,6 +378,9 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     // Calendar and Reminders are a local connector with their own switch,
     // separate from computer use, and read only.
     private let calendarKey = "connectors.calendar.enabled"
+    // Reminders have their own switch; before they had one, Calendar's
+    // switch covered both, so it seeds this one once.
+    private let remindersKey = "connectors.reminders.enabled"
     private let calendar = LocalCalendar()
     private let locationKey = "connectors.location.enabled"
     private let location = LocalLocation()
@@ -401,6 +404,9 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
     }
     func applicationDidFinishLaunching(_ notification: Notification) {
         UserDefaults.standard.register(defaults: [menuBarKey: true, floatingButtonKey: true])
+        if UserDefaults.standard.object(forKey: remindersKey) == nil {
+            UserDefaults.standard.set(UserDefaults.standard.bool(forKey: calendarKey), forKey: remindersKey)
+        }
         installMenu()
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1152, height: 768), styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
         window.title = "Open Muse"
@@ -697,6 +703,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
          "policy": computerPolicy,
          "calendar": ["enabled": UserDefaults.standard.bool(forKey: calendarKey),
                       "events": LocalCalendar.state(.event),
+                      "remindersEnabled": UserDefaults.standard.bool(forKey: remindersKey),
                       "reminders": LocalCalendar.state(.reminder)],
          "location": ["enabled": UserDefaults.standard.bool(forKey: locationKey),
                       "permission": location.state]]
@@ -729,6 +736,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         "browser": ["com.google.Chrome"],
         "files": ["com.apple.Terminal"],
         "calendar": ["com.apple.iCal"],
+        "reminders": ["com.apple.reminders"],
         "location": ["com.apple.Maps"],
     ]
     private var connectorIcons: [String: String]?
@@ -777,12 +785,30 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             UserDefaults.standard.set(value == "true", forKey: computerKey)
             replyHandler(computerState(), nil)
             broadcast("muse-computer-changed", except: sender)
-        case "calendar-enable":
+        case "calendar-enable", "reminders-enable":
+            // Turning one on asks macOS for its access right away; macOS asks
+            // only once, so after a refusal its System Settings pane opens.
             guard let value = body["value"], value == "true" || value == "false"
             else { replyHandler(nil, "Invalid calendar value"); return }
-            UserDefaults.standard.set(value == "true", forKey: calendarKey)
-            replyHandler(computerState(), nil)
-            broadcast("muse-computer-changed", except: sender)
+            let reminders = body["operation"] == "reminders-enable"
+            let type: EKEntityType = reminders ? .reminder : .event
+            UserDefaults.standard.set(value == "true", forKey: reminders ? remindersKey : calendarKey)
+            let done = { [weak self] in
+                guard let self else { return }
+                replyHandler(self.computerState(), nil)
+                self.broadcast("muse-computer-changed", except: sender)
+            }
+            guard value == "true" else { done(); return }
+            switch LocalCalendar.state(type) {
+            case "not-asked":
+                calendar.request(type) { Task { @MainActor in done() } }
+            case "denied":
+                let pane = reminders ? "Privacy_Reminders" : "Privacy_Calendars"
+                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(pane)") { NSWorkspace.shared.open(url) }
+                done()
+            default:
+                done()
+            }
         case "calendar-request":
             // macOS asks only once; after that the choice lives in System Settings.
             let type: EKEntityType
@@ -808,8 +834,21 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             guard let value = body["value"], value == "true" || value == "false"
             else { replyHandler(nil, "Invalid location value"); return }
             UserDefaults.standard.set(value == "true", forKey: locationKey)
-            replyHandler(computerState(), nil)
-            broadcast("muse-computer-changed", except: sender)
+            let done = { [weak self] in
+                guard let self else { return }
+                replyHandler(self.computerState(), nil)
+                self.broadcast("muse-computer-changed", except: sender)
+            }
+            guard value == "true" else { done(); return }
+            switch location.state {
+            case "not-asked":
+                location.request { done() }
+            case "denied":
+                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices") { NSWorkspace.shared.open(url) }
+                done()
+            default:
+                done()
+            }
         case "location-request":
             if location.state == "not-asked" {
                 location.request { [weak self] in
@@ -888,12 +927,14 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
                 return
             }
             if body["tool"] == LocalCalendar.tool {
-                guard UserDefaults.standard.bool(forKey: calendarKey)
-                else { replyHandler(nil, localized("Calendar and Reminders are off on this Mac.")); return }
                 guard let raw = body["input"], raw.utf8.count <= 16384,
                       let data = raw.data(using: .utf8),
                       let input = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
                 else { replyHandler(nil, "Invalid calendar request"); return }
+                // Each read follows its own switch: reminders, or the calendar.
+                let reminders = input["kind"] as? String == "reminders"
+                guard UserDefaults.standard.bool(forKey: reminders ? remindersKey : calendarKey)
+                else { replyHandler(nil, localized(reminders ? "Reminders are off on this Mac." : "Calendar is off on this Mac.")); return }
                 Task { @MainActor in
                     let output = await calendar.run(input)
                     replyHandler(["ok": output.ok, "text": output.text, "image": ""], nil)
@@ -1447,6 +1488,15 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
                let json = String(data: data, encoding: .utf8) {
                 showWorkspace()
                 webView?.evaluateJavaScript("window.dispatchEvent(new CustomEvent('muse-draft', {detail:\(json)}))", completionHandler: nil)
+                return
+            }
+            // A Lark setup page the settings opened on its own, without a click;
+            // only Feishu's own pages are opened.
+            if body?["name"] == "open-lark", let link = body?["value"],
+               let url = URL(string: link), url.scheme == "https",
+               let host = url.host,
+               host.hasSuffix(".feishu.cn") || host.hasSuffix(".larkoffice.com") {
+                NSWorkspace.shared.open(url)
                 return
             }
             if body?["name"] == "settings" {

@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { CalendarDays, MapPin, MonitorSmartphone } from "lucide-react";
+import {
+  CalendarDays,
+  ListChecks,
+  MapPin,
+  MonitorSmartphone,
+} from "lucide-react";
 import { t } from "../../shared/i18n";
 import type { AgentEvent } from "../../shared/types";
 import {
@@ -8,10 +13,9 @@ import {
   describeCall,
   enableCalendar,
   enableLocation,
+  enableReminders,
   macSwitch,
   readComputer,
-  requestCalendar,
-  requestLocation,
   type MacSwitch,
   type ComputerState,
 } from "./computer";
@@ -53,57 +57,60 @@ export function ComputerRequests({
       window.removeEventListener(computerChanged, refresh);
     };
   }, []);
-  // Calendar and location reads follow their own connector switches;
-  // everything else needs computer use. The card offers to allow only when
-  // every call can run, and points to the first switch that is off.
+  // Calendar, Reminders and Location reads follow their own connector
+  // switches; everything else needs computer use. The card offers to allow
+  // only when every call can run, and points to the first switch that is off.
   const on: Record<MacSwitch, boolean> = {
     computer: state?.enabled ?? false,
     calendar: state?.calendar.enabled ?? false,
+    reminders: state?.calendar.remindersEnabled ?? false,
     location: state?.location.enabled ?? false,
   };
-  const off = [...new Set(calls.map((call) => macSwitch(call.name)))].find(
-    (kind) => !on[kind],
-  );
+  const off = [
+    ...new Set(calls.map((call) => macSwitch(call.name, call.input))),
+  ].find((kind) => !on[kind]);
   const enabled = !off;
   const settingsSection: SettingsSectionId =
     off === "computer" ? "computer-use" : "connectors";
-  const offText: Record<MacSwitch, string> = {
-    computer: t(
-      "Computer use is off on this Mac. Turn it on in Settings, or decline.",
-    ),
-    calendar: t(
-      "Calendar and Reminders are off on this Mac. Turn them on in Settings, or decline.",
-    ),
-    location: t(
-      "Location is off on this Mac. Turn it on in Settings, or decline.",
-    ),
+  // Calendar, Reminders and Location are connectors on this Mac: when one is
+  // off, the card offers to connect it right here, which also asks macOS for
+  // access, and the calls then wait for the usual approval.
+  const connector = off && off !== "computer" ? off : undefined;
+  const connectors = {
+    calendar: {
+      name: t("Calendar"),
+      Icon: CalendarDays,
+      detail: t(
+        "Connect to let your assistant read your calendar on this Mac. Each read still waits for your approval.",
+      ),
+    },
+    reminders: {
+      name: t("Reminders"),
+      Icon: ListChecks,
+      detail: t(
+        "Connect to let your assistant read your open reminders on this Mac. Each read still waits for your approval.",
+      ),
+    },
+    location: {
+      name: t("Location"),
+      Icon: MapPin,
+      detail: t(
+        "Connect to let your assistant find this Mac's approximate location. Each lookup still waits for your approval.",
+      ),
+    },
   };
-  // Calendar and Location are connectors on this Mac: when one is off, the
-  // card offers to connect it right here, and the calls then wait for the
-  // usual approval.
-  const connector = off === "calendar" || off === "location" ? off : undefined;
   async function connect() {
     if (!connector || connecting) return;
     setConnecting(true);
     setFailure("");
     try {
-      let next =
+      const next = await (
         connector === "calendar"
-          ? await enableCalendar(true)
-          : await enableLocation(true);
-      if (connector === "calendar") {
-        const kind = calls.some(
-          (call) =>
-            call.name === "mac_calendar" &&
-            (call.input as { kind?: unknown } | undefined)?.kind ===
-              "reminders",
-        )
-          ? "reminders"
-          : "events";
-        if (next?.calendar[kind] !== "allowed")
-          next = (await requestCalendar(kind)) ?? next;
-      } else if (next?.location.permission !== "allowed")
-        next = (await requestLocation()) ?? next;
+          ? enableCalendar
+          : connector === "reminders"
+            ? enableReminders
+            : enableLocation
+      )(true);
       if (next) setState(next);
     } catch {
       setFailure(t("Couldn't connect. Try again in Settings > Connectors."));
@@ -130,28 +137,22 @@ export function ComputerRequests({
         <div className="computer-connector">
           <ConnectorIcon
             id={connector}
-            Icon={connector === "calendar" ? CalendarDays : MapPin}
+            Icon={connectors[connector].Icon}
             icons={icons}
           />
           <div>
-            <strong>
-              {connector === "calendar"
-                ? t("Calendar and Reminders")
-                : t("Location")}
-            </strong>
-            <small>
-              {connector === "calendar"
-                ? t(
-                    "Connect to let your assistant read your calendar and reminders on this Mac. Each read still waits for your approval.",
-                  )
-                : t(
-                    "Connect to let your assistant find this Mac's approximate location. Each lookup still waits for your approval.",
-                  )}
-            </small>
+            <strong>{connectors[connector].name}</strong>
+            <small>{connectors[connector].detail}</small>
           </div>
         </div>
       ) : (
-        off && <p className="computer-off">{offText[off]}</p>
+        off && (
+          <p className="computer-off">
+            {t(
+              "Computer use is off on this Mac. Turn it on in Settings, or decline.",
+            )}
+          </p>
+        )
       )}
       {failure && (
         <p className="computer-off" role="alert">

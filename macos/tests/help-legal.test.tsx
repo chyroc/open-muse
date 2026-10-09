@@ -102,7 +102,7 @@ describe("Mac help and legal settings", () => {
     expect(report).toContain("Screen Recording: not allowed");
     expect(report).toContain("blocked apps: 1; blocked folders: 1");
     expect(report).toContain(
-      "Calendar and Reminders: on (Calendar allowed, Reminders denied)",
+      "Calendar: on (allowed); Reminders: on (denied)",
     );
     // Names and paths the person chose stay on this Mac.
     expect(report).not.toContain("Secret App");
@@ -123,6 +123,33 @@ describe("Mac help and legal settings", () => {
       expect.stringContaining("Computer use: on"),
     );
     expect(host!.textContent).toContain("Copied. Paste it into your report.");
+    // WebKit: the clipboard takes the item during the click, and its text
+    // arrives once the report is gathered.
+    const items: { types: Record<string, Promise<Blob>> }[] = [];
+    vi.stubGlobal(
+      "ClipboardItem",
+      class {
+        constructor(public types: Record<string, Promise<Blob>>) {
+          items.push(this);
+        }
+      },
+    );
+    const write = vi.fn(async () => {});
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { write, writeText },
+    });
+    writeText.mockClear();
+    await act(async () => {
+      [...host!.querySelectorAll("button")]
+        .find((item) => item.textContent === "Report a problem")!
+        .click();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(write).toHaveBeenCalledTimes(1);
+    expect(writeText).not.toHaveBeenCalled();
+    const blob = await items[0].types["text/plain"];
+    expect(await blob.text()).toContain("Computer use: on");
     vi.unstubAllGlobals();
   });
   it("names the Open Muse service only in builds that have one", async () => {

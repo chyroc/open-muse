@@ -37,7 +37,7 @@ export async function diagnosticReport({ signedIn }: { signedIn: boolean }) {
     if (computer)
       lines.push(
         `Computer use: ${yes(computer.enabled)}; Accessibility: ${computer.accessibility ? "allowed" : "not allowed"}; Screen Recording: ${computer.screen ? "allowed" : "not allowed"}; blocked apps: ${computer.blocked.length}; blocked folders: ${computer.blockedFolders.length}`,
-        `Calendar and Reminders: ${yes(computer.calendar.enabled)} (Calendar ${computer.calendar.events}, Reminders ${computer.calendar.reminders})`,
+        `Calendar: ${yes(computer.calendar.enabled)} (${computer.calendar.events}); Reminders: ${yes(computer.calendar.remindersEnabled)} (${computer.calendar.reminders})`,
         `Location: ${yes(computer.location.enabled)} (${computer.location.permission})`,
       );
   }

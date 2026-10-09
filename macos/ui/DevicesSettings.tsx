@@ -1,3 +1,4 @@
+import { LoaderCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { formatLocale, t } from "../../shared/i18n";
 import type { DeviceRecord } from "../../shared/devices";
@@ -21,6 +22,29 @@ export function lastSeen(at: number, now = Date.now()) {
 export function DevicesSettings() {
   const [devices, setDevices] = useState<DeviceRecord[]>();
   const [forget, setForget] = useState<string>();
+  // The device being removed, while the service answers, and the one leaving
+  // the list once it has.
+  const [removing, setRemoving] = useState<string>();
+  const [leaving, setLeaving] = useState<string>();
+  const remove = (device: string) => {
+    if (removing) return;
+    setRemoving(device);
+    setError("");
+    void backgroundClient
+      .forgetDevice(device)
+      .then(() => {
+        setLeaving(device);
+        // The row fades and folds away before the list is read again.
+        return new Promise((resolve) => setTimeout(resolve, 220));
+      })
+      .then(load)
+      .catch((failure: Error) => setError(failure.message))
+      .finally(() => {
+        setRemoving(undefined);
+        setLeaving(undefined);
+        setForget(undefined);
+      });
+  };
   const [error, setError] = useState("");
   const account = accountDevices();
   const id = thisDeviceId();
@@ -74,7 +98,10 @@ export function DevicesSettings() {
           </div>
         ) : (
           others.map((device) => (
-            <div className="settings-row settings-device-row" key={device.id}>
+            <div
+              className={`settings-row settings-device-row${leaving === device.id ? " leaving" : ""}`}
+              key={device.id}
+            >
               <div>
                 <strong>{device.name}</strong>
                 <p>
@@ -85,19 +112,27 @@ export function DevicesSettings() {
               {forget === device.id ? (
                 <button
                   className="settings-inline-button danger"
-                  onClick={() =>
-                    void backgroundClient
-                      .forgetDevice(device.id)
-                      .then(load)
-                      .catch((failure: Error) => setError(failure.message))
-                      .finally(() => setForget(undefined))
-                  }
+                  disabled={removing === device.id}
+                  aria-busy={removing === device.id}
+                  onClick={() => remove(device.id)}
                 >
-                  {t("Confirm")}
+                  {removing === device.id ? (
+                    <>
+                      <LoaderCircle
+                        size={13}
+                        className="spin"
+                        aria-hidden="true"
+                      />
+                      {t("Removing…")}
+                    </>
+                  ) : (
+                    t("Confirm")
+                  )}
                 </button>
               ) : (
                 <button
                   className="settings-inline-button"
+                  disabled={Boolean(removing)}
                   onClick={() => setForget(device.id)}
                 >
                   {t("Forget")}

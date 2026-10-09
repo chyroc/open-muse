@@ -11,10 +11,12 @@ export const isMacTool = (name?: string): name is MacToolName =>
 
 export type BlockedApp = { id: string; name: string };
 export type CalendarPermission = "allowed" | "denied" | "not-asked";
-// Calendar and Reminders: a read-only local connector with its own switch.
+// Calendar and Reminders: read-only local connectors, each with its own
+// switch (`enabled` is Calendar's) and its own macOS access.
 export type CalendarState = {
   enabled: boolean;
   events: CalendarPermission;
+  remindersEnabled: boolean;
   reminders: CalendarPermission;
 };
 export const CALENDAR_TOOL = "mac_calendar";
@@ -24,11 +26,14 @@ export type LocationState = {
   permission: CalendarPermission;
 };
 export const LOCATION_TOOL = "mac_location";
-// The switch each Mac tool depends on: its own connector, or computer use.
-export type MacSwitch = "computer" | "calendar" | "location";
-export const macSwitch = (name?: string): MacSwitch =>
+// The switch each Mac call depends on: its own connector, or computer use. A
+// calendar read of reminders follows the Reminders switch.
+export type MacSwitch = "computer" | "calendar" | "reminders" | "location";
+export const macSwitch = (name?: string, input?: unknown): MacSwitch =>
   name === CALENDAR_TOOL
-    ? "calendar"
+    ? (input as { kind?: unknown } | undefined)?.kind === "reminders"
+      ? "reminders"
+      : "calendar"
     : name === LOCATION_TOOL
       ? "location"
       : "computer";
@@ -72,6 +77,11 @@ function parseCalendar(value: unknown): CalendarState {
   return {
     enabled: record.enabled === true,
     events: permission(record.events),
+    // An older shell had one switch for both.
+    remindersEnabled:
+      typeof record.remindersEnabled === "boolean"
+        ? record.remindersEnabled
+        : record.enabled === true,
     reminders: permission(record.reminders),
   };
 }
@@ -174,18 +184,22 @@ export const blockFolder = () => send({ operation: "block-folder" });
 export const unblockFolder = (path: string) =>
   send({ operation: "unblock-folder", path });
 export const openFullDiskAccess = () => send({ operation: "full-disk-access" });
+// Turning a connector on asks macOS for its access at once (or opens System
+// Settings after an earlier refusal).
 export const enableCalendar = (value: boolean) =>
   send({ operation: "calendar-enable", value: value ? "true" : "false" });
+export const enableReminders = (value: boolean) =>
+  send({ operation: "reminders-enable", value: value ? "true" : "false" });
 export const setComputerPolicy = (value: ComputerPolicy) =>
   send({ operation: "policy", value });
 // A policy answers a batch only when every call in it is computer control
 // and computer use is on; anything else is left for the person.
 export function policyAnswer(
   state: ComputerState | undefined,
-  calls: { name?: string }[],
+  calls: { name?: string; input?: unknown }[],
 ): "once" | "deny" | undefined {
   if (!state || !calls.length || state.policy === "ask") return undefined;
-  if (!calls.every((call) => macSwitch(call.name) === "computer"))
+  if (!calls.every((call) => macSwitch(call.name, call.input) === "computer"))
     return undefined;
   if (state.policy === "deny") return "deny";
   return state.enabled ? "once" : undefined;

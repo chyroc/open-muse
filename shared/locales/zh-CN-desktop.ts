@@ -147,8 +147,6 @@ export const zhDesktop: Record<string, string> = {
     "点按消息输入框中的麦克风并开始说话。",
   "Turn it on in Settings, then ask your assistant to do something on this Mac. Each action asks you first.":
     "在设置中开启后，让助手在这台 Mac 上帮你做事。每个操作都会先询问你。",
-  "Open Muse is a personal client without a support channel. The project's README describes how each part works.":
-    "Open Muse 是个人客户端，没有客服渠道。项目的 README 介绍了各部分的工作方式。",
   "Open Muse data": "Open Muse 数据",
   "Exported {date}": "导出于 {date}",
   "Please add what's useful from this to my memory. It comes from another assistant, so check with me where it conflicts with what you already know:":
@@ -360,4 +358,20 @@ export const zhDesktop: Record<string, string> = {
   "Replying to {name}": "正在回复{name}",
   "Cancel reply": "取消回复",
   "You replied": "你回复了",
+  "Removing…": "移除中…",
+  "Connect to let your assistant read your calendar on this Mac. Each read still waits for your approval.":
+    "连接后，助手可以读取这台 Mac 上的日历，每次读取仍需你批准。",
+  "Connect to let your assistant read your open reminders on this Mac. Each read still waits for your approval.":
+    "连接后，助手可以读取这台 Mac 上未完成的提醒事项，每次读取仍需你批准。",
+  "Your assistant can read your events on this Mac when you ask. It never changes them, and each read waits for your approval.":
+    "你提出请求时，助手可以读取这台 Mac 上的日历事件。它不会修改这些内容，每次读取都要经过你的批准。",
+  "Your assistant can read your open reminders on this Mac when you ask. It never changes them, and each read waits for your approval.":
+    "你提出请求时，助手可以读取这台 Mac 上未完成的提醒事项。它不会修改这些内容，每次读取都要经过你的批准。",
+  "macOS has not allowed Open Muse to use this. Allow it in System Settings.":
+    "macOS 尚未允许 Open Muse 使用它，请在系统设置中允许。",
+  "Lark didn't open? Open it again": "飞书没有打开？再打开一次",
+  "Waiting for Lark": "等待飞书",
+  "Clear Lark setup and start over": "清除飞书设置，重新开始",
+  "Lark opened in your browser. This updates on its own when you finish there.":
+    "已在浏览器中打开飞书，完成后这里会自动更新。",
 };

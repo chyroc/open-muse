@@ -27,7 +27,10 @@ function larkService() {
         ? { phase }
         : {
             phase,
-            url: "https://open.feishu.cn/page/cli?user_code=A",
+            url:
+              phase === "app"
+                ? "https://open.feishu.cn/page/cli?user_code=A"
+                : "https://accounts.feishu.cn/oauth/v1/device/verify?user_code=U",
             expires_at: Date.now() + 60_000,
           };
   return {
@@ -42,6 +45,10 @@ function larkService() {
     removeLarkState: vi.fn(async () => {
       phase = "none";
       return { saved: false };
+    }),
+    resetLarkConnection: vi.fn(async () => {
+      phase = "none";
+      return { phase: "none" as const };
     }),
   };
 }
@@ -80,15 +87,39 @@ describe("Mac connectors", () => {
     expect(host!.textContent).toContain("Lark");
   });
   it("connects Lark in two steps through the service, then disconnects", async () => {
+    const postMessage = vi.fn();
+    Object.defineProperty(window, "webkit", {
+      configurable: true,
+      value: { messageHandlers: { museWindow: { postMessage } } },
+    });
     const { onSection, service } = await mount();
     await act(async () => button("Connect").click());
-    const link = () => host!.querySelector<HTMLAnchorElement>(".lark-setup a")!;
-    expect(link().textContent).toBe("Open Lark to choose the app");
-    expect(link().href).toContain("open.feishu.cn");
-    // Back from the Lark page: the next step shows at once.
+    const opened = () =>
+      postMessage.mock.calls
+        .map(([body]) => body as { name: string; value: string })
+        .filter((body) => body.name === "open-lark")
+        .map((body) => body.value);
+    const states = () =>
+      [...host!.querySelectorAll(".lark-setup li")].map((item) =>
+        item.getAttribute("data-state"),
+      );
+    // The app page opens by itself, and its step waits with a spinner.
+    expect(opened()).toEqual(["https://open.feishu.cn/page/cli?user_code=A"]);
+    expect(states()).toEqual(["active", null]);
+    expect(host!.querySelector(".lark-setup li .spin")).toBeTruthy();
+    // Back from the Lark page: the app step is done and the approval page
+    // opens by itself.
     service.advance("user");
     await act(async () => window.dispatchEvent(new Event("focus")));
-    expect(link().textContent).toBe("Open Lark to approve");
+    expect(states()).toEqual(["done", "active"]);
+    expect(opened()).toHaveLength(2);
+    expect(opened()[1]).toContain("accounts.feishu.cn");
+    // With an app chosen but not approved, setup can start over.
+    await act(async () => button("Clear Lark setup and start over").click());
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(service.resetLarkConnection).toHaveBeenCalled();
+    expect(states()).toEqual(["active", null]);
+    expect(opened()).toHaveLength(3);
     service.advance("connected");
     await act(async () => window.dispatchEvent(new Event("focus")));
     expect(host!.querySelector(".lark-setup")).toBeNull();

@@ -3,6 +3,7 @@ import {
   Brain,
   CalendarDays,
   Globe,
+  ListChecks,
   MapPin,
   HeartPulse,
   Laptop,
@@ -21,6 +22,7 @@ import {
   computerChanged,
   enableCalendar,
   enableLocation,
+  enableReminders,
   readAppIcons,
   readComputer,
   requestCalendar,
@@ -79,9 +81,9 @@ export function ConnectorIcon({
   );
 }
 
-// Local connectors on this Mac: Calendar and Reminders, and Location. Each is
-// off until turned on here, only reads, and every read still waits for
-// approval in the conversation.
+// Local connectors on this Mac: Calendar, Reminders and Location. Each is off
+// until turned on here, which asks macOS for its access, only reads, and every
+// read still waits for approval in the conversation.
 function LocalConnectors({ term }: { term: string }) {
   const icons = useAppIcons();
   const [state, setState] = useState<ComputerState>();
@@ -107,93 +109,86 @@ function LocalConnectors({ term }: { term: string }) {
     void request
       .then((value) => value && setState(value))
       .catch(() => setError(t("Could not change the app settings.")));
-  const permission = (
-    title: string,
-    value: CalendarPermission | undefined,
-    request: () => Promise<ComputerState | undefined>,
-  ) => (
-    <div className="settings-row">
-      <div>
-        <strong>{title}</strong>
-      </div>
-      {value === "allowed" ? (
-        <span>{t("Allowed")}</span>
-      ) : (
-        <button
-          className="settings-inline-button"
-          disabled={!state}
-          onClick={() => change(request())}
-        >
-          {value === "denied" ? t("Open System Settings") : t("Allow")}
-        </button>
-      )}
-    </div>
+  // A switch that is on while macOS refuses access says so in its own row,
+  // with the way to System Settings; turning it on asks macOS first.
+  const blocked = (on: boolean, access: CalendarPermission | undefined) =>
+    on && access === "denied";
+  const items = [
+    {
+      id: "calendar",
+      name: t("Calendar"),
+      detail: t(
+        "Your assistant can read your events on this Mac when you ask. It never changes them, and each read waits for your approval.",
+      ),
+      Icon: CalendarDays,
+      on: state?.calendar.enabled ?? false,
+      access: state?.calendar.events,
+      set: enableCalendar,
+      open: () => requestCalendar("events"),
+    },
+    {
+      id: "reminders",
+      name: t("Reminders"),
+      detail: t(
+        "Your assistant can read your open reminders on this Mac when you ask. It never changes them, and each read waits for your approval.",
+      ),
+      Icon: ListChecks,
+      on: state?.calendar.remindersEnabled ?? false,
+      access: state?.calendar.reminders,
+      set: enableReminders,
+      open: () => requestCalendar("reminders"),
+    },
+    {
+      id: "location",
+      name: t("Location"),
+      detail: t(
+        "Your assistant can find this Mac's approximate location when the answer depends on where you are. Each lookup waits for your approval.",
+      ),
+      Icon: MapPin,
+      on: state?.location.enabled ?? false,
+      access: state?.location.permission,
+      set: enableLocation,
+      open: requestLocation,
+    },
+  ].filter(
+    (item) =>
+      !term || `${item.name} ${item.detail}`.toLocaleLowerCase().includes(term),
   );
-  const calendar = {
-    name: t("Calendar and Reminders"),
-    detail: t(
-      "Your assistant can read your events and open reminders on this Mac when you ask. It never changes them, and each read waits for your approval.",
-    ),
-  };
-  const location = {
-    name: t("Location"),
-    detail: t(
-      "Your assistant can find this Mac's approximate location when the answer depends on where you are. Each lookup waits for your approval.",
-    ),
-  };
-  const shown = (item: { name: string; detail: string }) =>
-    !term || `${item.name} ${item.detail}`.toLocaleLowerCase().includes(term);
-  if (!shown(calendar) && !shown(location)) return null;
+  if (!items.length) return null;
   return (
     <>
       <h2>{t("On this Mac")}</h2>
       <div className="settings-group">
-        {shown(calendar) && (
-          <>
+        {items.map((item) => (
+          <Fragment key={item.id}>
             <Switch
-              label={calendar.name}
-              detail={calendar.detail}
-              icon={
-                <ConnectorIcon
-                  id="calendar"
-                  Icon={CalendarDays}
-                  icons={icons}
-                />
+              label={item.name}
+              detail={
+                blocked(item.on, item.access)
+                  ? t(
+                      "macOS has not allowed Open Muse to use this. Allow it in System Settings.",
+                    )
+                  : item.detail
               }
-              checked={state?.calendar.enabled ?? false}
+              icon={
+                <ConnectorIcon id={item.id} Icon={item.Icon} icons={icons} />
+              }
+              checked={item.on}
               disabled={!state}
-              onChange={(value) => change(enableCalendar(value))}
+              onChange={(value) => change(item.set(value))}
             />
-            {state?.calendar.enabled && (
-              <>
-                {permission(t("Calendar"), state.calendar.events, () =>
-                  requestCalendar("events"),
-                )}
-                {permission(t("Reminders"), state.calendar.reminders, () =>
-                  requestCalendar("reminders"),
-                )}
-              </>
+            {blocked(item.on, item.access) && (
+              <div className="settings-row settings-row-action">
+                <button
+                  className="settings-inline-button"
+                  onClick={() => change(item.open())}
+                >
+                  {t("Open System Settings")}
+                </button>
+              </div>
             )}
-          </>
-        )}
-        {shown(location) && (
-          <>
-            <Switch
-              label={location.name}
-              detail={location.detail}
-              icon={<ConnectorIcon id="location" Icon={MapPin} icons={icons} />}
-              checked={state?.location.enabled ?? false}
-              disabled={!state}
-              onChange={(value) => change(enableLocation(value))}
-            />
-            {state?.location.enabled &&
-              permission(
-                t("Location Services"),
-                state.location.permission,
-                requestLocation,
-              )}
-          </>
-        )}
+          </Fragment>
+        ))}
       </div>
       {error && (
         <p className="settings-error" role="alert">

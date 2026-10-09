@@ -6,16 +6,30 @@ import { readShortcut, shortcutAvailable, shortcutLabel } from "./shortcut";
 import { diagnosticReport } from "./diagnostics";
 
 // What this app can show about itself: its shortcuts and where its features
-// live. There is no support channel, so nothing here sends a report; the
-// person can copy a summary of the app's setup into one of their own.
+// live. Nothing here sends a report; the person can copy a summary of the
+// app's setup into one of their own.
 export function HelpSettings({ signedIn = false }: { signedIn?: boolean }) {
   const [quick, setQuick] = useState("⌥Space");
   const [copied, setCopied] = useState("");
-  const copyDiagnostics = () =>
-    void diagnosticReport({ signedIn })
-      .then((text) => navigator.clipboard.writeText(text))
+  // WebKit lets the page write the clipboard only during the click, while
+  // the report takes a moment to gather, so the clipboard is handed an item
+  // whose text arrives when it is ready.
+  const copyDiagnostics = () => {
+    const report = diagnosticReport({ signedIn });
+    const write =
+      typeof ClipboardItem !== "undefined" && navigator.clipboard?.write
+        ? navigator.clipboard.write([
+            new ClipboardItem({
+              "text/plain": report.then(
+                (text) => new Blob([text], { type: "text/plain" }),
+              ),
+            }),
+          ])
+        : report.then((text) => navigator.clipboard.writeText(text));
+    void write
       .then(() => setCopied(t("Copied. Paste it into your report.")))
       .catch(() => setCopied(t("Could not copy the diagnostics.")));
+  };
   useEffect(() => {
     if (!shortcutAvailable()) return;
     void readShortcut()
@@ -77,11 +91,6 @@ export function HelpSettings({ signedIn = false }: { signedIn?: boolean }) {
           </div>
         ))}
       </div>
-      <p className="settings-footnote">
-        {t(
-          "Open Muse is a personal client without a support channel. The project's README describes how each part works.",
-        )}
-      </p>
     </>
   );
 }

@@ -126,26 +126,30 @@ describe("Mac location", () => {
     expect(host!.textContent).toContain("Allow once");
   });
 
-  it("is turned on and granted from Connectors", async () => {
-    const post = shell({ enabled: false, permission: "not-asked" });
+  it("asks macOS when turned on, and leads to System Settings after a refusal", async () => {
+    const post = shell({ enabled: false, permission: "denied" });
     await mount(<ConnectorsSettings onSection={vi.fn()} />);
     const switches = [
       ...host!.querySelectorAll<HTMLInputElement>('input[role="switch"]'),
     ];
-    // Calendar and Reminders first, then Location.
-    expect(switches).toHaveLength(2);
-    await act(async () => switches[1].click());
+    // Calendar, Reminders, then Location.
+    expect(switches).toHaveLength(3);
+    await act(async () => switches[2].click());
     expect(post).toHaveBeenCalledWith({
       operation: "location-enable",
       value: "true",
     });
+    // No separate permission row; the refusal shows in Location's own row.
+    expect(host!.textContent).not.toContain("Location Services");
+    expect(host!.textContent).toContain(
+      "macOS has not allowed Open Muse to use this.",
+    );
     await act(async () =>
       [...host!.querySelectorAll("button")]
-        .find((item) => item.textContent === "Allow")!
+        .find((item) => item.textContent === "Open System Settings")!
         .click(),
     );
     expect(post).toHaveBeenCalledWith({ operation: "location-request" });
-    expect(host!.textContent).toContain("Allowed");
   });
 
   it("keeps the native lookup approximate and its copy translated", () => {
