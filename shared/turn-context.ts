@@ -49,6 +49,7 @@ export function turnContext(now: Date, timeZone: string, surface: Surface) {
     `The person's local time is ${localTime(now, timeZone)}. Use it for "today", "this week" and other relative dates, and give tools times in this time zone; their location is not needed to know the time.`,
     surfaceNotes[surface],
     "Write everything the person sees in the language of their message, including short notes before or between tool calls.",
+    "Reply the way a friend chats: short and plain. Use a list only for steps or a few options, without bold labels or headings, unless they ask for a document or a detailed write-up.",
     "</open-muse-context>",
   ].join("\n");
 }
