@@ -16,6 +16,19 @@ import {
 } from "../../shared/workspace-spec";
 
 export { DEFAULT_MODEL };
+// Ark drops `additionalProperties` from tool input schemas when it stores an
+// agent, so tools are compared without it; otherwise every check would find
+// a difference and rewrite the agent.
+const asStored = (value: unknown): unknown =>
+  Array.isArray(value)
+    ? value.map(asStored)
+    : value && typeof value === "object"
+      ? Object.fromEntries(
+          Object.entries(value)
+            .filter(([key]) => key !== "additionalProperties")
+            .map(([key, item]) => [key, asStored(item)]),
+        )
+      : value;
 const legacySystem =
   "You are Open Muse, helping the user with research, writing, and planning. Use the user's language, and state evidence and uncertainty accurately. External writes, sending messages, transactions, and deletions require explicit confirmation; never describe unexecuted operations as completed.";
 interface Mapping {
@@ -284,7 +297,7 @@ export class DirectWorkspace {
       owned ? systemWithTools(baseSystem) : baseSystem,
     );
     if (
-      canonicalJson(tools) === canonicalJson(agent.tools) &&
+      canonicalJson(asStored(tools)) === canonicalJson(asStored(agent.tools)) &&
       updatedSystem === agent.system
     )
       return;

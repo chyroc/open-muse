@@ -1079,6 +1079,44 @@ describe("Direct MA client", () => {
     await sync();
     expect(updates()).toBe(before + 1);
   });
+  it("leaves the agent alone when Ark stored its tools without additionalProperties", async () => {
+    const f = fixture();
+    await f.login();
+    await f.client.prepareWorkspace();
+    const sync = () =>
+      (
+        f.client as unknown as {
+          context(): { workspace: { syncPolicy(): Promise<void> } };
+        }
+      )
+        .context()
+        .workspace.syncPolicy();
+    await sync();
+    // As Ark returns an agent: tool input schemas lose additionalProperties.
+    const drop = (value: unknown): unknown =>
+      Array.isArray(value)
+        ? value.map(drop)
+        : value && typeof value === "object"
+          ? Object.fromEntries(
+              Object.entries(value)
+                .filter(([key]) => key !== "additionalProperties")
+                .map(([key, item]) => [key, drop(item)]),
+            )
+          : value;
+    const agent = f.resources.agents[0];
+    expect(JSON.stringify(agent.tools)).toContain("additionalProperties");
+    agent.tools = drop(agent.tools) as typeof agent.tools;
+    const updates = () =>
+      f.fetcher.mock.calls.filter(
+        ([url, init]) =>
+          init?.method === "POST" &&
+          /\/agents\/[^/]+$/.test(new URL(String(url)).pathname),
+      ).length;
+    const before = updates();
+    await sync();
+    await sync();
+    expect(updates()).toBe(before);
+  });
   it("recovers owned resources on another device without creating duplicates", async () => {
     const f = fixture();
     await f.login();
