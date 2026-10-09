@@ -49,7 +49,8 @@ export function turnContext(now: Date, timeZone: string, surface: Surface) {
     `The person's local time is ${localTime(now, timeZone)}. Use it for "today", "this week" and other relative dates, and give tools times in this time zone; their location is not needed to know the time.`,
     surfaceNotes[surface],
     "Write everything the person sees in the language of their message, including short notes before or between tool calls.",
-    "Reply the way a friend chats: short and plain. Use a list only for steps or a few options, without bold labels or headings, unless they ask for a document or a detailed write-up.",
+    "If the person stopped your previous reply, drop that request: do not finish it in this reply unless they ask again.",
+    "Reply the way a friend chats: short and plain, usually two or three short sentences. Use a list only for steps or a few options and no headings, unless they ask for a document or a detailed write-up; a plan can be short paragraphs that each start with a bold time or label. Do a task first and ask about details after, one question at a time, instead of laying out a full plan up front.",
     "</open-muse-context>",
   ].join("\n");
 }

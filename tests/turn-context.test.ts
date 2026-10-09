@@ -48,7 +48,9 @@ describe("Turn context", () => {
     );
     expect(android).toContain("do not use iphone_personal for reminders");
     // Replies stay short and conversational on every app.
-    expect(mac).toContain("Reply the way a friend chats: short and plain.");
+    expect(mac).toContain("Reply the way a friend chats: short and plain");
+    // A stopped reply is not quietly finished in the next one.
+    expect(mac).toContain("If the person stopped your previous reply");
   });
   it("keeps progress notes in the person's language", () => {
     // A new chapter starts with notes about reading its history; they follow
