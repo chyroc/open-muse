@@ -4,7 +4,6 @@ import { KeyRound, LoaderCircle, LogOut } from "lucide-react";
 import type { Client } from "./api";
 import { WorkspacePanel } from "./WorkspacePanel";
 import { AccountPanel } from "./AccountPanel";
-import { WebhooksSettings } from "./WebhooksSettings";
 import type { BackgroundClient } from "./background-client";
 
 interface Status {
@@ -235,7 +234,6 @@ export function AuthPanel({
         client={client}
         onChanged={onChanged}
       />
-      <WebhooksSettings key={`webhooks-${account}`} service={service} />
     </>
   );
 }

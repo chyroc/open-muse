@@ -817,6 +817,53 @@
   opacity: 0.45;
 }
 
+/* The signed-in account: its initial on a tinted disc beside the email. */
+.settings-account-row {
+  gap: 12px;
+}
+.settings-account-row > div {
+  min-width: 0;
+}
+.settings-account-row strong {
+  display: block;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.settings-account-avatar {
+  display: grid;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 17px;
+  font-weight: 600;
+}
+/* Entering a new Ark API key in place, with its buttons at the end. */
+.settings-key-row input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  outline: none;
+}
+.settings-key-row .settings-inline-button {
+  margin-left: 0;
+}
+.settings-account-id {
+  margin-top: 20px;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
 /* About, as macOS shows an app's About window: icon, name, version. */
 .settings-about {
   display: grid;

@@ -36,7 +36,15 @@ afterEach(async () => {
     value: undefined,
   });
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
+// An Open Muse account, as the service reports one after sign-in.
+function signedInAccount() {
+  vi.spyOn(backgroundClient, "accountOwner").mockReturnValue("muse_user_abc");
+  vi.spyOn(backgroundClient, "accountEmail").mockReturnValue(
+    "person@example.com",
+  );
+}
 async function fixture(signedIn = true) {
   const db = new LocalDatabase(`mac-settings-${crypto.randomUUID()}`);
   const client = new Client({
@@ -340,26 +348,31 @@ describe("Mac settings window", () => {
       "Chats go straight to your Ark project",
     );
   });
-  it("keeps the connection summary, language and about groups on the first screen", async () => {
+  it("shows the account in grouped rows, with language and about, on the first screen", async () => {
     const client = await fixture();
+    signedInAccount();
     await mount(<SettingsWindow client={client} />);
-    // Grouped rows, not the shared panel's flat card, until the user asks.
-    expect(
-      host!.querySelectorAll(".settings-main .settings-group").length,
-    ).toBe(6);
+    // Grouped rows, not the shared panel's card.
     expect(host!.querySelector(".settings-auth")).toBeNull();
-    expect(host!.textContent).toContain("Connected");
-    expect(host!.textContent).toContain("Email");
-    expect(host!.textContent).toContain("Language");
-    expect(host!.textContent).toContain("Version");
+    const text = host!.textContent!;
+    expect(text).toContain("person@example.com");
+    expect(text).toContain("Ark API Key");
+    expect(text).toContain("Export my data");
+    expect(text).toContain("Delete account");
+    expect(text).toContain("Account ID: abc");
+    expect(text.indexOf("Export my data")).toBeLessThan(
+      text.indexOf("Delete account"),
+    );
+    // No disclosure, workspace row, or webhooks.
+    expect(text).not.toContain("Manage connection");
+    expect(text).not.toContain("Personal workspace");
+    expect(text).not.toContain("Webhook");
+    expect(text).toContain("Language");
+    expect(text).toContain("Version");
     // Outside the Mac app the desktop group explains who controls it.
-    expect(host!.textContent).toContain("Desktop presence");
-    await click("Manage connection");
-    expect(host!.querySelector(".settings-auth")).toBeTruthy();
-    await click("Manage connection");
-    expect(host!.querySelector(".settings-auth")).toBeNull();
+    expect(text).toContain("Desktop presence");
   });
-  it("opens a connect request on the expanded, focused connection controls", async () => {
+  it("opens a connect request on the focused sign-in controls", async () => {
     const client = await fixture(false);
     location.hash = "#/settings/connection";
     await mount(<SettingsWindow client={client} />);
@@ -371,8 +384,6 @@ describe("Mac settings window", () => {
     expect(auth!.contains(document.activeElement)).toBe(true);
     expect(location.hash).toBe("#/settings/general");
     // From another section, a second request comes back to the same place.
-    await click("Connect to Ark MA");
-    expect(host!.querySelector(".settings-auth")).toBeNull();
     await click("Dictation");
     await act(async () => {
       location.hash = "#/settings/connection";
@@ -426,8 +437,8 @@ describe("Mac settings window", () => {
     const auth = vi.spyOn(client, "auth");
     const confirm = vi.fn(() => false);
     vi.stubGlobal("confirm", confirm);
+    signedInAccount();
     await mount(<SettingsWindow client={client} />);
-    await click("Manage connection");
     await click("Remove API key from my account");
     expect(confirm).toHaveBeenCalled();
     expect(auth).not.toHaveBeenCalledWith("logout", { confirm: true });

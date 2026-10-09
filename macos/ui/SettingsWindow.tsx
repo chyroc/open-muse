@@ -35,7 +35,7 @@ import {
 } from "../../shared/approval-policy";
 import type { Client } from "../../src/api";
 import { backgroundClient } from "../../src/background-client";
-import { AuthPanel } from "../../src/AuthPanel";
+import { AccountSettings } from "./AccountSettings";
 import { MuseMark } from "../../src/components";
 import { Modal } from "./Chrome";
 import { PresenceSettings } from "./PresenceSettings";
@@ -155,9 +155,8 @@ export function SettingsWindow({ client }: { client: Client }) {
   );
   const [signOut, setSignOut] = useState(false);
   const [connection, setConnection] = useState<ConnectionStatus>();
-  // A "Connect to Ark MA" button elsewhere opens the connection controls
-  // expanded; each such request moves focus to them again.
-  const [manage, setManage] = useState(() => isConnectionRoute(location.hash));
+  // A "Connect to Ark MA" button elsewhere opens the account controls; each
+  // such request moves focus to them again.
   const [connectRequest, setConnectRequest] = useState(() =>
     isConnectionRoute(location.hash) ? 1 : 0,
   );
@@ -203,7 +202,6 @@ export function SettingsWindow({ client }: { client: Client }) {
       setSection(settingsRouteSection(hash));
       if (!isConnectionRoute(hash)) return;
       setLanguagePage(false);
-      setManage(true);
       setConnectRequest((value) => value + 1);
       // Settle on General so the next request changes the route again.
       history.replaceState(null, "", settingsPath("general"));
@@ -360,36 +358,13 @@ export function SettingsWindow({ client }: { client: Client }) {
         )}
         {active.id === "general" && !languagePage && (
           <>
-            <h2>{t("Connection")}</h2>
-            <div className="settings-group">
-              <Row title={t("Status")} value={t(summary.state)} />
-              {Boolean(summary.method) && (
-                <Row title={t("Sign-in method")} value={t(summary.method)} />
-              )}
-              {Boolean(summary.project) && (
-                <Row title={t("Project")} value={summary.project} />
-              )}
-              <button
-                className="settings-disclosure"
-                aria-expanded={manage}
-                onClick={() => setManage((value) => !value)}
-              >
-                <strong>
-                  {summary.state === "Connected"
-                    ? t("Manage connection")
-                    : t("Connect to Ark MA")}
-                </strong>
-                <ChevronDown size={17} className={manage ? "open" : ""} />
-              </button>
+            {/* A "Connect to Ark MA" request elsewhere scrolls here. */}
+            <div ref={auth}>
+              <AccountSettings
+                client={client}
+                onChanged={() => void readStatus()}
+              />
             </div>
-            {manage && (
-              <div className="settings-group settings-auth" ref={auth}>
-                <AuthPanel
-                  client={client}
-                  onChanged={() => void readStatus()}
-                />
-              </div>
-            )}
             <div className="settings-group">
               <button
                 className="settings-row settings-nav-row"

@@ -6,7 +6,6 @@ import { BackgroundClient } from "../src/background-client";
 import { SupabaseAuth } from "../src/supabase-auth";
 import { LocalDatabase } from "../src/direct/storage";
 import { supabaseOwner } from "../shared/supabase-auth";
-import { WebhooksSettings, WebhooksView } from "../src/WebhooksSettings";
 import { InspirationPost } from "../src/InspirationPages";
 import {
   backgroundFeedItem,
@@ -113,24 +112,6 @@ function fixture(fail = false) {
   return { client, calls };
 }
 
-const view = (props: Partial<React.ComponentProps<typeof WebhooksView>>) =>
-  renderToStaticMarkup(
-    <WebhooksView
-      data={list}
-      name=""
-      busy={false}
-      error=""
-      onName={() => {}}
-      onCreate={() => {}}
-      onDone={() => {}}
-      onCopy={() => {}}
-      onRevoke={() => {}}
-      onConfirm={() => {}}
-      onCancel={() => {}}
-      {...props}
-    />,
-  );
-
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Webhooks client", () => {
@@ -164,62 +145,6 @@ describe("Webhooks client", () => {
     );
     expect(f.calls.filter((call) => call.method === "POST")).toHaveLength(1);
   });
-});
-
-describe("Webhooks settings", () => {
-  it("renders nothing in a build without an account service", () => {
-    expect(
-      renderToStaticMarkup(
-        <WebhooksSettings service={new BackgroundClient("")} />,
-      ),
-    ).toBe("");
-  });
-  it.each(["en", "zh-CN"])(
-    "lists, creates, and confirms revoking in %s",
-    (language) => {
-      vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", [language]);
-      const zh = language === "zh-CN";
-      const tr = (text: string) => (zh ? zhCN[text] : text);
-      const listed = view({});
-      expect(listed).toContain(tr("Webhooks"));
-      expect(listed).toContain("Lark events");
-      expect(listed).toContain(tr("No events yet"));
-      expect(listed).toContain(tr("Create webhook"));
-      expect(listed).not.toContain(secret);
-      // Names are user data and stay as written.
-      expect(view({ confirming: "hook-one" })).toContain(
-        (zh
-          ? zhCN[
-              "Revoke “{name}”? Services using it stop reaching your companion at once."
-            ]
-          : "Revoke “{name}”? Services using it stop reaching your companion at once."
-        ).replace("{name}", "Lark events"),
-      );
-      const created = view({
-        created: {
-          id: "hook-three",
-          name: "Deploys",
-          url: "https://background.example/v1/hooks/hook-three",
-          secret,
-        },
-      });
-      expect(created).toContain(secret);
-      expect(created).toContain(
-        `https://background.example/v1/hooks/hook-three?token=${secret}`,
-      );
-      expect(created).toContain(tr("I've saved it").replace("'", "&#x27;"));
-      expect(created).toContain(tr("Address with token"));
-      expect(created).not.toContain(tr("Create webhook"));
-      const blocked = view({
-        data: { ...list, ready: { mainChat: false, background: true } },
-      });
-      expect(blocked).toContain(
-        tr(
-          "Events are refused until delivery while Open Muse is closed is on in Upcoming.",
-        ),
-      );
-    },
-  );
 });
 
 describe("Scheduled posts in the Feed", () => {

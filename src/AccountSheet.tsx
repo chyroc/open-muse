@@ -1,17 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import { t } from "../shared/i18n";
 import type { Client } from "./api";
 import { backgroundClient, type BackgroundClient } from "./background-client";
-import { exportText } from "./platform";
 import { Sheet } from "./MusePages";
+import { shownAccountId, useAccount } from "./useAccount";
 import { WorkspacePanel } from "./WorkspacePanel";
 import "./account-sheet.css";
-
-interface Status {
-  ready: boolean;
-  project?: string;
-}
 
 // A signed-in Open Muse account, as grouped rows: who is signed in, the Ark
 // API key the account keeps, exporting its data, then signing out and the
@@ -31,106 +26,21 @@ export function AccountSheet({
   onReset?: () => void;
   service?: BackgroundClient;
 }) {
-  const [status, setStatus] = useState<Status>();
+  const {
+    status,
+    owner,
+    email,
+    busy,
+    error,
+    notice,
+    saveKey,
+    signOut,
+    removeKey,
+    deleteAccount,
+    exportData,
+  } = useAccount({ client, onChanged, onSignedOut: onClose, service });
   const [replacing, setReplacing] = useState(false);
   const [apiKey, setAPIKey] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-  const lock = useRef(false);
-  const owner = service.accountOwner();
-  const email = service.accountEmail();
-  const refresh = async () => setStatus(await client.auth<Status>("status"));
-  useEffect(() => {
-    void refresh().catch((e: Error) => setError(e.message));
-  }, [client]);
-  async function run(fn: () => Promise<void>) {
-    if (lock.current) return;
-    lock.current = true;
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      await fn();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      lock.current = false;
-      setBusy(false);
-    }
-  }
-  // Whatever happened at the service, the app must not keep running with the
-  // previous account's key or workspace.
-  async function switched() {
-    try {
-      await client.accountChanged();
-    } finally {
-      onChanged();
-    }
-  }
-  const signOut = () =>
-    run(async () => {
-      let revoked = false;
-      try {
-        revoked = (await service.signOutAccount()).revoked;
-      } finally {
-        await switched();
-      }
-      if (!revoked)
-        setNotice(
-          t(
-            "Signed out on this device. The account service could not confirm ending the session; it expires on its own.",
-          ),
-        );
-      else onClose();
-    });
-  const removeKey = () => {
-    if (
-      !confirm(
-        t(
-          "Remove the key from my Open Muse account on all devices and stop background work that uses it. The key stays valid at Ark until you revoke it there.",
-        ),
-      )
-    )
-      return;
-    void run(async () => {
-      await client.auth("logout", { confirm: true });
-      await refresh();
-      onChanged();
-    });
-  };
-  const deleteAccount = () => {
-    if (
-      !confirm(
-        t(
-          "Permanently delete my Open Muse account with its saved Ark API key, workspace settings, devices, background work, and reminder delivery. Conversations, memory, and the agent stay in your Ark account. This cannot be undone.",
-        ),
-      )
-    )
-      return;
-    void run(async () => {
-      await service.deleteAccount();
-      await switched();
-      setNotice(t("Your Open Muse account was deleted."));
-    });
-  };
-  const exportData = () =>
-    run(async () => {
-      const data = await service.exportAccount();
-      const day = new Date(data.exportedAt).toISOString().slice(0, 10);
-      setNotice(
-        await exportText(
-          `open-muse-account-${day}.json`,
-          JSON.stringify(data, null, 2),
-          {
-            saved: t("Your data was saved"),
-            dialogTitle: t("Export my data"),
-            downloaded: t("Your data download started"),
-            type: "application/json;charset=utf-8",
-          },
-        ),
-      );
-    });
   const label = email ?? t("Open Muse account");
   return (
     <Sheet title={t("Open Muse account")} onClose={onClose} grouped>
@@ -184,18 +94,10 @@ export function AccountSheet({
               className="account-key-form"
               onSubmit={(event) => {
                 event.preventDefault();
-                void run(async () => {
-                  try {
-                    await client.auth("api-key", {
-                      apiKey: apiKey.trim(),
-                      confirm: true,
-                    });
-                  } finally {
-                    setAPIKey("");
-                  }
-                  setReplacing(false);
-                  await refresh();
-                  onChanged();
+                const key = apiKey;
+                setAPIKey("");
+                void saveKey(key).then((saved) => {
+                  if (saved) setReplacing(false);
                 });
               }}
             >
@@ -318,7 +220,7 @@ export function AccountSheet({
       )}
       {owner && (
         <p className="account-id">
-          {t("Account ID: {id}", { id: owner.slice("muse_user_".length) })}
+          {t("Account ID: {id}", { id: shownAccountId(owner) })}
         </p>
       )}
     </Sheet>

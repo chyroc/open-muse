@@ -42,7 +42,11 @@ opens the account page: the Ark API key (replace it, or remove it from the
 account), **Export my data**, then **Sign out of Open Muse**, **Delete
 account**, and **Reset this device** together, with the account ID at the foot.
 The workspace prepares itself and appears on that page only when it needs
-review or its setup failed.
+review or its setup failed. On the Mac, Settings > General starts with the same account in grouped rows:
+the email, the Ark API key (replace or remove it), **Export my data**, and
+**Delete account**, with the account ID at the foot; signing out is at the
+foot of the settings sidebar and **Reset this device** is in Data controls.
+Signed out, the section is the sign-in form.
 
 Open Muse needs an Open Muse account: there is no single-user or device-key
 mode, and a build without the account service cannot connect.
@@ -497,21 +501,17 @@ the recorded replies stay on the device, per identity.
 
 ### Incoming webhooks
 
-With an Open Muse account, the **Webhooks** card under Settings > Connection >
-Manage connection on the Mac creates webhook
-URLs that other services can post events to: a Lark (Feishu) event
-subscription, a script, or IFTTT. Each event becomes one hidden
-app-generated message in the main chat, and the companion tells you what
-happened when it matters, using its normal tools and asking before external
-actions. Creating a hook shows its address and secret once, plus the address
-with the secret as a `token` parameter for services that cannot set headers;
-the list shows each hook's last event, and revoking one (after confirming)
-stops it at once. Events are accepted only while background work is allowed
-(on by default) and **Deliver even when Open Muse is closed** is
-on in Upcoming; a busy chat refuses an event so the sender can retry. Event
-contents are treated as untrusted third-party data, never as your request.
+The Open Muse service accepts events at incoming webhook URLs, each event
+becoming one hidden app-generated message in the main chat, after which the
+companion tells you what happened when it matters, using its normal tools and
+asking before external actions. The apps create one only for the
+[Lark message channel](#lark-message-channel); there is no general Webhooks
+card. Events are accepted only while background work is allowed (on by
+default) and **Deliver even when Open Muse is closed** is on in Upcoming; a
+busy chat refuses an event so the sender can retry. Event contents are treated
+as untrusted third-party data, never as your request.
 Anyone with a hook's address and secret can post into your main chat, so
-revoke a hook whose address leaked. See
+replace a leaked address with **Get a new address** in Message channels. See
 [the service README](../server/README.md#incoming-webhooks) for limits and the
 security details.
 
