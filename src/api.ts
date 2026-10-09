@@ -259,6 +259,8 @@ export class Client {
   private accountCheck: { read: number; write: number; interval: number };
   private now: () => number;
   private media = new MediaStore();
+  // Photos the account has no copy of, so they are asked for once a launch.
+  private missingImages = new Set<string>();
   private surface: Surface;
   private timeZone: () => string;
   private verifiedAt = 0;
@@ -2055,6 +2057,10 @@ export class Client {
         },
       );
       const rows = Array.isArray(result.data) ? result.data : [];
+      if (input.type === "user.message")
+        for (const item of input.attachments ?? [])
+          if ("file_id" in item && item.kind === "image")
+            void this.saveSentImage(r, item.file_id);
       if (lark) await this.db.set(lark.key, true);
       if (mainWrite) await this.conversations(r).confirmSend(id, [mainWrite]);
       if (autoKey && autoRecord) {
@@ -2427,7 +2433,32 @@ export class Client {
   }
   async sentMedia(fileId: string): Promise<KeptMedia | undefined> {
     if (!this.signedIn()) return undefined;
-    return this.media.media(this.context().key, fileId).catch(() => undefined);
+    const r = this.context();
+    const kept = await this.media.media(r.key, fileId).catch(() => undefined);
+    if (kept) return kept;
+    // A photo sent from another device comes from the account's copy, and is
+    // then kept here too.
+    const account = this.identity.account;
+    const missing = `${r.key}:${fileId}`;
+    if (!account?.attachmentImage || this.missingImages.has(missing))
+      return undefined;
+    const image = await account.attachmentImage(fileId).catch(() => undefined);
+    if (r !== this.runtime) return undefined;
+    if (!image) {
+      this.missingImages.add(missing);
+      return undefined;
+    }
+    void this.media.keepImage(r.key, fileId, image).catch(() => {});
+    return { kind: "image", blob: image };
+  }
+  // Once a message is sent, the account keeps a copy of each photo in it so
+  // the account's other devices can show it. Failures only cost the copy.
+  private async saveSentImage(r: Runtime, fileId: string) {
+    const account = this.identity.account;
+    if (!account?.storeAttachmentImage) return;
+    const image = await this.media.image(r.key, fileId).catch(() => undefined);
+    if (image && r === this.runtime)
+      await account.storeAttachmentImage(fileId, image).catch(() => {});
   }
   async attachmentNames(): Promise<Record<string, string>> {
     if (!this.signedIn()) return {};

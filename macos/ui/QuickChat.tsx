@@ -204,8 +204,11 @@ export function QuickChat({ client }: { client: Client }) {
           (preview) => preview && update(item.key, { preview }),
         );
       client.uploadAttachment(file, file.name, count - 1).then(
-        (value) =>
-          update(item.key, { state: "ready", value, name: value.name }),
+        (value) => {
+          update(item.key, { state: "ready", value, name: value.name });
+          if (item.kind === "image" && "file_id" in value)
+            void client.keepSentImage(value.file_id, file);
+        },
         (failure: Error) =>
           update(item.key, { state: "failed", error: failure.message }),
       );

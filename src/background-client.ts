@@ -120,6 +120,7 @@ const credentialStatus = z.object({
   updatedAt: z.number().nullable(),
 });
 import { z } from "zod";
+import { maxAttachmentBytes } from "../shared/attachments";
 import { arkProblemText, isArkProblem } from "../shared/ark-problem";
 import { MA } from "./direct/transport";
 import { backgroundOrigin } from "../shared/background-origin";
@@ -141,6 +142,31 @@ import {
   LocalDatabase,
   type CredentialStore,
 } from "./direct/storage";
+
+// Attached images kept in the account's storage, named by their MA file ID.
+const attachmentImageTypes = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+] as const;
+const attachmentFileId = z.string().regex(/^[\w-]{1,200}$/);
+const storageListing = z
+  .array(
+    z.object({
+      name: attachmentFileId,
+      created_at: z
+        .string()
+        .max(64)
+        .nullish()
+        .transform((v) => v ?? undefined),
+      metadata: z
+        .object({ size: z.number().optional() })
+        .passthrough()
+        .nullish(),
+    }),
+  )
+  .max(1000);
 
 const saved = z
   .object({
@@ -948,10 +974,109 @@ export class BackgroundClient {
       },
     );
   }
+  // Copies of the images attached in this account's conversations, kept in
+  // the account's own folder of the workspace's storage so each of its
+  // devices can show them; Ark offers no download of uploads. The folder is
+  // the signed-in user's ID, and the storage's rules let a session reach no
+  // other folder.
+  async storeAttachmentImage(fileId: string, image: Blob) {
+    const type = attachmentImageTypes.find((item) => item === image.type);
+    if (!type || !image.size || image.size > maxAttachmentBytes) return;
+    const { token, folder } = await this.storageAccess();
+    const response = await this.accounts.storage(
+      `/object/attachments/${folder}/${attachmentFileId.parse(fileId)}`,
+      token,
+      {
+        method: "POST",
+        headers: { "Content-Type": type, "x-upsert": "true" },
+        body: image,
+      },
+    );
+    if (!response.ok)
+      throw new Error(t("The image could not be saved to your account."));
+  }
+  // The account's copy of an attached image, or nothing when there is none.
+  async attachmentImage(fileId: string): Promise<Blob | undefined> {
+    const { token, folder } = await this.storageAccess();
+    const response = await this.accounts.storage(
+      `/object/authenticated/attachments/${folder}/${attachmentFileId.parse(fileId)}`,
+      token,
+    );
+    const type = attachmentImageTypes.find(
+      (item) => item === response.body.type.split(";")[0].trim(),
+    );
+    return response.ok && type && response.body.size
+      ? response.body.slice(0, response.body.size, type)
+      : undefined;
+  }
+  // Every image copy in the account's folder, a page at a time.
+  async attachmentImages() {
+    const { token, folder } = await this.storageAccess();
+    const found: { name: string; bytes?: number; created_at?: string }[] = [];
+    for (let page = 0; page < 50; page++) {
+      const response = await this.accounts.storage(
+        "/object/list/attachments",
+        token,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prefix: `${folder}/`,
+            limit: 1000,
+            offset: page * 1000,
+            sortBy: { column: "name", order: "asc" },
+          }),
+        },
+      );
+      if (!response.ok)
+        throw new Error(t("Your saved images could not be listed."));
+      const rows = storageListing.parse(JSON.parse(await response.body.text()));
+      for (const row of rows)
+        found.push({
+          name: row.name,
+          bytes: row.metadata?.size,
+          created_at: row.created_at,
+        });
+      if (rows.length < 1000) break;
+    }
+    return found;
+  }
+  // Removes every image copy in the account's folder.
+  private async removeAttachmentImages() {
+    const names = (await this.attachmentImages()).map((item) => item.name);
+    const { token, folder } = await this.storageAccess();
+    for (let start = 0; start < names.length; start += 500) {
+      const response = await this.accounts.storage(
+        "/object/attachments",
+        token,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prefixes: names
+              .slice(start, start + 500)
+              .map((name) => `${folder}/${name}`),
+          }),
+        },
+      );
+      if (!response.ok)
+        throw new Error(t("Your saved images could not be removed."));
+    }
+  }
+  // A current session of the signed-in account and its storage folder.
+  private storageAccess() {
+    return this.exclusive(async () => {
+      await this.fresh();
+      const c = this.credentials();
+      if (!c.account || c.account.refreshPending)
+        throw new Error(t("Sign in to an Open Muse account first."));
+      return { token: c.token, folder: c.account.session.userId };
+    });
+  }
   // A copy of everything the service keeps for this account, decrypted for
   // the account itself (never the full Ark API key). Read-only.
-  exportAccount() {
-    return this.accountRequest(
+  async exportAccount() {
+    const data = await this.accountRequest(
       "/v1/account/export",
       z
         .object({
@@ -967,10 +1092,17 @@ export class BackgroundClient {
       undefined,
       { 503: t("Your data could not be exported right now. Try again later.") },
     );
+    // The account's image copies are listed by name, not included.
+    const images = await this.attachmentImages().catch(() => undefined);
+    return images
+      ? { ...data, tables: { ...data.tables, attachment_images: images } }
+      : data;
   }
   // Deletes the account at the service, which also removes its sign-in, then
   // forgets the session on this device. Sent once and never retried.
   async deleteAccount() {
+    // The image copies go first, while the account's session can reach them.
+    await this.removeAttachmentImages().catch(() => {});
     await this.accountRequest(
       "/v1/account",
       z.object({ deleted: z.literal(true) }),

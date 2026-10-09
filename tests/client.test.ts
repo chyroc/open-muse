@@ -1251,6 +1251,52 @@ describe("Direct MA client", () => {
     await f.switchAccount("muse_user_other");
     expect(await f.client.attachmentNames()).toEqual({});
   });
+  it("keeps a sent photo in the account and shows it on other devices", async () => {
+    const f = fixture();
+    const saved = new Map<string, Blob>();
+    const reads: string[] = [];
+    f.account.account.storeAttachmentImage = vi.fn(
+      async (fileId: string, image: Blob) => {
+        saved.set(fileId, image);
+      },
+    );
+    f.account.account.attachmentImage = vi.fn(async (fileId: string) => {
+      reads.push(fileId);
+      return saved.get(fileId);
+    });
+    await f.login();
+    await f.client.prepareWorkspace();
+    const session = await f.client.create("Photo task", "general");
+    const blob = new Blob([new Uint8Array([137, 80, 78, 71])], {
+      type: "image/png",
+    });
+    const image = await f.client.uploadAttachment(blob, "cat.png", 0);
+    if (!("file_id" in image)) throw new Error("Unexpected attachment shape");
+    await f.client.keepSentImage(image.file_id, blob);
+    // Staging alone keeps nothing in the account.
+    expect(saved.size).toBe(0);
+    await f.client.send(session.id, {
+      type: "user.message",
+      text: "",
+      attachments: [image],
+    });
+    await vi.waitFor(() => expect(saved.get(image.file_id)?.size).toBe(4));
+    // This device shows its own copy without asking the account.
+    expect((await f.client.sentMedia(image.file_id))?.kind).toBe("image");
+    expect(reads).toEqual([]);
+    // A photo sent from another device comes from the account once, then
+    // from this device's copy.
+    saved.set("file_elsewhere", blob);
+    expect((await f.client.sentMedia("file_elsewhere"))?.blob.size).toBe(4);
+    await vi.waitFor(async () =>
+      expect((await f.client.sentMedia("file_elsewhere"))?.kind).toBe("image"),
+    );
+    expect(reads).toEqual(["file_elsewhere"]);
+    // One the account has no copy of is asked for once.
+    expect(await f.client.sentMedia("file_gone")).toBeUndefined();
+    expect(await f.client.sentMedia("file_gone")).toBeUndefined();
+    expect(reads).toEqual(["file_elsewhere", "file_gone"]);
+  });
   it("lists and opens only this identity's sessions under a shared key", async () => {
     const f = fixture();
     await f.login();

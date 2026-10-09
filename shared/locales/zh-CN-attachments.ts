@@ -12,6 +12,9 @@ export const zhAttachments: Record<string, string> = {
   "This can only be opened on the device that sent it.":
     "只能在发送它的设备上打开。",
   "This video could not be read.": "无法读取这个视频。",
+  "The image could not be saved to your account.": "无法把图片保存到你的账号。",
+  "Your saved images could not be listed.": "无法列出你保存的图片。",
+  "Your saved images could not be removed.": "无法删除你保存的图片。",
   "Upload failed": "上传失败",
   "Ready to send": "可以发送",
   "Remove attachment: {name}": "移除附件：{name}",

@@ -2,6 +2,7 @@
 // Deploys the Open Muse API as a Volcengine Supabase Edge Function:
 //   1. bundles deploy/volcengine/function/entry.ts with the service code,
 //   2. prepares the open_muse schema, its dedicated role, and migrations,
+//      and the private storage bucket for attached images,
 //   3. sets the function's secrets from a private temporary .env file,
 //   4. deploys the function with gateway JWT checks off (the service
 //      verifies every request itself).
@@ -144,6 +145,25 @@ CREATE OR REPLACE FUNCTION open_muse.delete_auth_user(target uuid)
   AS 'DELETE FROM auth.users WHERE id = target';
 REVOKE ALL ON FUNCTION open_muse.delete_auth_user(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION open_muse.delete_auth_user(uuid) TO open_muse_service;
+-- Copies of the images people attach, so each of their devices can show
+-- them: a private bucket where a signed-in account reaches only the folder
+-- named by its own user ID. Clients use their own sessions; the service never
+-- touches it.
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('attachments', 'attachments', false, 10485760,
+        ARRAY['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
+ON CONFLICT (id) DO UPDATE SET public = false,
+  file_size_limit = EXCLUDED.file_size_limit,
+  allowed_mime_types = EXCLUDED.allowed_mime_types;
+DROP POLICY IF EXISTS open_muse_attachments_own ON storage.objects;
+CREATE POLICY open_muse_attachments_own ON storage.objects
+  FOR ALL TO authenticated
+  USING (bucket_id = 'attachments'
+    AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
+    AND coalesce((SELECT auth.jwt() ->> 'is_anonymous')::boolean, false) = false)
+  WITH CHECK (bucket_id = 'attachments'
+    AND (storage.foldername(name))[1] = (SELECT auth.uid())::text
+    AND coalesce((SELECT auth.jwt() ->> 'is_anonymous')::boolean, false) = false);
 CREATE TABLE IF NOT EXISTS open_muse.schema_migrations (
   name TEXT PRIMARY KEY,
   applied_at TIMESTAMPTZ NOT NULL DEFAULT now()

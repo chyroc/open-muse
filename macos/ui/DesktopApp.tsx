@@ -291,6 +291,11 @@ export function DesktopApp({ client }: { client: Client }) {
   // Files staged for each draft; they are sent only with that draft.
   const [stagedBy, setStagedBy] = useState<Record<string, Staged[]>>({});
   const [fileNames, setFileNames] = useState<Record<string, string>>({});
+  // A sent photo, from this Mac's copy or the account's.
+  const sentMedia = useCallback(
+    (fileId: string) => client.sentMedia(fileId),
+    [client],
+  );
   const filePicker = useRef<HTMLInputElement>(null);
   const name = identity.name;
   const [away, setAway] = useState(false);
@@ -986,8 +991,12 @@ export function DesktopApp({ client }: { client: Client }) {
       client.uploadAttachment(file, file.name, count - 1).then(
         (value) => {
           update(item.key, { state: "ready", value, name: value.name });
-          if ("file_id" in value)
+          if ("file_id" in value) {
             setFileNames((old) => ({ ...old, [value.file_id]: value.name }));
+            // Kept on this Mac so the sent photo shows and opens again.
+            if (item.kind === "image")
+              void client.keepSentImage(value.file_id, file);
+          }
         },
         (failure: Error) =>
           update(item.key, { state: "failed", error: failure.message }),
@@ -1707,6 +1716,7 @@ export function DesktopApp({ client }: { client: Client }) {
                           <>
                             <SentFiles
                               items={messageAttachments(event, fileNames)}
+                              load={sentMedia}
                             />
                             {eventText(event) && (
                               <Markdown text={eventText(event)} />

@@ -82,6 +82,10 @@ export interface AccountProvider {
     workspace: string,
     mutations: SyncMutation[],
   ): Promise<SyncPushResponse>;
+  // Copies of attached images in the account's own storage, so each of its
+  // devices can show them; absent where it is unsupported.
+  storeAttachmentImage?(fileId: string, image: Blob): Promise<void>;
+  attachmentImage?(fileId: string): Promise<Blob | undefined>;
   accountOwner(): string | undefined;
   // Waits for a session renewal in flight; absent where there is none.
   settled?(): Promise<void>;

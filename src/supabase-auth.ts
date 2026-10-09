@@ -67,6 +67,10 @@ const login = z
 
 // A small Auth REST client deliberately has no automatic refresh, timers,
 // browser storage, write retries, or privileged API-key dependency.
+// One image in an account's folder, the folder's listing, or a batch removal.
+const storagePath =
+  /^\/object\/(?:(?:authenticated\/)?attachments\/[0-9a-f-]{36}\/[\w-]{1,200}|list\/attachments|attachments)$/;
+
 export class SupabaseAuth {
   readonly origin: string;
   private key: string;
@@ -91,6 +95,40 @@ export class SupabaseAuth {
   // The clock session expiry times are measured against.
   now() {
     return this.clock();
+  }
+  // A request to the workspace's file storage, signed by an account session.
+  // Only the attachment image paths are reachable. The body is read within
+  // the time limit too.
+  async storage(
+    path: string,
+    accessToken: string,
+    init: RequestInit = {},
+  ): Promise<{ ok: boolean; status: number; body: Blob }> {
+    if (!this.configured())
+      throw new Error(
+        t("Open Muse account login is not configured in this build."),
+      );
+    if (!storagePath.test(path)) throw new Error("Invalid storage path.");
+    authToken.parse(accessToken);
+    const bound = boundedSignal([init.signal], 30000);
+    try {
+      const response = await this.fetcher(`${this.origin}/storage/v1${path}`, {
+        ...init,
+        signal: bound.signal,
+        credentials: "omit",
+        redirect: "error",
+        cache: "no-store",
+        headers: {
+          ...init.headers,
+          apikey: this.key,
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      const body = await response.blob();
+      return { ok: response.ok, status: response.status, body };
+    } finally {
+      bound.dispose();
+    }
   }
   private async request(path: string, init: RequestInit = {}) {
     if (!this.configured())

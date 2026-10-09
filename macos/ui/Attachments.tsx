@@ -1,5 +1,9 @@
+import { useEffect, useState } from "react";
 import { FileText, Image, LoaderCircle, TriangleAlert, X } from "lucide-react";
 import { t } from "../../shared/i18n";
+import type { KeptMedia } from "../../src/direct/media";
+import { MediaViewer, useObjectURL } from "../../src/MediaViewer";
+import "../../src/motion.css";
 import {
   checkAttachment,
   type Attachment,
@@ -102,16 +106,91 @@ export function StagedFiles({
   );
 }
 
-export function SentFiles({ items }: { items: readonly SentAttachment[] }) {
+// A sent message's files: photos as thumbnails that open full size, from
+// this Mac's copy or the account's; documents by name.
+export function SentFiles({
+  items,
+  load,
+}: {
+  items: readonly SentAttachment[];
+  load?: (fileId: string) => Promise<KeptMedia | undefined>;
+}) {
+  const [viewing, setViewing] = useState<KeptMedia>();
   if (!items.length) return null;
   return (
-    <ul className="mac-sent-files" aria-label={t("Attachments")}>
-      {items.map((item) => (
-        <li key={item.key}>
-          {item.kind === "image" ? <Image size={14} /> : <FileText size={14} />}
-          <span>{item.name}</span>
-        </li>
-      ))}
-    </ul>
+    <>
+      <ul className="mac-sent-files" aria-label={t("Attachments")}>
+        {items.map((item) =>
+          item.kind === "image" && load ? (
+            <SentImage
+              key={item.key}
+              fileId={item.key}
+              name={item.name}
+              load={load}
+              onOpen={setViewing}
+            />
+          ) : (
+            <li key={item.key}>
+              {item.kind === "image" ? (
+                <Image size={14} />
+              ) : (
+                <FileText size={14} />
+              )}
+              <span>{item.name}</span>
+            </li>
+          ),
+        )}
+      </ul>
+      {viewing && (
+        <MediaViewer media={viewing} onClose={() => setViewing(undefined)} />
+      )}
+    </>
+  );
+}
+
+function SentImage({
+  fileId,
+  name,
+  load,
+  onOpen,
+}: {
+  fileId: string;
+  name: string;
+  load: (fileId: string) => Promise<KeptMedia | undefined>;
+  onOpen: (media: KeptMedia) => void;
+}) {
+  const [media, setMedia] = useState<KeptMedia | null>();
+  useEffect(() => {
+    let active = true;
+    void load(fileId).then((value) => active && setMedia(value ?? null));
+    return () => {
+      active = false;
+    };
+  }, [fileId, load]);
+  const preview = media?.kind === "video" ? media.poster : media?.blob;
+  const url = useObjectURL(preview);
+  // Without a copy anywhere the photo is named instead.
+  if (media === null)
+    return (
+      <li>
+        <Image size={14} />
+        <span>{name}</span>
+      </li>
+    );
+  return (
+    <li className="mac-sent-image">
+      <button
+        type="button"
+        aria-label={t("Open image")}
+        disabled={!media}
+        onClick={() => media && onOpen(media)}
+      >
+        {url ? (
+          <img src={url} alt="" />
+        ) : (
+          <Image size={18} aria-hidden="true" />
+        )}
+      </button>
+    </li>
   );
 }

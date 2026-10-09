@@ -35,7 +35,9 @@ reset in the app. **Delete account** in the same card removes
 the account, everything the Open Muse service keeps for it, and its sign-in;
 conversations, memory, and the agent stay in the person's Ark account.
 **Export my data** saves a JSON copy of everything the service keeps for the
-account, with the Ark API key shown only by its last four characters.
+account, with the Ark API key shown only by its last four characters, and lists
+the account's kept photos by name and size. **Delete account** removes those
+photos first.
 
 On iPhone the signed-in account heads Settings as a row with its email; it
 opens the account page: the Ark API key (replace it, or remove it from the
@@ -225,6 +227,14 @@ the chat list and main chat update as soon as a change arrives.
   Keychain, deletes all local databases and preferences, and restarts the app
   as if newly installed. Agents, conversations, memory, and the Open Muse account in
   the cloud are not deleted, and the key is not revoked at Ark.
+- Copies of sent photos and video frames live in a private storage bucket of
+  the Open Muse service's Volcengine Supabase workspace, in a folder named by
+  the account's user ID. Each device writes and reads them with its own
+  account session, and the storage's rules let a session reach only its own
+  account's folder (signed-in, non-anonymous users only); the service itself
+  never reads them. Only JPEG, PNG, GIF, and WebP images up to 10 MB are
+  accepted. Accounts that share one Ark key keep separate folders. A copy
+  that cannot be saved costs only the preview on other devices.
 - Only fixed public Volcano API origins, plus the configured Open Muse service
   and Auth origins, are allowed. Redirects carrying credentials are rejected.
   Production assets include a restrictive CSP; CORS remains enforced rather
@@ -262,9 +272,14 @@ the composer adds a photo from the camera or library, a document (PDF, text,
 Markdown, or CSV) from Files, or a video, which is attached as up to four
 evenly spaced still frames; the video itself never leaves the device. A
 video shows as one attachment. Sent photos and videos appear as thumbnails that
-open full screen, from copies kept on the sending device (up to 300 MB, oldest
-dropped first; videos over 100 MB keep only their frames), because Ark offers
-no way to download uploads back. Other devices show a placeholder. A message
+open full screen, on the iPhone and the Mac, from copies kept on the sending
+device (up to 300 MB, oldest dropped first; videos over 100 MB keep only their
+frames), because Ark offers no way to download uploads back. Once a message is
+sent, the account also keeps a copy of each photo and video frame in it (see
+[Storage and security](#storage-and-security)), so the account's other devices
+show it too and keep their own copy after the first view. A photo with no copy
+anywhere, such as one sent before the account kept copies, shows as its name;
+a video plays only on the device that sent it. A message
 carries up to four attachments of up to 10 MB each. Photos, video frames, and
 PDFs are uploaded to Ark Files; text, Markdown, and CSV documents travel inline
 in the message text (up to 200,000 characters), because Ark Files does not

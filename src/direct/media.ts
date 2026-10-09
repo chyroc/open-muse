@@ -80,6 +80,13 @@ export class MediaStore {
     }
     return { kind: "image", blob: record.blob };
   }
+  // The photo or video frame itself, as sent.
+  async image(owner: string, fileId: string): Promise<Blob | undefined> {
+    const record = await this.request<Record>("readonly", (store) =>
+      store.get(`${owner}:file:${fileId}`),
+    );
+    return record?.kind === "image" ? record.blob : undefined;
+  }
   private async put(key: string, value: Record) {
     await this.request("readwrite", (store) => store.put(value, key));
     await this.prune();
