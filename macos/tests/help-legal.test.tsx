@@ -42,7 +42,21 @@ describe("Mac help and legal settings", () => {
     expect(fetcher).toHaveBeenCalledWith("notices.txt");
     expect(host!.querySelector("pre")?.textContent).toContain("MIT License");
   });
-  it("explains notices are missing outside the app bundle", async () => {
+  it("reads notices the app serves without an HTTP status", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: false,
+        status: 0,
+        text: async () => "react 19\nMIT License",
+      })),
+    );
+    await mount(<LegalSettings />);
+    await act(async () => host!.querySelector("button")!.click());
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
+    expect(host!.querySelector("pre")?.textContent).toContain("MIT License");
+  });
+  it("leaves the notices out, without a message, when there are none", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => new Response("", { status: 404 })),
@@ -50,7 +64,9 @@ describe("Mac help and legal settings", () => {
     await mount(<LegalSettings />);
     await act(async () => host!.querySelector("button")!.click());
     await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
-    expect(host!.textContent).toContain("only included in the Mac app bundle");
+    expect(host!.textContent).not.toContain("Open source notices");
+    expect(host!.querySelector(".settings-notices")).toBeNull();
+    expect(host!.textContent).not.toContain("app bundle");
   });
   it("copies a setup summary without keys or identifiers", async () => {
     vi.stubGlobal("__OPEN_MUSE_VERSION__", "5.0 (12)");

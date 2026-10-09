@@ -7,20 +7,26 @@ import { t } from "../../shared/i18n";
 export function LegalSettings() {
   const [open, setOpen] = useState(false);
   const [notices, setNotices] = useState<string>();
-  const [error, setError] = useState("");
+  // Set when the notices cannot be read; the section then leaves.
+  const [missing, setMissing] = useState(false);
   function toggle() {
     const next = !open;
     setOpen(next);
     if (!next || notices !== undefined) return;
     void fetch("notices.txt")
-      .then((response) => {
-        if (!response.ok) throw new Error();
-        return response.text();
+      // The app serves its files without an HTTP status (0), so the text,
+      // not the status, says whether the notices were found.
+      .then((response) =>
+        response.ok || response.status === 0 ? response.text() : "",
+      )
+      .then((text) => {
+        if (!text.trim()) throw new Error();
+        setNotices(text);
       })
-      .then(setNotices)
-      .catch(() =>
-        setError(t("The notices are only included in the Mac app bundle.")),
-      );
+      .catch(() => {
+        setOpen(false);
+        setMissing(true);
+      });
   }
   return (
     <>
@@ -34,21 +40,21 @@ export function LegalSettings() {
           "Chats go straight to the Ark account you connect and follow its agreement; the Open Muse service only keeps your account, your encrypted Ark key and the background work you allow. The software it ships includes open-source components under their own licenses.",
         )}
       </p>
-      <div className="settings-group">
-        <button
-          className="settings-disclosure"
-          aria-expanded={open}
-          onClick={toggle}
-        >
-          <strong>{t("Open source notices")}</strong>
-          <ChevronDown size={17} className={open ? "open" : ""} />
-        </button>
-      </div>
+      {!missing && (
+        <div className="settings-group">
+          <button
+            className="settings-disclosure"
+            aria-expanded={open}
+            onClick={toggle}
+          >
+            <strong>{t("Open source notices")}</strong>
+            <ChevronDown size={17} className={open ? "open" : ""} />
+          </button>
+        </div>
+      )}
       {open && (
         <div className="settings-group settings-notices">
-          {error ? (
-            <p className="settings-error">{error}</p>
-          ) : notices === undefined ? (
+          {notices === undefined ? (
             <p>{t("Loading…")}</p>
           ) : (
             <pre>{notices}</pre>
