@@ -79,7 +79,7 @@ export function arkProblemText(
   switch (problem) {
     case "invalid_key":
       return t(
-        "{service} rejected this API key. Check it, or replace it in Settings.",
+        "{service} rejected this API key. Check it, or use a different key.",
         { service },
       );
     case "model_unavailable":

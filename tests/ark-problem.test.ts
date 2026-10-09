@@ -73,11 +73,11 @@ describe("Ark refusals", () => {
   it("names Ark in the selected language", () => {
     expect(
       t(
-        "{service} rejected this API key. Check it, or replace it in Settings.",
+        "{service} rejected this API key. Check it, or use a different key.",
         { service: t("Ark", {}, "zh-CN") },
         "zh-CN",
       ),
-    ).toBe("方舟拒绝了这个 API Key。请检查它，或在设置中更换。");
+    ).toBe("方舟拒绝了这个 API Key。请检查它，或换一个 Key。");
     expect(arkProblemText("rate_limited", { service: "Claude" })).toBe(
       "Claude is receiving too many requests right now. Try again in a moment.",
     );

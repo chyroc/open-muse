@@ -269,8 +269,8 @@ export const zhErrors: Record<string, string> = {
   "Volcano did not answer in time. No request is retried automatically.":
     "火山引擎未能及时响应。请求不会自动重试。",
   Ark: "方舟",
-  "{service} rejected this API key. Check it, or replace it in Settings.":
-    "{service}拒绝了这个 API Key。请检查它，或在设置中更换。",
+  "{service} rejected this API key. Check it, or use a different key.":
+    "{service}拒绝了这个 API Key。请检查它，或换一个 Key。",
   "{service} cannot use the model this needs with this API key.":
     "这个 API Key 无法在{service}上使用所需的模型。",
   "Your Ark account cannot use the model {model} yet. Enable it under Model activation in the Ark console, then try again.":
