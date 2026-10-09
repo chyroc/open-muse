@@ -1,18 +1,18 @@
 {
   "android": {
     "version": "0.2.0",
-    "versionCode": 524,
-    "commit": "218ea51",
-    "file": "OpenMuse-0.2.0-524.apk",
-    "size": 12363420,
-    "sha256": "639ee94e01cf890ab19639459552c213047198ab3cf222ebca20c12f6760a692"
+    "versionCode": 540,
+    "commit": "fe0e53a",
+    "file": "OpenMuse-0.2.0-540.apk",
+    "size": 12363740,
+    "sha256": "f1b05b2c65e13dfc5dfcffc4325871c9a0f83c40b40d5dc126f3c4ed6d586e20"
   },
   "macos": {
     "version": "0.2.0",
-    "build": 524,
-    "commit": "218ea51",
-    "file": "OpenMuse-0.2.0-524.dmg",
-    "size": 1452725,
-    "sha256": "c8f4e1b7cc858cc9b2f9ad8eb421efe561b18cf0185b1ae83e6d538564cdc0b8"
+    "build": 540,
+    "commit": "fe0e53a",
+    "file": "OpenMuse-0.2.0-540.dmg",
+    "size": 1582851,
+    "sha256": "6089ff0e02fbe8b21d292adfb879b130bd3717cff1272794bd1f8efada04f81d"
   }
 }
