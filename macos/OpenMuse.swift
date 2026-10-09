@@ -52,18 +52,11 @@ private final class BundleAssets: NSObject, WKURLSchemeHandler {
 // page asks to move the window when an empty part of its top strip is pressed;
 // the view keeps that press so the window can follow the pointer from it.
 final class WindowWebView: WKWebView {
-    // The page's drag strip along the top edge (titleStripHeight in
-    // ui/windowDrag.ts). Like a title bar, it answers the click that brings an
-    // inactive window forward, so the window can be dragged right away; the
-    // rest of the page keeps the usual activate-first behavior.
-    static let titleStripHeight: CGFloat = 52
     private(set) var lastMouseDown: NSEvent?
-    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
-        guard let event, event.window === window else { return super.acceptsFirstMouse(for: event) }
-        let point = convert(event.locationInWindow, from: nil)
-        let fromTop = isFlipped ? point.y : bounds.height - point.y
-        return fromTop <= Self.titleStripHeight || super.acceptsFirstMouse(for: event)
-    }
+    // The click that brings an inactive window forward also lands: it focuses
+    // the composer, presses a button, or, in the page's top strip, starts a
+    // window drag right away.
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func mouseDown(with event: NSEvent) {
         lastMouseDown = event
         super.mouseDown(with: event)

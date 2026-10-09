@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { formatLocale, systemLanguage, t } from "../shared/i18n";
 import {
   activityDay,
@@ -147,10 +147,13 @@ export function ActivityList({
   events,
   running,
   client,
+  icon,
 }: {
   events: AgentEvent[];
   running: boolean;
   client?: Client;
+  // The glyph for one turn, where an app shows what each turn did.
+  icon?: (turn: ActivityTurn) => ReactNode;
 }) {
   const turns = activityTurns(events);
   const summaryOf = useSummaries(client, turns, running);
@@ -183,7 +186,7 @@ export function ActivityList({
               <div key={turn.id} className="activity-turn">
                 <button aria-haspopup="dialog" onClick={() => setOpen(turn.id)}>
                   <span className="activity-turn-icon">
-                    <TaskGlyph />
+                    {icon ? icon(turn) : <TaskGlyph />}
                   </span>
                   <span className="activity-turn-text">
                     <strong>{title}</strong>

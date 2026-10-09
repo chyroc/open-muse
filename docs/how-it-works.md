@@ -323,7 +323,7 @@ picture shows large. Tables use the reply's text size with hairlines between
 rows, and fenced code shows in a card with its language, a copy button, and
 light highlighting. A reminder or recurring task set up in a chat shows as a
 small card under the reply that set it up, found by the turn whose memory
-write first names it. When the companion takes something on, it can react to
+write first names it; on the Mac the card also opens the Upcoming list. When the companion takes something on, it can react to
 the person's message with one emoji, shown on that message; the reply carries
 it as a leading `[[react:…]]` mark, which never shows as text. Tappable
 choices come with at most a short line of prose and three or four options.

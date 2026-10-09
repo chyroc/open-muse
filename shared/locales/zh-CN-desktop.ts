@@ -12,7 +12,7 @@ export const zhDesktop: Record<string, string> = {
   "Remove “{title}”?": "要移除「{title}」吗？",
   "Settings…": "设置…",
   "Keyboard shortcuts": "键盘快捷键",
-  "Jump to the main chat": "跳到主对话",
+  "Jump to the main chat": "跳到主聊天",
   "Focus the message field": "聚焦消息输入框",
   "Stop the response": "停止回复",
   "New line": "换行",
@@ -171,7 +171,7 @@ export const zhDesktop: Record<string, string> = {
   "Paste its answer here:": "把它的回答粘贴到这里：",
   "What the other assistant remembers": "另一个助手记得的内容",
   "Open the Mac app to continue.": "请在 Mac App 中继续。",
-  "Draft in main chat": "在主对话中起草",
+  "Draft in main chat": "在主聊天中起草",
   "Your data": "你的数据",
   Online: "在线",
   "This device": "本设备",
@@ -234,7 +234,7 @@ export const zhDesktop: Record<string, string> = {
   "Read from your iPhone when you share a request there.":
     "在 iPhone 上共享请求后，从你的 iPhone 读取。",
   "Search connectors": "搜索连接器",
-  "A draft is waiting in the main chat.": "主对话中已有一条草稿。",
+  "A draft is waiting in the main chat.": "主聊天中已有一条草稿。",
   Connect: "连接",
   Included: "已包含",
   "Other services are not connected in this app. Ask your assistant in chat; it can often use a service's website or command-line tool instead.":
@@ -307,7 +307,7 @@ export const zhDesktop: Record<string, string> = {
   "Track plans and progress": "追踪计划和进度",
   "Browse documents, media, and more": "浏览文档、影音内容等",
   "Send message to {name}": "发消息给{name}",
-  "Send in the main chat": "在主要聊天中发送",
+  "Send in the main chat": "在主聊天中发送",
   // Side chats panel.
   "Side chat options": "旁聊选项",
   "Keep chat panel visible": "保持显示聊天面板",
@@ -349,11 +349,12 @@ export const zhDesktop: Record<string, string> = {
   "Couldn't download the update": "无法下载更新",
   "Checks a little after Open Muse starts.": "Open Muse 启动后不久会自动检查。",
   "Starting a new chapter of the main chat with your history. This can take a minute or two.":
-    "正在带着历史记录开始主对话的新章节，可能需要一两分钟。",
+    "正在带着历史记录开始主聊天的新章节，可能需要一两分钟。",
   "Connect to let your assistant read your calendar and reminders on this Mac. Each read still waits for your approval.":
     "连接后，助手可以读取这台 Mac 上的日历和提醒事项，每次读取仍需你批准。",
   "Connect to let your assistant find this Mac's approximate location. Each lookup still waits for your approval.":
     "连接后，助手可以获取这台 Mac 的大致位置，每次获取仍需你批准。",
   "Couldn't connect. Try again in Settings > Connectors.":
     "无法连接，请在设置 > 连接器中重试。",
+  "Open Upcoming": "查看即将到来",
 };

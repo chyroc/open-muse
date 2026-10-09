@@ -55,7 +55,7 @@ export const zhCN: Record<string, string> = {
   Retry: "重试",
   "If submission is unconfirmed, refresh history before trying again.":
     "如果提交结果尚未确认，请先刷新历史记录，再决定是否重试。",
-  "Main chat": "主要聊天",
+  "Main chat": "主聊天",
   Me: "我",
   "New side chat": "新建旁聊",
   "Not connected": "未连接",
@@ -76,7 +76,7 @@ export const zhCN: Record<string, string> = {
   "Loading conversation…": "正在加载对话…",
   "Loading earlier messages…": "正在加载更早的消息…",
   "Start a side chat": "开始旁聊",
-  "Your main chat": "主要聊天",
+  "Your main chat": "主聊天",
   "One conversation you can always come back to.": "随时回来，继续这段对话。",
   "Automatic approval did not finish. Refresh history before handling it manually.":
     "自动批准未完成。请先刷新历史记录，再手动处理。",
@@ -246,7 +246,7 @@ export const zhCN: Record<string, string> = {
   "These are starting templates.": "这些是初始模板。",
   "Connect to MA": "连接 MA",
   "Personal memory will be connected with your next message. Your main chat keeps its earlier messages and context.":
-    "发送下一条消息时会关联个人记忆。主要聊天会保留之前的消息和上下文。",
+    "发送下一条消息时会关联个人记忆。主聊天会保留之前的消息和上下文。",
   "This older side chat does not have personal memory attached. Its history is unchanged. New side chats can use your saved identity and memory.":
     "此较早的旁聊未关联个人记忆，历史记录保持不变。新建旁聊可以使用已保存的身份和记忆。",
   "Start a side chat with memory": "新建关联记忆的旁聊",
@@ -803,7 +803,7 @@ export const zhCN: Record<string, string> = {
   "Reads images": "可以看图片",
   "Text only": "仅文本",
   "Lighter thinking and faster models answer sooner. New conversations use your choice at once; the main chat moves to a new chapter the next time you open it, and its history is kept.":
-    "思考越轻、模型越快，回答就越快。新的对话会立即使用你的选择；主要聊天会在你下次打开时续接到新的一章，历史记录会保留。",
+    "思考越轻、模型越快，回答就越快。新的对话会立即使用你的选择；主聊天会在你下次打开时续接到新的一章，历史记录会保留。",
   "{name} can make mistakes. Check anything about your health carefully.":
     "{name} 可能会出错。涉及健康的内容请务必仔细核对。",
   "Summaries you share become part of the conversation and are kept in your Ark account.":

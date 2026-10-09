@@ -16,7 +16,7 @@ export const zhUpcoming: Record<string, string> = {
   "Ask {name} in chat, for example “Every Monday at 9am, remind me to submit my timesheet.”":
     "在对话中告诉 {name}，例如“每周一上午 9 点提醒我提交工时表。”",
   "Reminders arrive in the main chat when Open Muse is open at or after their time.":
-    "在提醒时间或之后打开 Open Muse 时，提醒会出现在主要聊天中。",
+    "在提醒时间或之后打开 Open Muse 时，提醒会出现在主聊天中。",
   "Once, {date}": "一次，{date}",
   "Every day at {time}": "每天 {time}",
   "Monthly on day {day} at {time}": "每月 {day} 日 {time}",
@@ -30,26 +30,26 @@ export const zhUpcoming: Record<string, string> = {
   "This item no longer exists.": "此事项已不存在。",
   "Deliver even when Open Muse is closed": "Open Muse 关闭时也送达",
   "The Open Muse service can no longer reach your main chat. Open the main chat to register it again.":
-    "Open Muse 服务已无法送达你的主要聊天。请打开主要聊天以重新登记。",
+    "Open Muse 服务已无法送达你的主聊天。请打开主聊天以重新登记。",
   "The Open Muse service sends due reminders to your main chat even when the app is closed, and your agent handles them with its tools. Steps that need approval wait for you.":
-    "即使 App 已关闭，Open Muse 服务也会把到期的提醒发到你的主要聊天，由你的智能体用它的工具处理。需要批准的步骤会等你确认。",
+    "即使 App 已关闭，Open Muse 服务也会把到期的提醒发到你的主聊天，由你的智能体用它的工具处理。需要批准的步骤会等你确认。",
   "Reminders arrive in the main chat when Open Muse is open at or after their time. Turn on delivery while closed to let the Open Muse service use your saved Ark key to run them while you are away; each one is a real Ark request and may be billed.":
-    "在提醒时间或之后打开 Open Muse 时，提醒会出现在主要聊天中。开启“关闭时也送达”后，Open Muse 服务会在你离开时使用你保存的 Ark API Key 处理这些提醒；每次都是一次真实的 Ark 请求，可能产生费用。",
+    "在提醒时间或之后打开 Open Muse 时，提醒会出现在主聊天中。开启“关闭时也送达”后，Open Muse 服务会在你离开时使用你保存的 Ark API Key 处理这些提醒；每次都是一次真实的 Ark 请求，可能产生费用。",
   "Reminder delivery changed on another device. Refresh before saving.":
     "提醒送达设置已在另一台设备上更改。请刷新后再保存。",
   "The Open Muse service can only deliver reminders to this account's own main chat.":
-    "Open Muse 服务只能把提醒送达到此账号自己的主要聊天。",
+    "Open Muse 服务只能把提醒送达到此账号自己的主聊天。",
   "Reminder delivery while closed needs an Open Muse account.":
     "关闭时送达提醒需要 Open Muse 账号。",
   "Start the main chat before turning this on.":
-    "请先开始主要聊天，再开启此功能。",
+    "请先开始主聊天，再开启此功能。",
   "The reminder is unconfirmed. Refresh history; it will not be sent again.":
     "提醒的发送结果尚未确认。请刷新历史记录；它不会被再次发送。",
   // The Mac app shows no reminder notifications.
   "Reminders arrive in the main chat when Open Muse is open at or after their time. There are no push notifications yet.":
-    "在提醒时间或之后打开 Open Muse 时，提醒会出现在主要聊天中。目前还没有推送通知。",
+    "在提醒时间或之后打开 Open Muse 时，提醒会出现在主聊天中。目前还没有推送通知。",
   "The Open Muse service sends due reminders to your main chat even when the app is closed, and your agent handles them with its tools. Steps that need approval wait for you. There are no push notifications yet.":
-    "即使 App 已关闭，Open Muse 服务也会把到期的提醒发到你的主要聊天，由你的智能体用它的工具处理。需要批准的步骤会等你确认。目前还没有推送通知。",
+    "即使 App 已关闭，Open Muse 服务也会把到期的提醒发到你的主聊天，由你的智能体用它的工具处理。需要批准的步骤会等你确认。目前还没有推送通知。",
   "Reminders arrive in the main chat when Open Muse is open at or after their time. Turn on delivery while closed to let the Open Muse service use your saved Ark key to run them while you are away; each one is a real Ark request and may be billed. There are no push notifications yet.":
-    "在提醒时间或之后打开 Open Muse 时，提醒会出现在主要聊天中。开启“关闭时也送达”后，Open Muse 服务会在你离开时使用你保存的 Ark API Key 处理这些提醒；每次都是一次真实的 Ark 请求，可能产生费用。目前还没有推送通知。",
+    "在提醒时间或之后打开 Open Muse 时，提醒会出现在主聊天中。开启“关闭时也送达”后，Open Muse 服务会在你离开时使用你保存的 Ark API Key 处理这些提醒；每次都是一次真实的 Ark 请求，可能产生费用。目前还没有推送通知。",
 };

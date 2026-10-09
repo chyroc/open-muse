@@ -153,6 +153,9 @@ import {
   messageAttachments,
 } from "../../shared/attachments";
 import { uuid } from "../../shared/crypto";
+import type { UpcomingItem } from "../../shared/upcoming";
+import { remindersByReply } from "../../src/reminder-cards";
+import { ReminderCard } from "./ReminderCard";
 import {
   chatMessages,
   parseRoute,
@@ -342,6 +345,38 @@ export function DesktopApp({ client }: { client: Client }) {
   const refreshTask = useRef(task.refresh);
   refreshTask.current = task.refresh;
   const events = task.session?.id === id ? task.events : [];
+  // Reminders the companion set up show as cards under the replies that set
+  // them up; the list is read again as the conversation moves on.
+  const [upcoming, setUpcoming] = useState<UpcomingItem[]>([]);
+  const lastEventId = events.at(-1)?.id;
+  useEffect(() => {
+    if (!client.signedIn?.()) return setUpcoming([]);
+    let active = true;
+    const load = () =>
+      void Promise.resolve()
+        .then(() => client.upcoming())
+        .then(
+          ({ items }) => active && setUpcoming(items),
+          () => {},
+        );
+    load();
+    window.addEventListener(upcomingChanged, load);
+    return () => {
+      active = false;
+      window.removeEventListener(upcomingChanged, load);
+    };
+  }, [client, lastEventId]);
+  const reminders = remindersByReply(upcoming, events);
+  const latestMessage = [...events]
+    .reverse()
+    .find(
+      (event) =>
+        (event.type === "agent.message" || event.type === "user.message") &&
+        eventText(event).trim(),
+    );
+  const latestMessageText = latestMessage
+    ? eventText(latestMessage).trim()
+    : undefined;
   const currentEvents = events.filter(
     (event) => !event.source_session_id || event.source_session_id === id,
   );
@@ -1797,6 +1832,17 @@ export function DesktopApp({ client }: { client: Client }) {
                         }}
                       />
                     </article>
+                    {parts[index + 1]?.event.id !== event.id &&
+                      reminders.get(event.id)?.map((item) => (
+                        <ReminderCard
+                          key={item.id}
+                          item={item}
+                          onOpen={() => {
+                            setStatusTab("upcoming");
+                            chooseStatusOpen(true);
+                          }}
+                        />
+                      ))}
                   </Fragment>
                 ))}
               </div>
@@ -1993,12 +2039,12 @@ export function DesktopApp({ client }: { client: Client }) {
               {running ? (
                 <button
                   type="button"
-                  className="send-button"
+                  className="send-button stop"
                   aria-label={t("Stop response")}
                   disabled={busy}
                   onClick={stop}
                 >
-                  <Square size={15} />
+                  <Square size={14} fill="currentColor" strokeWidth={0} />
                 </button>
               ) : (
                 <button
@@ -2162,7 +2208,11 @@ export function DesktopApp({ client }: { client: Client }) {
             ].map((session) => ({
               id: session.id,
               title: index.entries[session.id]?.title ?? session.title,
-              preview: session.preview,
+              // The open chat shows its latest message, as the others would
+              // once the service gives previews.
+              preview:
+                session.preview ??
+                (session.id === id ? latestMessageText : undefined),
               updatedAt: session.updated_at,
               main: session.id === index.mainId,
             })),

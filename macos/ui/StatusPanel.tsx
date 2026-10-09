@@ -7,8 +7,11 @@ import {
   type ReactNode,
 } from "react";
 import {
+  CircleAlert,
+  CircleCheck,
   CircleUserRound,
   Fingerprint,
+  Globe,
   Heart,
   List,
   Pencil,
@@ -25,7 +28,7 @@ import type { AgentEvent } from "../../shared/types";
 import { PermissionCard } from "../../src/PermissionCard";
 import { Avatar, Empty } from "./Chrome";
 import { statusTabLabel } from "./labels";
-import { activityTurns } from "../../shared/activity";
+import { activityTurns, type ActivityTurn } from "../../shared/activity";
 import { ActivityList } from "../../src/ActivityList";
 import type { Client } from "../../src/api";
 
@@ -357,7 +360,12 @@ export function StatusPanel({
             // One entry per request, grouped by day, as on iPhone: what it
             // was about, how it went, and when; each opens its steps.
             (activityTurns(events).length ? (
-              <ActivityList events={events} running={running} client={client} />
+              <ActivityList
+                events={events}
+                running={running}
+                client={client}
+                icon={turnIcon}
+              />
             ) : (
               <Empty title={t("No activity yet")}>
                 <p>{t("Your assistant's work will appear here.")}</p>
@@ -367,4 +375,14 @@ export function StatusPanel({
       </div>
     </aside>
   );
+}
+
+const webTools = new Set(["web_search", "web_fetch"]);
+// What a turn did, at a glance: it went wrong, it looked something up on the
+// web, or it finished.
+function turnIcon(turn: ActivityTurn) {
+  if (turn.error) return <CircleAlert size={20} strokeWidth={1.8} />;
+  if (turn.events.some((event) => webTools.has(event.name ?? "")))
+    return <Globe size={20} strokeWidth={1.8} />;
+  return <CircleCheck size={20} strokeWidth={1.8} />;
 }
