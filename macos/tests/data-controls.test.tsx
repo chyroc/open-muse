@@ -85,7 +85,7 @@ async function signedIn() {
     mainId: "main",
     entries: {},
   });
-  vi.spyOn(client, "events").mockResolvedValue([
+  vi.spyOn(client, "allEvents").mockResolvedValue([
     text("w", "user.message", "<open-muse-welcome>", {
       app_initiation: "welcome",
     }),

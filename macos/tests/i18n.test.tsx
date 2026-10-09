@@ -93,6 +93,9 @@ describe("Apple UI localization", () => {
     const client = {
       companionIdentity: async () => identity,
       signedIn: () => false,
+      // Signed out: no cloud browser is running or available.
+      activeBrowserView: () => undefined,
+      browserViewSupported: () => false,
     } as unknown as Client;
     try {
       await act(async () =>
