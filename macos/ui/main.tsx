@@ -21,9 +21,12 @@ import "./quick.css";
 initializeLanguage();
 initializeAppearance();
 installWindowDrag();
+// Messages tell the companion they come from the Mac, so it reaches for the
+// Mac's own tools, such as its calendar, instead of the iPhone's.
 const client = new Client({
   vault: nativeCredentials,
   account: backgroundClient,
+  surface: "mac",
 });
 // The native shell opens the settings window on its own route, so one bundle
 // serves both windows without the workspace rendering behind it.
