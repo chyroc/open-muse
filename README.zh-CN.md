@@ -90,7 +90,11 @@ Open Muse 是 **Managed Agents（MA）** 服务的客户端。MA 托管智能体
 
 ## 开始使用
 
-你需要一个能使用 Managed Agents 的[火山方舟](https://www.volcengine.com/product/ark) API Key。构建应用后，打开「设置 → 连接 Ark MA」，粘贴 Key 即可。第一次对话会自动准备好你的智能体、云端环境和记忆。云端调用费用计入你的方舟账号。
+你需要一个能使用 Managed Agents 的[火山方舟](https://www.volcengine.com/product/ark) API Key。云端调用费用计入你的方舟账号。
+
+**iPhone：** 通过 [TestFlight](https://testflight.apple.com/join/CX6wPZQ8) 加入公开测试。在 App 的「设置」里用邮箱和密码注册或登录，再连接你的方舟 API Key。第一次对话会自动准备好你的智能体、云端环境和记忆。
+
+**自己构建：** 构建应用后，同样在「设置」里登录并连接 Key。
 
 ```bash
 npm ci

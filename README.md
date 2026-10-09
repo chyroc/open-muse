@@ -88,7 +88,11 @@ English and Simplified Chinese are built in; the apps follow your system languag
 
 ## Get started
 
-You need a [Volcano Ark](https://www.volcengine.com/product/ark) API key with access to Managed Agents. Build an app, open **Settings → Connect to Ark MA**, and paste the key. The first conversation sets up your agent, its cloud environment, and its memory automatically. Cloud calls are billed to your Ark account.
+You need a [Volcano Ark](https://www.volcengine.com/product/ark) API key with access to Managed Agents. Cloud calls are billed to your Ark account.
+
+**iPhone:** join the public beta on [TestFlight](https://testflight.apple.com/join/CX6wPZQ8). In the app, register or sign in with an email and password in **Settings**, then connect your Ark API key. The first conversation sets up your agent, its cloud environment, and its memory automatically.
+
+**Build it yourself:** build an app, then sign in and connect your key in **Settings** the same way.
 
 ```bash
 npm ci
