@@ -260,7 +260,9 @@ export class Client {
   private now: () => number;
   private media = new MediaStore();
   // Photos the account has no copy of, so they are asked for once a launch.
-  private missingImages = new Set<string>();
+  // When a photo was last looked for and not found, so it is asked for again
+  // only after a while: the sending device may still be saving it.
+  private missingImages = new Map<string, number>();
   // Whether the main chat is moving to a new chapter, and who is told.
   private continuingMain = false;
   private continuingListeners = new Set<(active: boolean) => void>();
@@ -2067,6 +2069,12 @@ export class Client {
           autoKey = key;
         }
       }
+      // The account's copies of the photos start saving alongside the send,
+      // so another device that shows the message right away finds them.
+      if (input.type === "user.message")
+        for (const item of input.attachments ?? [])
+          if ("file_id" in item && item.kind === "image")
+            void this.saveSentImage(r, item.file_id);
       const result = await r.ark.request<Page<AgentEvent>>(
         `/sessions/${validId(id)}/events`,
         {
@@ -2076,10 +2084,6 @@ export class Client {
         },
       );
       const rows = Array.isArray(result.data) ? result.data : [];
-      if (input.type === "user.message")
-        for (const item of input.attachments ?? [])
-          if ("file_id" in item && item.kind === "image")
-            void this.saveSentImage(r, item.file_id);
       if (lark) await this.db.set(lark.key, true);
       if (mainWrite) await this.conversations(r).confirmSend(id, [mainWrite]);
       if (autoKey && autoRecord) {
@@ -2459,12 +2463,16 @@ export class Client {
     // then kept here too.
     const account = this.identity.account;
     const missing = `${r.key}:${fileId}`;
-    if (!account?.attachmentImage || this.missingImages.has(missing))
+    const lastMissed = this.missingImages.get(missing);
+    if (
+      !account?.attachmentImage ||
+      (lastMissed !== undefined && this.now() - lastMissed < 4_000)
+    )
       return undefined;
     const image = await account.attachmentImage(fileId).catch(() => undefined);
     if (r !== this.runtime) return undefined;
     if (!image) {
-      this.missingImages.add(missing);
+      this.missingImages.set(missing, this.now());
       return undefined;
     }
     void this.media.keepImage(r.key, fileId, image).catch(() => {});

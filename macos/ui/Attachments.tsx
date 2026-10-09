@@ -148,6 +148,8 @@ export function SentFiles({
   );
 }
 
+const retryDelays = [5_000, 15_000, 45_000];
+
 function SentImage({
   fileId,
   name,
@@ -159,18 +161,29 @@ function SentImage({
   load: (fileId: string) => Promise<KeptMedia | undefined>;
   onOpen: (media: KeptMedia) => void;
 }) {
-  const [media, setMedia] = useState<KeptMedia | null>();
+  const [media, setMedia] = useState<KeptMedia>();
   useEffect(() => {
     let active = true;
-    void load(fileId).then((value) => active && setMedia(value ?? null));
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // A photo just sent from another device may still be on its way to the
+    // account; it is looked for again a few times before showing its name.
+    const attempt = (retries: readonly number[]) =>
+      void load(fileId).then((value) => {
+        if (!active) return;
+        if (value) return setMedia(value);
+        if (!retries.length) return;
+        timer = setTimeout(() => attempt(retries.slice(1)), retries[0]);
+      });
+    attempt(retryDelays);
     return () => {
       active = false;
+      clearTimeout(timer);
     };
   }, [fileId, load]);
   const preview = media?.kind === "video" ? media.poster : media?.blob;
   const url = useObjectURL(preview);
-  // Without a copy anywhere the photo is named instead.
-  if (media === null)
+  // Until a copy is found, and without one anywhere, the photo is named.
+  if (!media)
     return (
       <li>
         <Image size={14} />
@@ -182,8 +195,7 @@ function SentImage({
       <button
         type="button"
         aria-label={t("Open image")}
-        disabled={!media}
-        onClick={() => media && onOpen(media)}
+        onClick={() => onOpen(media)}
       >
         {url ? (
           <img src={url} alt="" />

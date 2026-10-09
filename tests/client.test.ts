@@ -1330,10 +1330,17 @@ describe("Direct MA client", () => {
       expect((await f.client.sentMedia("file_elsewhere"))?.kind).toBe("image"),
     );
     expect(reads).toEqual(["file_elsewhere"]);
-    // One the account has no copy of is asked for once.
-    expect(await f.client.sentMedia("file_gone")).toBeUndefined();
-    expect(await f.client.sentMedia("file_gone")).toBeUndefined();
-    expect(reads).toEqual(["file_elsewhere", "file_gone"]);
+    // One the account has no copy of yet is not asked for again at once,
+    // but is after a while, when the sending device has saved it.
+    let clock = Date.now();
+    (f.client as unknown as { now: () => number }).now = () => clock;
+    expect(await f.client.sentMedia("file_late")).toBeUndefined();
+    expect(await f.client.sentMedia("file_late")).toBeUndefined();
+    expect(reads).toEqual(["file_elsewhere", "file_late"]);
+    saved.set("file_late", blob);
+    clock += 5_000;
+    expect((await f.client.sentMedia("file_late"))?.kind).toBe("image");
+    expect(reads).toEqual(["file_elsewhere", "file_late", "file_late"]);
   });
   it("lists and opens only this identity's sessions under a shared key", async () => {
     const f = fixture();
