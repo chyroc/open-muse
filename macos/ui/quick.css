@@ -46,10 +46,15 @@ body:has(.quick-stage),
   height: 48px;
   border-radius: 50%;
   overflow: hidden;
-  background: var(--fill);
+  background: var(--card);
   box-shadow:
-    0 0 0 1px var(--line),
+    0 0 0 1.5px var(--card),
     0 2px 8px var(--quick-shadow-near);
+}
+/* Framed like the reference's card: the head and shoulders, the hood's top
+   just inside the rim. */
+.quick-portrait .desktop-avatar {
+  translate: 0 4px;
 }
 .quick-icon {
   width: 32px;

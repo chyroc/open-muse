@@ -1166,9 +1166,11 @@ h3 {
 .companion-portrait .desktop-avatar .companion-avatar {
   zoom: 0.824;
 }
-.rail-companion .companion-portrait .desktop-avatar .companion-avatar,
-.quick-portrait .desktop-avatar .companion-avatar {
+.rail-companion .companion-portrait .desktop-avatar .companion-avatar {
   zoom: 0.706;
+}
+.quick-portrait .desktop-avatar .companion-avatar {
+  zoom: 0.64;
 }
 .desktop-avatar.large {
   margin: 0 0 6px;
