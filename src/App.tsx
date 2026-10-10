@@ -1,6 +1,9 @@
 import { formatLocale, systemLanguage, t } from "../shared/i18n";
 import { flushSync } from "react-dom";
-import { isTransientFailure } from "../shared/network-error";
+import {
+  isNetworkFailure,
+  isTransientFailure,
+} from "../shared/network-error";
 import { isBackgroundPost } from "./background-feed";
 import {
   Fragment,
@@ -749,7 +752,14 @@ function Workspace({
       if (alive.current) setWelcome(value);
     } catch (error) {
       if (alive.current) {
-        setWelcomeError((error as Error).message);
+        // App copy explains what failed; the network never shows through.
+        setWelcomeError(
+          isNetworkFailure(error)
+            ? t(
+                "The first conversation could not be prepared. Check the connection and try again.",
+              )
+            : (error as Error).message,
+        );
         const value = await client.welcomeState().catch(() => undefined);
         if (alive.current) setWelcome(value);
       }
@@ -866,7 +876,9 @@ function Workspace({
     };
   }, [client, signedIn, lastEventId]);
   useEffect(() => {
-    if (config?.mode !== "ark" || !lastStatusId) return;
+    // Read the stored state as soon as the account is up, not only after
+    // the first status event: the composer's readiness gate depends on it.
+    if (config?.mode !== "ark") return;
     let active = true;
     void client
       .welcomeState()
@@ -883,7 +895,7 @@ function Workspace({
     return () => {
       active = false;
     };
-  }, [client, config?.mode, lastStatusId]);
+  }, [client, config?.mode]);
   useEffect(() => {
     let active = true;
     let read = false;
@@ -1421,6 +1433,26 @@ function Workspace({
     return () => clearTimeout(timer);
   }, [outgoing, pendingSend, draftKey]);
   const isChat = tab === "home";
+  // Mirrors the send guard: an unsettled first conversation blocks every
+  // chat while it is still preparing, and its own session while its welcome
+  // is unconfirmed. Until then the composer explains instead of accepting.
+  const welcomeBlocksComposer =
+    welcome?.phase === "preparing" ||
+    Boolean(
+      welcome &&
+        "session" in welcome &&
+        ["sending", "unconfirmed"].includes(welcome.phase) &&
+        welcome.session === activeId,
+    );
+  // The empty main chat centers its own preparing state; the banner keeps
+  // the cases that need a decision.
+  const preparingCentered =
+    !isSideDraft &&
+    !taskRoute &&
+    !messageEvents.length &&
+    !task.error &&
+    !welcomeError &&
+    (welcomeBusy || welcome?.phase === "preparing");
   // The long-press menu for a message: reply, copy, select, share, and for
   // the assistant's replies, saving to the Library.
   function messageActions(message: AgentEvent): MessageMenuAction[] {
@@ -1618,7 +1650,7 @@ function Workspace({
               {!isSideDraft && !taskRoute && (
                 <WelcomeStatus
                   state={welcome}
-                  busy={welcomeBusy}
+                  busy={welcomeBusy && !preparingCentered}
                   error={welcomeError}
                   onCheck={() => void beginWelcome(true)}
                 />
@@ -1635,6 +1667,14 @@ function Workspace({
                 <div className="chat-loading" role="status">
                   <LoaderCircle size={22} className="spin" />
                   <span>{t("Loading conversation…")}</span>
+                </div>
+              ) : preparingCentered ? (
+                <div
+                  className="main-chat-empty main-chat-preparing"
+                  role="status"
+                >
+                  <LoaderCircle size={22} className="spin" />
+                  <h1>{t("Preparing your companion…")}</h1>
                 </div>
               ) : (
                 // A new side chat stays empty until its first message.
@@ -2019,17 +2059,15 @@ function Workspace({
                 onStop={stop}
                 running={state === "running"}
                 busy={busy || welcomeBusy}
+                blocked={
+                  welcomeBlocksComposer || welcomeBusy
+                    ? t("Preparing your first conversation…")
+                    : undefined
+                }
                 disabled={
                   loading ||
                   welcomeBusy ||
-                  (!isSideDraft &&
-                    !taskRoute &&
-                    Boolean(
-                      welcome &&
-                      ["preparing", "sending", "unconfirmed"].includes(
-                        welcome.phase,
-                      ),
-                    )) ||
+                  welcomeBlocksComposer ||
                   // While the connection and the conversation are still
                   // being read at launch, a message can already be sent: it
                   // waits for them (see sendMessage).

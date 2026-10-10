@@ -267,7 +267,7 @@ describe("Main and side conversations", () => {
     ).rejects.toThrow("Not found");
     expect(f.remote.create).toHaveBeenCalledTimes(1);
   });
-  it("blocks duplicates after ambiguous failure when recovery finds no matching marker", async () => {
+  it("retries a failed creation once a fresh read shows its marker never landed", async () => {
     const f = fixture();
     f.remote.create.mockRejectedValueOnce(new TypeError("Network lost"));
     await expect(
@@ -275,8 +275,9 @@ describe("Main and side conversations", () => {
     ).rejects.toThrow("Network lost");
     await expect(
       f.store.create("main", "Main chat", "general"),
-    ).rejects.toThrow("unconfirmed");
-    expect(f.remote.create).toHaveBeenCalledTimes(1);
+    ).resolves.toMatchObject({ title: "Main chat" });
+    expect(f.remote.create).toHaveBeenCalledTimes(2);
+    expect(f.rows).toHaveLength(1);
   });
   it("recovers a committed POST after timeout/relaunch before sending another POST", async () => {
     const f = fixture();

@@ -56,10 +56,23 @@ export class DirectWelcome {
   private async run(language: string, retry: boolean): Promise<WelcomeState> {
     let state = await this.state();
     if (state && "session" in state) {
-      await this.reconcile(
-        state.session,
-        await this.remote.history(state.session),
-      );
+      const attempt = state;
+      const history = await this.remote.history(attempt.session);
+      await this.reconcile(attempt.session, history);
+      // A fresh, successful history read without the attempt's event means
+      // the request definitively did not land: "unconfirmed" already failed,
+      // and a "sending" left behind by a killed process is equally over.
+      // Marking it rejected opens the explicit retry path; if it lands after
+      // all, the next reconcile re-confirms it.
+      if (
+        ["sending", "unconfirmed"].includes(attempt.phase) &&
+        !history.some((event) => event.id === attempt.eventId)
+      )
+        await this.db.update<WelcomeState>(this.key, (old) =>
+          old && "eventId" in old && old.eventId === attempt.eventId
+            ? { ...old, phase: "rejected" }
+            : old!,
+        );
       state = (await this.state())!;
       if (state.phase !== "rejected" || !retry) return state;
       // A definitive rejection permits a new explicit attempt, not an auto retry.
@@ -72,7 +85,9 @@ export class DirectWelcome {
         return { phase: "preparing", language };
       });
     } else if (state?.phase === "skipped") return state;
-    else if (state?.phase === "preparing" && !retry) return state;
+    // A "preparing" left by a failed or killed attempt resumes here instead
+    // of blocking the account: open() is guarded by the conversation index's
+    // pending-token recovery, so it reuses or cleanly re-creates the session.
     else if (!state) {
       if (!(await this.remote.eligible())) {
         return this.db.update<WelcomeState>(

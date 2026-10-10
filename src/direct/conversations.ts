@@ -8,7 +8,7 @@ import { LocalDatabase } from "./storage";
 export type ConversationKind = "main" | "side";
 export interface ConversationIndex {
   mainId?: string;
-  sending?: { session: string; event: string };
+  sending?: { session: string; event: string; at?: number };
   entries: Record<
     string,
     {
@@ -116,7 +116,7 @@ export class Conversations {
             "A main-chat message is unconfirmed or still being sent. Refresh history before submitting another.",
           ),
         );
-      current.sending = { session: id, event };
+      current.sending = { session: id, event, at: Date.now() };
     });
     return true;
   }
@@ -131,6 +131,21 @@ export class Conversations {
       if (
         index.sending?.session === id &&
         eventIds.includes(index.sending.event)
+      )
+        delete index.sending;
+    });
+  }
+  // A fresh, successful history read without the claimed event means the
+  // POST never landed. Only a claim older than any in-flight request (their
+  // timeout is 75s) counts as dead, so a send still being made — here or in
+  // another view — is never undercut. Records from before the timestamp was
+  // kept belong to a previous run and are always old enough.
+  async reclaimSend(id: string, eventIds: string[]) {
+    await this.update((index) => {
+      if (
+        index.sending?.session === id &&
+        !eventIds.includes(index.sending.event) &&
+        Date.now() - (index.sending.at ?? 0) > 90_000
       )
         delete index.sending;
     });
@@ -189,26 +204,34 @@ export class Conversations {
       // Friendly titles are not proof of ownership and are never used to recover.
       const rows = await this.remote.list();
       const matches = rows.filter((s) => s.title === pending.token);
-      if (matches.length !== 1)
+      if (matches.length > 1)
         throw new ApiError(
           409,
           t(
             "A conversation creation is unconfirmed. Refresh history and try again later; no duplicate was created.",
           ),
         );
-      const recovered = await this.finish(pending, matches[0]);
-      if (
-        pending.kind !== kind ||
-        pending.title !== title ||
-        pending.category !== category
-      )
-        throw new ApiError(
-          409,
-          t(
-            "The previous conversation was recovered. Open it from the sidebar before starting another.",
-          ),
-        );
-      return recovered;
+      if (matches.length === 1) {
+        const recovered = await this.finish(pending, matches[0]);
+        if (
+          pending.kind !== kind ||
+          pending.title !== title ||
+          pending.category !== category
+        )
+          throw new ApiError(
+            409,
+            t(
+              "The previous conversation was recovered. Open it from the sidebar before starting another.",
+            ),
+          );
+        return recovered;
+      }
+      // No session carries the marker: the creation POST was rejected or
+      // failed outright, so nothing exists to recover. Drop the stale claim
+      // and start over rather than blocking every later attempt on it.
+      await this.update((current) => {
+        if (current.pending?.token === pending.token) delete current.pending;
+      });
     }
     await this.remote.prepare();
     const pending: NonNullable<ConversationIndex["pending"]> = {

@@ -48,6 +48,27 @@ describe("Conversation controls", () => {
     expect(running).toContain('aria-label="Stop response"');
     expect(running).not.toContain('aria-label="Send message"');
   });
+  it("holds the input with an explanation while the first conversation prepares", () => {
+    const html = renderToStaticMarkup(
+      <ChatComposer
+        value="Hi"
+        setValue={() => {}}
+        onSend={() => {}}
+        onStop={() => {}}
+        onAttach={() => {}}
+        busy={false}
+        running={false}
+        disabled
+        blocked="Preparing your first conversation…"
+      />,
+    );
+    expect(html).toContain('aria-label="Message Muse" disabled=""');
+    expect(html).toContain("Preparing your first conversation…");
+    expect(html).toContain('aria-label="Send message" disabled=""');
+    expect(html).toContain(
+      'aria-label="Add attachment" aria-haspopup="dialog" disabled=""',
+    );
+  });
   it("queues text typed while a reply runs, and stops when there is none", () => {
     const props = {
       setValue() {},

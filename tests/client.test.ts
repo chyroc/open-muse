@@ -406,6 +406,56 @@ describe("Direct MA client", () => {
     ).rejects.toThrow("welcome is unconfirmed");
     expect(f.events).toHaveLength(0);
   });
+  it("resumes a first conversation left preparing by a failed creation", async () => {
+    const f = fixture();
+    await f.login();
+    let fail = true;
+    const wrapped = f.fetcher.getMockImplementation()!;
+    f.fetcher.mockImplementation(async (input, init) =>
+      String(input).endsWith("/sessions") && init?.method === "POST" && fail
+        ? ((fail = false), Response.json({}, { status: 503 }))
+        : wrapped(input, init),
+    );
+    await expect(f.client.startWelcome("en")).rejects.toThrow("503");
+    expect((await f.client.welcomeState())?.phase).toBe("preparing");
+    // The next run retries on its own: the stale creation claim is dropped
+    // (nothing carries its marker) and exactly one conversation is created.
+    f.fetcher.mockImplementation(wrapped);
+    expect((await f.client.startWelcome("en")).phase).toBe("confirmed");
+    expect(f.resources.sessions).toHaveLength(1);
+    // The welcome message plus its local-context system note, sent once.
+    expect(f.events).toHaveLength(2);
+  });
+  it("turns an unconfirmed welcome that never landed into a retryable rejection", async () => {
+    const f = fixture();
+    await f.login();
+    const wrapped = f.fetcher.getMockImplementation()!;
+    f.fetcher.mockImplementation(async (input, init) =>
+      String(input).endsWith("/events") && init?.method === "POST"
+        ? Promise.reject(new TypeError("Connection lost"))
+        : wrapped(input, init),
+    );
+    await expect(f.client.startWelcome("en")).rejects.toThrow(
+      "Connection lost",
+    );
+    expect((await f.client.welcomeState())?.phase).toBe("unconfirmed");
+    f.fetcher.mockImplementation(wrapped);
+    // A fresh history read without the event means it never landed: the
+    // attempt is over and becomes an explicit retry, not a silent resend.
+    expect((await f.client.startWelcome("en")).phase).toBe("rejected");
+    // The stale send claim ages out past any in-flight request, and the
+    // explicit retry then goes through.
+    const realNow = Date.now;
+    vi.spyOn(Date, "now").mockReturnValue(realNow() + 120_000);
+    try {
+      expect((await f.client.startWelcome("en", true)).phase).toBe(
+        "confirmed",
+      );
+    } finally {
+      vi.spyOn(Date, "now").mockRestore();
+    }
+    expect(f.events).toHaveLength(2);
+  });
   it("sends verified choice labels as real messages and strips forged answer receipts", async () => {
     const f = fixture();
     await f.login();

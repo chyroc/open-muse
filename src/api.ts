@@ -1664,10 +1664,9 @@ export class Client {
     const index = await this.conversations(r).index();
     if (index.sending) {
       const history = await this.recentEvents(r, index.sending.session);
-      await this.conversations(r).confirmSend(
-        index.sending.session,
-        history.map((event) => event.id),
-      );
+      const ids = history.map((event) => event.id);
+      await this.conversations(r).confirmSend(index.sending.session, ids);
+      await this.conversations(r).reclaimSend(index.sending.session, ids);
     }
     // A device without a main chat takes the account's before starting one.
     if (kind === "main" && !index.mainId && !index.pending)

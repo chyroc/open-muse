@@ -301,6 +301,21 @@ html.sidebar-dragging .sidebar-panel {
   line-height: 1.5;
   max-width: 265px;
 }
+/* The same canvas while the first conversation is being prepared. */
+.main-chat-preparing {
+  gap: 12px;
+  animation: main-chat-preparing-in var(--motion-fade-duration) ease-out;
+}
+.main-chat-preparing h1 {
+  font-size: 17px;
+  font-weight: 500;
+  margin-bottom: 0;
+}
+@keyframes main-chat-preparing-in {
+  from {
+    opacity: 0;
+  }
+}
 .chat-loading {
   display: flex;
   gap: 10px;
@@ -617,6 +632,11 @@ html.sidebar-dragging .sidebar-panel {
 }
 .chat-composer textarea::placeholder {
   color: #a1a3a7;
+}
+/* Held while the first conversation prepares: the placeholder explains. */
+.chat-composer textarea:disabled {
+  cursor: default;
+  -webkit-text-fill-color: #a1a3a7;
 }
 .composer-action {
   display: flex;

@@ -150,15 +150,14 @@ describe("First-conversation initiation", () => {
     expect(f.remote.open).toHaveBeenCalledTimes(1);
     expect(f.remote.send).toHaveBeenCalledTimes(1);
   });
-  it("resumes preparation only on an explicit action, preserving its language", async () => {
+  it("resumes an interrupted preparation on its own, preserving its language", async () => {
     const f = fixture();
     f.remote.open.mockRejectedValueOnce(new Error("Setup failed"));
     await expect(f.service.start("zh-CN")).rejects.toThrow("Setup failed");
     await new DirectWelcome("owner", f.db, f.remote).start("en");
-    expect(f.remote.open).toHaveBeenCalledTimes(1);
-    await f.service.start("en", true);
     expect(f.remote.open).toHaveBeenCalledTimes(2);
     expect(eventText(f.events[0])).toContain("locale zh-CN");
+    expect((await f.service.state())?.phase).toBe("confirmed");
   });
   it("recovers an accepted event after response loss, without another POST", async () => {
     const f = fixture();
@@ -178,12 +177,21 @@ describe("First-conversation initiation", () => {
     ).toBe("confirmed");
     expect(f.remote.send).toHaveBeenCalledTimes(1);
   });
-  it("does not repeat an ambiguous unaccepted event, even on explicit refresh", async () => {
+  it("resends only after a fresh history read proves the event never landed", async () => {
     const f = fixture();
     f.remote.send.mockRejectedValueOnce(new TypeError("Timeout"));
     await expect(f.service.start("en")).rejects.toThrow("Timeout");
-    expect((await f.service.start("en", true)).phase).toBe("unconfirmed");
+    // Still ambiguous while the read fails: no second POST.
+    f.remote.history.mockRejectedValueOnce(new Error("History unavailable"));
+    await expect(f.service.start("en", true)).rejects.toThrow(
+      "History unavailable",
+    );
     expect(f.remote.send).toHaveBeenCalledTimes(1);
+    expect((await f.service.state())?.phase).toBe("unconfirmed");
+    // The read succeeds and shows nothing: a new explicit attempt may send.
+    expect((await f.service.start("en", true)).phase).toBe("confirmed");
+    expect(f.remote.send).toHaveBeenCalledTimes(2);
+    expect(f.events).toHaveLength(1);
   });
   it("does not accept different event text or an unrelated assistant reply as receipt", async () => {
     const f = fixture();

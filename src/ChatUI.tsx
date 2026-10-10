@@ -268,6 +268,7 @@ export function ChatComposer({
   running,
   busy,
   disabled,
+  blocked,
   onAttach,
   attachments,
   attachmentsReady = false,
@@ -284,6 +285,10 @@ export function ChatComposer({
   running: boolean;
   busy: boolean;
   disabled: boolean;
+  // Why sending is unavailable, shown as the placeholder while the input is
+  // held: the first conversation is still being prepared. Unlike disabled,
+  // the person cannot type into a dead end either.
+  blocked?: string;
   onAttach: (files: File[]) => void;
   attachments?: ReactNode;
   attachmentsReady?: boolean;
@@ -351,7 +356,7 @@ export function ChatComposer({
           className="composer-action"
           aria-label={t("Add attachment")}
           aria-haspopup="dialog"
-          disabled={disabled || busy}
+          disabled={disabled || busy || Boolean(blocked)}
           onClick={() => setAttaching(true)}
         >
           <Plus size={24} strokeWidth={1.5} />
@@ -360,8 +365,12 @@ export function ChatComposer({
           ref={input}
           rows={1}
           aria-label={t("Message {name}", { name })}
+          disabled={Boolean(blocked)}
           placeholder={
-            newSideChat ? t("Message in a new side chat") : t("Send a message")
+            blocked ??
+            (newSideChat
+              ? t("Message in a new side chat")
+              : t("Send a message"))
           }
           maxLength={16000}
           value={value}

@@ -483,6 +483,9 @@ export const zhCN: Record<string, string> = {
     "欢迎请求未被接受，可以重试。",
   "First-conversation setup was interrupted. Continue to verify the existing resources.":
     "首次对话设置已中断。继续以验证现有资源。",
+  "Preparing your first conversation…": "正在准备首次对话…",
+  "The first conversation could not be prepared. Check the connection and try again.":
+    "首次对话没有准备好。请检查网络连接后重试。",
   "Check welcome status": "检查欢迎状态",
   "Continue welcome": "继续欢迎流程",
   "Personal workspace": "个人工作区",
