@@ -1108,10 +1108,9 @@ export const zhCN: Record<string, string> = {
   "Settings sections": "设置分类",
   General: "通用",
   Connectors: "连接器",
-  // The reference settings window leaves these three section names in English.
-  "Computer use": "Computer use",
-  "File system access": "File system access",
-  Dictation: "Dictation",
+  "Computer use": "电脑使用",
+  "File system access": "文件系统访问权限",
+  Dictation: "语音输入",
   Wallet: "钱包",
   "Secure storage": "安全存储",
   Permissions: "权限",

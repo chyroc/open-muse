@@ -275,7 +275,7 @@ export function SettingsWindow({ client }: { client: Client }) {
                 aria-current={id === section ? "page" : undefined}
                 onClick={() => setSection(id)}
               >
-                <Icon size={15} strokeWidth={1.75} />
+                <Icon size={14} strokeWidth={1.7} />
                 {t(label)}
               </button>
             );

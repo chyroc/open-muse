@@ -346,18 +346,16 @@ describe("Mac settings window", () => {
     });
     expect(host!.textContent).toContain("Saved in your Open Muse account");
   });
-  it("matches the reference on the section names it leaves in English", async () => {
-    for (const label of ["Computer use", "File system access", "Dictation"])
-      expect(zhCN[label]).toBe(label);
+  it("names every section in Chinese", async () => {
     expect(zhCN["Sign out"]).toBe("退出");
     vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", ["zh-CN"]);
     await mount(<SettingsWindow client={await fixture()} />);
     const names = [
       ...host!.querySelectorAll(".settings-sidebar-items button"),
     ].map((item) => item.textContent);
-    expect(names).toContain("Computer use");
-    expect(names).toContain("File system access");
-    expect(names).toContain("Dictation");
+    expect(names).toContain("电脑使用");
+    expect(names).toContain("文件系统访问权限");
+    expect(names).toContain("语音输入");
     expect(names).toContain("通用");
   });
   it("explains unconnected sections without simulating them", async () => {
