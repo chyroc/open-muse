@@ -328,6 +328,34 @@ the person's message with one emoji, shown on that message; the reply carries
 it as a leading `[[react:…]]` mark, which never shows as text. Tappable
 choices come with at most a short line of prose and three or four options.
 
+### Message formats
+
+Messages travel as plain MA text; there is no separate UI schema on the
+service, which stores and forwards events unchanged. A few text conventions,
+parsed once in `shared/` so the iPhone, Android, Mac and web apps show them
+alike, turn parts of a message into UI, and the companion reads the whole
+text either way:
+
+- A leading `[[react:…]]` mark on a reply is the companion's reaction to the
+  person's message, shown on that message.
+- A validated `muse-choice` JSON block makes the tappable choices described
+  in [Inline questions](#inline-questions).
+- Leading `> ` lines and a blank line quote something above the message,
+  shown as a gray card over the bubble; Reply writes this.
+- A leading `<open-muse-card kind="…" id="…">` block holds context the app
+  wrote for the companion, such as a Feed post or an idea as JSON. The chat
+  shows only the text after it, with the card's title and text in a card
+  under the bubble; on the Mac the card opens the post in the Feed, or the
+  idea, and on the iPhone the Feed or Ideas page. Messages sent before cards
+  existed, which began with the discussion prompt and the post's JSON, show
+  the same way. An unknown kind still shows as a plain card, never as the raw
+  block.
+- Prompts the app sends on the person's behalf, such as a welcome or a
+  check-in, are marked as app-initiated and never shown.
+
+Anything else stays text and renders as Markdown; HTML and quoted examples
+never become controls.
+
 ### First conversation
 
 MA introduces the companion, offers Kit, Milo, and Muse as inline naming
@@ -799,9 +827,12 @@ they sync across the account's devices (see
 [Sync across devices](#sync-across-devices)). A post that compares two to six
 figures in the same unit can carry a small bar chart, drawn under its text;
 for now the chart stays on the device that generated the post, and other
-devices show the post without it. Discuss on a Feed post prepares an
-editable side-chat draft; it does not send a message until the user presses
-Send, and an existing discussion reopens its linked conversation. Ideas made
+devices show the post without it. Discuss on a Feed post opens a new side
+chat with the post quoted above an empty composer (on the Mac, quoted in the
+chat); nothing is sent until the user presses Send, and an existing discussion
+reopens its linked conversation. The message carries the post to the companion
+as a card (see [Message formats](#message-formats)), so the chat shows only
+the typed words, with the post as a card under them. Ideas made
 for the person lead the Ideas page, above the catalog. Get started on an idea,
 from the catalog or made for the person, sends a short "Let's get started!"
 quoting the idea's title to the main chat, and the device remembers the idea
@@ -814,7 +845,8 @@ slightly reworded, is left out.
 Generation runs persist submission markers and recover from real session
 history after relaunch. Ambiguous session or message submissions are never
 automatically repeated. Invalid output leaves existing content unchanged and
-links to the generation conversation. Generation on the device is
+asks to try again. A reply written as a Python literal instead of JSON is
+read the same way. Generation on the device is
 user-triggered; push notifications are not enabled.
 
 In account builds, background work is on by default: once the account's Ark

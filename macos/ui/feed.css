@@ -316,6 +316,17 @@
   padding: 16px 0 8px;
   animation: feed-post-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+/* Opened from a card in the chat, the post lights up for a moment. */
+.feed-post.focused {
+  border-radius: 16px;
+  animation: feed-post-focus 1.6s ease-out;
+}
+@keyframes feed-post-focus {
+  0%,
+  40% {
+    background: var(--accent-soft);
+  }
+}
 @keyframes feed-post-in {
   from {
     opacity: 0;

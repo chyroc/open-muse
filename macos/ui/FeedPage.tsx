@@ -40,6 +40,7 @@ import {
   TrashIcon,
 } from "./icons";
 import { focusOpenedMenu } from "./menuFocus";
+import { focusedItem } from "./focusItem";
 
 // Drawn when a post has no emoji of its own.
 function FeedPostGlyph() {
@@ -153,7 +154,11 @@ export function FeedPost({
   const [why, setWhy] = useState(false);
   const at = Date.parse(item.created_at);
   return (
-    <article className="feed-post" aria-label={item.title}>
+    <article
+      className="feed-post"
+      aria-label={item.title}
+      data-item-id={item.id}
+    >
       <div className="feed-post-row">
         <span className="feed-post-icon" aria-hidden="true">
           {item.emoji ? <span>{item.emoji}</span> : <FeedPostGlyph />}
@@ -294,6 +299,7 @@ export function FeedPage({
   onEditorChange,
   split,
   onToggleChat,
+  focus,
   background = backgroundClient,
 }: {
   // The Open Muse service, whose scheduled posts join the feed.
@@ -304,6 +310,8 @@ export function FeedPage({
   onEditorChange: (open: boolean) => void;
   split: boolean;
   onToggleChat: () => void;
+  // A post to scroll to, from a message's card.
+  focus?: { id?: string; title?: string };
 }) {
   const routeScroller = useRouteHeader<HTMLElement>();
   const [data, setData] = useState<InspirationSnapshot>();
@@ -422,6 +430,22 @@ export function FeedPage({
   const items = mergeBackgroundFeed(data?.items ?? [], away.posts);
   const posts = feedPosts(items, presentation);
   const hasPosts = posts.length > 0;
+  // A card in the chat opens the feed at its post: it scrolls into view and
+  // is briefly highlighted, once the post has loaded.
+  const target = focusedItem(posts, focus);
+  const shown = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!target || shown.current === target.id) return;
+    shown.current = target.id;
+    const post = document.querySelector<HTMLElement>(
+      `.desktop-feed [data-item-id="${CSS.escape(target.id)}"]`,
+    );
+    if (!post) return;
+    post.scrollIntoView?.({ block: "center" });
+    post.classList.add("focused");
+    const timer = setTimeout(() => post.classList.remove("focused"), 1600);
+    return () => clearTimeout(timer);
+  }, [target]);
   // The built-in prompt sits on the page as a card until someone edits it;
   // after that it is changed from the header.
   const untouched = Boolean(

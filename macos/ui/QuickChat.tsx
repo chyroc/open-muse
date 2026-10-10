@@ -25,6 +25,9 @@ import { useDictation } from "./useDictation";
 import { connectionRoute } from "./settings";
 import { StagedFiles, stageFile, thumbnail, type Staged } from "./Attachments";
 import { quickChatPlaceholder } from "./labels";
+import { splitCards } from "../../shared/message-card";
+import { splitQuote } from "../../shared/message-quote";
+import { MessageCards } from "./MessageCards";
 
 // How much of the main chat the card shows above its composer.
 export const QUICK_HISTORY = 6;
@@ -310,7 +313,12 @@ export function QuickChat({ client }: { client: Client }) {
                 className={`quick-message ${event.type === "user.message" ? "from-user" : "from-assistant"}${event.id === outgoing?.id ? " sending" : ""}`}
               >
                 {event.type === "user.message" ? (
-                  <Markdown text={eventText(event)} />
+                  <>
+                    <Markdown
+                      text={splitQuote(splitCards(eventText(event)).text).text}
+                    />
+                    <MessageCards cards={splitCards(eventText(event)).cards} />
+                  </>
                 ) : (
                   // Questions are answered in the workspace; here they read as
                   // the question with its options, never as raw JSON.

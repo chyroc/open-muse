@@ -420,7 +420,9 @@ describe("Feed and main-chat integration", () => {
       "main-test",
       {
         type: "user.message",
-        text: expect.stringContaining("My message:\nWhat does this mean?"),
+        text: expect.stringMatching(
+          /^<open-muse-card kind="feed" id="one">\n[\s\S]*"title":"Post one"[\s\S]*\n<\/open-muse-card>\n\nWhat does this mean\?$/,
+        ),
       },
     ]);
     expect(location.hash).toBe("#/feed");

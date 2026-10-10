@@ -1,0 +1,61 @@
+/* What a message was about, a post or an idea, as a card under its bubble. */
+.message-cards {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+  max-width: 75%;
+  margin-top: 6px;
+}
+.message-card {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 14px 12px;
+  border: 0;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px #e9eaeb,
+    0 2px 8px #11111214;
+  color: #111112;
+  font: inherit;
+  text-align: start;
+  transition: transform var(--motion-press-duration, 120ms) ease-out;
+}
+button.message-card:active {
+  transform: scale(0.98);
+}
+.message-card-kind {
+  font-size: 12px;
+  line-height: 16px;
+  color: #6e6e73;
+}
+.message-card strong {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.message-card-body {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 14px;
+  line-height: 19px;
+  color: #6e6e73;
+}
+@media (prefers-color-scheme: dark) {
+  .message-card {
+    background: #2c2c2e;
+    box-shadow: 0 0 0 1px #3a3a3c;
+    color: #f2f2f7;
+  }
+  .message-card-kind,
+  .message-card-body {
+    color: #98989f;
+  }
+}

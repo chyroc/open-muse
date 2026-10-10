@@ -240,3 +240,8 @@ body:has(.quick-stage),
     opacity: 0;
   }
 }
+/* A quoted post or idea sits under the person's words inside their bubble. */
+.quick-message .message-cards {
+  margin: 6px 0 0;
+  max-width: 100%;
+}

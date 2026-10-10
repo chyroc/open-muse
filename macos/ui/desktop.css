@@ -409,6 +409,63 @@ h3 {
 .message > .message-mood {
   grid-area: mood;
 }
+/* What a message was about, a post or an idea, as a card under the person's
+   words; it opens where it came from. */
+.message-cards {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+  margin: -10px 0 16px auto;
+  max-width: min(320px, 85%);
+}
+.message-card {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 14px 12px;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow:
+    0 0 0 1px var(--card-border),
+    var(--elevation-1);
+  text-align: start;
+  color: var(--text);
+  transition:
+    background-color 0.15s ease-out,
+    transform 0.25s var(--ease-pop);
+}
+button.message-card:hover {
+  background: var(--field);
+}
+button.message-card:active {
+  transform: scale(0.98);
+}
+.message-card-kind {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-2);
+}
+.message-card strong {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.message-card-body {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text-2);
+}
 /* Bubbles in one group sit 4 points apart. */
 .message.grouped-next {
   margin-bottom: 4px;

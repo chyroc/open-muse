@@ -33,7 +33,9 @@ import { Client } from "./api";
 import { CompanionSheet } from "./CompanionSheet";
 import { defaultIdentity } from "./direct/identity";
 import { useTask } from "./useTask";
-import { discussionPrompt, type InspirationItem } from "../shared/inspiration";
+import { discussionMessage, type InspirationItem } from "../shared/inspiration";
+import { splitCards } from "../shared/message-card";
+import { MessageCards } from "./MessageCards";
 import { InspirationPage } from "./InspirationPages";
 import { GoalsPage } from "./GoalsPage";
 import { AssistantMessage } from "./ChoiceMessage";
@@ -1020,9 +1022,12 @@ function Workspace({
   // before it has finished.
   const sendMessage = (queued?: QueuedMessage) =>
     action(async () => {
-      const text = queued ? queued.text : draft.trim();
+      const typed = queued ? queued.text : draft.trim();
       const sending = queued ? [] : staged;
-      if (!text && !sending.length) return;
+      if (!typed && !sending.length) return;
+      // A post or idea being discussed goes with the first message as a card.
+      const card = !queued && isSideDraft ? inspirationDraft : undefined;
+      const text = card ? discussionMessage(card, typed) : typed;
       if (queued)
         updateQueue(draftKey, (current) => ({
           ...current,
@@ -1073,7 +1078,11 @@ function Workspace({
           const session = await client.openConversation(
             isSideDraft ? "side" : "main",
             isSideDraft
-              ? (goalDraft?.title ?? (text || sending[0].name)).slice(0, 60)
+              ? (
+                  goalDraft?.title ??
+                  card?.title ??
+                  (typed || sending[0].name)
+                ).slice(0, 60)
               : t("Main chat"),
             category,
           );
@@ -1159,7 +1168,7 @@ function Workspace({
           else {
             setDrafts((current) => {
               const key = sessionId ?? origin;
-              return current[key] ? current : { ...current, [key]: text };
+              return current[key] ? current : { ...current, [key]: typed };
             });
             setStaged((current) => (current.length ? current : unsent));
           }
@@ -1240,10 +1249,7 @@ function Workspace({
     setGoalDraft(undefined);
     setInspirationDraft(item);
     setCategory("general");
-    setDrafts((current) => ({
-      ...current,
-      "new-side": discussionPrompt(item),
-    }));
+    setDrafts((current) => ({ ...current, "new-side": "" }));
     navigate("/new");
   }
   async function exportConversation() {
@@ -1661,7 +1667,7 @@ function Workspace({
                 // A message that quotes something shows the quote above it.
                 const sent =
                   event.type === "user.message"
-                    ? splitQuote(eventText(event))
+                    ? splitQuote(splitCards(eventText(event)).text)
                     : { text: eventText(event) };
                 // A reply with files may open with a line such as "Here it
                 // is 👇": the files then show right under that line.
@@ -1766,6 +1772,12 @@ function Workspace({
                             />
                             {sent.text && <Markdown text={sent.text} />}
                           </MessageBubble>
+                          <MessageCards
+                            cards={splitCards(eventText(event)).cards}
+                            onOpen={(page) =>
+                              navigate(page === "ideas" ? "/discover" : "/feed")
+                            }
+                          />
                         </>
                       )}
                       {reminders.get(event.id)?.map((item) => (
@@ -1780,18 +1792,30 @@ function Workspace({
               })}
               {pendingSend && (
                 <div className="chat-message-group from-user arriving pending">
-                  {splitQuote(pendingSend.text).quote && (
-                    <MessageQuote text={splitQuote(pendingSend.text).quote!} />
+                  {splitQuote(splitCards(pendingSend.text).text).quote && (
+                    <MessageQuote
+                      text={
+                        splitQuote(splitCards(pendingSend.text).text).quote!
+                      }
+                    />
                   )}
                   <MessageBubble label={t("Sending")} onOptions={() => {}}>
                     <MessageAttachments
                       items={pendingSend.attachments ?? []}
                       load={pickedPhoto}
                     />
-                    {splitQuote(pendingSend.text).text && (
-                      <Markdown text={splitQuote(pendingSend.text).text} />
+                    {splitQuote(splitCards(pendingSend.text).text).text && (
+                      <Markdown
+                        text={
+                          splitQuote(splitCards(pendingSend.text).text).text
+                        }
+                      />
                     )}
                   </MessageBubble>
+                  <MessageCards
+                    cards={splitCards(pendingSend.text).cards}
+                    onOpen={() => {}}
+                  />
                 </div>
               )}
               {work.trailing && <WorkCard work={work.trailing} />}
@@ -1871,6 +1895,18 @@ function Workspace({
                     setAwayFromBottom(false);
                   }}
                 />
+              )}
+              {isSideDraft && inspirationDraft && (
+                <div className="goal-context">
+                  <span>{inspirationDraft.title}</span>
+                  <button
+                    className="icon-button"
+                    aria-label={t("Remove quoted post")}
+                    onClick={() => setInspirationDraft(undefined)}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
               )}
               {goalDraft && (
                 <div className="goal-context">

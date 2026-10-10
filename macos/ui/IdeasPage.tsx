@@ -40,6 +40,7 @@ import {
   type IdeaDetail,
   type MacIdeasSnapshot,
 } from "./ideas";
+import { focusedItem } from "./focusItem";
 
 type RowActions = {
   onOpen: () => void;
@@ -607,6 +608,7 @@ export function IdeasPage({
   onEditorChange,
   split,
   onToggleChat,
+  focus,
 }: {
   client: Client;
   onMainChat: (id: string) => Promise<void>;
@@ -614,6 +616,8 @@ export function IdeasPage({
   onEditorChange: (open: boolean) => void;
   split: boolean;
   onToggleChat: () => void;
+  // An idea to open, from a message's card.
+  focus?: { id?: string; title?: string };
 }) {
   const routeScroller = useRouteHeader<HTMLElement>();
   const service = useMemo(() => new MacIdeas(client), [client]);
@@ -622,6 +626,14 @@ export function IdeasPage({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<string>();
+  // A card in the chat opens its idea once the ideas have loaded.
+  const opened = useRef<string | undefined>(undefined);
+  const target = focusedItem(data?.items ?? [], focus);
+  useEffect(() => {
+    if (!target || opened.current === target.id) return;
+    opened.current = target.id;
+    setSelected(target.id);
+  }, [target]);
   const [feedback, setFeedback] = useState<InspirationItem>();
   const toasts = useIdeaToast();
   const showToast = toasts.show;

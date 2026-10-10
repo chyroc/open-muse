@@ -11,6 +11,9 @@ export type Route = {
   newSide?: boolean;
   goal?: string;
   libraryView?: LibraryView;
+  // A post or idea to bring into view: its id, or for messages that predate
+  // ids, its title.
+  focus?: { id?: string; title?: string };
 };
 
 // App-initiated prompts (welcome, check-in) stay in MA history but are not
@@ -93,6 +96,19 @@ export function parseRoute(hash: string): Route {
             : view === "documents" || view === "web"
               ? view
               : "all",
+    };
+  }
+  const item = /^\/(feed|ideas)\/(id|title)\/([^/?#]{1,600})$/.exec(path);
+  if (item) {
+    let value = "";
+    try {
+      value = decodeURIComponent(item[3]);
+    } catch {
+      return { page: item[1] as Page };
+    }
+    return {
+      page: item[1] as Page,
+      focus: item[2] === "id" ? { id: value } : { title: value },
     };
   }
   if (["/feed", "/ideas", "/goals", "/library"].includes(path))

@@ -74,7 +74,7 @@ const UPCOMING_CHECK_INTERVAL = 60000;
 import { currentChoiceEvent } from "../../shared/chat-choices";
 import { digest } from "../../shared/crypto";
 import {
-  discussionPrompt,
+  discussionMessage,
   type InspirationItem,
 } from "../../shared/inspiration";
 const DocumentEditor = lazy(() =>
@@ -156,6 +156,8 @@ import {
 } from "../../shared/attachments";
 import { uuid } from "../../shared/crypto";
 import { quoteMessage, splitQuote } from "../../shared/message-quote";
+import { splitCards } from "../../shared/message-card";
+import { MessageCards } from "./MessageCards";
 import type { UpcomingItem } from "../../shared/upcoming";
 import { remindersByReply } from "../../src/reminder-cards";
 import { ReminderCard } from "./ReminderCard";
@@ -1126,9 +1128,7 @@ export function DesktopApp({ client }: { client: Client }) {
       !route.newSide && (!id || id === index.mainId) ? quotedPost : undefined;
     const reply = replyingBy[draftKey];
     const replyText = reply ? quoteMessage(reply.text, text) : text;
-    const message = quote
-      ? `${discussionPrompt(quote)}\n\n${t("My message:")}\n${replyText}`
-      : replyText;
+    const message = quote ? discussionMessage(quote, replyText) : replyText;
     if (message.length > 16000) {
       setError(
         t(
@@ -1497,6 +1497,7 @@ export function DesktopApp({ client }: { client: Client }) {
                 setQuotedPost(item);
                 setSplitChat(true);
               }}
+              focus={route.focus}
             />
           </main>
         )}
@@ -1506,6 +1507,7 @@ export function DesktopApp({ client }: { client: Client }) {
               <IdeasPage
                 key={connectionEpoch}
                 client={client}
+                focus={route.focus}
                 split={splitChat}
                 onToggleChat={() => setSplitChat((value) => !value)}
                 onEditorChange={onFeedEditorChange}
@@ -1782,13 +1784,18 @@ export function DesktopApp({ client }: { client: Client }) {
                         </p>
                       )}
                       {event.type === "user.message" &&
-                        splitQuote(eventText(event)).quote && (
+                        splitQuote(splitCards(eventText(event)).text).quote && (
                           <div className="message-replied">
                             <span>
                               <Reply size={12} aria-hidden="true" />
                               {t("You replied")}
                             </span>
-                            <p>{splitQuote(eventText(event)).quote}</p>
+                            <p>
+                              {
+                                splitQuote(splitCards(eventText(event)).text)
+                                  .quote
+                              }
+                            </p>
                           </div>
                         )}
                       <article
@@ -1831,9 +1838,14 @@ export function DesktopApp({ client }: { client: Client }) {
                                 items={messageAttachments(event, fileNames)}
                                 load={sentMedia}
                               />
-                              {splitQuote(eventText(event)).text && (
+                              {splitQuote(splitCards(eventText(event)).text)
+                                .text && (
                                 <Markdown
-                                  text={splitQuote(eventText(event)).text}
+                                  text={
+                                    splitQuote(
+                                      splitCards(eventText(event)).text,
+                                    ).text
+                                  }
                                 />
                               )}
                             </>
@@ -1915,6 +1927,17 @@ export function DesktopApp({ client }: { client: Client }) {
                           }}
                         />
                       </article>
+                      {event.type === "user.message" &&
+                        part !== "intro" &&
+                        parts[index + 1]?.event.id !== event.id && (
+                          <MessageCards
+                            cards={splitCards(eventText(event)).cards}
+                            onOpen={(path) => {
+                              setSplitChat(true);
+                              navigate(path);
+                            }}
+                          />
+                        )}
                       {parts[index + 1]?.event.id !== event.id &&
                         reminders.get(event.id)?.map((item) => (
                           <ReminderCard

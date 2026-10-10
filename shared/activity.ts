@@ -1,5 +1,6 @@
 import { eventText, type AgentEvent } from "./types";
 import { toolLabel } from "./companion-activity";
+import { splitCards } from "./message-card";
 
 // One request the companion acted on: the person's message, the tools it
 // used, and how it answered.
@@ -39,7 +40,9 @@ export function activityTurns(events: AgentEvent[]): ActivityTurn[] {
     if (event.type === "user.message") {
       current = {
         id: event.id,
-        request: event.app_initiation ? "" : firstLine(eventText(event)),
+        request: event.app_initiation
+          ? ""
+          : firstLine(splitCards(eventText(event)).text),
         initiation: event.app_initiation,
         reply: "",
         tools: 0,

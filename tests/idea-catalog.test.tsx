@@ -356,7 +356,7 @@ describe("Messages that quote", () => {
 
   it("show the quote above the bubble in chat history", () => {
     const app = readFileSync("src/App.tsx", "utf8");
-    expect(app).toContain("splitQuote(eventText(event))");
+    expect(app).toContain("splitQuote(splitCards(eventText(event)).text)");
     expect(app).toContain("<MessageQuote text={sent.quote} />");
   });
 });
