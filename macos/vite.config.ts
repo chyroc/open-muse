@@ -30,6 +30,9 @@ export default defineConfig({
   root: path.join(import.meta.dirname, "ui"),
   base: "./",
   publicDir: false,
+  // The UI imports shared code and assets from the repository root, such as
+  // the companion's picture; the dev server may serve them.
+  server: { fs: { allow: [path.join(import.meta.dirname, "..")] } },
   plugins: [
     react(),
     {
