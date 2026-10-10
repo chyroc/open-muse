@@ -346,6 +346,13 @@ describe("Mac settings window", () => {
     });
     expect(host!.textContent).toContain("Saved in your Open Muse account");
   });
+  it("opens the settings window centered over the main window", () => {
+    const swift = readFileSync("macos/OpenMuse.swift", "utf8");
+    expect(swift).toContain(
+      "var origin = NSPoint(x: main.frame.midX - size.width / 2, y: main.frame.midY - size.height / 2)",
+    );
+    expect(swift).toContain("(main.screen ?? NSScreen.main)?.visibleFrame");
+  });
   it("names every section in Chinese", async () => {
     expect(zhCN["Sign out"]).toBe("退出");
     vi.stubGlobal("__OPEN_MUSE_LANGUAGES__", ["zh-CN"]);

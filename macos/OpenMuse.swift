@@ -531,6 +531,16 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
             settingsWebView = view
             settingsWindow = panel
         }
+        // It opens centered over the main window, on that window's screen.
+        if let settings = settingsWindow, !settings.isVisible, let main = window, main.isVisible {
+            let size = settings.frame.size
+            var origin = NSPoint(x: main.frame.midX - size.width / 2, y: main.frame.midY - size.height / 2)
+            if let visible = (main.screen ?? NSScreen.main)?.visibleFrame {
+                origin.x = min(max(origin.x, visible.minX), visible.maxX - size.width)
+                origin.y = min(max(origin.y, visible.minY), visible.maxY - size.height)
+            }
+            settings.setFrameOrigin(origin)
+        }
         settingsWindow?.makeKeyAndOrderFront(nil)
         NSApplication.shared.activate(ignoringOtherApps: true)
     }
