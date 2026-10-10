@@ -454,8 +454,10 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
                 injectionTime: .atDocumentStart, forMainFrameOnly: true
             ))
         }
-        // The macOS version, for the diagnostics a person may copy into a report.
-        if let data = try? JSONSerialization.data(withJSONObject: "macOS \(ProcessInfo.processInfo.operatingSystemVersionString)", options: .fragmentsAllowed),
+        // The macOS version, for the diagnostics a person may copy into a report;
+        // its numbers only, since the system's own string is localized.
+        let os = ProcessInfo.processInfo.operatingSystemVersion
+        if let data = try? JSONSerialization.data(withJSONObject: "macOS \(os.majorVersion).\(os.minorVersion).\(os.patchVersion)", options: .fragmentsAllowed),
            let system = String(data: data, encoding: .utf8) {
             configuration.userContentController.addUserScript(WKUserScript(
                 source: "window.__OPEN_MUSE_SYSTEM__ = \(system);",
