@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { zhCN } from "../../shared/locales/zh-CN";
 import { carbon, recordShortcut, shortcutLabel } from "../ui/shortcut";
 import { ShortcutSettings } from "../ui/ShortcutSettings";
+import { ShortcutsDialog } from "../ui/Shortcuts";
 
 let root: Root | undefined;
 let host: HTMLDivElement | undefined;
@@ -109,6 +110,56 @@ describe("Mac Quick chat shortcut", () => {
     await act(async () => reset.click());
     await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
     expect(field.textContent).toBe("⌥Space");
+  });
+  it("changes Quick chat from the keyboard shortcuts window", async () => {
+    let state = { code: 49, modifiers: carbon.option, registered: true };
+    const postMessage = vi.fn(async (body: Record<string, string>) => {
+      if (
+        body.operation === "write" &&
+        body.id !== "dictationHold" &&
+        body.id !== "dictationToggle"
+      )
+        state = {
+          code: Number(body.code),
+          modifiers: Number(body.modifiers),
+          registered: true,
+        };
+      return body.id === "dictationHold" || body.id === "dictationToggle"
+        ? { code: -1, modifiers: 0, registered: false }
+        : state;
+    });
+    Object.defineProperty(window, "webkit", {
+      configurable: true,
+      value: { messageHandlers: { museShortcut: { postMessage } } },
+    });
+    HTMLDialogElement.prototype.showModal ??= function () {};
+    HTMLDialogElement.prototype.close ??= function () {};
+    host = document.createElement("div");
+    document.body.append(host);
+    root = createRoot(host);
+    await act(async () => root!.render(<ShortcutsDialog onClose={vi.fn()} />));
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 10)));
+    expect(host.textContent).toContain("Quick chat");
+    expect(host.textContent).toContain("Push to talk");
+    expect(host.textContent).toContain("Hands-free mode");
+    expect(host.textContent).toContain("Search chats");
+    const field = host.querySelector<HTMLButtonElement>(
+      '[aria-label="Change the Quick chat shortcut"]',
+    )!;
+    expect(field.textContent).toBe("⌥Space");
+    await act(async () => field.click());
+    await act(async () => {
+      field.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          code: "Space",
+          key: " ",
+          ctrlKey: true,
+          bubbles: true,
+        }),
+      );
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    expect(field.textContent).toBe("⌃Space");
   });
   it("translates its copy and keeps the native contract", () => {
     for (const [, key] of readFileSync(

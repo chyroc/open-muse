@@ -121,3 +121,33 @@ export function ShortcutSettings() {
     </div>
   );
 }
+
+// Every global shortcut, editable where it is listed: Quick chat and the two
+// dictation shortcuts. The keyboard shortcuts window opens with them.
+export function GlobalShortcuts() {
+  if (!shortcutAvailable()) return null;
+  return (
+    <div className="settings-group">
+      <ShortcutRow
+        id="quickChat"
+        title={t("Quick chat")}
+        detail={t("Opens a small chat card over any app.")}
+        label={t("Change the Quick chat shortcut")}
+      />
+      <ShortcutRow
+        id="dictationHold"
+        optional
+        title={t("Push to talk")}
+        detail={t("Hold to dictate into Quick chat.")}
+        label={t("Change the Push to talk shortcut")}
+      />
+      <ShortcutRow
+        id="dictationToggle"
+        optional
+        title={t("Hands-free mode")}
+        detail={t("Press to start dictating, and again to stop.")}
+        label={t("Change the Hands-free mode shortcut")}
+      />
+    </div>
+  );
+}

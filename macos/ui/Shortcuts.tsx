@@ -1,5 +1,7 @@
 import { t } from "../../shared/i18n";
 import { Modal } from "./Chrome";
+import { GlobalShortcuts } from "./ShortcutSettings";
+import { shortcutAvailable } from "./shortcut";
 
 // Every shortcut this workspace answers, in the order people reach for them.
 export const shortcuts: { keys: string; label: string }[] = [
@@ -23,6 +25,13 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
       className="shortcuts-dialog"
       onClose={onClose}
     >
+      {shortcutAvailable() && (
+        <section>
+          <h3>{t("Shortcuts")}</h3>
+          <GlobalShortcuts />
+          <h3>{t("In Open Muse")}</h3>
+        </section>
+      )}
       <dl>
         {shortcuts.map(({ keys, label }) => (
           <div key={keys}>

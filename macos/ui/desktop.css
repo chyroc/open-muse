@@ -1844,6 +1844,19 @@ h3 {
   gap: 2px;
   min-width: 340px;
 }
+/* The global shortcuts come first, editable in place, above the app's own. */
+.shortcuts-dialog h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.shortcuts-dialog section .settings-group {
+  margin-bottom: 20px;
+}
+.shortcuts-dialog:has(section) {
+  width: min(560px, calc(100vw - 48px));
+}
 .shortcuts-dialog dl > div {
   display: flex;
   align-items: center;

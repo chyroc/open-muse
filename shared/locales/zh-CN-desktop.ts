@@ -87,6 +87,10 @@ export const zhDesktop: Record<string, string> = {
   "Your language is not available on this Mac, so macOS sends dictated audio to Apple to recognize it.":
     "这台 Mac 上无法识别你的语言，macOS 会把听写音频发送给 Apple 进行识别。",
   Shortcuts: "快捷键",
+  "In Open Muse": "在 Open Muse 中",
+  "Opens a small chat card over any app.": "在任意 App 上打开小聊天卡片。",
+  "Hold to dictate into Quick chat.": "按住即可向快速聊天口述。",
+  "Press to start dictating, and again to stop.": "按一下开始口述，再按一下停止。",
   "macOS did not accept this shortcut for Open Muse. Choose another one.":
     "macOS 未接受 Open Muse 使用此快捷键，请换一个。",
   "Opens a small chat card over any app. Another app using the same keys may receive them first.":
