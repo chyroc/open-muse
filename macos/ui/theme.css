@@ -74,6 +74,7 @@
   --placeholder: #f3f4f5;
   --ease-pop: cubic-bezier(0.175, 0.885, 0.32, 1.275);
   --status-working: #08f;
+  --scroll-thumb: #0000006e;
   --blue: #cce6ff;
 }
 :root[data-appearance="dark"] {
@@ -148,6 +149,7 @@
   --placeholder: #525456;
   --ease-pop: cubic-bezier(0.175, 0.885, 0.32, 1.275);
   --status-working: #08f;
+  --scroll-thumb: #ffffff5c;
 }
 /* Theme colors: each replaces the accent, its hover and soft tints, and your
    own message bubbles, in both appearances. */
@@ -235,4 +237,20 @@
   --accent-text: #111112;
   --accent-soft: #ffffff1f;
   --blue: #ffffff26;
+}
+/* Scroll bars everywhere: a slim rounded thumb on a clear track, the same
+   whether macOS shows scroll bars always or only while scrolling. */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  border: 4px solid transparent;
+  border-radius: 6px;
+  background-color: var(--scroll-thumb);
+  background-clip: padding-box;
 }

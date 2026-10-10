@@ -108,6 +108,7 @@ describe("Mac workspace navigation", () => {
         onNavigate: noop,
         onSearch: noop,
         onSettings: noop,
+        onReport: noop,
         onShortcuts: noop,
       }),
     );

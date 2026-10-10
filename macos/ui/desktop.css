@@ -354,7 +354,6 @@ h3 {
   display: flex;
   flex-direction: column;
   padding: 74px 24px 8px;
-  scrollbar-width: thin;
   overscroll-behavior: contain;
 }
 .chat-scroll > .empty-state {
@@ -717,16 +716,17 @@ h3 {
   top: calc(100% + 6px);
   right: 0;
   z-index: 8;
-  min-width: 220px;
+  min-width: 224px;
   padding: 6px;
-  border: 1px solid var(--line);
   border-radius: 16px;
-  background: var(--dialog);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 5px 28px var(--shadow);
+  background: var(--blur-thick);
+  backdrop-filter: blur(60px);
+  box-shadow: var(--elevation-3);
   font-size: 14px;
   animation: side-chats-menu-in 0.15s ease-out both;
   transform-origin: top right;
+  -webkit-backdrop-filter: blur(60px);
+  color: var(--text);
 }
 @keyframes side-chats-menu-in {
   from {
@@ -737,17 +737,18 @@ h3 {
 .side-chats-menu button {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
   height: 36px;
   padding: 0 8px;
-  border-radius: 10px;
+  border-radius: 12px;
   text-align: start;
   white-space: nowrap;
+  line-height: 20px;
 }
 .side-chats-menu button:hover,
 .side-chats-menu button:focus-visible {
-  background: var(--fill);
+  background: var(--flat);
   outline: 0;
 }
 .side-chats-menu-icon {
@@ -757,9 +758,10 @@ h3 {
   color: var(--text-2);
 }
 .side-chats-menu hr {
-  margin: 4px 8px;
+  margin: 6px 8px;
+  height: 0;
   border: 0;
-  border-top: 1px solid var(--line);
+  border-top: 0.5px solid var(--divider-strong);
 }
 .side-chats-scroll {
   display: flex;
@@ -1773,42 +1775,46 @@ h3 {
 }
 .rail-menu {
   position: absolute;
-  left: calc(100% + 8px);
-  bottom: 0;
+  left: calc(100% + 4px);
+  bottom: 4px;
   z-index: 20;
-  min-width: 220px;
+  min-width: 224px;
   padding: 6px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: var(--dialog);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 6px 28px var(--shadow);
+  border-radius: 16px;
+  background: var(--blur-thick);
+  backdrop-filter: blur(60px);
+  box-shadow: var(--elevation-3);
   transform-origin: left bottom;
-  animation: rail-menu-in 0.26s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+  animation: rail-menu-in 0.15s var(--ease-pop) both;
+  -webkit-backdrop-filter: blur(60px);
+  color: var(--text);
 }
 .rail-menu button {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 8px 9px;
-  border-radius: 7px;
-  font-size: 13px;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 12px;
+  font-size: 14px;
   text-align: left;
+  line-height: 20px;
 }
 .rail-menu button:hover,
 .rail-menu button:focus-visible {
-  background: var(--fill-hover);
+  background: var(--flat);
 }
 .rail-menu button > svg {
   flex-shrink: 0;
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
+  margin: 0 2px;
 }
 .rail-menu hr {
-  margin: 4px 9px;
+  margin: 6px 8px;
+  height: 0;
   border: 0;
-  border-top: 1px solid var(--divider);
+  border-top: 0.5px solid var(--divider-strong);
 }
 .rail-menu kbd,
 .shortcuts-dialog kbd {
@@ -1841,14 +1847,22 @@ h3 {
   border-radius: 6px;
   background: var(--fill);
 }
+/* Menus grow in from 95% and slide in from the side of their trigger. */
 @keyframes rail-menu-in {
   from {
     opacity: 0;
-    transform: scale(0.94);
+    transform: translateX(-8px) scale(0.95);
+  }
+}
+@keyframes menu-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.95);
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .rail-menu {
+  .rail-menu,
+  .message-popup {
     animation: rail-menu-fade 0.15s ease-out both;
   }
 }
@@ -2260,15 +2274,16 @@ h3 {
   bottom: calc(100% + 4px);
   left: 0;
   display: grid;
-  min-width: 190px;
-  padding: 5px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: var(--dialog);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 6px 24px var(--shadow);
+  min-width: 224px;
+  padding: 6px;
+  border-radius: 16px;
+  background: var(--blur-thick);
+  backdrop-filter: blur(60px);
+  box-shadow: var(--elevation-3);
   transform-origin: left bottom;
-  animation: rail-menu-in 0.24s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+  animation: menu-in-up 0.15s var(--ease-pop) both;
+  -webkit-backdrop-filter: blur(60px);
+  color: var(--text);
 }
 .from-user .message-popup {
   left: auto;
@@ -2280,12 +2295,13 @@ h3 {
   height: auto;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 9px;
-  border-radius: 7px;
-  font-size: 13px;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 12px;
+  font-size: 14px;
   color: var(--text);
   text-align: left;
+  line-height: 20px;
 }
 .message-popup.mood-tray {
   display: flex;

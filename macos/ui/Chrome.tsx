@@ -1,6 +1,7 @@
 import { t } from "../../shared/i18n";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
+  Bug,
   Keyboard,
   Lightbulb,
   MessageCircle,
@@ -134,6 +135,7 @@ export function Rail({
   onSearch,
   onSettings,
   onShortcuts,
+  onReport,
   companion,
 }: {
   page: Page;
@@ -141,6 +143,7 @@ export function Rail({
   onSearch: () => void;
   onSettings: () => void;
   onShortcuts: () => void;
+  onReport: () => void;
   // Away from the chat, the companion waits at the top of the rail and opens
   // the full chat.
   companion?: { name: string; onOpen: () => void };
@@ -277,13 +280,17 @@ export function Rail({
         {menu && (
           <div className="rail-menu" role="menu" ref={entries}>
             <button role="menuitem" onClick={() => choose(onShortcuts)}>
-              <Keyboard size={16} />
+              <Keyboard size={20} strokeWidth={1.6} />
               <span>{t("Keyboard shortcuts")}</span>
               <kbd>⌘/</kbd>
             </button>
+            <button role="menuitem" onClick={() => choose(onReport)}>
+              <Bug size={20} strokeWidth={1.6} />
+              <span>{t("Report a problem")}</span>
+            </button>
             <hr />
             <button role="menuitem" onClick={() => choose(onSettings)}>
-              <Settings size={16} />
+              <Settings size={20} strokeWidth={1.6} />
               <span>{t("Settings")}</span>
               <kbd>⌘,</kbd>
             </button>

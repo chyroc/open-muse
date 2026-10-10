@@ -297,9 +297,10 @@
   line-height: 20px;
 }
 .idea-menu-separator {
-  height: 0.5px;
   margin: 6px 8px;
-  background: var(--divider-strong);
+  height: 0;
+  border: 0;
+  border-top: 0.5px solid var(--divider-strong);
 }
 @keyframes idea-menu-in {
   from {

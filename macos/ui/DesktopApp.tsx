@@ -1342,6 +1342,9 @@ export function DesktopApp({ client }: { client: Client }) {
             setSearch(true);
           }}
           onShortcuts={() => setShortcutsOpen(true)}
+          onReport={() => {
+            if (!openNativeSettings("help")) setSettings(true);
+          }}
           onSettings={() =>
             document || feedEditorOpen.current
               ? setNotice(

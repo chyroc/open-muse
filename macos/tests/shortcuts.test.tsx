@@ -89,9 +89,28 @@ describe("Mac rail menu and shortcuts", () => {
     const items = [...host!.querySelectorAll(".rail-menu button")];
     expect(items.map((item) => item.textContent)).toEqual([
       "Keyboard shortcuts⌘/",
+      "Report a problem",
       "Settings⌘,",
     ]);
-    await act(async () => (items[0] as HTMLButtonElement).click());
+    // Reporting a problem opens Help, where diagnostics are copied.
+    const postMessage = vi.fn();
+    Object.defineProperty(window, "webkit", {
+      configurable: true,
+      value: { messageHandlers: { museWindow: { postMessage } } },
+    });
+    await act(async () => (items[1] as HTMLButtonElement).click());
+    expect(postMessage).toHaveBeenCalledWith({
+      name: "settings",
+      value: "help",
+    });
+    Object.defineProperty(window, "webkit", {
+      configurable: true,
+      value: undefined,
+    });
+    await act(async () => trigger.click());
+    await act(async () =>
+      host!.querySelector<HTMLButtonElement>(".rail-menu button")!.click(),
+    );
     expect(host!.querySelector(".rail-menu")).toBeNull();
     expect(host!.querySelector(".shortcuts-dialog")?.textContent).toContain(
       "Search chats",

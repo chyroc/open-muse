@@ -290,32 +290,36 @@
   position: absolute;
   right: 0;
   top: calc(100% + 8px);
-  min-width: 220px;
+  min-width: 224px;
   z-index: 8;
   padding: 6px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--dialog);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 5px 28px #0000001a;
-  font-size: 13px;
+  border-radius: 16px;
+  background: var(--blur-thick);
+  backdrop-filter: blur(60px);
+  box-shadow: var(--elevation-3);
+  font-size: 14px;
+  -webkit-backdrop-filter: blur(60px);
+  color: var(--text);
 }
 .library-menu button {
   width: 100%;
   text-align: left;
-  padding: 9px 8px;
+  padding: 8px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  border-radius: 7px;
+  gap: 6px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 20px;
 }
 .library-menu button[aria-checked="true"] {
   font-weight: 550;
 }
 .library-menu hr {
+  margin: 6px 8px;
+  height: 0;
   border: 0;
-  border-top: 1px solid var(--line);
-  margin: 5px 0;
+  border-top: 0.5px solid var(--divider-strong);
 }
 .library-item-menu .library-menu {
   top: auto;

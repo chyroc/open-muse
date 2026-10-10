@@ -36,26 +36,29 @@
   position: absolute;
   right: 0;
   top: calc(100% + 8px);
-  min-width: 190px;
+  min-width: 224px;
   z-index: 8;
   padding: 6px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--dialog);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 5px 28px var(--shadow);
-  font-size: 13px;
+  border-radius: 16px;
+  background: var(--blur-thick);
+  backdrop-filter: blur(60px);
+  box-shadow: var(--elevation-3);
+  font-size: 14px;
   text-align: left;
+  -webkit-backdrop-filter: blur(60px);
+  color: var(--text);
 }
 .status-menu button {
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 9px 8px;
-  border-radius: 7px;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 12px;
   text-align: left;
   white-space: nowrap;
+  font-size: 14px;
+  line-height: 20px;
 }
 .identity-summary {
   padding: 16px;
