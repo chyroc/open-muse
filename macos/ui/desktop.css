@@ -371,10 +371,13 @@ h3 {
   margin: auto auto 0;
 }
 /* A message is one row: the bubble with its actions beside it, on the
-   outer side, and a mood under the bubble. */
+   outer side, and a mood under the bubble. The bubble's column is at most 85%
+   of the row, which spans the reading column. No container units here: a
+   size container in the conversation leaves WebKit's scroll range behind, so
+   the newest messages could not be scrolled to. */
 .message {
   display: grid;
-  grid-template-columns: minmax(0, max-content) auto;
+  grid-template-columns: fit-content(85%) auto;
   grid-template-areas:
     "bubble actions"
     "mood .";
@@ -383,7 +386,6 @@ h3 {
   max-width: 100%;
   position: relative;
   margin-bottom: 16px;
-  container-type: inline-size;
 }
 .message > .message-bubble {
   grid-area: bubble;
@@ -399,7 +401,7 @@ h3 {
   margin-bottom: 4px;
 }
 .message.from-user {
-  grid-template-columns: auto minmax(0, max-content);
+  grid-template-columns: auto fit-content(85%);
   grid-template-areas:
     "actions bubble"
     ". mood";
@@ -411,7 +413,7 @@ h3 {
   border-radius: 22px;
   background: var(--bubble);
   padding: 12px 16px;
-  max-width: 85cqi;
+  min-width: 0;
   overflow-wrap: anywhere;
   font-size: 16px;
   line-height: 22px;
@@ -1573,8 +1575,11 @@ h3 {
     padding-left: 18px;
     padding-right: 18px;
   }
-  .message-bubble {
-    max-width: 92cqi;
+  .message {
+    grid-template-columns: fit-content(92%) auto;
+  }
+  .message.from-user {
+    grid-template-columns: auto fit-content(92%);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -2714,7 +2719,7 @@ h3 {
    tile, when it comes, and a pill to the Upcoming list. */
 .mac-reminder-card {
   align-self: flex-start;
-  width: min(345px, 85cqi);
+  width: min(345px, 85%);
   margin-top: 4px;
   padding: 14px 16px 12px;
   border-radius: 22px;
@@ -2894,7 +2899,7 @@ h3 {
   display: grid;
   justify-items: end;
   gap: 4px;
-  max-width: min(520px, 70cqi);
+  max-width: min(520px, 70%);
   margin: 0 0 4px auto;
 }
 .message-replied > span {
