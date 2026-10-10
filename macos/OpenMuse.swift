@@ -435,6 +435,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museShortcut")
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museSpeech")
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museUpdate")
+        configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "museReport")
         configuration.userContentController.add(self, name: "museExport")
         configuration.userContentController.add(self, name: "museWindow")
         configuration.userContentController.addUserScript(WKUserScript(source: "window.__OPEN_MUSE_DESKTOP__ = true;", injectionTime: .atDocumentStart, forMainFrameOnly: true))
@@ -558,6 +559,7 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         if message.name == "museShortcut" { shortcut(body, replyHandler: replyHandler); return }
         if message.name == "museSpeech" { speech(body, from: message.webView, replyHandler: replyHandler); return }
         if message.name == "museUpdate" { update(body, replyHandler: replyHandler); return }
+        if message.name == "museReport" { report(body, from: message.webView, replyHandler: replyHandler); return }
         // Keychain can wait for an OS authorization dialog. Never block AppKit
         // or discard the eventual reply while the user is deciding.
         DispatchQueue.global(qos: .userInitiated).async { [self] in
@@ -1201,6 +1203,43 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
         }
         replyHandler(updater.state(), nil)
     }
+    // Reporting a problem: a picture of the window, shown in the report form,
+    // and the project's new-issue page opened with that picture on the
+    // clipboard to paste. Only that page opens, and only the picture the
+    // person kept is copied.
+    static let reportPage = "https://github.com/chyroc/open-muse/issues/new?"
+    private var reportSnapshot: Data?
+    private func report(_ body: [String: String], from view: WKWebView?, replyHandler: @escaping (Any?, String?) -> Void) {
+        switch body["operation"] {
+        case "snapshot":
+            guard let view, view === webView else { replyHandler(nil, "Invalid report request"); return }
+            let configuration = WKSnapshotConfiguration()
+            configuration.snapshotWidth = NSNumber(value: Double(min(view.bounds.width, 1600)))
+            view.takeSnapshot(with: configuration) { [weak self] image, _ in
+                guard let image, let tiff = image.tiffRepresentation,
+                      let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:])
+                else { replyHandler(nil, nil); return }
+                self?.reportSnapshot = png
+                replyHandler("data:image/png;base64," + png.base64EncodedString(), nil)
+            }
+        case "submit":
+            guard let link = body["url"], link.hasPrefix(Self.reportPage), link.utf8.count <= 8000,
+                  let url = URL(string: link)
+            else { replyHandler(nil, "Invalid report request"); return }
+            if body["image"] == "true", let png = reportSnapshot {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setData(png, forType: .png)
+            }
+            reportSnapshot = nil
+            NSWorkspace.shared.open(url)
+            replyHandler(true, nil)
+        case "discard":
+            reportSnapshot = nil
+            replyHandler(true, nil)
+        default:
+            replyHandler(nil, "Invalid report request")
+        }
+    }
     private func updateChanged() {
         broadcast("muse-update-changed", except: nil)
         updateItem?.isHidden = !updater.supported
@@ -1494,6 +1533,13 @@ final class OpenMuseApp: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNa
                 }
             }
             // Settings can hand a draft to the main chat; it is never sent from here.
+            // Report a problem from Settings: the report is made from the main
+            // window, so its picture shows the workspace.
+            if body?["name"] == "report", message.webView === settingsWebView {
+                showWorkspace()
+                webView?.evaluateJavaScript("window.dispatchEvent(new Event('muse-report-problem'))", completionHandler: nil)
+                return
+            }
             if body?["name"] == "draft", message.webView === settingsWebView,
                let text = body?["value"], !text.isEmpty, text.utf16.count <= 16000,
                let data = try? JSONSerialization.data(withJSONObject: text, options: .fragmentsAllowed),

@@ -3045,3 +3045,98 @@ button.message-card:active {
 .message-replied + .message {
   margin-top: -14px;
 }
+/* Report a problem: the person's words, the window's picture to keep or
+   leave out, the setup that goes with it, and the way to GitHub. */
+.report-dialog {
+  width: min(520px, calc(100vw - 48px));
+}
+.report-lead {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text-2);
+}
+.report-text {
+  display: block;
+  width: 100%;
+  min-height: 120px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--field);
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  resize: vertical;
+}
+.report-text:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+}
+.report-picture {
+  display: grid;
+  grid-template-columns: auto 96px 1fr;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  cursor: pointer;
+}
+.report-picture input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+.report-picture img {
+  width: 96px;
+  height: 64px;
+  object-fit: cover;
+  object-position: top left;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px var(--card-border);
+}
+.report-picture input:not(:checked) ~ img {
+  opacity: 0.4;
+}
+.report-picture span {
+  display: grid;
+  gap: 2px;
+}
+.report-picture strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+.report-picture small {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-2);
+}
+.report-details {
+  margin-top: 12px;
+  font-size: 13px;
+}
+.report-details summary {
+  cursor: pointer;
+  color: var(--text-2);
+}
+.report-details pre {
+  max-height: 140px;
+  overflow: auto;
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--field);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: pre-wrap;
+}
+.report-error {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--danger);
+}
+.report-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}

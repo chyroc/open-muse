@@ -133,6 +133,22 @@ export const zhDesktop: Record<string, string> = {
     "对话直接发往你的 Ark 项目。不会有分析数据或崩溃报告离开这台 Mac。",
   "With the Open Muse service": "在 Open Muse 服务中",
   "Report a problem": "报告问题",
+  "Could not open GitHub. Try again.": "无法打开 GitHub，请重试。",
+  "Submitting opens a new issue on GitHub with what you write here and the details below. Nothing is posted until you submit it there.":
+    "提交会在 GitHub 上新建一个问题，带上你在这里写的内容和下面的基本信息。在 GitHub 上提交之前，什么都不会发出。",
+  "What happened?": "发生了什么？",
+  "What happened, and what did you expect?": "发生了什么？你原本期望怎样？",
+  "Screenshot of this window": "此窗口的截图",
+  "Include a screenshot of this window": "附上此窗口的截图",
+  "It goes to your clipboard; paste it into the issue with ⌘V. Leave it out if it shows anything private.":
+    "截图会复制到剪贴板，在 GitHub 问题里按 ⌘V 粘贴。截图里有隐私内容的话，可以不附。",
+  "Details included": "附带的基本信息",
+  "Open on GitHub": "在 GitHub 上提交",
+  "GitHub is open. The screenshot is on your clipboard; paste it into the issue with ⌘V.":
+    "已打开 GitHub。截图已复制到剪贴板，在问题里按 ⌘V 粘贴即可。",
+  "GitHub is open. Submit the issue there.": "已打开 GitHub，请在那里提交问题。",
+  "Opens a new issue on GitHub with your description, a screenshot of the window and the app and macOS versions, language and the state of each permission and switch, without keys, messages or files.":
+    "在 GitHub 上新建问题，附带你的描述、窗口截图，以及 App 和 macOS 版本、语言和各项权限与开关的状态，不含密钥、消息或文件。",
   "Copy diagnostics": "复制诊断信息",
   "Copies the app and macOS versions, language and the state of each permission and switch, without keys, messages or files, for you to paste into a report.":
     "复制 App 和 macOS 版本、语言，以及各项权限和开关的状态，不含密钥、消息或文件，方便你粘贴到问题报告中。",

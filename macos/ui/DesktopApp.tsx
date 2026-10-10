@@ -168,6 +168,8 @@ import {
   sideChats,
   type Page,
 } from "./model";
+import { ReportDialog } from "./ReportDialog";
+import { reportAvailable, reportSnapshot } from "./report";
 
 export function DesktopApp({ client }: { client: Client }) {
   const [route, setRoute] = useState(() =>
@@ -288,6 +290,22 @@ export function DesktopApp({ client }: { client: Client }) {
   const [loading, setLoading] = useState(false);
   const [prefill, setPrefill] = useState(0);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  // Report a problem: the window's picture is taken before the form opens,
+  // so the form is not in it.
+  const [report, setReport] = useState<{ picture?: string }>();
+  const openReport = useCallback(async () => {
+    if (!reportAvailable()) {
+      if (!openNativeSettings("help")) setSettings(true);
+      return;
+    }
+    const picture = await reportSnapshot();
+    if (alive.current) setReport({ picture });
+  }, []);
+  useEffect(() => {
+    const open = () => void openReport();
+    window.addEventListener("muse-report-problem", open);
+    return () => window.removeEventListener("muse-report-problem", open);
+  }, [openReport]);
   const [paletteGoals, setPaletteGoals] = useState<Goal[]>([]);
   const [reactions, setReactions] = useState<Record<string, Mood>>({});
   const [listening, setListening] = useState(false);
@@ -1342,9 +1360,7 @@ export function DesktopApp({ client }: { client: Client }) {
             setSearch(true);
           }}
           onShortcuts={() => setShortcutsOpen(true)}
-          onReport={() => {
-            if (!openNativeSettings("help")) setSettings(true);
-          }}
+          onReport={() => void openReport()}
           onSettings={() =>
             document || feedEditorOpen.current
               ? setNotice(
@@ -2301,6 +2317,23 @@ export function DesktopApp({ client }: { client: Client }) {
           )}
         {shortcutsOpen && (
           <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />
+        )}
+        {report && (
+          <ReportDialog
+            picture={report.picture}
+            signedIn={ready}
+            onClose={() => setReport(undefined)}
+            onOpened={(pasted) => {
+              setReport(undefined);
+              setNotice(
+                pasted
+                  ? t(
+                      "GitHub is open. The screenshot is on your clipboard; paste it into the issue with ⌘V.",
+                    )
+                  : t("GitHub is open. Submit the issue there."),
+              );
+            }}
+          />
         )}
         {settings && (
           <Modal title={t("Settings")} wide onClose={() => setSettings(false)}>

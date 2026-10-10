@@ -4,10 +4,12 @@ import { t } from "../../shared/i18n";
 import { shortcuts } from "./Shortcuts";
 import { readShortcut, shortcutAvailable, shortcutLabel } from "./shortcut";
 import { diagnosticReport } from "./diagnostics";
+import { reportAvailable } from "./report";
 
 // What this app can show about itself: its shortcuts and where its features
-// live. Nothing here sends a report; the person can copy a summary of the
-// app's setup into one of their own.
+// live. Report a problem opens the report form in the main window, which
+// makes a GitHub issue the person posts; without the Mac shell it copies a
+// summary of the app's setup instead.
 export function HelpSettings({ signedIn = false }: { signedIn?: boolean }) {
   const [quick, setQuick] = useState("⌥Space");
   const [copied, setCopied] = useState("");
@@ -29,6 +31,18 @@ export function HelpSettings({ signedIn = false }: { signedIn?: boolean }) {
     void write
       .then(() => setCopied(t("Copied. Paste it into your report.")))
       .catch(() => setCopied(t("Could not copy the diagnostics.")));
+  };
+  const report = () => {
+    if (!reportAvailable()) return copyDiagnostics();
+    (
+      window as unknown as {
+        webkit: {
+          messageHandlers: {
+            museWindow: { postMessage: (body: object) => void };
+          };
+        };
+      }
+    ).webkit.messageHandlers.museWindow.postMessage({ name: "report" });
   };
   useEffect(() => {
     if (!shortcutAvailable()) return;
@@ -56,8 +70,12 @@ export function HelpSettings({ signedIn = false }: { signedIn?: boolean }) {
       <div className="settings-group">
         <button
           className="settings-row settings-nav-row"
-          aria-label={t("Report a problem: copy diagnostics")}
-          onClick={copyDiagnostics}
+          aria-label={
+            reportAvailable()
+              ? t("Report a problem")
+              : t("Report a problem: copy diagnostics")
+          }
+          onClick={report}
         >
           <span>{t("Report a problem")}</span>
           <Bug size={18} strokeWidth={1.7} aria-hidden="true" />
@@ -65,9 +83,13 @@ export function HelpSettings({ signedIn = false }: { signedIn?: boolean }) {
       </div>
       <p className="settings-footnote" role="status">
         {copied ||
-          t(
-            "Copies the app and macOS versions, language and the state of each permission and switch, without keys, messages or files, for you to paste into a report.",
-          )}
+          (reportAvailable()
+            ? t(
+                "Opens a new issue on GitHub with your description, a screenshot of the window and the app and macOS versions, language and the state of each permission and switch, without keys, messages or files.",
+              )
+            : t(
+                "Copies the app and macOS versions, language and the state of each permission and switch, without keys, messages or files, for you to paste into a report.",
+              ))}
       </p>
       <h2>{t("Getting around")}</h2>
       <div className="settings-group">
