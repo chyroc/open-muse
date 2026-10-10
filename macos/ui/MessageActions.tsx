@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { t } from "../../shared/i18n";
 import { moods, type Mood } from "./reactions";
+import { focusOpenedMenu } from "./menuFocus";
 
 type Popup = "mood" | "more";
 
@@ -43,9 +44,7 @@ export function MessageActions({
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
-    root.current
-      ?.querySelector<HTMLButtonElement>(".message-popup button")
-      ?.focus();
+    focusOpenedMenu(root.current?.querySelector<HTMLElement>(".message-popup"));
     const close = (event: Event) => {
       if (event instanceof KeyboardEvent && event.key !== "Escape") return;
       if (

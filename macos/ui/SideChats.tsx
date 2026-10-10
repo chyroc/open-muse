@@ -21,6 +21,7 @@ import {
 import { formatLocale, t } from "../../shared/i18n";
 import { sideChatDrawerCopy } from "./labels";
 import { panelOpacity } from "./PanelEdge";
+import { focusOpenedMenu } from "./menuFocus";
 
 // The side-chat panel docked next to the rail: its width, the range a drag on
 // its edge can resize it to, and how far past the narrowest width a drag has
@@ -166,7 +167,9 @@ function OptionsMenu({
   const trigger = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!open) return;
-    anchor.current?.querySelector<HTMLElement>("[role^=menuitem]")?.focus();
+    focusOpenedMenu(
+      anchor.current?.querySelector<HTMLElement>('[role="menu"]'),
+    );
     const close = (event: Event) => {
       if (event instanceof KeyboardEvent) {
         if (event.key !== "Escape") return;

@@ -39,6 +39,7 @@ import {
   BubbleIcon,
   TrashIcon,
 } from "./icons";
+import { focusOpenedMenu } from "./menuFocus";
 
 // Drawn when a post has no emoji of its own.
 function FeedPostGlyph() {
@@ -77,9 +78,9 @@ function FeedPostMenu({
     };
     document.addEventListener("pointerdown", outside);
     document.addEventListener("keydown", key, true);
-    anchor.current
-      ?.querySelector<HTMLButtonElement>("[role=menuitem]")
-      ?.focus({ preventScroll: true });
+    focusOpenedMenu(
+      anchor.current?.querySelector<HTMLElement>('[role="menu"]'),
+    );
     return () => {
       document.removeEventListener("pointerdown", outside);
       document.removeEventListener("keydown", key, true);

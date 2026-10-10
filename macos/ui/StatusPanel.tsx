@@ -31,6 +31,7 @@ import { statusTabLabel } from "./labels";
 import { activityTurns, type ActivityTurn } from "../../shared/activity";
 import { ActivityList } from "../../src/ActivityList";
 import type { Client } from "../../src/api";
+import { focusOpenedMenu } from "./menuFocus";
 
 // Upcoming: a clock whose earlier half is still dashed.
 const UpcomingIcon = createLucideIcon("clock-half-dashed", [
@@ -165,7 +166,7 @@ export function StatusPanel({
   const items = useRef<HTMLDivElement>(null);
   // Opening with the keyboard lands on the first entry.
   useEffect(() => {
-    if (menu) items.current?.querySelector("button")?.focus();
+    if (menu) focusOpenedMenu(items.current);
   }, [menu]);
   function closeMenu(restoreFocus: boolean) {
     setMenu(false);

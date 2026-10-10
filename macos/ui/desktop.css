@@ -40,6 +40,17 @@ summary:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
+/* In a menu, the entry with focus is highlighted like a hovered one rather
+   than ringed, and the menu itself, which holds focus after a click, shows
+   nothing. */
+[role="menu"]:focus,
+[role="menu"]:focus-visible {
+  outline: none;
+}
+[role="menu"] :is(button, [role^="menuitem"]):focus-visible {
+  outline: none;
+  background: var(--flat);
+}
 button:hover:not(:disabled) {
   background: var(--fill-hover);
 }

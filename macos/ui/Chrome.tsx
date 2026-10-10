@@ -13,6 +13,7 @@ import {
 import { CompanionAvatar } from "../../src/ChatUI";
 import type { Page } from "./model";
 import { navLabel } from "./labels";
+import { focusOpenedMenu, moveMenuFocus } from "./menuFocus";
 
 // The feed: a card resting on the page behind it.
 export const FeedIcon = createLucideIcon("feed-cards", [
@@ -153,7 +154,7 @@ export function Rail({
   const entries = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!menu) return;
-    entries.current?.querySelector("button")?.focus();
+    focusOpenedMenu(entries.current);
     const close = (event: Event) => {
       if (event instanceof KeyboardEvent) {
         if (event.key !== "Escape") return;
@@ -278,7 +279,19 @@ export function Rail({
           {!menu && <RailTip label={t("Settings")} />}
         </button>
         {menu && (
-          <div className="rail-menu" role="menu" ref={entries}>
+          <div
+            className="rail-menu"
+            role="menu"
+            ref={entries}
+            onKeyDown={(event) => {
+              if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+              event.preventDefault();
+              moveMenuFocus(
+                entries.current,
+                event.key === "ArrowDown" ? 1 : -1,
+              );
+            }}
+          >
             <button role="menuitem" onClick={() => choose(onShortcuts)}>
               <Keyboard size={20} strokeWidth={1.6} />
               <span>{t("Keyboard shortcuts")}</span>

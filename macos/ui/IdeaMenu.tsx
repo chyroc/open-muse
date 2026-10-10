@@ -18,6 +18,7 @@ import {
   WandIcon,
   type IconProps,
 } from "./icons";
+import { focusOpenedMenu } from "./menuFocus";
 
 // Menu geometry shared by the row and dialog triggers.
 export const ideaMenuMotion = {
@@ -80,9 +81,7 @@ function ActionsMenu({
   }, [open, appearance]);
   useEffect(() => {
     if (!place) return;
-    menu.current
-      ?.querySelector<HTMLButtonElement>('[role="menuitem"]:not(:disabled)')
-      ?.focus({ preventScroll: true });
+    focusOpenedMenu(menu.current);
   }, [place]);
   useEffect(() => {
     if (!open) return;
