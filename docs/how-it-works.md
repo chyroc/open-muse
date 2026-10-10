@@ -639,6 +639,15 @@ feedback**. **Legal** notes that replies are AI-generated and may be wrong,
 and links to Volcano Engine's privacy policy and terms of service, under
 which Ark processes what the person sends with their own key.
 
+On the Mac, **Report a problem**, in the rail's menu or Settings > Help and
+support, takes a picture of the main window and opens a short form: what
+happened, the picture to keep or leave out, and the details that go with it
+(the app and macOS versions, language, and the state of each permission and
+switch, without keys, messages or files). **Open on GitHub** opens the
+project's new-issue page with the description and details filled in and puts
+the picture on the clipboard to paste into the issue; nothing is posted until
+the person submits it on GitHub.
+
 Settings and the pages within it use a large title that scrolls away with
 the content; a small centered title over a frosted bar takes its place.
 
