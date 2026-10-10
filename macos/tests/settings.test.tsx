@@ -20,7 +20,8 @@ import {
 } from "../ui/settings";
 import { SettingsWindow } from "../ui/SettingsWindow";
 import { backgroundClient } from "../../src/background-client";
-import { restoreInBackground } from "../ui/startup";
+import { connectionReady, restoreInBackground } from "../ui/startup";
+import { AccountSettings } from "../ui/AccountSettings";
 import { vaultAccount } from "./account";
 
 let root: Root | undefined;
@@ -322,6 +323,28 @@ describe("Mac settings window", () => {
     expect(host!.textContent).toContain("With the Open Muse service");
     expect(host!.textContent).toContain("your Ark key encrypted");
     expect(host!.textContent).not.toContain("has no server of its own");
+  });
+  it("shows the account's key once the login restores after the window opened", async () => {
+    signedInAccount();
+    const client = await fixture();
+    const auth = vi
+      .spyOn(client, "auth")
+      .mockResolvedValue({ ready: false } as never);
+    await mount(
+      <AccountSettings
+        client={client}
+        onChanged={vi.fn()}
+        onSignOut={vi.fn()}
+      />,
+    );
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(host!.textContent).toContain("Not connected");
+    auth.mockResolvedValue({ ready: true } as never);
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent(connectionReady, { detail: "" }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(host!.textContent).toContain("Saved in your Open Muse account");
   });
   it("matches the reference on the section names it leaves in English", async () => {
     for (const label of ["Computer use", "File system access", "Dictation"])

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { t } from "../../shared/i18n";
 import type { Client } from "../../src/api";
@@ -6,6 +6,7 @@ import { AuthPanel } from "../../src/AuthPanel";
 import { backgroundClient } from "../../src/background-client";
 import { shownAccountId, useAccount } from "../../src/useAccount";
 import { WorkspacePanel } from "../../src/WorkspacePanel";
+import { connectionReady } from "./startup";
 
 // The account section of Settings > General, in the same grouped rows as the
 // other settings: who is signed in, the Ark API key the account keeps,
@@ -216,6 +217,7 @@ function SignedIn({
 }) {
   const {
     status,
+    refresh,
     owner,
     email,
     busy,
@@ -226,6 +228,26 @@ function SignedIn({
     deleteAccount,
     exportData,
   } = useAccount({ client, onChanged });
+  // The window can open before the Keychain login is restored; read the key
+  // again once it settles, when it changes, and when the window comes back.
+  const reread = useRef(refresh);
+  reread.current = refresh;
+  useEffect(() => {
+    const again = () => void reread.current().catch(() => undefined);
+    const shown = () => {
+      if (!window.document.hidden) again();
+    };
+    window.addEventListener(connectionReady, again);
+    window.addEventListener("muse-credentials-changed", again);
+    window.addEventListener("focus", again);
+    window.document.addEventListener("visibilitychange", shown);
+    return () => {
+      window.removeEventListener(connectionReady, again);
+      window.removeEventListener("muse-credentials-changed", again);
+      window.removeEventListener("focus", again);
+      window.document.removeEventListener("visibilitychange", shown);
+    };
+  }, []);
   const [replacing, setReplacing] = useState(false);
   const [apiKey, setAPIKey] = useState("");
   const label = email ?? t("Open Muse account");

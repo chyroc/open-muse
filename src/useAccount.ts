@@ -137,6 +137,9 @@ export function useAccount({
     });
   return {
     status,
+    // Reads the key's status again, for a caller that learns the login
+    // settled after this first asked.
+    refresh,
     owner,
     email,
     busy,
