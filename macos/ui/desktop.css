@@ -51,7 +51,9 @@ summary:focus-visible {
   outline: none;
   background: var(--flat);
 }
-button:hover:not(:disabled) {
+/* The plain hover tint is only a fallback: any button that styles its own
+   background, or its own inner surface, keeps it on hover. */
+button:where(:hover:not(:disabled)) {
   background: var(--fill-hover);
 }
 input,
@@ -151,6 +153,7 @@ h3 {
   justify-content: center;
   flex-shrink: 0;
   animation: rail-reveal 0.18s ease-out both;
+  background: transparent;
 }
 .rail-surface {
   display: flex;
@@ -1062,6 +1065,7 @@ h3 {
   justify-content: center;
   color: var(--text-2);
   transition: color 0.15s ease-out;
+  background: transparent;
 }
 .status-tabs button[aria-selected="true"] {
   color: var(--text);
@@ -1983,6 +1987,7 @@ h3 {
   color: var(--text-2);
   cursor: zoom-in;
   transition: transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+  background: transparent;
 }
 .mac-sent-image button:active:not(:disabled) {
   transform: scale(0.96);
@@ -2528,6 +2533,7 @@ h3 {
   align-items: center;
   justify-content: center;
   animation: rail-companion-in 0.34s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+  background: transparent;
 }
 @keyframes rail-companion-in {
   from {
@@ -2804,6 +2810,20 @@ h3 {
   .mac-reminder-card {
     animation: staged-fade 0.15s ease-out both;
   }
+}
+/* The status panel's turns highlight as a rounded tile on hover. */
+.status-panel .activity-turn > button {
+  width: calc(100% + 16px);
+  margin: -6px -8px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: transparent;
+}
+.status-panel .activity-turn > button:hover {
+  background: var(--flat);
+}
+.status-tabs button:hover:not([aria-selected="true"]) {
+  color: var(--text);
 }
 /* The status panel's turns sit on light tiles with a glyph for what each did. */
 .status-panel .activity-turn-icon {
