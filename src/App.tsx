@@ -43,7 +43,7 @@ import { InspirationPage } from "./InspirationPages";
 import { GoalsPage } from "./GoalsPage";
 import { AssistantMessage } from "./ChoiceMessage";
 import { WelcomeStatus } from "./WelcomeStatus";
-import type { WelcomeState } from "./direct/welcome";
+import { welcomeHolds, type WelcomeState } from "./direct/welcome";
 import { isWelcomeReply } from "../shared/welcome";
 import { currentChoiceEvent } from "../shared/chat-choices";
 import { digest, uuid } from "../shared/crypto";
@@ -1086,6 +1086,10 @@ function Workspace({
         if (!config && (await client.config()).mode !== "ark")
           throw new Error(t("Add an Ark API key to start chatting"));
         if (goalInitiation || goalDraft) await client.prepareGoals();
+        // Sent while the first conversation was still being prepared (the
+        // composer only learns of it once its state is read): wait for it, so
+        // both do not open the main chat at once.
+        await client.settleWelcome();
         if (!sessionId || sessionId === index.mainId) {
           const session = await client.openConversation(
             isSideDraft ? "side" : "main",
@@ -1198,6 +1202,7 @@ function Workspace({
     return action(async () => {
       try {
         if (goals) await client.prepareGoals();
+        await client.settleWelcome();
         let sessionId = index.mainId;
         if (!sessionId) {
           const session = await client.openConversation(
@@ -1436,14 +1441,7 @@ function Workspace({
   // Mirrors the send guard: an unsettled first conversation blocks every
   // chat while it is still preparing, and its own session while its welcome
   // is unconfirmed. Until then the composer explains instead of accepting.
-  const welcomeBlocksComposer =
-    welcome?.phase === "preparing" ||
-    Boolean(
-      welcome &&
-        "session" in welcome &&
-        ["sending", "unconfirmed"].includes(welcome.phase) &&
-        welcome.session === activeId,
-    );
+  const welcomeBlocksComposer = welcomeHolds(welcome, activeId);
   // The empty main chat centers its own preparing state; the banner keeps
   // the cases that need a decision.
   const preparingCentered =

@@ -16,7 +16,7 @@ import { boundedSignal } from "../shared/abort";
 import { digest, uuid } from "../shared/crypto";
 import { operations } from "../shared/ma";
 import { buildRequest } from "../shared/ma-request";
-import type { AgentEvent } from "../shared/types";
+import { eventText, type AgentEvent } from "../shared/types";
 import { identityInstructions } from "../shared/identity";
 import { canonicalJson } from "../shared/session-refresh";
 import { deviceTools } from "../shared/workspace-spec";
@@ -405,6 +405,88 @@ describe("Direct MA client", () => {
       }),
     ).rejects.toThrow("welcome is unconfirmed");
     expect(f.events).toHaveLength(0);
+  });
+  it("holds a message sent during the welcome until the welcome settles", async () => {
+    const f = fixture();
+    await f.login();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let held = false;
+    const wrapped = f.fetcher.getMockImplementation()!;
+    f.fetcher.mockImplementation(async (input, init) => {
+      if (
+        String(input).endsWith("/events") &&
+        init?.method === "POST" &&
+        !held
+      ) {
+        held = true;
+        await gate;
+      }
+      return wrapped(input, init);
+    });
+    const welcome = f.client.startWelcome("en");
+    for (let i = 0; i < 50 && !held; i++)
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    expect((await f.client.welcomeState())?.phase).toBe("sending");
+    // Sent while the welcome is in flight: it waits instead of failing.
+    const main = (await f.client.conversationIndex()).mainId!;
+    const sent = f.client.send(main, {
+      type: "user.message",
+      text: "Hello there",
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(f.events.some((event) => eventText(event) === "Hello there")).toBe(
+      false,
+    );
+    release();
+    expect((await welcome).phase).toBe("confirmed");
+    await sent;
+    const texts = f.events
+      .filter((event) => event.type === "user.message")
+      .map(eventText);
+    expect(texts.at(-1)).toBe("Hello there");
+    expect(texts).toHaveLength(2);
+  });
+  it("waits for a first conversation left preparing once the launch check resumes it", async () => {
+    const f = fixture();
+    await f.login();
+    let fail = true;
+    const wrapped = f.fetcher.getMockImplementation()!;
+    f.fetcher.mockImplementation(async (input, init) =>
+      String(input).endsWith("/sessions") && init?.method === "POST" && fail
+        ? ((fail = false), Response.json({}, { status: 503 }))
+        : wrapped(input, init),
+    );
+    await expect(f.client.startWelcome("en")).rejects.toThrow("503");
+    f.fetcher.mockImplementation(wrapped);
+    // A send at launch, before the launch check has resumed the welcome.
+    const settled = f.client.settleWelcome();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect((await f.client.startWelcome("en")).phase).toBe("confirmed");
+    await expect(settled).resolves.toBeUndefined();
+  });
+  it("stops waiting when nothing resumes a first conversation left preparing", async () => {
+    const f = fixture();
+    await f.login();
+    const wrapped = f.fetcher.getMockImplementation()!;
+    f.fetcher.mockImplementation(async (input, init) =>
+      String(input).endsWith("/sessions") && init?.method === "POST"
+        ? Response.json({}, { status: 503 })
+        : wrapped(input, init),
+    );
+    await expect(f.client.startWelcome("en")).rejects.toThrow("503");
+    const realNow = Date.now;
+    const start = realNow();
+    // Past the grace on the second look: no attempt picked it up.
+    let looks = 0;
+    vi.spyOn(Date, "now").mockImplementation(() =>
+      looks++ ? start + 6_000 : start,
+    );
+    try {
+      await expect(f.client.settleWelcome()).rejects.toThrow("being prepared");
+    } finally {
+      vi.spyOn(Date, "now").mockRestore();
+    }
   });
   it("resumes a first conversation left preparing by a failed creation", async () => {
     const f = fixture();

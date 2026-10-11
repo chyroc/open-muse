@@ -1434,6 +1434,25 @@ export class Client {
   welcomeState() {
     return this.welcomeService(this.context()).state();
   }
+  // Waits while the first conversation is being prepared, before a send opens
+  // the main chat itself; fails only when it does not settle.
+  settleWelcome() {
+    return this.settleWelcomeFor(this.context());
+  }
+  private async settleWelcomeFor(
+    r: Runtime,
+    session?: string,
+    eventId?: string,
+    signal?: AbortSignal,
+  ) {
+    if (!(await this.welcomeService(r).settle(session, eventId, signal)))
+      throw new ApiError(
+        409,
+        t(
+          "The first conversation is being prepared or its welcome is unconfirmed. Check its history before sending.",
+        ),
+      );
+  }
   private checkInService(r: Runtime) {
     return (r.checkin ??= new DirectCheckIn(r.key, this.db, {
       main: async () => {
@@ -1936,23 +1955,10 @@ export class Client {
     const r = request?.runtime ?? this.context();
     r.abort.signal.throwIfAborted();
     validId(id);
-    if (input.type === "user.message") {
-      const welcome = await this.welcomeService(r).state();
-      if (
-        welcome?.phase === "preparing" ||
-        (welcome &&
-          "eventId" in welcome &&
-          ["sending", "unconfirmed"].includes(welcome.phase) &&
-          welcome.session === id &&
-          welcome.eventId !== request?.eventId)
-      )
-        throw new ApiError(
-          409,
-          t(
-            "The first conversation is being prepared or its welcome is unconfirmed. Check its history before sending.",
-          ),
-        );
-    }
+    // A message sent while the first conversation is still being set up
+    // waits for it instead of failing at once.
+    if (input.type === "user.message")
+      await this.settleWelcomeFor(r, id, request?.eventId, signal);
     const lock = `${r.key}:${id}`;
     if (this.sends.has(lock))
       throw new ApiError(

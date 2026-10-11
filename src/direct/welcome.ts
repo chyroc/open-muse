@@ -20,6 +20,27 @@ export type WelcomeState =
       text: string;
       replyId?: string;
     };
+// Whether the first conversation still holds a message for `session`: while
+// it is preparing it holds every chat (it is opening the main chat); once its
+// welcome is out, only its own session until that welcome is settled. The
+// welcome's own request, identified by `eventId`, is never held.
+export function welcomeHolds(
+  state: WelcomeState | undefined,
+  session?: string,
+  eventId?: string,
+) {
+  return (
+    state?.phase === "preparing" ||
+    Boolean(
+      state &&
+      "eventId" in state &&
+      ["sending", "unconfirmed"].includes(state.phase) &&
+      state.session === session &&
+      state.eventId !== eventId,
+    )
+  );
+}
+
 type Remote = {
   eligible(): Promise<boolean>;
   open(): Promise<Session>;
@@ -45,6 +66,27 @@ export class DirectWelcome {
   }
   state() {
     return this.db.get<WelcomeState>(this.key);
+  }
+  // Waits until the first conversation no longer holds a message for
+  // `session`, and says whether it let go. A running attempt is waited for
+  // (bounded); without one, a "preparing" gets a short grace for the launch
+  // check to pick it up, and anything else cannot change here, so it holds.
+  async settle(session?: string, eventId?: string, signal?: AbortSignal) {
+    const started = Date.now();
+    let active = started;
+    for (;;) {
+      const state = await this.state();
+      if (!welcomeHolds(state, session, eventId)) return true;
+      const now = Date.now();
+      if (this.job) active = now;
+      else if (state?.phase !== "preparing") return false;
+      if (now - active > 5_000 || now - started > 90_000) return false;
+      signal?.throwIfAborted();
+      await Promise.race([
+        this.job?.catch(() => undefined),
+        new Promise((resolve) => setTimeout(resolve, 500)),
+      ]);
+    }
   }
   start(language: string, retry = false): Promise<WelcomeState> {
     if (this.job) return this.job;

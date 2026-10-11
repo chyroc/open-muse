@@ -375,8 +375,12 @@ count as a fresh identity. Model compliance with the requested wording is not
 guaranteed.
 
 Same-origin write guards and persisted event IDs prevent duplicate initiations
-on rerender or relaunch. Interrupted setup requires an explicit Continue;
-uncertain submissions are checked in history, not sent again. These are
+on rerender or relaunch. Setup interrupted before the welcome went out resumes
+on its own; an uncertain submission is checked in history, never sent again,
+and offers an explicit retry once a fresh history read shows it never landed.
+Until the first conversation settles, the composer is held. A message sent
+before the app has read that state (right at launch) waits for the welcome
+instead of failing, and fails only when nothing is preparing it. These are
 device-local guards, not a cross-device atomic first-run protocol. Naming and
 follow-up do not establish scheduled check-ins or account access.
 
