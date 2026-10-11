@@ -1066,19 +1066,6 @@
   outline: 2px solid var(--accent-soft);
   border-color: var(--accent);
 }
-.settings-consent-row {
-  align-items: flex-start;
-}
-.settings-consent-row > span {
-  margin-left: 0;
-  white-space: normal;
-  font-size: 13px;
-  line-height: 18px;
-}
-.settings-consent-row input {
-  margin-top: 2px;
-  accent-color: var(--accent);
-}
 .settings-signin-actions {
   display: flex;
   align-items: center;

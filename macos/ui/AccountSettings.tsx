@@ -56,13 +56,12 @@ function SignedOut({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [register, setRegister] = useState(false);
-  const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const lock = useRef(false);
   async function submit() {
-    if (lock.current || (register && !consent)) return;
+    if (lock.current) return;
     lock.current = true;
     setBusy(true);
     setError("");
@@ -72,7 +71,6 @@ function SignedOut({
       if (register) {
         await backgroundClient.signUpAccount(address, password);
         setRegister(false);
-        setConsent(false);
       }
       // A new account signs in through the ordinary sign-in; the signup
       // response itself is never adopted as a session.
@@ -140,31 +138,11 @@ function SignedOut({
               onChange={(event) => setPassword(event.target.value)}
             />
           </label>
-          {register && (
-            <label className="settings-row settings-consent-row">
-              <input
-                type="checkbox"
-                checked={consent}
-                disabled={busy}
-                onChange={(event) => setConsent(event.target.checked)}
-              />
-              <span>
-                {t(
-                  "Create an Open Muse account with this email. The Auth provider will receive the email and password.",
-                )}
-              </span>
-            </label>
-          )}
         </div>
         <div className="settings-signin-actions">
           <button
             className="settings-primary-button"
-            disabled={
-              busy ||
-              !email.trim() ||
-              password.length < 8 ||
-              (register && !consent)
-            }
+            disabled={busy || !email.trim() || password.length < 8}
           >
             {register
               ? t("Create Open Muse account")
@@ -177,7 +155,6 @@ function SignedOut({
             onClick={() => {
               setRegister(!register);
               setPassword("");
-              setConsent(false);
               setError("");
             }}
           >

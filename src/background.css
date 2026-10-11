@@ -45,18 +45,13 @@
   grid-template-columns: 1fr 2fr;
   gap: 12px;
 }
-.background-toggle,
-.background-consent {
+.background-toggle {
   display: flex;
   align-items: flex-start;
   gap: 9px;
   line-height: 1.6;
 }
-.background-consent {
-  font-size: 13px;
-}
-.background-toggle input,
-.background-consent input {
+.background-toggle input {
   margin-top: 6px;
   accent-color: #555b4c;
 }

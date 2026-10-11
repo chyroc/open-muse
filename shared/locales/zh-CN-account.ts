@@ -16,8 +16,6 @@ export const zhAccount: Record<string, string> = {
   "Create an account instead": "改为创建账号",
   "Sign in with your Open Muse account. Your Ark API key is saved to the account separately and is not used to identify you.":
     "使用 Open Muse 账号登录。Ark API Key 会另外保存到账号中，不会用来识别你的身份。",
-  "Create an Open Muse account with this email. The Auth provider will receive the email and password.":
-    "使用此邮箱创建 Open Muse 账号。认证服务将接收邮箱和密码。",
   "Registration submitted. Check your email if verification is required, then sign in. This does not confirm that a new account was created.":
     "注册请求已提交。如需邮箱验证，请先查收邮件，再登录。此提示不表示新账号已创建成功。",
   "Open Muse account login is not configured in this build.":

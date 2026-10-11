@@ -67,18 +67,14 @@ describe("Shared native account login form", () => {
       expect(f.onSignUp).not.toHaveBeenCalled();
     },
   );
-  it("does not submit registration before explicit consent or adopt signup as login", async () => {
+  it("registers with the email and password alone, never as a login", async () => {
     const f = await setup("en");
     await act(async () => {
       host.querySelector<HTMLButtonElement>('button[type="button"]')!.click();
     });
+    expect(host.querySelector('input[type="checkbox"]')).toBeNull();
     await input("email", "person@example.com");
     await input("password", "private-password");
-    await submit();
-    expect(f.onSignUp).not.toHaveBeenCalled();
-    await act(async () =>
-      host.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click(),
-    );
     await submit();
     expect(f.onSignUp).toHaveBeenCalledExactlyOnceWith(
       "person@example.com",

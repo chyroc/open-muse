@@ -14,15 +14,14 @@ export function SupabaseLoginForm({
 }) {
   const [email, setEmail] = useState(""),
     [password, setPassword] = useState("");
-  const [register, setRegister] = useState(false),
-    [consent, setConsent] = useState(false);
+  const [register, setRegister] = useState(false);
   return (
     <form
       className="background-form"
       aria-label={t("Open Muse account login")}
       onSubmit={(event) => {
         event.preventDefault();
-        if (busy || (register && !consent)) return;
+        if (busy) return;
         const action = register ? onSignUp : onSignIn;
         void action(email.trim(), password).then(
           (submitted) => {
@@ -65,28 +64,10 @@ export function SupabaseLoginForm({
           onChange={(event) => setPassword(event.target.value)}
         />
       </label>
-      {register && (
-        <label className="background-consent">
-          <input
-            type="checkbox"
-            checked={consent}
-            onChange={(event) => setConsent(event.target.checked)}
-            disabled={busy}
-          />
-          {t(
-            "Create an Open Muse account with this email. The Auth provider will receive the email and password.",
-          )}
-        </label>
-      )}
       <div className="background-actions">
         <button
           className="button primary"
-          disabled={
-            busy ||
-            !email.trim() ||
-            password.length < 8 ||
-            (register && !consent)
-          }
+          disabled={busy || !email.trim() || password.length < 8}
         >
           {register ? t("Create Open Muse account") : t("Sign in to Open Muse")}
         </button>
@@ -97,7 +78,6 @@ export function SupabaseLoginForm({
           onClick={() => {
             setRegister(!register);
             setPassword("");
-            setConsent(false);
           }}
         >
           {register
