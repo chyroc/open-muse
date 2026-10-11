@@ -321,6 +321,17 @@ export class AccountWorkspaces {
         "workspace_limit",
       );
   }
+  // Gives back one counted creation that Ark definitely refused: nothing was
+  // created, and an account that cannot create a resource (a model it may not
+  // use, say) should see that reason, not exhaust its limit retrying.
+  private async refund(now: number, bucket = "provision") {
+    await this.env.DB.prepare(
+      `UPDATE account_rate_limits SET count=count-1
+      WHERE owner_id=? AND bucket=? AND window_start>? AND count>0`,
+    )
+      .bind(this.owner, bucket, now - CREATE_WINDOW)
+      .run();
+  }
   // Only ever lists; the result decides whether a new creation is safe.
   private async created(ark: ArkClient, kind: Kind, nonce: string) {
     const found: string[] = [];
@@ -490,6 +501,7 @@ export class AccountWorkspaces {
           ).includes(error.status)
         ) {
           await this.write(workspaceKey, revision, workspace, null, now);
+          await this.refund(now);
           throw arkRefusal(
             error,
             422,

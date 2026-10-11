@@ -240,7 +240,8 @@ attributed with certainty, and the request returns 409 until the user explicitly
 continues setup (`replaceUnconfirmed: true`), which creates a new resource and
 leaves the unconfirmed one unused. A recorded resource deleted at Ark is created
 again; one whose label was changed outside Open Muse stops setup with 409. Each
-account may create at most 20 resources per hour.
+account may create at most 20 resources per hour; a creation Ark definitely
+refused created nothing and is not counted.
 
 Resources still carry `metadata.open_muse_workspace` (agent, environment) or
 `metadata.open_muse_identity` (memory store) equal to

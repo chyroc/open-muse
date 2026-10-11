@@ -522,6 +522,15 @@ describe("Background work for Open Muse account workspaces", () => {
       }
     ).workspace.agentId;
     delete ark.agents[agent];
+    const used = async () =>
+      (
+        await env.DB.prepare(
+          "SELECT count FROM account_rate_limits WHERE owner_id=? AND bucket='provision'",
+        )
+          .bind(owners[BOB])
+          .first<{ count: number }>()
+      )?.count ?? 0;
+    const before = await used();
     failNextCreate = "model";
     const refused = await provision(BOB);
     expect(refused.status).toBe(422);
@@ -529,6 +538,8 @@ describe("Background work for Open Muse account workspaces", () => {
       code: "ark_rejected",
       details: ["model_unavailable", "doubao-seed-2-1-pro-260915"],
     });
+    // A creation Ark refused created nothing and does not use up the limit.
+    expect(await used()).toBe(before);
     // Nothing is left pending: continuing setup creates the agent.
     expect((await provision(BOB)).status).toBe(200);
   });
