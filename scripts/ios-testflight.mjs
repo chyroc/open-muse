@@ -1,7 +1,15 @@
 // Archive Open Muse as a Muse-account Release build and upload it to App Store
 // Connect for TestFlight.
 //
-// Usage: npm run ios:testflight [-- <build-number>]
+// Usage: npm run ios:testflight [-- [<build-number>] [--publish]]
+//        npm run ios:testflight -- --publish-only <build-number>
+//
+// --publish then waits for App Store Connect to process the build, adds it to
+// the public TestFlight group, submits it for beta review, and, once public
+// testers can install it, records it in site/downloads.json, which the
+// iPhone app's update check reads (commit it and deploy the website). When
+// review takes longer than half an hour it stops; --publish-only <build>
+// finishes later without building or uploading anything.
 //
 // The three public account build values are resolved by
 // scripts/account-config.mjs: from the environment, or with the Volcengine CLI.
@@ -41,8 +49,11 @@ const bundleID = "app.openmuse.mobile";
 const profileName = process.env.OPEN_MUSE_PROFILE || "Open Muse App Store";
 const now = new Date();
 const pad = (n) => String(n).padStart(2, "0");
+const args = process.argv.slice(2);
+const publishOnly = args.includes("--publish-only");
+const publish = publishOnly || args.includes("--publish");
 const buildNumber =
-  process.argv[2] ||
+  args.find((arg) => !arg.startsWith("--")) ||
   `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}`;
 const out = path.join(root, ".build/ios-release");
 const archive = path.join(out, `Open Muse ${buildNumber}.xcarchive`);
@@ -99,7 +110,7 @@ function token() {
   return `${input}.${signature.toString("base64url")}`;
 }
 
-async function api(method, pathname, body) {
+async function api(method, pathname, body, { optional = false } = {}) {
   const response = await fetch(
     `https://api.appstoreconnect.apple.com${pathname}`,
     {
@@ -112,9 +123,95 @@ async function api(method, pathname, body) {
     },
   );
   const text = await response.text();
-  if (!response.ok)
+  if (!response.ok) {
+    if (optional) return null;
     fail(`App Store Connect ${method} ${pathname}: ${response.status} ${text}`);
+  }
   return text ? JSON.parse(text) : null;
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Makes the uploaded build what public testers get, then names it on the
+// website for the iPhone app's update check: only once TestFlight can
+// actually deliver it, so the app never points at a build testers lack.
+async function publishRelease() {
+  step(`Waiting for App Store Connect to process build ${buildNumber}`);
+  const app = (
+    await api(
+      "GET",
+      `/v1/apps?filter[bundleId]=${encodeURIComponent(bundleID)}`,
+    )
+  ).data[0]?.id;
+  if (!app) fail(`No App Store Connect app for ${bundleID}.`);
+  let build;
+  for (let i = 0; i < 120; i++) {
+    build = (await api(
+      "GET",
+      `/v1/builds?filter[app]=${app}&filter[version]=${encodeURIComponent(buildNumber)}&include=preReleaseVersion`,
+    )) ?? { data: [] };
+    const state = build.data[0]?.attributes?.processingState;
+    if (state === "VALID") break;
+    if (state === "INVALID" || state === "FAILED")
+      fail(
+        `App Store Connect could not process build ${buildNumber} (${state}).`,
+      );
+    await sleep(30_000);
+  }
+  const record = build.data[0];
+  if (record?.attributes?.processingState !== "VALID")
+    fail(
+      `Build ${buildNumber} is still processing. Run npm run ios:testflight -- --publish-only ${buildNumber} later.`,
+    );
+  const version = build.included?.find(
+    (item) => item.type === "preReleaseVersions",
+  )?.attributes?.version;
+
+  step("Adding it to the public TestFlight group");
+  const group = (await api("GET", `/v1/apps/${app}/betaGroups`)).data.find(
+    (item) => item.attributes.publicLinkEnabled && item.attributes.publicLink,
+  );
+  if (!group) fail("No TestFlight group has a public link.");
+  await api("POST", `/v1/betaGroups/${group.id}/relationships/builds`, {
+    data: [{ type: "builds", id: record.id }],
+  });
+  // Already submitted once is fine: the review only has to happen.
+  await api(
+    "POST",
+    "/v1/betaAppReviewSubmissions",
+    {
+      data: {
+        type: "betaAppReviewSubmissions",
+        relationships: { build: { data: { type: "builds", id: record.id } } },
+      },
+    },
+    { optional: true },
+  );
+  let state;
+  for (let i = 0; i < 60; i++) {
+    state = (await api("GET", `/v1/builds/${record.id}/buildBetaDetail`)).data
+      .attributes.externalBuildState;
+    if (state === "IN_BETA_TESTING") break;
+    if (["BETA_REJECTED", "INVALID", "EXPIRED"].includes(state))
+      fail(`TestFlight cannot offer build ${buildNumber} publicly (${state}).`);
+    await sleep(30_000);
+  }
+  if (state !== "IN_BETA_TESTING")
+    fail(
+      `Build ${buildNumber} is waiting for beta review (${state}). Run npm run ios:testflight -- --publish-only ${buildNumber} once it is approved.`,
+    );
+
+  const file = path.join(root, "site/downloads.json");
+  const downloads = JSON.parse(readFileSync(file, "utf8"));
+  downloads.ios = {
+    version: version ?? downloads.ios?.version ?? "",
+    build: Number(buildNumber),
+    testflight: group.attributes.publicLink,
+  };
+  writeFileSync(file, `${JSON.stringify(downloads, null, 2)}\n`);
+  console.log(
+    `Public testers can install build ${buildNumber}. Updated site/downloads.json. Commit it, then deploy the website (node site/deploy.mjs).`,
+  );
 }
 
 function distributionTeam() {
@@ -190,6 +287,13 @@ async function refreshProfile() {
 }
 
 step("Resolving the Open Muse account service");
+if (publishOnly) {
+  if (!args.some((arg) => /^\d+$/.test(arg)))
+    fail("--publish-only needs the build number to publish.");
+  await publishRelease();
+  process.exit(0);
+}
+
 const config = accountConfig();
 console.log(`service: ${config.background}`);
 await checkService(config.background);
@@ -293,3 +397,4 @@ try {
 console.log(`
 Uploaded build ${buildNumber}. It appears in App Store Connect → TestFlight after
 processing, usually within 10–30 minutes. Archive: ${archive}`);
+if (publish) await publishRelease();

@@ -14,5 +14,10 @@
     "file": "OpenMuse-20261011-ddb0aab.dmg",
     "size": 1608054,
     "sha256": "cc68e5a12c8df356867199b76bd23a98586f79d08aadb12e4f720ed9f1e4ba19"
+  },
+  "ios": {
+    "version": "0.2.0",
+    "build": 202610111702,
+    "testflight": "https://testflight.apple.com/join/CX6wPZQ8"
   }
 }

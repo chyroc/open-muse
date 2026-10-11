@@ -12,7 +12,7 @@ function ask(path: string, country: string) {
   });
 }
 
-describe("Mac update feed", () => {
+describe("App update feeds", () => {
   it("names the current release on the nearer mirror", async () => {
     const { version, build, size, sha256, file } = downloads.macos;
     for (const [country, mirror] of [
@@ -31,5 +31,35 @@ describe("Mac update feed", () => {
     }
     // The download link itself still redirects.
     expect((await ask("/download/macos", "US")).status).toBe(302);
+  });
+  it("names the Android release by its version code on the nearer mirror", async () => {
+    const { version, versionCode, size, sha256, file } = downloads.android;
+    for (const [country, mirror] of [
+      ["CN", mirrors.cn],
+      ["US", mirrors.global],
+    ] as const)
+      expect(
+        await (await ask("/download/android.json", country)).json(),
+      ).toEqual({
+        version,
+        build: versionCode,
+        size,
+        sha256,
+        url: `${mirror.base}/android/${file}`,
+      });
+  });
+  it("points the iPhone app at TestFlight", async () => {
+    const { version, build, testflight } = downloads.ios;
+    expect(await (await ask("/download/ios.json", "US")).json()).toEqual({
+      version,
+      build,
+      url: testflight,
+    });
+    expect(testflight).toMatch(/^https:\/\/testflight\.apple\.com\/join\//);
+  });
+  it("answers only the known feeds", async () => {
+    expect(await (await ask("/download/windows.json", "US")).text()).toBe(
+      "asset",
+    );
   });
 });
