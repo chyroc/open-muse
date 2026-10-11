@@ -876,6 +876,10 @@ export function DesktopApp({ client }: { client: Client }) {
     (!route.conversation || route.conversation === index.mainId);
   const initiating = useRef(false);
   const welcomed = useRef<number | undefined>(undefined);
+  // From the moment the first conversation starts until its history is read
+  // again, so an empty main chat shows the companion at work instead of an
+  // invitation to type.
+  const [welcoming, setWelcoming] = useState(false);
   useEffect(() => {
     if (!mainInFront) return;
     const run = () => {
@@ -887,6 +891,7 @@ export function DesktopApp({ client }: { client: Client }) {
         if (welcomed.current !== epoch) {
           welcomed.current = epoch;
           changed = true;
+          if (alive.current) setWelcoming(true);
           const welcome = await client
             .startWelcome(systemLanguage())
             .catch(async (failure: Error) => {
@@ -910,6 +915,7 @@ export function DesktopApp({ client }: { client: Client }) {
         })
         .finally(() => {
           initiating.current = false;
+          if (alive.current) setWelcoming(false);
         });
     };
     run();
@@ -1135,7 +1141,8 @@ export function DesktopApp({ client }: { client: Client }) {
     const files = staged.flatMap((item) =>
       item.state === "ready" && item.value ? [item.value] : [],
     );
-    if ((!text && !files.length) || running || busyRef.current) return;
+    if ((!text && !files.length) || running || busyRef.current || welcomeTyping)
+      return;
     if (staged.some((item) => item.state !== "ready")) {
       setError(t("Wait for uploads to finish or remove failed attachments."));
       return;
@@ -1275,6 +1282,13 @@ export function DesktopApp({ client }: { client: Client }) {
   const shownEvents =
     pendingEvent && !echo ? [...events, pendingEvent] : events;
   const messages = chatMessages(shownEvents);
+  // The first conversation is being set up in the main chat and the
+  // companion has not said anything yet: it shows at work, and the composer
+  // waits, rather than inviting a message that would only have to wait.
+  const welcomeTyping =
+    welcoming &&
+    mainInFront &&
+    !messages.some((event) => event.type === "agent.message");
   useUnreadBadge(id, messages);
   const readAloud = useReadAloud();
   const companionState: CompanionState = running
@@ -1757,7 +1771,7 @@ export function DesktopApp({ client }: { client: Client }) {
                     {task.loadingOlder && t("Loading earlier messages…")}
                   </div>
                 )}
-                {!messages.length && !task.loading && (
+                {!messages.length && !task.loading && !welcomeTyping && (
                   <Empty
                     title={
                       route.newSide
@@ -1999,6 +2013,18 @@ export function DesktopApp({ client }: { client: Client }) {
                       </div>
                     )
                   ))}
+                {welcomeTyping && !running && (
+                  <div className="typing" role="status">
+                    <span className="typing-bubble" aria-hidden="true">
+                      <i />
+                      <i />
+                      <i />
+                    </span>
+                    <span className="visually-hidden">
+                      {t("Preparing your first conversation…")}
+                    </span>
+                  </div>
+                )}
                 {pendingEvent && continuing && (
                   <p className="thinking" role="status">
                     {t(
@@ -2142,7 +2168,12 @@ export function DesktopApp({ client }: { client: Client }) {
                   value={draft}
                   maxLength={16000}
                   aria-label={t("Message {name}", { name })}
-                  placeholder={t("Message")}
+                  placeholder={
+                    welcomeTyping
+                      ? t("Preparing your first conversation…")
+                      : t("Message")
+                  }
+                  disabled={welcomeTyping}
                   onChange={(event) =>
                     setDrafts((old) => ({
                       ...old,
@@ -2194,6 +2225,7 @@ export function DesktopApp({ client }: { client: Client }) {
                     aria-label={t("Send")}
                     disabled={
                       busy ||
+                      welcomeTyping ||
                       (!draft.trim() && !staged.length) ||
                       staged.some((item) => item.state !== "ready")
                     }

@@ -140,6 +140,28 @@ describe("Mac persona and check-ins", () => {
     expect(welcome).toHaveBeenCalledTimes(1);
     expect(checkIn).toHaveBeenCalledTimes(2);
   });
+  it("shows the companion at work while the first conversation is set up", async () => {
+    const client = await fixture();
+    let finish!: (value: { phase: "skipped" }) => void;
+    vi.spyOn(client, "startWelcome").mockReturnValue(
+      new Promise((resolve) => (finish = resolve)),
+    );
+    vi.spyOn(client, "startCheckIn").mockResolvedValue(undefined);
+    await mount(<DesktopApp client={client} />);
+    // No invitation to type: three dots, and the composer waits.
+    expect(host!.querySelector(".typing")).not.toBeNull();
+    expect(host!.textContent).not.toContain("What's on your mind?");
+    const composer = host!.querySelector<HTMLTextAreaElement>("textarea")!;
+    expect(composer.disabled).toBe(true);
+    expect(composer.placeholder).toBe("Preparing your first conversation…");
+    await act(async () => {
+      finish({ phase: "skipped" });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+    expect(host!.querySelector(".typing")).toBeNull();
+    expect(composer.disabled).toBe(false);
+    expect(host!.textContent).toContain("What's on your mind?");
+  });
   it("never starts a check-in while the welcome is unresolved", async () => {
     const client = await fixture();
     vi.spyOn(client, "startWelcome").mockResolvedValue({
