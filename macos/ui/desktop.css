@@ -2883,7 +2883,9 @@ button.message-card:active {
     animation: staged-fade 0.15s ease-out both;
   }
 }
-/* The status panel's turns highlight as a rounded tile on hover. */
+/* The status panel's turns highlight as a rounded tile on hover, in the
+   icon tile's own color: the tile gives up its fill so the whole row reads
+   as one shade, in light and dark alike. */
 .status-panel .activity-turn > button {
   width: calc(100% + 16px);
   margin: -6px -8px;
@@ -2892,7 +2894,10 @@ button.message-card:active {
   background: transparent;
 }
 .status-panel .activity-turn > button:hover {
-  background: var(--flat);
+  background: var(--fill);
+}
+.status-panel .activity-turn > button:hover .activity-turn-icon {
+  background: transparent;
 }
 .status-tabs button:hover:not([aria-selected="true"]) {
   color: var(--text);
