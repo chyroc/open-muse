@@ -45,7 +45,8 @@ export type UpdateState = {
 
 const origins = ["https://getopenmuse.com", "https://cn.getopenmuse.com"];
 const interval = 6 * 60 * 60 * 1000;
-const checkedKey = "open-muse:update-checked:v1";
+// When the feed last answered, and what it said.
+const checkedKey = "open-muse:update-checked:v2";
 const dismissedKey = "open-muse:update-dismissed:v1";
 const automaticKey = "open-muse:update-automatic:v1";
 
@@ -150,28 +151,56 @@ export async function checkForUpdate({
   const build = currentBuild();
   if (!platform || !build) return state;
   if (["checking", "downloading"].includes(state.phase)) return state;
-  const last = Number(storage()?.getItem(checkedKey) ?? 0);
-  if (automatic && now - last < interval) return state;
-  storage()?.setItem(checkedKey, String(now));
+  const last = lastAnswer();
+  // Within six hours an automatic check asks nothing, but a relaunched app
+  // still knows what the feed said.
+  if (automatic && last && now - last.at < interval) {
+    if (state.phase === "idle") await settle(last.feed, platform, build);
+    return state;
+  }
   if (!automatic || state.phase === "idle" || state.phase === "failed")
     set({ ...state, phase: "checking", failure: undefined });
   try {
     const feed = await readFeed(platform);
-    if (feed.build <= build) {
-      set({ phase: "current", feed });
-      return state;
-    }
-    set({ phase: "available", feed });
-    if (platform === "android" && automaticDownloads()) await download();
+    // Only an answer counts: a check that failed (offline at launch, say)
+    // is tried again on the next return instead of six hours later.
+    storage()?.setItem(checkedKey, JSON.stringify({ at: now, feed }));
+    await settle(feed, platform, build);
   } catch {
     // An automatic check fails quietly; the next one tries again.
-    set(
-      automatic
-        ? { phase: state.feed ? "available" : "idle", feed: state.feed }
-        : { phase: "failed", feed: state.feed, failure: "check" },
-    );
+    if (!automatic)
+      set({ phase: "failed", feed: state.feed, failure: "check" });
+    else if (state.feed) await settle(state.feed, platform, build);
+    else set({ phase: "idle" });
   }
   return state;
+}
+
+function lastAnswer() {
+  try {
+    const value = JSON.parse(storage()?.getItem(checkedKey) ?? "null");
+    const feed = parseFeed(value?.feed);
+    return feed && typeof value.at === "number"
+      ? { at: value.at as number, feed }
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// Current or available for what the feed said; an Android release then
+// downloads on its own unless that is turned off.
+async function settle(
+  feed: UpdateFeed,
+  platform: UpdatePlatform,
+  build: number,
+) {
+  if (feed.build <= build) {
+    set({ phase: "current", feed });
+    return;
+  }
+  set({ phase: "available", feed });
+  if (platform === "android" && automaticDownloads()) await download();
 }
 
 async function download() {

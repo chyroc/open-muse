@@ -12,6 +12,7 @@ import {
   subscribeUpdate,
   updatePlatform,
   updateState,
+  type UpdateFeed,
 } from "./app-update";
 
 function useUpdate() {
@@ -30,6 +31,14 @@ export function useAutomaticUpdateCheck() {
     document.addEventListener("visibilitychange", check);
     return () => document.removeEventListener("visibilitychange", check);
   }, []);
+}
+
+// The iPhone's marketing version stays the same across TestFlight builds, so
+// the build number tells them apart; Android's version already does.
+function versionLabel(feed: UpdateFeed) {
+  return updatePlatform() === "ios"
+    ? `${feed.version} (${feed.build})`
+    : feed.version;
 }
 
 function actionLabel(phase: string, ios: boolean) {
@@ -55,12 +64,14 @@ export function UpdateNotice() {
       <Download size={16} aria-hidden="true" />
       <span>
         {state.phase === "downloading"
-          ? t("Downloading version {version}…", { version: feed.version })
+          ? t("Downloading version {version}…", { version: versionLabel(feed) })
           : state.permission
             ? t(
                 "Allow Open Muse to install apps, then tap Install update again.",
               )
-            : t("Version {version} is available", { version: feed.version })}
+            : t("Version {version} is available", {
+                version: versionLabel(feed),
+              })}
       </span>
       {state.phase !== "downloading" && (
         <button
@@ -94,7 +105,7 @@ export function UpdateRows() {
     state.phase === "checking"
       ? t("Checking for updates…")
       : state.phase === "downloading" && feed
-        ? t("Downloading version {version}…", { version: feed.version })
+        ? t("Downloading version {version}…", { version: versionLabel(feed) })
         : state.phase === "failed"
           ? state.failure === "check"
             ? t("Couldn't check for updates")
@@ -103,8 +114,10 @@ export function UpdateRows() {
               : t("Couldn't download the update")
           : newer && feed
             ? state.phase === "ready" && !ios
-              ? t("Version {version} is ready", { version: feed.version })
-              : t("Version {version} is available", { version: feed.version })
+              ? t("Version {version} is ready", { version: versionLabel(feed) })
+              : t("Version {version} is available", {
+                  version: versionLabel(feed),
+                })
             : state.phase === "current"
               ? t("Open Muse is up to date")
               : "";

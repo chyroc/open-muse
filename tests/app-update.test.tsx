@@ -15,7 +15,7 @@ import {
   startUpdate,
   updateState,
 } from "../src/app-update";
-import { UpdateNotice } from "../src/UpdateNotice";
+import { UpdateNotice, UpdateRows } from "../src/UpdateNotice";
 
 function storage() {
   const values = new Map<string, string>();
@@ -75,15 +75,19 @@ describe("App updates", () => {
         url: "https://getopenmuse.com/download/ios.json",
       }),
     );
-    // An hour later an automatic check does not ask again; one the person
-    // starts does.
-    await checkForUpdate({ automatic: true, now: now + 3_600_000 });
+    // An hour later an automatic check does not ask again, even after a
+    // relaunch, yet still knows about the update; one the person starts asks.
+    resetUpdateState();
+    expect(
+      (await checkForUpdate({ automatic: true, now: now + 3_600_000 })).phase,
+    ).toBe("available");
     expect(http.get).toHaveBeenCalledTimes(1);
     await checkForUpdate({ now: now + 3_600_000 });
     expect(http.get).toHaveBeenCalledTimes(2);
-    expect(renderToStaticMarkup(<UpdateNotice />)).toContain(
-      "Update in TestFlight",
-    );
+    const notice = renderToStaticMarkup(<UpdateNotice />);
+    expect(notice).toContain("Update in TestFlight");
+    // The marketing version does not change between builds; the build does.
+    expect(notice).toContain("0.2.0 (202610121200)");
     await startUpdate();
     expect(assign).toHaveBeenCalledWith(ios.url);
     // Hidden for this release, the notice stays away.
@@ -111,6 +115,9 @@ describe("App updates", () => {
     vi.stubGlobal("__OPEN_MUSE_BUILD__", 588);
     http.get.mockRejectedValue(new Error("offline"));
     expect((await checkForUpdate({ automatic: true })).phase).toBe("idle");
+    // A failed check does not hold back the next automatic one.
+    await checkForUpdate({ automatic: true });
+    expect(http.get).toHaveBeenCalledTimes(4);
     await checkForUpdate();
     expect(updateState()).toMatchObject({ phase: "failed", failure: "check" });
   });
@@ -158,6 +165,28 @@ describe("App updates", () => {
     expect(postMessage).not.toHaveBeenCalled();
     expect(renderToStaticMarkup(<UpdateNotice />)).toContain(
       "Download and install",
+    );
+  });
+
+  it("shows About's update rows: the check, the action, and Android's switch", async () => {
+    surface.value = "web";
+    expect(renderToStaticMarkup(<UpdateRows />)).toBe("");
+    surface.value = "iphone";
+    vi.stubGlobal("__OPEN_MUSE_BUILD__", 202610111702);
+    let rows = renderToStaticMarkup(<UpdateRows />);
+    expect(rows).toContain("Updates");
+    expect(rows).toContain("Check now");
+    expect(rows).not.toContain("Download updates automatically");
+    http.get.mockResolvedValue({ status: 200, data: ios });
+    await checkForUpdate();
+    rows = renderToStaticMarkup(<UpdateRows />);
+    expect(rows).toContain("Version 0.2.0 (202610121200) is available");
+    expect(rows).toContain("Update in TestFlight");
+    surface.value = "android";
+    resetUpdateState();
+    vi.stubGlobal("__OPEN_MUSE_BUILD__", 588);
+    expect(renderToStaticMarkup(<UpdateRows />)).toContain(
+      "Download updates automatically",
     );
   });
 });
