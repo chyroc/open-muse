@@ -111,17 +111,29 @@ function token() {
 }
 
 async function api(method, pathname, body, { optional = false } = {}) {
-  const response = await fetch(
-    `https://api.appstoreconnect.apple.com${pathname}`,
-    {
-      method,
-      headers: {
-        Authorization: `Bearer ${token()}`,
-        "Content-Type": "application/json",
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    },
-  );
+  // A dropped connection is tried again a few times; every request here is
+  // safe to repeat (adding a build to a group twice changes nothing, and a
+  // second review submission is refused and ignored).
+  let response;
+  for (let attempt = 1; !response; attempt++) {
+    try {
+      response = await fetch(
+        `https://api.appstoreconnect.apple.com${pathname}`,
+        {
+          method,
+          headers: {
+            Authorization: `Bearer ${token()}`,
+            "Content-Type": "application/json",
+          },
+          body: body ? JSON.stringify(body) : undefined,
+        },
+      );
+    } catch (error) {
+      if (attempt >= 3)
+        fail(`App Store Connect ${method} ${pathname}: ${error.message}`);
+      await new Promise((resolve) => setTimeout(resolve, 5_000));
+    }
+  }
   const text = await response.text();
   if (!response.ok) {
     if (optional) return null;
