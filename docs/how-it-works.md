@@ -92,8 +92,10 @@ rejected, the account has not enabled the model, it is overdue, the key lacks
 permission, or Ark is busy or unavailable. The HTTP status, Ark's error code,
 and the request ID follow in parentheses for support. The service passes the
 same reason to the app when it is the one calling Ark, as when it prepares
-the workspace, and names its own limits (ten key checks and twenty workspace
-creations per account per hour) instead of a generic error. A setup step
+the workspace, followed by which of its Ark requests failed and how (request,
+HTTP status, error code, request ID), and names its own limits (ten key
+checks and twenty workspace creations per account per hour) instead of a
+generic error. A setup step
 Ark refused leaves nothing pending and does not count toward that limit, so
 Continue setup works once the cause is fixed. Setup the app starts on its own
 (for a first message, a background Feed or idea run, or the memory store)
@@ -638,8 +640,8 @@ Settings > **Report a problem** on iPhone takes a description, up to four
 screenshots, and which parts of the app it concerns. Open Muse has no support
 service, so **Submit** hands the report to the system share sheet and the
 person chooses where it goes (Mail, Lark, or elsewhere); it carries only what
-they wrote and attached, the app's commit and version, and the system
-version. Shaking the iPhone opens the same form, unless another sheet is up;
+they wrote and attached, the app's commit and version, the system version,
+and the device's recent failed requests (see below). Shaking the iPhone opens the same form, unless another sheet is up;
 **Help and support** turns that off on the device, offers **Ask your
 assistant** (drafts a question about the app in the main chat) and **Send
 feedback**. **Legal** notes that replies are AI-generated and may be wrong,
@@ -649,11 +651,19 @@ which Ark processes what the person sends with their own key.
 On the Mac, **Report a problem**, in the rail's menu or Settings > Help and
 support, takes a picture of the main window and opens a short form: what
 happened, the picture to keep or leave out, and the details that go with it
-(the app and macOS versions, language, and the state of each permission and
-switch, without keys, messages or files). **Open on GitHub** opens the
+(the app and macOS versions, language, the state of each permission and
+switch, and the recent failed requests, without keys, messages or files).
+**Open on GitHub** opens the
 project's new-issue page with the description and details filled in and puts
 the picture on the clipboard to paste into the issue; nothing is posted until
 the person submits it on GitHub.
+
+Each app keeps its last 20 failed requests to Ark and to the Open Muse
+service on the device for these reports: when, which request with its IDs
+and query left out (`POST /agents/:id`), the HTTP status or "no answer", the
+error code, and the request ID. Message text, keys, account and resource IDs,
+and anything the person wrote are never kept; a field that does not match its
+narrow pattern is dropped.
 
 Settings and the pages within it use a large title that scrolls away with
 the content; a small centered title over a frosted bar takes its place.

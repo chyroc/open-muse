@@ -1,4 +1,6 @@
 import { t } from "../shared/i18n";
+import { recordFailure } from "../shared/diagnostic-log";
+import { requestLabel } from "../shared/ark";
 import { upcomingDeliveryInput } from "../shared/upcoming";
 import {
   webhookCreatedSchema,
@@ -357,19 +359,37 @@ export class BackgroundClient {
         if (response.status === 401) await this.expire(token);
         // A machine-readable reason, when the service gives one; its wording
         // is never shown.
+        const body = await response.json().catch(() => undefined);
         const reason = z
           .object({
             code: z.string().max(40),
             details: z.array(z.string().max(100)).max(8).optional(),
           })
-          .safeParse(await response.json().catch(() => undefined)).data;
+          .safeParse(body).data;
+        // Which of the service's own model-service calls failed, and how,
+        // shown after the explanation for anyone reporting the problem.
+        const diagnostic = z
+          .object({
+            diagnostic: z
+              .string()
+              .max(300)
+              .regex(/^[\w .:;/()-]+$/),
+          })
+          .safeParse(body).data?.diagnostic;
         const code = reason?.code;
+        recordFailure({
+          via: "service",
+          request: requestLabel(init.method, path),
+          status: response.status,
+          code,
+          detail: diagnostic,
+        });
         throw new BackgroundRequestError(
           (code === "ark_rejected" && isArkProblem(reason?.details?.[0])
-            ? arkProblemText(reason.details[0], {
+            ? `${arkProblemText(reason.details[0], {
                 service: MA.name,
                 model: reason.details[1],
-              })
+              })}${diagnostic ? ` (${diagnostic})` : ""}`
             : undefined) ??
             (code && reasons()[code]) ??
             messages[response.status] ??
@@ -418,6 +438,12 @@ export class BackgroundClient {
         (bound.signal.reason as Error)?.name === "TimeoutError"
           ? "TimeoutError"
           : "NetworkError";
+      recordFailure({
+        via: "service",
+        request: requestLabel(init.method, path),
+        status: 0,
+        code: failure.name,
+      });
       throw failure;
     } finally {
       bound.dispose();

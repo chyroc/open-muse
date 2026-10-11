@@ -1,5 +1,6 @@
 import type { AgentEvent, Category, Page, Session } from "../shared/types";
 import { boundedSignal } from "./abort";
+import { recordFailure } from "./diagnostic-log";
 import { arkProvider, type MAProvider } from "./ma-provider";
 import {
   arkProblem,
@@ -27,6 +28,9 @@ export class ApiError extends Error {
     // Why the model service refused, and the model it named, when known.
     public problem?: ArkProblem,
     public model?: string,
+    // Which request failed and how, with nothing private in it: "POST
+    // /agents; HTTP 404; Request ID …". The service relays it to the app.
+    public diagnostic?: string,
   ) {
     super(message);
   }
@@ -75,8 +79,15 @@ export class ArkClient {
         if (
           error instanceof Error &&
           ["TimeoutError", "NetworkError"].includes(error.name)
-        )
+        ) {
           error.message = `${error.message} (${requestLabel(init.method, path)})`;
+          recordFailure({
+            via: "ark",
+            request: requestLabel(init.method, path),
+            status: 0,
+            code: error.name,
+          });
+        }
         throw error;
       });
       if (!response.ok) {
@@ -97,6 +108,14 @@ export class ArkClient {
             ? refusedModel(diagnostic.message)
             : undefined;
         const model = named === this.config.arkKey ? undefined : named;
+        const request = requestLabel(init.method, path);
+        recordFailure({
+          via: "ark",
+          request,
+          status: response.status,
+          code: diagnostic.code,
+          requestId: diagnostic.requestId,
+        });
         throw new ApiError(
           [400, 401, 403, 404, 409, 413, 429].includes(response.status)
             ? response.status
@@ -105,6 +124,7 @@ export class ArkClient {
           diagnostic.code,
           problem,
           model,
+          `${request}; HTTP ${response.status}${diagnostic.text ? `; ${diagnostic.text}` : ""}`,
         );
       }
       if (response.status === 204) return { ok: true } as T;
@@ -213,7 +233,7 @@ export function requestLabel(method = "GET", path: string) {
   const route = path
     .split("?")[0]
     .split("/")
-    .map((part) => (/\d/.test(part) ? ":id" : part))
+    .map((part) => (/\d/.test(part) && !/^v\d+$/.test(part) ? ":id" : part))
     .join("/");
   return `${method.toUpperCase()} ${route}`;
 }
@@ -225,20 +245,20 @@ async function errorDiagnostic(
 ) {
   const parts: string[] = [];
   let errorCode: string | undefined;
+  let requestId: string | undefined;
   // The backend's message, kept only to tell why it refused; never shown.
   let upstream = "";
   const result = () => ({
     text: parts.join("; "),
     code: errorCode,
+    requestId,
     message: upstream,
   });
-  const requestId = response.headers.get(requestIdHeader);
-  if (
-    requestId &&
-    /^[a-zA-Z0-9_-]{8,100}$/.test(requestId) &&
-    requestId !== secret
-  )
+  const header = response.headers.get(requestIdHeader);
+  if (header && /^[a-zA-Z0-9_-]{8,100}$/.test(header) && header !== secret) {
+    requestId = header;
     parts.push(`Request ID ${requestId}`);
+  }
   const reader = response.body?.getReader();
   if (!reader) return result();
   try {

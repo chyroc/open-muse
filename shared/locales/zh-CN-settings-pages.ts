@@ -82,8 +82,8 @@ export const zhSettingsPages: Record<string, string> = {
   Submit: "提交",
   "Remove attachment": "移除附件",
   "Open Muse problem report": "Open Muse 问题报告",
-  "Submit opens the share sheet so you choose where the report goes. It includes what you write and attach, the app version and the system version, and nothing else.":
-    "提交时会打开分享面板，由你选择发到哪里。报告只包含你写的内容和附件、App 版本和系统版本，不含其他信息。",
+  "Submit opens the share sheet so you choose where the report goes. It includes what you write and attach, the app version and the system version, and recent failed requests (which request, its status and error code, never their content), and nothing else.":
+    "提交时会打开分享面板，由你选择发到哪里。报告只包含你写的内容和附件、App 版本、系统版本，以及最近失败的请求（是哪个请求、状态码和错误码，不含请求内容），不含其他信息。",
   "Report copied. Paste it wherever you want to send it.":
     "报告已复制，粘贴到你想发送的地方即可。",
   "Report handed to the app you chose.": "报告已交给你选择的 App。",

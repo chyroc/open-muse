@@ -685,6 +685,9 @@ export async function handle(
         ...(error instanceof HttpError && error.code
           ? { code: error.code, details: error.details }
           : {}),
+        ...(error instanceof HttpError && error.diagnostic
+          ? { diagnostic: error.diagnostic }
+          : {}),
       },
       error instanceof HttpError ? error.status : 500,
     );

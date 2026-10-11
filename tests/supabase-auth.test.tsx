@@ -404,6 +404,7 @@ describe("Native Supabase Auth trial", () => {
             error: "Ark refused to create the workspace agent (HTTP 400).",
             code: "ark_rejected",
             details: ["model_unavailable", "doubao-seed-2-1-pro-260915"],
+            diagnostic: "POST /agents; HTTP 400; Request ID 20261011-req-0003",
           },
           { status: 422 },
         );
@@ -414,6 +415,10 @@ describe("Native Supabase Auth trial", () => {
     });
     await expect(f.client.provisionAccountWorkspace(1)).rejects.toThrow(
       "Your Ark account cannot use the model doubao-seed-2-1-pro-260915 yet.",
+    );
+    // The service's own Ark request follows the explanation, for a report.
+    await expect(f.client.provisionAccountWorkspace(1)).rejects.toThrow(
+      "(POST /agents; HTTP 400; Request ID 20261011-req-0003)",
     );
     await expect(
       f.client.saveAccountCredential(

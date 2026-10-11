@@ -1,4 +1,5 @@
 import { backgroundClient } from "../../src/background-client";
+import { failureLines } from "../../shared/diagnostic-log";
 import { activeLanguage, appVersion } from "./settings";
 import { computerAvailable, readComputer } from "./computer";
 import { dictationAvailable, readDictation } from "./dictation";
@@ -12,7 +13,8 @@ import {
 
 // A plain summary of how this Mac's app is set up, for a person to paste into
 // a problem report wherever they choose. It holds no keys, account or device
-// identifiers, messages or files, and nothing here sends it anywhere.
+// identifiers, messages or files, and nothing here sends it anywhere. Recent
+// failed requests name only the request, status, error code, and request ID.
 export function systemVersion() {
   const value = (window as unknown as { __OPEN_MUSE_SYSTEM__?: unknown })
     .__OPEN_MUSE_SYSTEM__;
@@ -62,5 +64,11 @@ export async function diagnosticReport({ signedIn }: { signedIn: boolean }) {
     );
     lines.push(`Shortcuts: ${parts.join("; ")}`);
   }
+  const failures = failureLines();
+  lines.push(
+    failures.length
+      ? `Recent failed requests:\n${failures.join("\n")}`
+      : "Recent failed requests: none",
+  );
   return lines.join("\n");
 }

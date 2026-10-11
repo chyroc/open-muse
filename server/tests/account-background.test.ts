@@ -534,10 +534,13 @@ describe("Background work for Open Muse account workspaces", () => {
     failNextCreate = "model";
     const refused = await provision(BOB);
     expect(refused.status).toBe(422);
-    expect(await refused.json()).toMatchObject({
+    const body = (await refused.json()) as { diagnostic?: string };
+    expect(body).toMatchObject({
       code: "ark_rejected",
       details: ["model_unavailable", "doubao-seed-2-1-pro-260915"],
     });
+    // Which Ark request failed, for a report; no key, IDs, or Ark's message.
+    expect(body.diagnostic).toMatch(/^POST \/agents; HTTP \d{3}/);
     // A creation Ark refused created nothing and does not use up the limit.
     expect(await used()).toBe(before);
     // Nothing is left pending: continuing setup creates the agent.

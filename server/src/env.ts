@@ -62,6 +62,8 @@ export class HttpError extends Error {
     // Machine-readable reason clients may act on; never contains user data.
     public code?: string,
     public details?: string[],
+    // Which upstream request failed and how, with nothing private in it.
+    public diagnostic?: string,
   ) {
     super(message);
   }
@@ -80,6 +82,7 @@ export function arkRefusal(error: unknown, status: number, message: string) {
     message,
     "ark_rejected",
     model ? [problem, model] : [problem],
+    error instanceof ApiError ? error.diagnostic : undefined,
   );
 }
 

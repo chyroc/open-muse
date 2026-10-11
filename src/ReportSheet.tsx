@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { CirclePlus, X } from "lucide-react";
 import { t } from "../shared/i18n";
+import { failureLines } from "../shared/diagnostic-log";
 import { buildCommit } from "./build-info";
 import { shellVersion } from "./devices";
 import { Sheet } from "./MusePages";
@@ -29,12 +30,14 @@ const MAX_TEXT = 4000;
 const MAX_ATTACHMENTS = 4;
 
 // What a report says, with the app's version and the system it runs on so
-// the problem can be reproduced. Nothing else about the person is included.
+// the problem can be reproduced, and the recent failed requests (request,
+// status, error code, request ID). Nothing else about the person is included.
 export function reportText(
   description: string,
   areas: readonly ReportArea[],
   system = shellSystem() ||
     (globalThis.navigator?.userAgent ?? "").slice(0, 160),
+  failures = failureLines(),
 ) {
   return [
     "Open Muse problem report",
@@ -44,6 +47,7 @@ export function reportText(
     `Area: ${areas.length ? areas.join(", ") : "Not chosen"}`,
     `Version: ${buildCommit || "development build"}${shellVersion() ? ` (${shellVersion()})` : ""}`,
     `System: ${system || "unknown"}`,
+    ...(failures.length ? ["", "Recent failed requests:", ...failures] : []),
   ].join("\n");
 }
 
@@ -177,7 +181,7 @@ export function ReportSheet({ onClose }: { onClose: () => void }) {
         </div>
         <p className="settings-footnote">
           {t(
-            "Submit opens the share sheet so you choose where the report goes. It includes what you write and attach, the app version and the system version, and nothing else.",
+            "Submit opens the share sheet so you choose where the report goes. It includes what you write and attach, the app version and the system version, and recent failed requests (which request, its status and error code, never their content), and nothing else.",
           )}
         </p>
         {status && (

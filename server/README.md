@@ -241,7 +241,10 @@ continues setup (`replaceUnconfirmed: true`), which creates a new resource and
 leaves the unconfirmed one unused. A recorded resource deleted at Ark is created
 again; one whose label was changed outside Open Muse stops setup with 409. Each
 account may create at most 20 resources per hour; a creation Ark definitely
-refused created nothing and is not counted.
+refused created nothing and is not counted. A refusal answers with
+`code: "ark_rejected"`, `details` (the reason, then the model Ark named), and
+`diagnostic`: the failed Ark request with its IDs left out, its HTTP status,
+Ark's error code, and its request ID, never Ark's message, keys, or IDs.
 
 Resources still carry `metadata.open_muse_workspace` (agent, environment) or
 `metadata.open_muse_identity` (memory store) equal to
