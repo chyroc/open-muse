@@ -386,7 +386,7 @@ describe("Direct MA client", () => {
     expect(f.resources.sessions).toHaveLength(0);
     expect(f.events).toHaveLength(0);
   });
-  it("blocks ordinary messages while a first-run initiation is unresolved", async () => {
+  it("checks an unconfirmed welcome before an ordinary message, and never sends it again", async () => {
     const f = fixture();
     await f.login();
     const wrapped = f.fetcher.getMockImplementation()!;
@@ -398,13 +398,25 @@ describe("Direct MA client", () => {
     await expect(f.client.startWelcome("en")).rejects.toThrow(
       "Connection lost",
     );
+    expect((await f.client.welcomeState())?.phase).toBe("unconfirmed");
+    const main = (await f.client.conversationIndex()).mainId!;
+    // With no connection at all, the history cannot be checked: nothing is
+    // sent, and the reason is the connection, not a generic refusal.
+    f.fetcher.mockImplementation(async () =>
+      Promise.reject(new TypeError("Connection lost")),
+    );
     await expect(
-      f.client.send((await f.client.conversationIndex()).mainId!, {
-        type: "user.message",
-        text: "Wait for confirmation",
-      }),
-    ).rejects.toThrow("welcome is unconfirmed");
+      f.client.send(main, { type: "user.message", text: "Wait for it" }),
+    ).rejects.toThrow();
     expect(f.events).toHaveLength(0);
+    // Back online, the send checks the history first: the welcome never
+    // landed, so it is over (an explicit retry remains), and the message goes.
+    f.fetcher.mockImplementation(wrapped);
+    await f.client.send(main, { type: "user.message", text: "Wait for it" });
+    expect((await f.client.welcomeState())?.phase).toBe("rejected");
+    expect(
+      f.events.filter((event) => event.type === "user.message").map(eventText),
+    ).toEqual(["Wait for it"]);
   });
   it("holds a message sent during the welcome until the welcome settles", async () => {
     const f = fixture();
@@ -465,7 +477,7 @@ describe("Direct MA client", () => {
     expect((await f.client.startWelcome("en")).phase).toBe("confirmed");
     await expect(settled).resolves.toBeUndefined();
   });
-  it("stops waiting when nothing resumes a first conversation left preparing", async () => {
+  it("resumes a first conversation left preparing when a message is sent, and says why it failed", async () => {
     const f = fixture();
     await f.login();
     const wrapped = f.fetcher.getMockImplementation()!;
@@ -475,18 +487,12 @@ describe("Direct MA client", () => {
         : wrapped(input, init),
     );
     await expect(f.client.startWelcome("en")).rejects.toThrow("503");
-    const realNow = Date.now;
-    const start = realNow();
-    // Past the grace on the second look: no attempt picked it up.
-    let looks = 0;
-    vi.spyOn(Date, "now").mockImplementation(() =>
-      looks++ ? start + 6_000 : start,
-    );
-    try {
-      await expect(f.client.settleWelcome()).rejects.toThrow("being prepared");
-    } finally {
-      vi.spyOn(Date, "now").mockRestore();
-    }
+    // No view resumes it (the Mac only tries once): the send does, and the
+    // failure it reports is the real one.
+    await expect(f.client.settleWelcome()).rejects.toThrow("503");
+    f.fetcher.mockImplementation(wrapped);
+    await expect(f.client.settleWelcome()).resolves.toBeUndefined();
+    expect((await f.client.welcomeState())?.phase).toBe("confirmed");
   });
   it("resumes a first conversation left preparing by a failed creation", async () => {
     const f = fixture();

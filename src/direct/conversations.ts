@@ -150,6 +150,15 @@ export class Conversations {
         delete index.sending;
     });
   }
+  // The send claim for one event that is known never to have landed: the
+  // first conversation proved it with a fresh history read. Only that exact
+  // claim is dropped; any other keeps the age rule above.
+  async releaseSend(id: string, event: string) {
+    await this.update((index) => {
+      if (index.sending?.session === id && index.sending.event === event)
+        delete index.sending;
+    });
+  }
   async create(
     kind: ConversationKind,
     title: string,

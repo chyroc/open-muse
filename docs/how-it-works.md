@@ -383,9 +383,12 @@ Same-origin write guards and persisted event IDs prevent duplicate initiations
 on rerender or relaunch. Setup interrupted before the welcome went out resumes
 on its own; an uncertain submission is checked in history, never sent again,
 and offers an explicit retry once a fresh history read shows it never landed.
-Until the first conversation settles, the composer is held. A message sent
-before the app has read that state (right at launch) waits for the welcome
-instead of failing, and fails only when nothing is preparing it. These are
+Until the first conversation settles, the iPhone composer is held. A message
+sent while it is unsettled (right at launch, or on the Mac, which offers no
+Continue) resumes it when no attempt is running, waits for it, and fails only
+with the reason resuming failed. An unconfirmed welcome is checked in history
+first: if it never landed it is over, its send claim on the main chat is
+dropped, and the message goes; it is never sent again. These are
 device-local guards, not a cross-device atomic first-run protocol. Naming and
 follow-up do not establish scheduled check-ins or account access.
 

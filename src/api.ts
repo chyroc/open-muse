@@ -1455,6 +1455,7 @@ export class Client {
           runtime: r,
           eventId,
         }),
+      release: (id, eventId) => this.conversations(r).releaseSend(id, eventId),
     }));
   }
   startWelcome(language: string, retry = false) {
@@ -1474,13 +1475,21 @@ export class Client {
     eventId?: string,
     signal?: AbortSignal,
   ) {
-    if (!(await this.welcomeService(r).settle(session, eventId, signal)))
-      throw new ApiError(
-        409,
-        t(
-          "The first conversation is being prepared or its welcome is unconfirmed. Check its history before sending.",
-        ),
-      );
+    const { settled, failure } = await this.welcomeService(r).settle(
+      systemLanguage(),
+      session,
+      eventId,
+      signal,
+    );
+    if (settled) return;
+    // Why resuming it failed says more than that it is unsettled.
+    if (failure instanceof Error) throw failure;
+    throw new ApiError(
+      409,
+      t(
+        "The first conversation is being prepared or its welcome is unconfirmed. Check its history before sending.",
+      ),
+    );
   }
   private checkInService(r: Runtime) {
     return (r.checkin ??= new DirectCheckIn(r.key, this.db, {

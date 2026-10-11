@@ -50,6 +50,8 @@ type Remote = {
     text: string,
     eventId: string,
   ): Promise<Page<AgentEvent>>;
+  // Drops the chat's send claim for a welcome proven never to have landed.
+  release?(session: string, eventId: string): Promise<void>;
 };
 
 // One first-run initiation per device-local identity. Claims are transactional;
@@ -68,19 +70,31 @@ export class DirectWelcome {
     return this.db.get<WelcomeState>(this.key);
   }
   // Waits until the first conversation no longer holds a message for
-  // `session`, and says whether it let go. A running attempt is waited for
-  // (bounded); without one, a "preparing" gets a short grace for the launch
-  // check to pick it up, and anything else cannot change here, so it holds.
-  async settle(session?: string, eventId?: string, signal?: AbortSignal) {
+  // `session`. A send must not depend on a view having resumed it, so when no
+  // attempt is running this starts one (the same resumption as at launch: a
+  // "preparing" carries on, an unconfirmed welcome is checked in history and
+  // never sent again), then waits for it, bounded. Says whether it let go,
+  // and why not when that attempt failed.
+  async settle(
+    language: string,
+    session?: string,
+    eventId?: string,
+    signal?: AbortSignal,
+  ): Promise<{ settled: boolean; failure?: unknown }> {
     const started = Date.now();
-    let active = started;
+    let resumed = false;
+    let failure: unknown;
     for (;;) {
       const state = await this.state();
-      if (!welcomeHolds(state, session, eventId)) return true;
-      const now = Date.now();
-      if (this.job) active = now;
-      else if (state?.phase !== "preparing") return false;
-      if (now - active > 5_000 || now - started > 90_000) return false;
+      if (!welcomeHolds(state, session, eventId)) return { settled: true };
+      if (!this.job) {
+        if (resumed) return { settled: false, failure };
+        resumed = true;
+        void this.start(language).catch((error: unknown) => {
+          failure = error;
+        });
+      }
+      if (Date.now() - started > 90_000) return { settled: false, failure };
       signal?.throwIfAborted();
       await Promise.race([
         this.job?.catch(() => undefined),
@@ -109,12 +123,14 @@ export class DirectWelcome {
       if (
         ["sending", "unconfirmed"].includes(attempt.phase) &&
         !history.some((event) => event.id === attempt.eventId)
-      )
+      ) {
         await this.db.update<WelcomeState>(this.key, (old) =>
           old && "eventId" in old && old.eventId === attempt.eventId
             ? { ...old, phase: "rejected" }
             : old!,
         );
+        await this.remote.release?.(attempt.session, attempt.eventId);
+      }
       state = (await this.state())!;
       if (state.phase !== "rejected" || !retry) return state;
       // A definitive rejection permits a new explicit attempt, not an auto retry.
