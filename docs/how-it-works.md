@@ -706,6 +706,23 @@ person started says what went wrong. A copy run from the disk image or from a
 folder this user cannot write offers the download instead, and development
 builds never update themselves.
 
+The iPhone and Android apps look for a newer release at launch and on
+returning to the app, at most every six hours, and whenever the person taps
+**Check now** under **Updates** in Settings > About. They read
+`/download/ios.json` or `/download/android.json` natively from the website
+(the mainland China mirror answers when the main site cannot) and compare its
+build number with their own. A newer release shows a quiet notice above the
+chat until the person updates or hides it for that release. On the iPhone,
+which is distributed through TestFlight, **Update in TestFlight** opens the
+public TestFlight link, and the website names a build only once public testers
+can install it. On Android, with **Download updates automatically** on, the
+release downloads in the background from one of the two download mirrors;
+the app keeps it only when its size and SHA-256 match the feed, it is this
+app's package with a higher version code, and it is signed with the same
+certificate as the installed app. **Install update** then hands it to the
+system installer, which always asks; the first time, Android asks the person
+to allow installs from Open Muse. Checks that run on their own fail quietly.
+
 ### Data on your iPhone
 
 The iPhone app answers two device tools. `health_read` reads one Apple Health

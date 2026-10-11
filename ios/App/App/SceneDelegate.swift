@@ -282,6 +282,15 @@ class MuseBridgeViewController: CAPBridgeViewController {
                 injectionTime: .atDocumentStart, forMainFrameOnly: true
             ))
         }
+        // The build number, which the update check compares with the newest
+        // TestFlight build.
+        if let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String,
+           let number = Int(build) {
+            webView?.configuration.userContentController.addUserScript(WKUserScript(
+                source: "window.__OPEN_MUSE_BUILD__ = \(number);",
+                injectionTime: .atDocumentStart, forMainFrameOnly: true
+            ))
+        }
         // The system version, which WebKit's user agent no longer reports.
         if let data = try? JSONSerialization.data(
                withJSONObject: "\(UIDevice.current.systemName) \(UIDevice.current.systemVersion)",

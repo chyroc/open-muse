@@ -89,6 +89,7 @@ public class MuseBridgePlugin extends Plugin {
         features.put("musePersonal", new MusePersonal(activity));
         features.put("museFiles", new MuseFiles(activity));
         features.put("museShare", new MuseShare(activity));
+        features.put("museUpdate", new MuseUpdate(activity));
         if (MuseHealth.supported()) features.put("museHealth", new MuseHealth(activity));
         if (MuseReplyService.supported()) {
             features.put("museReplying", (body, reply) -> {
@@ -184,11 +185,13 @@ public class MuseBridgePlugin extends Plugin {
         LocaleList locales = LocaleList.getDefault();
         for (int i = 0; i < locales.size(); i++) languages.put(locales.get(i).toLanguageTag());
         String version = "";
+        long build = 0;
         try {
             PackageInfo info = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
             if (info.versionName != null) version = info.versionName;
+            build = info.getLongVersionCode();
         } catch (Exception ignored) {
-            // The page shows no version.
+            // The page shows no version and checks for no update.
         }
         String device = Settings.Global.getString(context.getContentResolver(), Settings.Global.DEVICE_NAME);
         if (device == null || device.isEmpty()) device = Build.MODEL;
@@ -222,6 +225,7 @@ public class MuseBridgePlugin extends Plugin {
             .append("window.__OPEN_MUSE_LANGUAGES__=").append(languages).append(';')
             .append("window.__OPEN_MUSE_DEVICE__=").append(new JSONObject(deviceInfo)).append(';')
             .append("window.__OPEN_MUSE_VERSION__=").append(JSONObject.quote(version)).append(';')
+            .append("window.__OPEN_MUSE_BUILD__=").append(build).append(';')
             .append("window.__OPEN_MUSE_SYSTEM__=").append(JSONObject.quote("Android " + Build.VERSION.RELEASE)).append(';')
             .append("window.__OPEN_MUSE_TYPE_SCALE__=").append(typeScale(context.getResources().getConfiguration())).append(';');
         int corner = displayCorner();

@@ -1,9 +1,6 @@
 import { formatLocale, systemLanguage, t } from "../shared/i18n";
 import { flushSync } from "react-dom";
-import {
-  isNetworkFailure,
-  isTransientFailure,
-} from "../shared/network-error";
+import { isNetworkFailure, isTransientFailure } from "../shared/network-error";
 import { isBackgroundPost } from "./background-feed";
 import {
   Fragment,
@@ -104,6 +101,7 @@ import {
 import { listenForShake } from "./shake";
 import { ReportSheet } from "./ReportSheet";
 import { ProblemReport } from "./ProblemReport";
+import { UpdateNotice, useAutomaticUpdateCheck } from "./UpdateNotice";
 import { buildCommit } from "./build-info";
 import { shellVersion } from "./devices";
 import { shellSystem } from "./DevicesSheet";
@@ -363,6 +361,8 @@ function Workspace({
   const [actionError, setActionError] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  // The iPhone and Android apps look for a newer release (see app-update).
+  useAutomaticUpdateCheck();
   const [welcome, setWelcome] = useState<WelcomeState>();
   const welcomePhase = welcome?.phase;
   const [welcomeBusy, setWelcomeBusy] = useState(false);
@@ -1600,6 +1600,7 @@ function Workspace({
           </header>
         )}
         <div className="connection-notices">
+          {isChat && <UpdateNotice />}
           {config?.mode === "disconnected" && (
             <a className="connect-notice" href="#/settings">
               <Unplug size={16} />

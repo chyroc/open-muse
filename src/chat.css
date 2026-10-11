@@ -227,6 +227,43 @@ html.sidebar-dragging .sidebar-panel {
   padding: 12px 14px;
   margin: 0 0 12px;
 }
+/* A newer release: a quiet row like the connection notice, its action a
+   text button that dims while pressed. */
+.update-notice {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #58585e;
+  font-size: 13px;
+  line-height: 1.4;
+  background: #f0f0f2;
+  border-radius: 16px;
+  padding: 10px 8px 10px 14px;
+  margin: 0 0 12px;
+}
+.update-notice > span {
+  flex: 1;
+  min-width: 0;
+}
+.update-notice button {
+  color: inherit;
+  font: inherit;
+  transition: opacity 0.12s ease-out;
+}
+.update-notice button:active {
+  opacity: 0.5;
+}
+.update-notice-action {
+  font-weight: 600 !important;
+  white-space: nowrap;
+  padding: 4px 6px;
+}
+.update-notice-close {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+}
 .companion-shell .error-banner {
   margin: 0 0 10px;
   padding: 12px;

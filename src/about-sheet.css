@@ -58,7 +58,32 @@
   line-height: 1.45;
   color: #6e6e73;
 }
+/* Updates: the status under the label, the action as a blue text button
+   that dims while pressed. */
+.update-row .settings-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.update-row-action {
+  flex-shrink: 0;
+  font: inherit;
+  font-size: 17px;
+  color: #007aff;
+  white-space: nowrap;
+  transition: opacity 0.12s ease-out;
+}
+.update-row-action:active {
+  opacity: 0.5;
+}
+.update-row-action:disabled {
+  color: #8e8e93;
+}
 @media (prefers-color-scheme: dark) {
+  .update-row-action {
+    color: #0a84ff;
+  }
   .about-icon {
     background: #2c2c2e;
     box-shadow: none;

@@ -1,5 +1,6 @@
 import { zhErrors } from "./zh-CN-errors";
 import { zhProblemReport } from "./zh-CN-problem-report";
+import { zhUpdate } from "./zh-CN-update";
 import { zhLibrary } from "./zh-CN-library";
 import { zhAttachments } from "./zh-CN-attachments";
 import { zhAccount } from "./zh-CN-account";
@@ -29,6 +30,7 @@ import { zhAndroid } from "./zh-CN-android";
 export const zhCN: Record<string, string> = {
   ...zhErrors,
   ...zhProblemReport,
+  ...zhUpdate,
   ...zhLibrary,
   ...zhAttachments,
   ...zhAccount,

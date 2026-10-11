@@ -63,6 +63,11 @@ the team's Apple Distribution identity in the login keychain, and an existing
 app record for `app.openmuse.mobile`. It recreates the App Store provisioning
 profile through the API on every run, so the key needs only the App Manager role,
 and numbers the build `yyyymmddHHMM` unless a build number is passed after `--`.
+With `-- --publish` it then waits for processing, adds the build to the public
+TestFlight group, submits it for beta review, and once public testers can
+install it records it in `site/downloads.json`; commit that file and deploy
+the website, and installed iPhone apps offer the update. When review takes
+longer than half an hour it stops; `-- --publish-only <build>` finishes later.
 
 `npm run macos:build` and `npm run ios:build` (the Simulator app) make such a
 build the same way: they take the three values from the environment or read
@@ -183,7 +188,8 @@ and losing it means existing installs can no longer be updated.
 
 `npm run android:release -- --publish` also uploads the APK to both mirrors,
 checks them, and records it in `site/downloads.json`. Commit that file and
-deploy the website to offer the new release.
+deploy the website to offer the new release; installed apps learn about it
+from `/download/android.json`.
 
 ## Checking a commit in isolation
 

@@ -42,7 +42,8 @@
   .side-chat-title {
     color: #aeaeb2;
   }
-  .connect-notice {
+  .connect-notice,
+  .update-notice {
     color: #aeaeb2;
     background: #2c2c2e;
   }

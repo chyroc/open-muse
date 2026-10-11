@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { UpdateRows } from "./UpdateNotice";
 import { ExternalLink, ShieldCheck, Unplug } from "lucide-react";
 import { t } from "../shared/i18n";
 import { buildCommit } from "./build-info";
@@ -38,6 +39,7 @@ export function AboutSheet({ onClose }: { onClose: () => void }) {
             </span>
           </button>
         </li>
+        <UpdateRows />
         <li>
           <div className="settings-list-row">
             <span className="settings-row-text">{t("Runs on")}</span>
