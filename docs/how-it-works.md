@@ -94,8 +94,11 @@ and the request ID follow in parentheses for support. The service passes the
 same reason to the app when it is the one calling Ark, as when it prepares
 the workspace, and names its own limits (ten key checks and twenty workspace
 creations per account per hour) instead of a generic error. A setup step
-Ark refused leaves nothing pending, so Continue setup works once the cause
-is fixed.
+Ark refused leaves nothing pending and does not count toward that limit, so
+Continue setup works once the cause is fixed. Setup the app starts on its own
+(for a first message, a background Feed or idea run, or the memory store)
+waits before asking again after a failure, from 30 seconds up to 10 minutes,
+and shows the last reason meanwhile; Continue setup in Settings always asks.
 
 ### What an account stores
 

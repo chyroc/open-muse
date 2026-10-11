@@ -7,6 +7,7 @@ import { digest, uuid } from "../shared/crypto";
 import { accountWorkspaceKey } from "../shared/workspace-key";
 import { readSSE } from "../shared/sse";
 import { boundedSignal } from "../shared/abort";
+import { isNetworkFailure } from "../shared/network-error";
 import { canAutoApprove } from "../shared/approval-policy";
 import {
   eventText,
@@ -487,7 +488,7 @@ export class Client {
       const account = this.identity.account;
       // Account workspaces are created and recorded by the service; the
       // client only receives their IDs.
-      const provision = async (options: {
+      const provisionOnce = async (options: {
         replaceUnconfirmed: boolean;
         resetSettings: boolean;
       }) => {
@@ -520,6 +521,34 @@ export class Client {
           memoryStoreId: workspace.memoryStoreId,
           model: workspace.model,
         };
+      };
+      // Automatic setup (background generation, a first message, the memory
+      // store) backs off after a failure instead of asking the service again
+      // at once: each ask can count against the account's hourly creation
+      // limit, and the same failure would only repeat. Continue in Settings
+      // always asks. A dropped connection is not backed off.
+      let backoff = { failures: 0, until: 0, error: undefined as unknown };
+      const provision = async (options: {
+        replaceUnconfirmed: boolean;
+        resetSettings: boolean;
+        explicit?: boolean;
+      }) => {
+        if (!options.explicit && Date.now() < backoff.until)
+          throw backoff.error;
+        try {
+          const result = await provisionOnce(options);
+          backoff = { failures: 0, until: 0, error: undefined };
+          return result;
+        } catch (error) {
+          if (!isNetworkFailure(error))
+            backoff = {
+              failures: backoff.failures + 1,
+              until:
+                Date.now() + Math.min(30_000 * 2 ** backoff.failures, 600_000),
+              error,
+            };
+          throw error;
+        }
       };
       const resolve = async (create: boolean) =>
         create
@@ -596,7 +625,7 @@ export class Client {
   startWorkspace(
     options: { replaceUnconfirmed?: boolean; resetSettings?: boolean } = {},
   ) {
-    return this.context().workspace.start(options);
+    return this.context().workspace.start({ ...options, explicit: true });
   }
   // Resolves an unconfirmed agent or environment change by reading Ark on the
   // service; nothing is sent to Ark. adopt saves the current values and is

@@ -1082,6 +1082,45 @@ describe("Direct MA client", () => {
       );
     },
   );
+  it("backs off automatic workspace setup after a failure, but not Continue in Settings", async () => {
+    const f = fixture();
+    await f.login();
+    const real = f.account.account.provisionAccountWorkspace;
+    const spy = vi
+      .spyOn(f.account.account, "provisionAccountWorkspace")
+      .mockRejectedValue(
+        Object.assign(new Error("Ark refused to create the workspace agent."), {
+          code: "ark_rejected",
+        }),
+      );
+    await expect(f.client.prepareWorkspace()).rejects.toThrow(
+      "Ark refused to create",
+    );
+    // Asked again on its own (a background generation, say): the service is
+    // not asked again, and the reason stays the original one.
+    await expect(f.client.prepareWorkspace()).rejects.toThrow(
+      "Ark refused to create",
+    );
+    expect(spy).toHaveBeenCalledTimes(1);
+    // Continue in Settings always asks.
+    spy.mockImplementation(real);
+    await f.client.startWorkspace();
+    await expect(f.client.prepareWorkspace()).resolves.toBeUndefined();
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(await f.client.workspaceStatus()).toMatchObject({ state: "ready" });
+  });
+  it("does not back off workspace setup after a dropped connection", async () => {
+    const f = fixture();
+    await f.login();
+    const real = f.account.account.provisionAccountWorkspace;
+    const spy = vi
+      .spyOn(f.account.account, "provisionAccountWorkspace")
+      .mockRejectedValueOnce(new TypeError("Load failed"))
+      .mockImplementation(real);
+    await expect(f.client.prepareWorkspace()).rejects.toThrow();
+    await expect(f.client.prepareWorkspace()).resolves.toBeUndefined();
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
   it("has no backend dependency while signed out", async () => {
     const f = fixture();
     await f.client.restore();

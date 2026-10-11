@@ -57,9 +57,11 @@ export class DirectWorkspace {
     private db: LocalDatabase,
     // The account's workspace is created and recorded by the Open Muse
     // service; this client never discovers or creates resources itself.
+    // `explicit` marks setup the person asked for in Settings.
     private provision: (options: {
       replaceUnconfirmed: boolean;
       resetSettings: boolean;
+      explicit?: boolean;
     }) => Promise<{ agentId: string; environmentId: string; model: string }>,
     // The account's sealed workspace record, read without creating anything.
     private lookup: () => Promise<
@@ -173,12 +175,17 @@ export class DirectWorkspace {
   // recreates a deleted agent or environment with default settings when its
   // saved settings cannot be used.
   async start(
-    options: { replaceUnconfirmed?: boolean; resetSettings?: boolean } = {},
+    options: {
+      replaceUnconfirmed?: boolean;
+      resetSettings?: boolean;
+      explicit?: boolean;
+    } = {},
   ) {
     if (!this.job)
       this.job = this.prepare({
         replaceUnconfirmed: options.replaceUnconfirmed === true,
         resetSettings: options.resetSettings === true,
+        explicit: options.explicit === true,
       })
         .catch(async (error) => {
           const code = (error as { code?: string }).code;
@@ -219,6 +226,7 @@ export class DirectWorkspace {
   private async prepare(options: {
     replaceUnconfirmed: boolean;
     resetSettings: boolean;
+    explicit: boolean;
   }) {
     await this.update((row) => {
       row.state = "preparing";
