@@ -537,6 +537,14 @@ deployed or that a real unattended generation can complete.
 - `GET /v1/account/workspace`: `{revision, workspace?, unconfirmed}` for the
   account's current key, where `workspace` is `{environmentId?, memoryStoreId?,
   agentId?, model}` from the sealed record. Creates nothing.
+- `POST /v1/account/diagnostics`: `{platform, app_version, system, failures}`
+  keeps a problem report the person chose to send from an error. `failures`
+  holds at most 20 redacted failed requests (`{at, via, request, status,
+  code?, requestId?, detail?}`), each field checked against the same patterns
+  as the app's own record; anything else is dropped, and any other key is
+  refused (400). At most ten an hour (429, `code: "report_limit"`). Every
+  other failed request of a verified account is recorded the same way by the
+  service itself. Both kinds last 14 days, at most 200 per account.
 - `POST /v1/account/workspace`: `{credentialRevision, replaceUnconfirmed?,
   confirm: true}` creates any missing resource as described under Account
   workspaces and returns the same shape. 409 for a stale key revision, a

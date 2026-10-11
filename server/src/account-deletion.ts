@@ -20,6 +20,7 @@ export const ACCOUNT_TABLES = [
   "upcoming_targets",
   "proactive_claims",
   "account_devices",
+  "account_diagnostics",
   "account_sync_items",
   "account_sync_counters",
   "account_resources",

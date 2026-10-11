@@ -103,6 +103,10 @@ import {
 } from "../shared/notices";
 import { listenForShake } from "./shake";
 import { ReportSheet } from "./ReportSheet";
+import { ProblemReport } from "./ProblemReport";
+import { buildCommit } from "./build-info";
+import { shellVersion } from "./devices";
+import { shellSystem } from "./DevicesSheet";
 import { backgroundClient } from "./background-client";
 import { registerThisIPhone } from "./iphone-device";
 import { ensureBackgroundWork } from "./background-default";
@@ -1609,6 +1613,12 @@ function Workspace({
           {(loadError || actionError) && (
             <div className="error-banner" role="alert">
               <span>{actionError || loadError}</span>
+              <ProblemReport
+                key={actionError || loadError}
+                platform={appSurface() === "android" ? "android" : "ios"}
+                version={buildCommit || shellVersion()}
+                system={shellSystem()}
+              />
               <button
                 aria-label={t("Refresh history")}
                 onClick={() => {

@@ -1,4 +1,5 @@
 import { zhErrors } from "./zh-CN-errors";
+import { zhProblemReport } from "./zh-CN-problem-report";
 import { zhLibrary } from "./zh-CN-library";
 import { zhAttachments } from "./zh-CN-attachments";
 import { zhAccount } from "./zh-CN-account";
@@ -27,6 +28,7 @@ import { zhAndroid } from "./zh-CN-android";
 // English source messages are stable keys. Keep protocol names and user data out.
 export const zhCN: Record<string, string> = {
   ...zhErrors,
+  ...zhProblemReport,
   ...zhLibrary,
   ...zhAttachments,
   ...zhAccount,

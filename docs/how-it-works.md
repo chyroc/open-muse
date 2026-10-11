@@ -665,6 +665,17 @@ error code, and the request ID. Message text, keys, account and resource IDs,
 and anything the person wrote are never kept; a field that does not match its
 narrow pattern is dropped.
 
+When an error shows in the chat on iPhone or the Mac, **Report this problem**
+offers to send it to the developer. It explains what goes, can show the exact
+text, and sends only when the person agrees: the platform, the app and system
+versions, and those recent failed requests. The account's Open Muse service
+keeps such reports, at most ten an hour, together with its own redacted
+record of requests that failed for the account (request, status, error code,
+and its upstream diagnostic), for 14 days and at most 200 per account. They
+are part of the account's data export and go with the account when it is
+deleted. `node server/deploy/volcengine/diagnostics.mjs <email>` lists them for
+one account.
+
 Settings and the pages within it use a large title that scrolls away with
 the content; a small centered title over a frosted bar takes its place.
 

@@ -2866,3 +2866,57 @@ code {
     font-size: 9px;
   }
 }
+
+/* Report this problem, offered inside an error: a quiet link until asked,
+   then the explanation, what is sent, and the choice, on their own row. */
+.error-banner {
+  flex-wrap: wrap;
+}
+.problem-report-open,
+.problem-report-actions button {
+  font: inherit;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+  transition: opacity 0.12s ease-out;
+}
+.problem-report-open:active,
+.problem-report-actions button:active {
+  opacity: 0.55;
+}
+.problem-report,
+.problem-report-status {
+  flex-basis: 100%;
+  margin: 0;
+}
+.problem-report p {
+  margin: 0 0 6px;
+}
+.problem-report pre {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  font-size: 10.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 180px;
+  overflow: auto;
+}
+.problem-report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: flex-end;
+}
+.problem-report-actions .problem-report-details {
+  margin-right: auto;
+}
+.problem-report-actions .problem-report-send {
+  font-weight: 600;
+}
+.problem-report-actions button:disabled {
+  opacity: 0.5;
+}

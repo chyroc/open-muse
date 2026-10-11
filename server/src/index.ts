@@ -9,7 +9,7 @@ import {
   maEndpoint,
   type Env,
 } from "./env";
-import { ApiError } from "../../shared/ark";
+import { ApiError, requestLabel } from "../../shared/ark";
 import { Repository } from "./repository";
 import { validateTime } from "./schedule";
 import { tick } from "./jobs";
@@ -23,6 +23,7 @@ import { accountWorkspaceKey } from "../../shared/workspace-key";
 import { externalScheduler, TRIGGER_PATH, verifyTrigger } from "./trigger";
 import { UpcomingDelivery, upcomingInput } from "./upcoming";
 import { AccountDevices, deviceInput, validDeviceId } from "./devices";
+import { AccountDiagnostics, diagnosticReportInput } from "./diagnostics";
 import { BrowserViews, relay } from "./browser";
 import { LarkStates, MAX_LARK_STATE, sandboxState, tokenOwner } from "./lark";
 import { LarkConnections } from "./lark-connect";
@@ -94,8 +95,10 @@ export async function handle(
 ): Promise<Response> {
   let origin: string | null = null;
   let response: Response;
+  // The verified account a failure is recorded for, once it is known.
+  let account: string | undefined;
+  const url = new URL(request.url);
   try {
-    const url = new URL(request.url);
     // Incoming webhooks are posted by external systems with any Origin or
     // none. Only this one route skips the origin check: it is authenticated
     // by the hook's own secret and never gets CORS headers.
@@ -185,6 +188,7 @@ export async function handle(
     } else {
       // Always a verified Open Muse account; see authenticate().
       const { owner, userId } = await verifiedAccount(request, env, fetcher);
+      account = owner;
       await new AccountCredentials(env, owner).seen(Date.now());
       const repo = new Repository(env.DB, owner);
       const connections = new ConnectionStore(env, owner);
@@ -340,6 +344,14 @@ export async function handle(
             ),
           );
         } else throw new HttpError(405, "Method not allowed.");
+      } else if (url.pathname === "/v1/account/diagnostics") {
+        if (request.method !== "POST")
+          throw new HttpError(405, "Method not allowed.");
+        response = json(
+          await new AccountDiagnostics(env, owner).report(
+            diagnosticReportInput(await body(request, 16_384)),
+          ),
+        );
       } else if (url.pathname.startsWith("/v1/account/devices")) {
         const devices = new AccountDevices(env, owner);
         const id = /^\/v1\/account\/devices\/([^/]+)$/.exec(url.pathname)?.[1];
@@ -691,6 +703,21 @@ export async function handle(
       },
       error instanceof HttpError ? error.status : 500,
     );
+    // Kept, redacted, so a problem can be looked into later. A report that
+    // failed is not recorded as another failure, and a failed account
+    // deletion never writes back data it has already removed.
+    if (
+      account &&
+      url.pathname !== "/v1/account/diagnostics" &&
+      !(url.pathname === "/v1/account" && request.method === "DELETE")
+    )
+      await new AccountDiagnostics(env, account).failed({
+        via: "service",
+        request: requestLabel(request.method, url.pathname),
+        status: error instanceof HttpError ? error.status : 500,
+        code: error instanceof HttpError ? error.code : undefined,
+        detail: error instanceof HttpError ? error.diagnostic : undefined,
+      });
   }
   if (origin) {
     response.headers.set("Access-Control-Allow-Origin", origin);

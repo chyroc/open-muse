@@ -1,5 +1,5 @@
 import { t } from "../shared/i18n";
-import { recordFailure } from "../shared/diagnostic-log";
+import { recordFailure, type FailedRequest } from "../shared/diagnostic-log";
 import { requestLabel } from "../shared/ark";
 import { upcomingDeliveryInput } from "../shared/upcoming";
 import {
@@ -84,6 +84,12 @@ const browserFrame = z.object({
 });
 export type BrowserFrame = z.infer<typeof browserFrame>;
 
+export type ProblemReport = {
+  platform: "mac" | "ios" | "android";
+  app_version: string;
+  system: string;
+  failures: FailedRequest[];
+};
 export class BackgroundRequestError extends Error {
   constructor(
     message: string,
@@ -662,6 +668,7 @@ export class BackgroundClient {
     path:
       | "/v1/account"
       | "/v1/account/credential"
+      | "/v1/account/diagnostics"
       | "/v1/account/workspace"
       | "/v1/account/workspace/settings"
       | "/v1/account/workspace/reconcile"
@@ -901,6 +908,20 @@ export class BackgroundClient {
       method: "PUT",
       body: JSON.stringify(syncPushInput.parse({ workspace, mutations })),
     });
+  }
+  // A problem report the person chose to send: platform, versions, and the
+  // device's recent failed requests, redacted. Sent once, never retried.
+  sendProblemReport(report: ProblemReport) {
+    return this.accountRequest(
+      "/v1/account/diagnostics",
+      z.object({ id: z.string() }),
+      { method: "POST", body: JSON.stringify(report) },
+      {
+        429: t(
+          "Too many problem reports for this account. Try again in an hour.",
+        ),
+      },
+    );
   }
   // The account's workspace configuration for its current key, as sealed by
   // the service. Nothing is created by reading it.

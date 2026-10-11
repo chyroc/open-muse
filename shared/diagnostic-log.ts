@@ -34,7 +34,11 @@ function storage() {
   }
 }
 
-function clean(entry: Partial<FailedRequest>): FailedRequest | undefined {
+// The entry with every field checked, or undefined when its required fields
+// do not hold. The service applies the same rules to what it keeps.
+export function cleanFailure(
+  entry: Partial<FailedRequest>,
+): FailedRequest | undefined {
   if (
     typeof entry.at !== "number" ||
     !Number.isFinite(entry.at) ||
@@ -65,7 +69,7 @@ export function recentFailures(): FailedRequest[] {
   try {
     const list = JSON.parse(storage()?.getItem(storageKey) ?? "[]");
     return Array.isArray(list)
-      ? list.flatMap((entry) => clean(entry) ?? []).slice(-limit)
+      ? list.flatMap((entry) => cleanFailure(entry) ?? []).slice(-limit)
       : [];
   } catch {
     return [];
@@ -79,7 +83,7 @@ export function recordFailure(
   at = Date.now(),
 ) {
   const store = storage();
-  const kept = clean({ ...entry, at });
+  const kept = cleanFailure({ ...entry, at });
   if (!store || !kept) return;
   try {
     store.setItem(

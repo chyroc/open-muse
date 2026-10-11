@@ -515,6 +515,68 @@ describe("Background work for Open Muse account workspaces", () => {
     expect(stale.status).toBe(409);
   });
 
+  it("keeps a problem report the person sends, redacted and limited", async () => {
+    const report = {
+      platform: "mac",
+      app_version: "20261011-ec65daa (612)",
+      system: "macOS 26.0.1 (25A362)",
+      failures: [
+        {
+          at: Date.UTC(2026, 9, 11, 7, 0, 0),
+          via: "ark",
+          request: "POST /agents",
+          status: 404,
+          code: "NotFound",
+          requestId: "20261011-req-0001",
+        },
+        // Not a request label: dropped, never kept as text.
+        { at: 1, via: "ark", request: "a note a person wrote", status: 500 },
+      ],
+    };
+    const sent = await request(
+      CAROL,
+      "/v1/account/diagnostics",
+      report,
+      "POST",
+    );
+    expect(sent.status).toBe(200);
+    const { id } = (await sent.json()) as { id: string };
+    const row = await env.DB.prepare(
+      "SELECT kind,body FROM account_diagnostics WHERE owner_id=? AND id=?",
+    )
+      .bind(owners[CAROL], id)
+      .first<{ kind: string; body: string }>();
+    expect(row?.kind).toBe("report");
+    expect(JSON.parse(row!.body)).toEqual({
+      ...report,
+      failures: [report.failures[0]],
+    });
+    // Only the described fields are accepted.
+    expect(
+      (
+        await request(
+          CAROL,
+          "/v1/account/diagnostics",
+          { ...report, message: "my private words" },
+          "POST",
+        )
+      ).status,
+    ).toBe(400);
+    for (let i = 1; i < 10; i++)
+      expect(
+        (await request(CAROL, "/v1/account/diagnostics", report, "POST"))
+          .status,
+      ).toBe(200);
+    const limited = await request(
+      CAROL,
+      "/v1/account/diagnostics",
+      report,
+      "POST",
+    );
+    expect(limited.status).toBe(429);
+    expect(await limited.json()).toMatchObject({ code: "report_limit" });
+  });
+
   it("names the model Ark refused, and continues once it is enabled", async () => {
     const agent = (
       (await (await request(BOB, "/v1/account/workspace")).json()) as {
@@ -541,6 +603,19 @@ describe("Background work for Open Muse account workspaces", () => {
     });
     // Which Ark request failed, for a report; no key, IDs, or Ark's message.
     expect(body.diagnostic).toMatch(/^POST \/agents; HTTP \d{3}/);
+    // The service keeps the same redacted record for the account.
+    const kept = await env.DB.prepare(
+      "SELECT body FROM account_diagnostics WHERE owner_id=? AND kind='service' ORDER BY created_at DESC LIMIT 1",
+    )
+      .bind(owners[BOB])
+      .first<{ body: string }>();
+    expect(JSON.parse(kept!.body)).toMatchObject({
+      via: "service",
+      request: "POST /v1/account/workspace",
+      status: 422,
+      code: "ark_rejected",
+      detail: expect.stringMatching(/^POST \/agents; HTTP/),
+    });
     // A creation Ark refused created nothing and does not use up the limit.
     expect(await used()).toBe(before);
     // Nothing is left pending: continuing setup creates the agent.

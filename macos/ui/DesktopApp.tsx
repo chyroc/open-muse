@@ -25,6 +25,8 @@ import {
 import type { Client } from "../../src/api";
 import { useTask } from "../../src/useTask";
 import { AuthPanel } from "../../src/AuthPanel";
+import { ProblemReport } from "../../src/ProblemReport";
+import { systemVersion } from "./diagnostics";
 import { Markdown } from "../../src/components";
 import { defaultIdentity } from "../../src/direct/identity";
 import type {
@@ -50,7 +52,7 @@ const LibraryPage = lazy(() =>
 import { MacGoals } from "./goals";
 import { codeFileName, exportTextFile, libraryPath } from "./library";
 import { CodeDownload } from "../../src/CodeBlock";
-import { connectionRoute, openNativeSettings } from "./settings";
+import { appVersion, connectionRoute, openNativeSettings } from "./settings";
 import { navLabel } from "./labels";
 import { connectionError, connectionReady } from "./startup";
 import { WorkspaceBoundary } from "./WorkspaceBoundary";
@@ -2221,6 +2223,12 @@ export function DesktopApp({ client }: { client: Client }) {
           {(error || task.error) && (
             <div className="error-banner" role="alert">
               <span>{error || task.error}</span>
+              <ProblemReport
+                key={error || task.error}
+                platform="mac"
+                version={appVersion()}
+                system={systemVersion()}
+              />
               <button
                 className="icon-button"
                 aria-label={t("Refresh history")}

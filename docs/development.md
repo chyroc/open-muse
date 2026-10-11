@@ -21,7 +21,12 @@ npm run ios:install   # Muse-account build, signed and installed on a paired iPh
 npm run ios:testflight # Muse-account Release build, uploaded to TestFlight
 npm run native:sync   # Build and sync the iOS and Android bundles
 npm run server:deploy # Deploy or update the Open Muse service on Volcengine
+node server/deploy/volcengine/diagnostics.mjs <email> # One account's problem records
 ```
+
+The problem records script reads, with the Volcengine CLI, the redacted
+failures and problem reports the service kept for one account over the last
+14 days (see "Report a problem" in [How it works](how-it-works.md)).
 
 Open [http://127.0.0.1:4310](http://127.0.0.1:4310). Deploy `dist/` to any
 trusted HTTPS static host. The static host serves assets only; it never receives
