@@ -67,6 +67,30 @@ describe("Ark refusals", () => {
     const key = await refused(401, { error: { code: "AuthenticationError" } });
     expect(key.message).toMatch(/^Ark rejected this API key/);
   });
+  it("tells an account without Managed Agents to activate it, and keeps the code", async () => {
+    expect(arkProblem(404, "PathNotFound")).toBe("service_not_enabled");
+    const error = await refused(404, {
+      error: { code: "PathNotFound", message: "The path of api not found." },
+    });
+    expect(error.problem).toBe("service_not_enabled");
+    expect(error.message).toMatch(
+      /^Your Ark account has not turned on Managed Agents yet\./,
+    );
+    expect(error.message).toContain("PathNotFound");
+    expect(error.diagnostic).toBe(
+      "POST /agents; HTTP 404; PathNotFound; Request ID req-0123456789",
+    );
+    // Codes of other known families are kept for support too; an unknown
+    // string in the code field is not.
+    const denied = await refused(403, {
+      error: { code: "OperationDenied.ServiceNotOpen", message: "denied" },
+    });
+    expect(denied.diagnostic).toContain("OperationDenied.ServiceNotOpen");
+    const unknown = await refused(409, {
+      error: { code: "private-looking-value", message: "taken" },
+    });
+    expect(unknown.diagnostic).not.toContain("private-looking-value");
+  });
   it("never names the key as a model", async () => {
     const error = await refused(400, {
       error: {

@@ -287,6 +287,10 @@ export const zhErrors: Record<string, string> = {
     "这个 API Key 没有执行此操作的权限。",
   "{service} is receiving too many requests right now. Try again in a moment.":
     "{service}当前请求过多，请稍后再试。",
+  "Your Ark account has not turned on Managed Agents yet. Activate it on the Managed Agents tab of Activation Management in the Ark console, then try again.":
+    "你的方舟账号还没有开通 Managed Agents。请在方舟控制台「开通管理」的 Managed Agents 页开通后再试。",
+  "This API key cannot use {service} Managed Agents.":
+    "这个 API Key 不能使用{service} Managed Agents。",
   "The {service} resource this needs no longer exists.":
     "所需的{service}资源不存在或已被删除。",
   "{service} did not accept this request.": "{service}没有接受这个请求。",

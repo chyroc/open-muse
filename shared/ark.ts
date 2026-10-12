@@ -282,14 +282,17 @@ async function errorDiagnostic(
       code !== secret
     )
       errorCode = code;
+    // Only codes of known families are shown: an arbitrary string in the
+    // code field could echo something private. PathNotFound (a Managed
+    // Agents path the account cannot use), ModelNotOpen and OperationDenied
+    // are among them.
     if (
-      typeof code === "string" &&
-      /^(Invalid|Missing|Unsupported|AccessDenied|Forbidden|Authentication|Permission|Resource|Quota|RateLimit|Internal|Service|BadRequest|NotFound)[a-zA-Z0-9_.-]{0,90}$/.test(
-        code,
-      ) &&
-      code !== secret
+      errorCode &&
+      /^(Invalid|Missing|Unsupported|AccessDenied|Forbidden|Authentication|Permission|Resource|Quota|RateLimit|Internal|Service|BadRequest|NotFound|Path|Model|Operation)[a-zA-Z0-9_.-]{0,90}$/.test(
+        errorCode,
+      )
     )
-      parts.unshift(code);
+      parts.unshift(errorCode);
     const message = typeof error?.message === "string" ? error.message : "";
     upstream = message.slice(0, 2000);
     const fields = [

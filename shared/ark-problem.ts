@@ -9,6 +9,7 @@ export const arkProblems = [
   "account_overdue",
   "access_denied",
   "rate_limited",
+  "service_not_enabled",
   "not_found",
   "rejected",
   "unavailable",
@@ -66,6 +67,9 @@ export function arkProblem(
     )
   )
     return "access_denied";
+  // Ark answers a Managed Agents path the account cannot use yet, typically
+  // because Managed Agents is not activated, with PathNotFound.
+  if (/^PathNotFound$/i.test(code)) return "service_not_enabled";
   if (status === 404) return "not_found";
   if (status >= 400 && status < 500) return "rejected";
   return "unavailable";
@@ -120,6 +124,12 @@ export function arkProblemText(
         "{service} is receiving too many requests right now. Try again in a moment.",
         { service },
       );
+    case "service_not_enabled":
+      return ark
+        ? t(
+            "Your Ark account has not turned on Managed Agents yet. Activate it on the Managed Agents tab of Activation Management in the Ark console, then try again.",
+          )
+        : t("This API key cannot use {service} Managed Agents.", { service });
     case "not_found":
       return t("The {service} resource this needs no longer exists.", {
         service,

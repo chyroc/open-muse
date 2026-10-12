@@ -1001,12 +1001,15 @@ function Workspace({
       await fn();
       if (alive.current) await reload();
     } catch (error) {
+      // Only a request that got no answer leaves its result open; a refusal
+      // or another definite failure says what happened on its own.
       if (alive.current)
         setActionError(
-          (error as Error).message +
-            t(
-              "If submission is unconfirmed, refresh history before trying again.",
-            ),
+          isNetworkFailure(error)
+            ? `${(error as Error).message} ${t(
+                "If submission is unconfirmed, refresh history before trying again.",
+              )}`
+            : (error as Error).message,
         );
     } finally {
       busyRef.current = false;
