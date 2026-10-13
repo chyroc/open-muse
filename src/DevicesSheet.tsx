@@ -22,9 +22,13 @@ export function lastSeen(at: number, now = Date.now()) {
 }
 
 const kind = (platform: DeviceRecord["platform"]) =>
-  platform === "ios" ? "iPhone" : platform === "android" ? "Android" : "Mac";
+  ({ ios: "iPhone", android: "Android", windows: "Windows", mac: "Mac" })[
+    platform
+  ];
 const system = (platform: DeviceRecord["platform"]) =>
-  platform === "ios" ? "iOS" : platform === "android" ? "Android" : "macOS";
+  ({ ios: "iOS", android: "Android", windows: "Windows", mac: "macOS" })[
+    platform
+  ];
 
 // The system name and version from the iPhone or Android app (WebKit's user
 // agent reports a frozen one), or "" outside it.
@@ -189,7 +193,10 @@ export function DevicesSheet({ onClose }: { onClose: () => void }) {
 }
 
 function DeviceRow({ device, onOpen }: { device: Shown; onOpen: () => void }) {
-  const Icon = device.platform === "mac" ? Laptop : Smartphone;
+  const Icon =
+    device.platform === "mac" || device.platform === "windows"
+      ? Laptop
+      : Smartphone;
   return (
     <li>
       <button className="settings-list-row" onClick={onOpen}>

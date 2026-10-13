@@ -13,7 +13,7 @@ export const deviceRegistration = z
       .min(1)
       .max(80)
       .regex(/^[^\r\n]+$/),
-    platform: z.enum(["mac", "ios", "android"]),
+    platform: z.enum(["mac", "windows", "ios", "android"]),
     app_version: z.string().regex(/^[0-9A-Za-z.+-]{1,40}$/),
   })
   .strict();
@@ -24,10 +24,11 @@ export type DeviceRecord = z.infer<typeof deviceRecord>;
 export type DeviceRegistration = z.infer<typeof deviceRegistration>;
 export const deviceList = z.object({ devices: z.array(deviceRecord).max(50) });
 
-// One Mac can sign in under several ids: each WebView data store (a reset, a
-// reinstall, a separate profile) makes its own. A Mac reports the computer's
-// own name, so Mac records that share a name stand for one Mac: keep the most
-// recently seen and carry the other ids so removing it forgets them all.
+// One computer can sign in under several ids: each WebView data store (a
+// reset, a reinstall, a separate profile) makes its own. A Mac or Windows PC
+// reports the computer's own name, so records of one platform that share a
+// name stand for one computer: keep the most recently seen and carry the
+// other ids so removing it forgets them all.
 // Phones are never merged, because iOS reports the same generic name for
 // every iPhone and Android the same model name for every phone of a model.
 export function mergeDevices(records: readonly DeviceRecord[]) {
@@ -37,7 +38,10 @@ export function mergeDevices(records: readonly DeviceRecord[]) {
     (a, b) => b.last_seen_at - a.last_seen_at,
   );
   for (const record of latestFirst) {
-    const key = record.platform === "mac" ? record.name : undefined;
+    const key =
+      record.platform === "mac" || record.platform === "windows"
+        ? `${record.platform}:${record.name}`
+        : undefined;
     const same = key === undefined ? undefined : macs.get(key);
     if (same) {
       same.ids.push(record.id);

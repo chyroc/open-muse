@@ -85,7 +85,7 @@ const browserFrame = z.object({
 export type BrowserFrame = z.infer<typeof browserFrame>;
 
 export type ProblemReport = {
-  platform: "mac" | "ios" | "android";
+  platform: "mac" | "windows" | "ios" | "android";
   app_version: string;
   system: string;
   failures: FailedRequest[];

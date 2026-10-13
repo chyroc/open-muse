@@ -49,4 +49,16 @@ describe("mergeDevices", () => {
       ]),
     ).toHaveLength(2);
   });
+
+  it("merges a Windows PC's ids by name, apart from a Mac of that name", () => {
+    const merged = mergeDevices([
+      device(1, "windows", "Desk", 100),
+      device(2, "windows", "Desk", 200),
+      device(3, "mac", "Desk", 150),
+    ]);
+    expect(merged.map((entry) => [entry.platform, entry.ids.length])).toEqual([
+      ["windows", 2],
+      ["mac", 1],
+    ]);
+  });
 });

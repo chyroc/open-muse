@@ -121,7 +121,8 @@ import {
 import { CommandPalette, paletteItems } from "./Palette";
 import { FindBar, findMatches, partKey } from "./FindBar";
 import { MessageActions } from "./MessageActions";
-import { registerThisMac } from "./devices";
+import { registerThisComputer } from "./devices";
+import { desktopPlatform } from "../../shared/desktop-platform";
 import { ensureBackgroundWork } from "../../src/background-default";
 import { useUnreadBadge } from "./unread";
 import { speechAvailable, useReadAloud } from "./speech";
@@ -823,7 +824,7 @@ export function DesktopApp({ client }: { client: Client }) {
     if (!ready) return;
     const report = () => {
       void Promise.resolve()
-        .then(registerThisMac)
+        .then(registerThisComputer)
         .catch(() => {});
       void Promise.resolve()
         .then(() => ensureBackgroundWork(client))
@@ -2257,7 +2258,7 @@ export function DesktopApp({ client }: { client: Client }) {
               <span>{error || task.error}</span>
               <ProblemReport
                 key={error || task.error}
-                platform="mac"
+                platform={desktopPlatform()}
                 version={appVersion()}
                 system={systemVersion()}
               />

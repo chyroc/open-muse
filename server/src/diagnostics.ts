@@ -10,7 +10,7 @@ import { HttpError, type Env } from "./env";
 const RETENTION = 14 * 86_400_000;
 const PER_ACCOUNT = 200;
 const REPORTS_PER_HOUR = 10;
-const platforms = ["mac", "ios", "android"] as const;
+const platforms = ["mac", "windows", "ios", "android"] as const;
 
 export type DiagnosticReport = {
   platform: (typeof platforms)[number];

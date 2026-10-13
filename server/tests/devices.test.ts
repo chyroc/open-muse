@@ -109,6 +109,24 @@ describe("Account device registry", () => {
     ).toBe(200);
   });
 
+  it("registers the Windows app", async () => {
+    const pc = "6e5d4c3b-2a19-4f8e-9d7c-6b5a4a392817";
+    const saved = await call(
+      ALICE,
+      `/v1/account/devices/${pc}`,
+      "PUT",
+      device("Desk PC", "windows"),
+    );
+    expect(await saved.json()).toMatchObject({
+      id: pc,
+      name: "Desk PC",
+      platform: "windows",
+    });
+    expect(
+      (await call(ALICE, `/v1/account/devices/${pc}`, "DELETE")).status,
+    ).toBe(200);
+  });
+
   it("never shows or changes another account's devices", async () => {
     expect(
       await (await call(BOB, "/v1/account/devices")).json(),
@@ -184,7 +202,7 @@ describe("Account device registry", () => {
 
   it("validates input and keeps the registry to accounts", async () => {
     for (const body of [
-      { ...device("Mac"), platform: "windows" },
+      { ...device("Mac"), platform: "linux" },
       { ...device("") },
       { ...device("Two\nlines") },
       { ...device("Mac"), app_version: "1.0 beta" },

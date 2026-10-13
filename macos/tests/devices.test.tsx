@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { zhCN } from "../../shared/locales/zh-CN";
 import { backgroundClient } from "../../src/background-client";
 import { DevicesSettings, lastSeen } from "../ui/DevicesSettings";
-import { registerThisMac, thisDeviceId, thisDeviceName } from "../ui/devices";
+import { registerThisComputer, thisDeviceId, thisDeviceName } from "../ui/devices";
 
 let root: Root | undefined;
 let host: HTMLDivElement | undefined;
@@ -51,11 +51,11 @@ describe("Mac devices", () => {
   it("registers only in account builds", async () => {
     const register = vi.spyOn(backgroundClient, "registerDevice");
     vi.spyOn(backgroundClient, "accountConfigured").mockReturnValue(false);
-    expect(await registerThisMac()).toBeUndefined();
+    expect(await registerThisComputer()).toBeUndefined();
     expect(register).not.toHaveBeenCalled();
     account();
     register.mockResolvedValue({} as never);
-    await registerThisMac();
+    await registerThisComputer();
     expect(register).toHaveBeenCalledWith(thisDeviceId(), {
       name: "Mac",
       platform: "mac",
