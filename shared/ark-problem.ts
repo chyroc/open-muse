@@ -68,8 +68,10 @@ export function arkProblem(
   )
     return "access_denied";
   // Ark answers a Managed Agents path the account cannot use yet, typically
-  // because Managed Agents is not activated, with PathNotFound.
-  if (/^PathNotFound$/i.test(code)) return "service_not_enabled";
+  // because Managed Agents is not activated, with PathNotFound or with an
+  // empty 404. A missing resource always names itself (InvalidAgent.NotFound).
+  if (/^PathNotFound$/i.test(code) || (status === 404 && !code && !message))
+    return "service_not_enabled";
   if (status === 404) return "not_found";
   if (status >= 400 && status < 500) return "rejected";
   return "unavailable";

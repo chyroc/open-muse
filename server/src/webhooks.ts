@@ -1,4 +1,4 @@
-import { ApiError, ArkClient } from "../../shared/ark";
+import { ApiError, ArkClient, isMissing } from "../../shared/ark";
 import { base64url, uuid } from "../../shared/crypto";
 import { isSupabaseOwner, supabaseOrigin } from "../../shared/supabase-auth";
 import {
@@ -439,7 +439,7 @@ class WebhookDelivery {
     const session = await ark
       .request<Session>(`/sessions/${validId(target.session_id)}`)
       .catch((error) => {
-        if (error instanceof ApiError && error.status === 404) return undefined;
+        if (isMissing(error)) return undefined;
         throw error;
       });
     if (

@@ -73,7 +73,10 @@ const upstream = vi.fn<typeof fetch>(async (input, init) => {
       const row = rows.find((entry) => entry.id === subId);
       return row
         ? Response.json({ ...row, content: memory[row.path] })
-        : Response.json({}, { status: 404 });
+        : Response.json(
+            { error: { code: "InvalidResource.NotFound", message: "missing" } },
+            { status: 404 },
+          );
     }
     return Response.json({ data: rows });
   }
@@ -86,7 +89,11 @@ const upstream = vi.fn<typeof fetch>(async (input, init) => {
   }
   if (!id) return Response.json({ data: Object.values(rows) });
   const row = rows[id];
-  if (!row) return Response.json({}, { status: 404 });
+  if (!row)
+    return Response.json(
+      { error: { code: "InvalidResource.NotFound", message: "missing" } },
+      { status: 404 },
+    );
   if (collection === "sessions")
     return Response.json({ ...row, status: sessionStatus });
   return Response.json(

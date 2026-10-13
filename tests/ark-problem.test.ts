@@ -37,7 +37,7 @@ describe("Ark refusals", () => {
     );
     expect(arkProblem(429, "RateLimitExceeded")).toBe("rate_limited");
     expect(arkProblem(403, "AccessDenied")).toBe("access_denied");
-    expect(arkProblem(404)).toBe("not_found");
+    expect(arkProblem(404, "InvalidAgent.NotFound")).toBe("not_found");
     expect(arkProblem(400, "InvalidParameter", "name too long")).toBe(
       "rejected",
     );
@@ -80,6 +80,20 @@ describe("Ark refusals", () => {
     expect(error.diagnostic).toBe(
       "POST /agents; HTTP 404; PathNotFound; Request ID req-0123456789",
     );
+    // Ark answers a path it does not route for the account with an empty
+    // 404; a missing resource names itself and stays "not found".
+    expect(arkProblem(404)).toBe("service_not_enabled");
+    expect(arkProblem(404, "InvalidSession.NotFound", "missing")).toBe(
+      "not_found",
+    );
+    expect(arkProblem(404, "", "not_found_error: missing")).toBe("not_found");
+    const empty = (await new ArkClient(
+      { arkBaseUrl: "https://ark.test/api/v3", arkKey: "k", project: "" },
+      async () => new Response(null, { status: 404 }),
+    )
+      .request("/environments", { method: "POST", body: "{}" })
+      .catch((error: ApiError) => error)) as ApiError;
+    expect(empty.problem).toBe("service_not_enabled");
     // Codes of other known families are kept for support too; an unknown
     // string in the code field is not.
     const denied = await refused(403, {

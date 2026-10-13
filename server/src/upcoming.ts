@@ -1,4 +1,4 @@
-import { ApiError, ArkClient } from "../../shared/ark";
+import { ApiError, ArkClient, isMissing } from "../../shared/ark";
 import { uuid } from "../../shared/crypto";
 import {
   pendingCustomTools,
@@ -174,7 +174,7 @@ export class UpcomingDelivery {
         workspace.agentId!,
         input.session_id,
       ).catch((error) => {
-        if (error instanceof ApiError && error.status === 404) return undefined;
+        if (isMissing(error)) return undefined;
         throw error;
       });
       if (!session)
@@ -318,7 +318,7 @@ export class UpcomingDelivery {
       workspace.agentId!,
       target.session_id,
     ).catch((error) => {
-      if (error instanceof ApiError && error.status === 404) return undefined;
+      if (isMissing(error)) return undefined;
       throw error;
     });
     if (!session) {

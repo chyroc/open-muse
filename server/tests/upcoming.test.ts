@@ -23,6 +23,9 @@ const events: Record<string, Row[]> = {};
 let upcoming = "";
 let sessionStatus = "idle";
 let failNextSend: "reject" | "lost" | undefined;
+// Ark answers every path with an empty 404, as for an account that cannot
+// reach Managed Agents.
+let unrouted = false;
 let sequence = 0;
 const posted: { session: string; event: Row }[] = [];
 
@@ -38,6 +41,7 @@ const upstream = vi.fn<typeof fetch>(async (input, init) => {
       : Response.json({}, { status: 401 });
   }
   if (bearer !== key) return Response.json({}, { status: 401 });
+  if (unrouted) return new Response(null, { status: 404 });
   const parts = url.pathname.replace("/api/v3", "").split("/").slice(1);
   const method = init?.method ?? "GET";
   const [collection, id, sub, subId] = parts;
@@ -74,7 +78,11 @@ const upstream = vi.fn<typeof fetch>(async (input, init) => {
   }
   if (!id) return Response.json({ data: Object.values(rows) });
   const row = rows[id];
-  if (!row) return Response.json({}, { status: 404 });
+  if (!row)
+    return Response.json(
+      { error: { code: "InvalidResource.NotFound", message: "missing" } },
+      { status: 404 },
+    );
   if (collection === "sessions")
     return Response.json({ ...row, status: sessionStatus });
   return Response.json(
@@ -178,6 +186,7 @@ describe("Server delivery of Upcoming reminders", () => {
   beforeEach(() => {
     sessionStatus = "idle";
     failNextSend = undefined;
+    unrouted = false;
   });
 
   it("registers only a conversation that runs the account's own agent", async () => {
@@ -281,6 +290,16 @@ describe("Server delivery of Upcoming reminders", () => {
       ],
     });
     expect(await deliver(ALICE, T0 + 5 * DAY + 61 * 60_000)).toBe("idle");
+    expect(posted).toHaveLength(4);
+  });
+
+  it("keeps the conversation when Ark answers with an empty 404", async () => {
+    unrouted = true;
+    await expect(deliver(ALICE, T0 + 6 * DAY + 61 * 60_000)).rejects.toThrow();
+    unrouted = false;
+    expect(
+      await (await request(ALICE, "/v1/account/upcoming")).json(),
+    ).toMatchObject({ state: "active" });
     expect(posted).toHaveLength(4);
   });
 

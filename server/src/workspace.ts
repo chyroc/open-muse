@@ -1,6 +1,6 @@
 import { edgeFetch } from "./fetch";
 import { z } from "zod";
-import { ApiError, ArkClient } from "../../shared/ark";
+import { ApiError, ArkClient, isMissing } from "../../shared/ark";
 import { accountWorkspaceKey } from "../../shared/workspace-key";
 import {
   agentSpec,
@@ -396,7 +396,7 @@ export class AccountWorkspaces {
         } catch (error) {
           // Only a definite 404 means the resource is gone; it is created
           // again from the account's saved settings. Anything else stops.
-          if (!(error instanceof ApiError) || error.status !== 404) throw error;
+          if (!isMissing(error)) throw error;
           replaced = true;
         }
       }

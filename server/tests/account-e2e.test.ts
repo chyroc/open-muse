@@ -157,7 +157,11 @@ function arkServer() {
       return Response.json(row);
     }
     const row = id ? list.find((item) => item.id === id) : undefined;
-    if (id && !row) return Response.json({}, { status: 404 });
+    if (id && !row)
+      return Response.json(
+        { error: { code: "InvalidResource.NotFound", message: "missing" } },
+        { status: 404 },
+      );
     if (post) {
       Object.assign(row!, body, { version: Number(row!.version) + 1 });
       return Response.json(row);

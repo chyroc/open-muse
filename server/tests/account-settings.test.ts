@@ -80,7 +80,11 @@ const upstream = vi.fn<typeof fetch>(async (input, init) => {
   if (method === "POST") {
     const failure = nextUpdate;
     nextUpdate = undefined;
-    if (!row) return Response.json({}, { status: 404 });
+    if (!row)
+      return Response.json(
+        { error: { code: "InvalidResource.NotFound", message: "missing" } },
+        { status: 404 },
+      );
     const changes = JSON.parse(String(init!.body));
     // Agent updates are optimistic: they must name the current version.
     if (collection === "agents" && changes.version !== row.version)
@@ -115,7 +119,11 @@ const upstream = vi.fn<typeof fetch>(async (input, init) => {
     failNextRead = false;
     throw new TypeError("read failed");
   }
-  if (!row) return Response.json({}, { status: 404 });
+  if (!row)
+    return Response.json(
+      { error: { code: "InvalidResource.NotFound", message: "missing" } },
+      { status: 404 },
+    );
   return Response.json(row);
 });
 let env: Env;

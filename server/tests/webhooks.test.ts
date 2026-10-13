@@ -73,7 +73,11 @@ const upstream = vi.fn<typeof fetch>(async (input, init) => {
   }
   if (!id) return Response.json({ data: Object.values(rows) });
   const row = rows[id];
-  if (!row) return Response.json({}, { status: 404 });
+  if (!row)
+    return Response.json(
+      { error: { code: "InvalidResource.NotFound", message: "missing" } },
+      { status: 404 },
+    );
   if (collection === "sessions")
     return Response.json({ ...row, status: sessionStatus });
   return Response.json(

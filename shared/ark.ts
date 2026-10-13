@@ -36,6 +36,13 @@ export class ApiError extends Error {
   }
 }
 
+// The resource asked for does not exist. An empty 404 means the account
+// cannot reach Managed Agents at all, which says nothing about the resource.
+export const isMissing = (error: unknown): error is ApiError =>
+  error instanceof ApiError &&
+  error.status === 404 &&
+  error.problem !== "service_not_enabled";
+
 // A client for the configured Managed Agents backend, named after the default.
 export class ArkClient {
   private provider: MAProvider;
