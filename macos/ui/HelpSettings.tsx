@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Bug } from "lucide-react";
 import { t } from "../../shared/i18n";
+import { keysLabel, forPlatform } from "../../shared/desktop-platform";
 import { shortcuts } from "./Shortcuts";
 import { readShortcut, shortcutAvailable, shortcutLabel } from "./shortcut";
 import { diagnosticReport } from "./diagnostics";
@@ -11,7 +12,7 @@ import { reportAvailable } from "./report";
 // makes a GitHub issue the person posts; without the Mac shell it copies a
 // summary of the app's setup instead.
 export function HelpSettings({ signedIn = false }: { signedIn?: boolean }) {
-  const [quick, setQuick] = useState("⌥Space");
+  const [quick, setQuick] = useState(forPlatform("⌥Space", "Ctrl+Alt+Space"));
   const [copied, setCopied] = useState("");
   // WebKit lets the page write the clipboard only during the click, while
   // the report takes a moment to gather, so the clipboard is handed an item
@@ -60,8 +61,13 @@ export function HelpSettings({ signedIn = false }: { signedIn?: boolean }) {
     [t("Dictation"), t("Press the microphone in the message field and speak.")],
     [
       t("Computer use"),
-      t(
-        "Turn it on in Settings, then ask your assistant to do something on this Mac. Each action asks you first.",
+      forPlatform(
+        t(
+          "Turn it on in Settings, then ask your assistant to do something on this Mac. Each action asks you first.",
+        ),
+        t(
+          "Turn it on in Settings, then ask your assistant to do something on this PC. Each action asks you first.",
+        ),
       ),
     ],
   ];
@@ -84,11 +90,21 @@ export function HelpSettings({ signedIn = false }: { signedIn?: boolean }) {
       <p className="settings-footnote" role="status">
         {copied ||
           (reportAvailable()
-            ? t(
-                "Opens a new issue on GitHub with your description, a screenshot of the window and the app and macOS versions, language and the state of each permission and switch, without keys, messages or files.",
+            ? forPlatform(
+                t(
+                  "Opens a new issue on GitHub with your description, a screenshot of the window and the app and macOS versions, language and the state of each permission and switch, without keys, messages or files.",
+                ),
+                t(
+                  "Opens a new issue on GitHub with your description, a screenshot of the window and the app and Windows versions, language and the state of each permission and switch, without keys, messages or files.",
+                ),
               )
-            : t(
-                "Copies the app and macOS versions, language and the state of each permission and switch, without keys, messages or files, for you to paste into a report.",
+            : forPlatform(
+                t(
+                  "Copies the app and macOS versions, language and the state of each permission and switch, without keys, messages or files, for you to paste into a report.",
+                ),
+                t(
+                  "Copies the app and Windows versions, language and the state of each permission and switch, without keys, messages or files, for you to paste into a report.",
+                ),
               ))}
       </p>
       <h2>{t("Getting around")}</h2>
@@ -109,7 +125,7 @@ export function HelpSettings({ signedIn = false }: { signedIn?: boolean }) {
             <div>
               <strong>{t(label)}</strong>
             </div>
-            <span>{keys}</span>
+            <span>{keysLabel(keys)}</span>
           </div>
         ))}
       </div>

@@ -113,8 +113,7 @@ export function DevicesSettings() {
                       mac: "Mac",
                     }[device.platform]
                   }{" "}
-                  ·{" "}
-                  {lastSeen(device.last_seen_at)}
+                  · {lastSeen(device.last_seen_at)}
                 </p>
               </div>
               {forget === device.id ? (

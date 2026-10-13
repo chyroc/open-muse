@@ -122,7 +122,12 @@ import { CommandPalette, paletteItems } from "./Palette";
 import { FindBar, findMatches, partKey } from "./FindBar";
 import { MessageActions } from "./MessageActions";
 import { registerThisComputer } from "./devices";
-import { desktopPlatform } from "../../shared/desktop-platform";
+import {
+  desktopPlatform,
+  forPlatform,
+  keysLabel,
+  primaryModifier,
+} from "../../shared/desktop-platform";
 import { ensureBackgroundWork } from "../../src/background-default";
 import { useUnreadBadge } from "./unread";
 import { speechAvailable, useReadAloud } from "./speech";
@@ -566,7 +571,11 @@ export function DesktopApp({ client }: { client: Client }) {
       if (action === "find") setFind((value) => value ?? "");
     };
     const key = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !event.metaKey && !event.isComposing) {
+      if (
+        event.key === "Escape" &&
+        !primaryModifier(event) &&
+        !event.isComposing
+      ) {
         // Escape belongs to an open dialog or menu first.
         if (
           window.document.querySelector("dialog[open], [role=menu], .find-bar")
@@ -579,7 +588,7 @@ export function DesktopApp({ client }: { client: Client }) {
         else stopRef.current();
         return;
       }
-      if (!event.metaKey || event.altKey) return;
+      if (!primaryModifier(event) || event.altKey) return;
       if (
         event.key.toLowerCase() === "f" ||
         (event.key.toLowerCase() === "k" && event.shiftKey)
@@ -588,7 +597,12 @@ export function DesktopApp({ client }: { client: Client }) {
         command(new CustomEvent("muse-command", { detail: "find" }));
         return;
       }
-      if (event.key === "/" || event.key.toLowerCase() === "j") {
+      // ⌘1 also comes from the Mac menu; Windows has no menu to send it.
+      if (
+        event.key === "/" ||
+        event.key === "1" ||
+        event.key.toLowerCase() === "j"
+      ) {
         event.preventDefault();
         command(
           new CustomEvent("muse-command", {
@@ -1047,8 +1061,13 @@ export function DesktopApp({ client }: { client: Client }) {
         state.speech !== "allowed"
       ) {
         setError(
-          t(
-            "Allow the microphone and speech recognition for Open Muse in System Settings.",
+          forPlatform(
+            t(
+              "Allow the microphone and speech recognition for Open Muse in System Settings.",
+            ),
+            t(
+              "Allow the microphone and online speech recognition in Windows Settings > Privacy & security.",
+            ),
           ),
         );
         return;
@@ -2368,8 +2387,13 @@ export function DesktopApp({ client }: { client: Client }) {
               setReport(undefined);
               setNotice(
                 pasted
-                  ? t(
-                      "GitHub is open. The screenshot is on your clipboard; paste it into the issue with ⌘V.",
+                  ? forPlatform(
+                      t(
+                        "GitHub is open. The screenshot is on your clipboard; paste it into the issue with ⌘V.",
+                      ),
+                      t(
+                        "GitHub is open. The screenshot is on your clipboard; paste it into the issue with Ctrl+V.",
+                      ),
                     )
                   : t("GitHub is open. Submit the issue there."),
               );

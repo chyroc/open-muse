@@ -1,4 +1,5 @@
 import { t } from "../../shared/i18n";
+import { keysLabel } from "../../shared/desktop-platform";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Bug,
@@ -125,7 +126,7 @@ function RailTip({ label, shortcut }: { label: string; shortcut?: string }) {
   return (
     <span className="rail-tip" aria-hidden="true">
       <span>{label}</span>
-      {shortcut && <kbd>{shortcut}</kbd>}
+      {shortcut && <kbd>{keysLabel(shortcut)}</kbd>}
     </span>
   );
 }
@@ -295,7 +296,7 @@ export function Rail({
             <button role="menuitem" onClick={() => choose(onShortcuts)}>
               <Keyboard size={20} strokeWidth={1.6} />
               <span>{t("Keyboard shortcuts")}</span>
-              <kbd>⌘/</kbd>
+              <kbd>{keysLabel("⌘/")}</kbd>
             </button>
             <button role="menuitem" onClick={() => choose(onReport)}>
               <Bug size={20} strokeWidth={1.6} />
@@ -305,7 +306,7 @@ export function Rail({
             <button role="menuitem" onClick={() => choose(onSettings)}>
               <Settings size={20} strokeWidth={1.6} />
               <span>{t("Settings")}</span>
-              <kbd>⌘,</kbd>
+              <kbd>{keysLabel("⌘,")}</kbd>
             </button>
           </div>
         )}

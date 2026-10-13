@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { t } from "../../shared/i18n";
+import { forPlatform } from "../../shared/desktop-platform";
 import type { Client } from "../../src/api";
 import { Modal } from "./Chrome";
 import {
@@ -87,8 +88,13 @@ export function DataControls({ client }: { client: Client }) {
         </button>
       </div>
       <p className="settings-footnote">
-        {t(
-          "Removes the saved Ark API key, sign-ins, local data and settings from this Mac. Your agents, conversations and memory in the cloud stay.",
+        {forPlatform(
+          t(
+            "Removes the saved Ark API key, sign-ins, local data and settings from this Mac. Your agents, conversations and memory in the cloud stay.",
+          ),
+          t(
+            "Removes the saved Ark API key, sign-ins, local data and settings from this PC. Your agents, conversations and memory in the cloud stay.",
+          ),
         )}
       </p>
       {notice && <p className="settings-lead settings-after">{notice}</p>}
@@ -108,8 +114,13 @@ export function DataControls({ client }: { client: Client }) {
             )}
           </p>
           <p>
-            {t(
-              "Permissions you gave Open Muse in macOS System Settings stay there.",
+            {forPlatform(
+              t(
+                "Permissions you gave Open Muse in macOS System Settings stay there.",
+              ),
+              t(
+                "Permissions you gave Open Muse in Windows Settings stay there.",
+              ),
             )}
           </p>
           <div className="feed-dialog-actions">

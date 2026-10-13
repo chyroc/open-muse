@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { systemLanguage, t } from "../../shared/i18n";
+import { forPlatform } from "../../shared/desktop-platform";
 import { AudioLines, ChevronDown, Mic } from "lucide-react";
 import { Switch } from "./SettingsSwitch";
 import { PermissionRow } from "./ComputerSettings";
@@ -173,8 +174,13 @@ export function DictationSettings() {
               ? t(
                   "Your language can be recognized on this Mac, so dictated audio does not leave it.",
                 )
-              : t(
-                  "Your language is not available on this Mac, so macOS sends dictated audio to Apple to recognize it.",
+              : forPlatform(
+                  t(
+                    "Your language is not available on this Mac, so macOS sends dictated audio to Apple to recognize it.",
+                  ),
+                  t(
+                    "Windows recognizes dictation with its online speech recognition, so dictated audio is sent to Microsoft.",
+                  ),
                 )}
           </p>
         </section>

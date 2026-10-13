@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { t } from "../../shared/i18n";
+import { forPlatform, onWindows } from "../../shared/desktop-platform";
 import { ChevronDown, X, createLucideIcon } from "lucide-react";
 import {
   blockApp,
@@ -74,7 +75,9 @@ export function PermissionRow({
         }
         onClick={onOpen}
       >
-        {granted ? t("Turn off in System Settings") : t("Open System Settings")}
+        {granted
+          ? t("Turn off in System Settings")
+          : forPlatform(t("Open System Settings"), t("Open Windows Settings"))}
       </button>
       <span role="status" className="sr-only">
         {granted && t("{permission} granted", { permission: title })}
@@ -144,15 +147,20 @@ export function ComputerSettings() {
   return (
     <>
       <section>
-        <h2>{t("Permissions required")}</h2>
-        <div className="settings-group computer-permissions">
-          {permission(
-            "accessibility",
-            t("Accessibility"),
-            state?.accessibility,
-          )}
-          {permission("screen", t("Screen Recording"), state?.screen)}
-        </div>
+        {/* Windows asks no separate permission to see the screen or send input. */}
+        {!onWindows() && (
+          <>
+            <h2>{t("Permissions required")}</h2>
+            <div className="settings-group computer-permissions">
+              {permission(
+                "accessibility",
+                t("Accessibility"),
+                state?.accessibility,
+              )}
+              {permission("screen", t("Screen Recording"), state?.screen)}
+            </div>
+          </>
+        )}
         <p className="settings-footnote">
           {t(
             "Computer use enables Open Muse to click, type and use apps on your computer.",
@@ -162,7 +170,10 @@ export function ComputerSettings() {
       <div className="permission-settings-controls" data-disabled={!ready}>
         <div className="settings-group">
           <Switch
-            label={t("Let your assistant use this Mac")}
+            label={forPlatform(
+              t("Let your assistant use this Mac"),
+              t("Let your assistant use this PC"),
+            )}
             detail={t(
               "Every action still waits for your approval in the chat.",
             )}

@@ -6,6 +6,7 @@ import {
   MonitorSmartphone,
 } from "lucide-react";
 import { t } from "../../shared/i18n";
+import { forPlatform } from "../../shared/desktop-platform";
 import type { AgentEvent } from "../../shared/types";
 import {
   computerAvailable,
@@ -80,22 +81,37 @@ export function ComputerRequests({
     calendar: {
       name: t("Calendar"),
       Icon: CalendarDays,
-      detail: t(
-        "Connect to let your assistant read your calendar on this Mac. Each read still waits for your approval.",
+      detail: forPlatform(
+        t(
+          "Connect to let your assistant read your calendar on this Mac. Each read still waits for your approval.",
+        ),
+        t(
+          "Connect to let your assistant read your calendar in classic Outlook on this PC. Each read still waits for your approval.",
+        ),
       ),
     },
     reminders: {
       name: t("Reminders"),
       Icon: ListChecks,
-      detail: t(
-        "Connect to let your assistant read your open reminders on this Mac. Each read still waits for your approval.",
+      detail: forPlatform(
+        t(
+          "Connect to let your assistant read your open reminders on this Mac. Each read still waits for your approval.",
+        ),
+        t(
+          "Connect to let your assistant read your open tasks in classic Outlook on this PC. Each read still waits for your approval.",
+        ),
       ),
     },
     location: {
       name: t("Location"),
       Icon: MapPin,
-      detail: t(
-        "Connect to let your assistant find this Mac's approximate location. Each lookup still waits for your approval.",
+      detail: forPlatform(
+        t(
+          "Connect to let your assistant find this Mac's approximate location. Each lookup still waits for your approval.",
+        ),
+        t(
+          "Connect to let your assistant find this PC's approximate location. Each lookup still waits for your approval.",
+        ),
       ),
     },
   };
@@ -122,11 +138,19 @@ export function ComputerRequests({
     <section
       className="computer-requests"
       role="alertdialog"
-      aria-label={t("Your assistant wants to use this Mac")}
+      aria-label={forPlatform(
+        t("Your assistant wants to use this Mac"),
+        t("Your assistant wants to use this PC"),
+      )}
     >
       <header>
         <MonitorSmartphone size={17} />
-        <strong>{t("Your assistant wants to use this Mac")}</strong>
+        <strong>
+          {forPlatform(
+            t("Your assistant wants to use this Mac"),
+            t("Your assistant wants to use this PC"),
+          )}
+        </strong>
       </header>
       <ul>
         {calls.map((call) => (
@@ -148,8 +172,13 @@ export function ComputerRequests({
       ) : (
         off && (
           <p className="computer-off">
-            {t(
-              "Computer use is off on this Mac. Turn it on in Settings, or decline.",
+            {forPlatform(
+              t(
+                "Computer use is off on this Mac. Turn it on in Settings, or decline.",
+              ),
+              t(
+                "Computer use is off on this PC. Turn it on in Settings, or decline.",
+              ),
             )}
           </p>
         )

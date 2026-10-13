@@ -10,8 +10,9 @@ import {
   shortcutSet,
   type ShortcutId,
 } from "./shortcut";
+import { onWindows } from "../../shared/desktop-platform";
 
-// A plain summary of how this Mac's app is set up, for a person to paste into
+// A plain summary of how this computer's app is set up, for a person to paste into
 // a problem report wherever they choose. It holds no keys, account or device
 // identifiers, messages or files, and nothing here sends it anywhere. Recent
 // failed requests name only the request, status, error code, and request ID.
@@ -49,7 +50,7 @@ export async function diagnosticReport({ signedIn }: { signedIn: boolean }) {
     ).catch(() => undefined);
     if (dictation)
       lines.push(
-        `Microphone: ${dictation.microphone}; Speech recognition: ${dictation.speech}; on this Mac: ${dictation.onDevice ? "yes" : "no"}; inputs: ${dictation.devices.length}`,
+        `Microphone: ${dictation.microphone}; Speech recognition: ${dictation.speech}; on this device: ${dictation.onDevice ? "yes" : "no"}; inputs: ${dictation.devices.length}`,
       );
   }
   if (shortcutAvailable()) {
@@ -59,7 +60,8 @@ export async function diagnosticReport({ signedIn }: { signedIn: boolean }) {
         const value = await readShortcut(id).catch(() => undefined);
         if (!value) return `${id} unknown`;
         if (!shortcutSet(value)) return `${id} not set`;
-        return `${id} ${shortcutLabel(value)}${value.registered ? "" : " (refused by macOS)"}`;
+        const refused = ` (refused by ${onWindows() ? "Windows" : "macOS"})`;
+        return `${id} ${shortcutLabel(value)}${value.registered ? "" : refused}`;
       }),
     );
     lines.push(`Shortcuts: ${parts.join("; ")}`);

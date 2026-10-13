@@ -27,6 +27,7 @@ import {
   createLucideIcon,
 } from "lucide-react";
 import { t, type LanguageChoice } from "../../shared/i18n";
+import { forPlatform } from "../../shared/desktop-platform";
 import {
   setWebAccessDefault,
   webAccessDefault,
@@ -464,12 +465,17 @@ export function SettingsWindow({ client }: { client: Client }) {
         {active.id === "secure-storage" && (
           <>
             <SecureStorage client={client} />
-            <h2>{t("On this Mac")}</h2>
+            <h2>{forPlatform(t("On this Mac"), t("On this PC"))}</h2>
             <div className="settings-group">
               <Row
                 title={t("Ark credentials")}
-                detail={t(
-                  "Stored in your login Keychain for this app. macOS may ask you to authorize access after a new build is installed.",
+                detail={forPlatform(
+                  t(
+                    "Stored in your login Keychain for this app. macOS may ask you to authorize access after a new build is installed.",
+                  ),
+                  t(
+                    "Encrypted with Windows data protection for your Windows account on this PC.",
+                  ),
                 )}
               />
               <Row
@@ -480,14 +486,24 @@ export function SettingsWindow({ client }: { client: Client }) {
               />
               <Row
                 title={t("Agent credential vaults")}
-                detail={t(
-                  "Secrets for your assistant live in an MA vault in your Ark project, separate from this Mac's Keychain.",
+                detail={forPlatform(
+                  t(
+                    "Secrets for your assistant live in an MA vault in your Ark project, separate from this Mac's Keychain.",
+                  ),
+                  t(
+                    "Secrets for your assistant live in an MA vault in your Ark project, separate from this PC's credentials.",
+                  ),
                 )}
               />
             </div>
             <p className="settings-footnote">
-              {t(
-                "Credentials for this Mac live in the macOS Keychain and are read through the native bridge. They are never written into the page, a file, or a server.",
+              {forPlatform(
+                t(
+                  "Credentials for this Mac live in the macOS Keychain and are read through the native bridge. They are never written into the page, a file, or a server.",
+                ),
+                t(
+                  "Credentials on this PC are encrypted for your Windows account and read through the native bridge. They are never written into the page or sent to a server.",
+                ),
               )}
             </p>
           </>
@@ -561,11 +577,21 @@ export function SettingsWindow({ client }: { client: Client }) {
                 title={t("Automatically approved")}
                 detail={
                   webAccess === "some"
-                    ? t(
-                        "Pending web_search and web_fetch requests, matched by exact protocol name, and computer control on this Mac only if you choose Always allow in Computer use. Calendar and Location always ask.",
+                    ? forPlatform(
+                        t(
+                          "Pending web_search and web_fetch requests, matched by exact protocol name, and computer control on this Mac only if you choose Always allow in Computer use. Calendar and Location always ask.",
+                        ),
+                        t(
+                          "Pending web_search and web_fetch requests, matched by exact protocol name, and computer control on this PC only if you choose Always allow in Computer use. Calendar and Location always ask.",
+                        ),
                       )
-                    : t(
-                        "Only computer control on this Mac, if you choose Always allow in Computer use. Calendar and Location always ask.",
+                    : forPlatform(
+                        t(
+                          "Only computer control on this Mac, if you choose Always allow in Computer use. Calendar and Location always ask.",
+                        ),
+                        t(
+                          "Only computer control on this PC, if you choose Always allow in Computer use. Calendar and Location always ask.",
+                        ),
                       )
                 }
               />
@@ -592,8 +618,13 @@ export function SettingsWindow({ client }: { client: Client }) {
                 <div>
                   <strong>{t("We care about your privacy")}</strong>
                   <p>
-                    {t(
-                      "Chats go straight to your Ark project. No analytics or crash reports leave this Mac.",
+                    {forPlatform(
+                      t(
+                        "Chats go straight to your Ark project. No analytics or crash reports leave this Mac.",
+                      ),
+                      t(
+                        "Chats go straight to your Ark project. No analytics or crash reports leave this PC.",
+                      ),
                     )}
                   </p>
                 </div>
@@ -603,7 +634,7 @@ export function SettingsWindow({ client }: { client: Client }) {
             <h2>{t("Where your data lives")}</h2>
             <div className="settings-group">
               <Row
-                title={t("On this Mac")}
+                title={forPlatform(t("On this Mac"), t("On this PC"))}
                 detail={t(
                   "Conversation index, goals, ideas, feed preferences and saved Library replies live in a local database scoped to the connected account and project.",
                 )}
@@ -622,8 +653,13 @@ export function SettingsWindow({ client }: { client: Client }) {
               />
               <Row
                 title={t("Signing out")}
-                detail={t(
-                  "Signs this Mac out of your Open Muse account. Local records are preserved and are unreadable without the same account.",
+                detail={forPlatform(
+                  t(
+                    "Signs this Mac out of your Open Muse account. Local records are preserved and are unreadable without the same account.",
+                  ),
+                  t(
+                    "Signs this PC out of your Open Muse account. Local records are preserved and are unreadable without the same account.",
+                  ),
                 )}
               />
             </div>
@@ -645,12 +681,20 @@ export function SettingsWindow({ client }: { client: Client }) {
       </main>
       {signOut && (
         <Modal
-          title={t("Sign out of Open Muse on this Mac?")}
+          title={forPlatform(
+            t("Sign out of Open Muse on this Mac?"),
+            t("Sign out of Open Muse on this PC?"),
+          )}
           onClose={() => !busy && setSignOut(false)}
         >
           <p>
-            {t(
-              "Signs out this Mac and ends this session at the account service. Other devices stay signed in. Nothing is deleted.",
+            {forPlatform(
+              t(
+                "Signs out this Mac and ends this session at the account service. Other devices stay signed in. Nothing is deleted.",
+              ),
+              t(
+                "Signs out this PC and ends this session at the account service. Other devices stay signed in. Nothing is deleted.",
+              ),
             )}
           </p>
           <div className="feed-dialog-actions">

@@ -6,6 +6,7 @@ import {
   type InspirationSnapshot,
 } from "../../shared/inspiration";
 import { Modal } from "./Chrome";
+import { primaryModifier } from "../../shared/desktop-platform";
 
 type Instructions = InspirationSnapshot["instructions"];
 // The built-in default is shown in the interface language; anything the person
@@ -44,7 +45,7 @@ export function FeedInstructions({
     target.__OPEN_MUSE_HAS_UNSAVED_DOCUMENT__ = dirty || busy;
     target.__OPEN_MUSE_DOCUMENT_SAVING__ = busy;
     const key = (event: KeyboardEvent) => {
-      if (event.metaKey && event.key.toLowerCase() === "s") {
+      if (primaryModifier(event) && event.key.toLowerCase() === "s") {
         event.preventDefault();
         void saveRef.current();
       }

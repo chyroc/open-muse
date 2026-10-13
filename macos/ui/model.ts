@@ -1,5 +1,6 @@
 import { eventText, type AgentEvent, type Session } from "../../shared/types";
 import { t } from "../../shared/i18n";
+import { onWindows } from "../../shared/desktop-platform";
 import { messageAttachments } from "../../shared/attachments";
 import type { ConversationIndex } from "../../src/direct/conversations";
 import type { LibraryView } from "./library";
@@ -63,10 +64,18 @@ const activityLabels: Record<string, string> = {
   health_read: "Read Apple Health",
   iphone_personal: "Read from your iPhone",
 };
+// The Windows app answers the same mac_* tools for its PC.
+const windowsActivityLabels: Record<string, string> = {
+  mac_action: "Use your PC",
+  mac_open: "Open on your PC",
+};
 
 export function activityLabel(name: string | undefined) {
   if (!name) return t("Tool call");
-  const label = activityLabels[name];
+  const label =
+    onWindows() && name in windowsActivityLabels
+      ? windowsActivityLabels[name]
+      : activityLabels[name];
   return label ? t(label) : name;
 }
 

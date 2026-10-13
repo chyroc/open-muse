@@ -1,4 +1,5 @@
 import { t } from "../../shared/i18n";
+import { keysLabel } from "../../shared/desktop-platform";
 import { Modal } from "./Chrome";
 import { GlobalShortcuts } from "./ShortcutSettings";
 import { shortcutAvailable } from "./shortcut";
@@ -37,7 +38,7 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
           <div key={keys}>
             <dt>{t(label)}</dt>
             <dd>
-              <kbd>{keys}</kbd>
+              <kbd>{keysLabel(keys)}</kbd>
             </dd>
           </div>
         ))}

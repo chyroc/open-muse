@@ -21,3 +21,36 @@ export function computerWord<T>(words: { mac: T; windows: T; any: T }): T {
   if (!desktop) return words.any;
   return desktopPlatform() === "windows" ? words.windows : words.mac;
 }
+
+export const onWindows = () => desktopPlatform() === "windows";
+
+// One piece of desktop copy in its Mac or its Windows form.
+export function forPlatform<T>(mac: T, windows: T): T {
+  return onWindows() ? windows : mac;
+}
+
+// The key that carries the app's shortcuts: Command on a Mac, Ctrl on Windows.
+export function primaryModifier(event: { metaKey: boolean; ctrlKey: boolean }) {
+  return onWindows() ? event.ctrlKey : event.metaKey;
+}
+
+// An app shortcut written the Mac way (⌘K, ⇧⌘F) as the running app shows it:
+// unchanged on a Mac, Ctrl+K and Ctrl+Shift+F on Windows.
+export function keysLabel(mac: string) {
+  if (!onWindows()) return mac;
+  const names: Record<string, string> = {
+    "⌃": "Ctrl",
+    "⌘": "Ctrl",
+    "⌥": "Alt",
+    "⇧": "Shift",
+  };
+  const order = ["Ctrl", "Alt", "Shift"];
+  const modifiers = new Set<string>();
+  let rest = "";
+  const keys: Record<string, string> = { "⎋": "Esc", "↩": "Enter", "⇥": "Tab" };
+  for (const symbol of mac) {
+    if (names[symbol]) modifiers.add(names[symbol]);
+    else rest += keys[symbol] ?? symbol;
+  }
+  return [...order.filter((name) => modifiers.has(name)), rest].join("+");
+}

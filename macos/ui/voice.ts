@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { eventText, type AgentEvent } from "../../shared/types";
 import { systemLanguage, t } from "../../shared/i18n";
+import { forPlatform } from "../../shared/desktop-platform";
 import {
   dictationEvent,
   readDictation,
@@ -165,8 +166,13 @@ export function useVoiceConversation({
         access.speech !== "allowed"
       )
         return handlers.current.onError(
-          t(
-            "Allow the microphone and speech recognition for Open Muse in System Settings.",
+          forPlatform(
+            t(
+              "Allow the microphone and speech recognition for Open Muse in System Settings.",
+            ),
+            t(
+              "Allow the microphone and online speech recognition in Windows Settings > Privacy & security.",
+            ),
           ),
         );
       await listen();

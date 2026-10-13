@@ -22,6 +22,7 @@ import {
   createLucideIcon,
 } from "lucide-react";
 import { formatLocale, t } from "../../shared/i18n";
+import { forPlatform } from "../../shared/desktop-platform";
 import type { LibraryItem } from "../../shared/types";
 import type {
   IdentityDocumentName,
@@ -663,8 +664,13 @@ export function LibraryPage({
               ) : (
                 <>
                   <p className="library-capability">
-                    {t(
-                      "Saved MA replies on this Mac. Removing an item keeps its cloud conversation.",
+                    {forPlatform(
+                      t(
+                        "Saved MA replies on this Mac. Removing an item keeps its cloud conversation.",
+                      ),
+                      t(
+                        "Saved MA replies on this PC. Removing an item keeps its cloud conversation.",
+                      ),
                     )}
                   </p>
                   {groups.map((group) => (
@@ -808,9 +814,15 @@ export function LibraryPage({
           onClose={() => !busy && setRemove(undefined)}
         >
           <p>
-            {t(
-              "Remove {count} saved documents from this Mac? Their cloud conversations are kept. You can undo this while Library stays open.",
-              { count: remove.length },
+            {forPlatform(
+              t(
+                "Remove {count} saved documents from this Mac? Their cloud conversations are kept. You can undo this while Library stays open.",
+                { count: remove.length },
+              ),
+              t(
+                "Remove {count} saved documents from this PC? Their cloud conversations are kept. You can undo this while Library stays open.",
+                { count: remove.length },
+              ),
             )}
           </p>
           <div className="feed-dialog-actions">
@@ -832,8 +844,13 @@ export function LibraryPage({
                     setUndo(removed.length ? removed : undefined);
                     if (!removed.length)
                       setNotice(
-                        t(
-                          "Nothing was removed. The saved copy changed on this Mac.",
+                        forPlatform(
+                          t(
+                            "Nothing was removed. The saved copy changed on this Mac.",
+                          ),
+                          t(
+                            "Nothing was removed. The saved copy changed on this PC.",
+                          ),
                         ),
                       );
                     setSelected([]);

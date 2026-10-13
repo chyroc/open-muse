@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { t } from "../../shared/i18n";
+import { forPlatform } from "../../shared/desktop-platform";
 import {
   openLoginItems,
   presenceAvailable,
@@ -70,7 +71,14 @@ export function PresenceSettings() {
               ? t("macOS is waiting for you to allow Open Muse in Login Items.")
               : presence?.startup === "unavailable"
                 ? t("macOS did not accept this app as a login item.")
-                : t("Open Open Muse automatically when you log in to your Mac.")
+                : forPlatform(
+                    t(
+                      "Open Open Muse automatically when you log in to your Mac.",
+                    ),
+                    t(
+                      "Open Open Muse automatically when you sign in to Windows.",
+                    ),
+                  )
           }
           checked={
             presence?.startup === "enabled" ||
@@ -85,9 +93,15 @@ export function PresenceSettings() {
           </button>
         )}
         <Switch
-          label={t("Show in menu bar")}
-          detail={t(
-            "Reach Open Muse from the menu bar at the top of the screen.",
+          label={forPlatform(
+            t("Show in menu bar"),
+            t("Show in the notification area"),
+          )}
+          detail={forPlatform(
+            t("Reach Open Muse from the menu bar at the top of the screen."),
+            t(
+              "Reach Open Muse from its icon in the taskbar's notification area.",
+            ),
           )}
           checked={presence?.menuBar ?? false}
           disabled={loading || pending !== undefined}

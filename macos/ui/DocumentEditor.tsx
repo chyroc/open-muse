@@ -1,4 +1,5 @@
 import { t } from "../../shared/i18n";
+import { primaryModifier } from "../../shared/desktop-platform";
 import { useEffect, useRef, useState } from "react";
 import { Editor } from "@tiptap/core";
 import {
@@ -100,7 +101,7 @@ export function DocumentEditor({
           spellcheck: "true",
         },
         handleKeyDown: (_view, event) => {
-          if (event.metaKey && event.key.toLowerCase() === "s") {
+          if (primaryModifier(event) && event.key.toLowerCase() === "s") {
             event.preventDefault();
             void saveRef.current();
             return true;
@@ -137,7 +138,7 @@ export function DocumentEditor({
       }
     };
     const shortcut = (event: KeyboardEvent) => {
-      if (event.metaKey && event.key.toLowerCase() === "s") {
+      if (primaryModifier(event) && event.key.toLowerCase() === "s") {
         event.preventDefault();
         void saveRef.current();
       }

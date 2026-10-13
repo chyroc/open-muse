@@ -1,6 +1,7 @@
 import { zhErrors } from "./zh-CN-errors";
 import { zhProblemReport } from "./zh-CN-problem-report";
 import { zhUpdate } from "./zh-CN-update";
+import { zhWindows } from "./zh-CN-windows";
 import { zhLibrary } from "./zh-CN-library";
 import { zhAttachments } from "./zh-CN-attachments";
 import { zhAccount } from "./zh-CN-account";
@@ -31,6 +32,7 @@ export const zhCN: Record<string, string> = {
   ...zhErrors,
   ...zhProblemReport,
   ...zhUpdate,
+  ...zhWindows,
   ...zhLibrary,
   ...zhAttachments,
   ...zhAccount,

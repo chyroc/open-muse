@@ -1,3 +1,5 @@
+import { onWindows } from "../../shared/desktop-platform";
+
 // Global shortcuts held by the native shell as a macOS virtual key code plus
 // Carbon modifier flags: Quick Chat, and the two dictation shortcuts. A code
 // of -1 means the shortcut is not set.
@@ -108,10 +110,24 @@ export function recordShortcut(event: {
   };
 }
 
+// The Windows app holds the same values and reads Command as the Windows key,
+// so there a shortcut reads like Ctrl+Alt+Space.
 export function shortcutLabel({
   code,
   modifiers,
 }: Pick<Shortcut, "code" | "modifiers">) {
+  if (onWindows())
+    return [
+      modifiers & carbon.control ? "Ctrl" : "",
+      modifiers & carbon.option ? "Alt" : "",
+      modifiers & carbon.shift ? "Shift" : "",
+      modifiers & carbon.command ? "Win" : "",
+      ({ 36: "Enter", 48: "Tab" } as Record<number, string>)[code] ??
+        names[code] ??
+        "?",
+    ]
+      .filter(Boolean)
+      .join("+");
   return (
     (modifiers & carbon.control ? "⌃" : "") +
     (modifiers & carbon.option ? "⌥" : "") +

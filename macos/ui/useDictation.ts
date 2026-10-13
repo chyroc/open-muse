@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { systemLanguage, t } from "../../shared/i18n";
+import { forPlatform } from "../../shared/desktop-platform";
 import {
   dictationAvailable,
   dictationEvent,
@@ -89,8 +90,13 @@ export function useDictation({
         state.speech !== "allowed"
       )
         return handlers.current.onError(
-          t(
-            "Allow the microphone and speech recognition for Open Muse in System Settings.",
+          forPlatform(
+            t(
+              "Allow the microphone and speech recognition for Open Muse in System Settings.",
+            ),
+            t(
+              "Allow the microphone and online speech recognition in Windows Settings > Privacy & security.",
+            ),
           ),
         );
       base.current = draftRef.current;

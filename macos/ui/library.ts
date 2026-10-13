@@ -1,4 +1,5 @@
 import { formatLocale, t } from "../../shared/i18n";
+import { forPlatform } from "../../shared/desktop-platform";
 import { uuid } from "../../shared/crypto";
 import type { LibraryItem } from "../../shared/types";
 import type { Client } from "../../src/api";
@@ -294,7 +295,10 @@ export function exportTextFile(
   if (!bridge)
     return Promise.reject(
       new Error(
-        t("Native document export is unavailable. Reopen the Mac app."),
+        forPlatform(
+          t("Native document export is unavailable. Reopen the Mac app."),
+          t("Native document export is unavailable. Reopen the Windows app."),
+        ),
       ),
     );
   return new Promise<string>((resolve, reject) => {

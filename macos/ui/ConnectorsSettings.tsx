@@ -13,6 +13,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { t } from "../../shared/i18n";
+import { forPlatform, onWindows } from "../../shared/desktop-platform";
 import { AppIcon, hasAppIcon } from "../../src/AppIcons";
 import { backgroundClient } from "../../src/background-client";
 import { LarkSetupPanel, useLarkAccount } from "./LarkSetup";
@@ -84,6 +85,11 @@ export function ConnectorIcon({
 // Local connectors on this Mac: Calendar, Reminders and Location. Each is off
 // until turned on here, which asks macOS for its access, only reads, and every
 // read still waits for approval in the conversation.
+// On Windows the calendar and tasks come from classic Outlook, which reports
+// them unavailable when it is not installed; no setting changes that.
+const outlookMissing = (id: string) =>
+  onWindows() && (id === "calendar" || id === "reminders");
+
 function LocalConnectors({ term }: { term: string }) {
   const icons = useAppIcons();
   const [state, setState] = useState<ComputerState>();
@@ -117,8 +123,13 @@ function LocalConnectors({ term }: { term: string }) {
     {
       id: "calendar",
       name: t("Calendar"),
-      detail: t(
-        "Your assistant can read your events on this Mac when you ask. It never changes them, and each read waits for your approval.",
+      detail: forPlatform(
+        t(
+          "Your assistant can read your events on this Mac when you ask. It never changes them, and each read waits for your approval.",
+        ),
+        t(
+          "Your assistant can read your events in classic Outlook on this PC when you ask. It never changes them, and each read waits for your approval.",
+        ),
       ),
       Icon: CalendarDays,
       on: state?.calendar.enabled ?? false,
@@ -129,8 +140,13 @@ function LocalConnectors({ term }: { term: string }) {
     {
       id: "reminders",
       name: t("Reminders"),
-      detail: t(
-        "Your assistant can read your open reminders on this Mac when you ask. It never changes them, and each read waits for your approval.",
+      detail: forPlatform(
+        t(
+          "Your assistant can read your open reminders on this Mac when you ask. It never changes them, and each read waits for your approval.",
+        ),
+        t(
+          "Your assistant can read your open tasks in classic Outlook on this PC when you ask. It never changes them, and each read waits for your approval.",
+        ),
       ),
       Icon: ListChecks,
       on: state?.calendar.remindersEnabled ?? false,
@@ -141,8 +157,13 @@ function LocalConnectors({ term }: { term: string }) {
     {
       id: "location",
       name: t("Location"),
-      detail: t(
-        "Your assistant can find this Mac's approximate location when the answer depends on where you are. Each lookup waits for your approval.",
+      detail: forPlatform(
+        t(
+          "Your assistant can find this Mac's approximate location when the answer depends on where you are. Each lookup waits for your approval.",
+        ),
+        t(
+          "Your assistant can find this PC's approximate location when the answer depends on where you are. Each lookup waits for your approval.",
+        ),
       ),
       Icon: MapPin,
       on: state?.location.enabled ?? false,
@@ -157,7 +178,7 @@ function LocalConnectors({ term }: { term: string }) {
   if (!items.length) return null;
   return (
     <>
-      <h2>{t("On this Mac")}</h2>
+      <h2>{forPlatform(t("On this Mac"), t("On this PC"))}</h2>
       <div className="settings-group">
         {items.map((item) => (
           <Fragment key={item.id}>
@@ -165,9 +186,16 @@ function LocalConnectors({ term }: { term: string }) {
               label={item.name}
               detail={
                 blocked(item.on, item.access)
-                  ? t(
-                      "macOS has not allowed Open Muse to use this. Allow it in System Settings.",
-                    )
+                  ? outlookMissing(item.id)
+                    ? t("Reading this needs classic Outlook on this PC.")
+                    : forPlatform(
+                        t(
+                          "macOS has not allowed Open Muse to use this. Allow it in System Settings.",
+                        ),
+                        t(
+                          "Windows has not allowed Open Muse to use this. Allow it in Windows Settings.",
+                        ),
+                      )
                   : item.detail
               }
               icon={
@@ -177,13 +205,16 @@ function LocalConnectors({ term }: { term: string }) {
               disabled={!state}
               onChange={(value) => change(item.set(value))}
             />
-            {blocked(item.on, item.access) && (
+            {blocked(item.on, item.access) && !outlookMissing(item.id) && (
               <div className="settings-row settings-row-action">
                 <button
                   className="settings-inline-button"
                   onClick={() => change(item.open())}
                 >
-                  {t("Open System Settings")}
+                  {forPlatform(
+                    t("Open System Settings"),
+                    t("Open Windows Settings"),
+                  )}
                 </button>
               </div>
             )}
@@ -255,7 +286,7 @@ export const connectors = (): Connector[] => [
   },
   {
     id: "mac",
-    name: t("This Mac"),
+    name: forPlatform(t("This Mac"), t("This PC")),
     detail: t(
       "Screen, apps, keyboard and files, with your approval each time.",
     ),

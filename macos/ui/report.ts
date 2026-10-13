@@ -1,3 +1,5 @@
+import { keysLabel, onWindows } from "../../shared/desktop-platform";
+
 // Reporting a problem on GitHub: the project's new-issue page, prefilled with
 // what the person wrote and the app's setup. A link cannot carry a picture,
 // so the shell puts the window's picture on the clipboard to paste there.
@@ -58,11 +60,11 @@ export function issueLink({
         ? [
             "",
             "### Screenshot",
-            "<!-- Paste the screenshot from your clipboard here (⌘V). -->",
+            `<!-- Paste the screenshot from your clipboard here (${keysLabel("⌘V")}). -->`,
           ]
         : []),
       "",
-      "### About this Mac",
+      onWindows() ? "### About this PC" : "### About this Mac",
       "```",
       diagnostics,
       "```",
