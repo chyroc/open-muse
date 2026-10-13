@@ -1,4 +1,5 @@
 import { eventText, type AgentEvent } from "./types";
+import { computerWord } from "./desktop-platform";
 import { isGoalPlanningMessage } from "./goals";
 
 // A short line under the companion's name saying what it is doing, from the
@@ -21,7 +22,12 @@ export function toolLabel(event: AgentEvent): string {
   if (name === "web_fetch") return "Reading the web";
   if (name === "health_read") return "Reading Health";
   if (name.startsWith("iphone_")) return "Using your iPhone";
-  if (name.startsWith("mac_")) return "Using your Mac";
+  if (name.startsWith("mac_"))
+    return computerWord({
+      mac: "Using your Mac",
+      windows: "Using your PC",
+      any: "Using your computer",
+    });
   if (name === "bash") {
     // The companion's own words for the step, kept to a short line.
     const description = String(input.description ?? "")
@@ -62,7 +68,15 @@ export function companionActivity(
     return { label: "Review needed", attention: true };
   if (state.health === "auto")
     return { label: "Reading Health", working: true };
-  if (state.mac) return { label: "Waiting for your Mac", attention: true };
+  if (state.mac)
+    return {
+      label: computerWord({
+        mac: "Waiting for your Mac",
+        windows: "Waiting for your PC",
+        any: "Waiting for your computer",
+      }),
+      attention: true,
+    };
   if (!state.running)
     return state.interrupted
       ? { label: "Connection interrupted" }

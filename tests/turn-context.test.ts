@@ -27,7 +27,7 @@ describe("Turn context", () => {
       "for their calendar, reminders and contacts use iphone_personal",
     );
     expect(iphone).toContain(
-      "only when the person asks for something on their Mac",
+      "only when the person asks for something on their computer",
     );
     // Calendar questions on the Mac stay on the Mac.
     const mac = turnContext(now, "UTC", "mac");
@@ -40,6 +40,13 @@ describe("Turn context", () => {
       "only when the person asks for something on their iPhone",
     );
     expect(turnContext(now, "UTC", "web")).toContain("web app");
+    // The Windows app answers the mac_* tools for its PC, with Windows keys.
+    const windows = turnContext(now, "UTC", "windows");
+    expect(windows).toContain(
+      "Windows app on their PC, which answers the mac_* tools for this PC",
+    );
+    expect(windows).toContain("ctrl+c");
+    expect(windows).toContain("classic Outlook");
     // The Android app answers the same device tools from Android's sources,
     // and has no reminders to read.
     const android = turnContext(now, "UTC", "android");

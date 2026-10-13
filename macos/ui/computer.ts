@@ -1,13 +1,19 @@
 import { formatLocale, t } from "../../shared/i18n";
 import type { AgentEvent } from "../../shared/types";
 import { macToolNames, type MacToolName } from "../../shared/mac-tools";
+import { desktopPlatform } from "../../shared/desktop-platform";
 import type { CustomToolResult } from "../../src/api";
 
 // Computer use: the agent's mac_* custom tools, run by the native shell on this
-// Mac. Nothing runs unless the user turned it on here and approved the call.
+// Mac, or on a Windows PC by the Windows app, which answers the same tools (an
+// agent may have only eight custom tools). Nothing runs unless the user turned
+// it on here and approved the call.
 export const MAC_TOOLS = macToolNames;
 export const isMacTool = (name?: string): name is MacToolName =>
   MAC_TOOLS.includes(name as MacToolName);
+
+// "Mac" or "PC" in the words a person reads.
+const onWindows = () => desktopPlatform() === "windows";
 
 export type BlockedApp = { id: string; name: string };
 export type CalendarPermission = "allowed" | "denied" | "not-asked";
@@ -257,11 +263,22 @@ export async function runMacTool(event: AgentEvent): Promise<CustomToolResult> {
   });
   const native = bridge();
   if (!isMacTool(event.name))
-    return result(false, errorText("This Mac does not provide that tool."));
+    return result(
+      false,
+      errorText(
+        onWindows()
+          ? "This PC does not provide that tool."
+          : "This Mac does not provide that tool.",
+      ),
+    );
   if (!native)
     return result(
       false,
-      errorText("Computer use needs the Open Muse Mac app."),
+      errorText(
+        onWindows()
+          ? "Computer use needs the Open Muse Windows app."
+          : "Computer use needs the Open Muse Mac app.",
+      ),
     );
   try {
     const output = parseOutput(
@@ -272,7 +289,14 @@ export async function runMacTool(event: AgentEvent): Promise<CustomToolResult> {
       }),
     );
     if (!output)
-      return result(false, errorText("The Mac returned an unreadable result."));
+      return result(
+        false,
+        errorText(
+          onWindows()
+            ? "The PC returned an unreadable result."
+            : "The Mac returned an unreadable result.",
+        ),
+      );
     return result(output.ok, output.text, output.image);
   } catch (failure) {
     return result(false, errorText((failure as Error).message));
@@ -287,7 +311,9 @@ export function declinedResult(event: AgentEvent): CustomToolResult {
       {
         type: "text",
         text: errorText(
-          "The user declined this action on their Mac. Do not try another way to do it; ask what they would like instead.",
+          onWindows()
+            ? "The user declined this action on their PC. Do not try another way to do it; ask what they would like instead."
+            : "The user declined this action on their Mac. Do not try another way to do it; ask what they would like instead.",
         ),
       },
     ],
@@ -307,7 +333,9 @@ export function describeCall(event: AgentEvent) {
     case "mac_apps":
       return t("List the open apps and windows");
     case "mac_location":
-      return t("Find this Mac's approximate location");
+      return onWindows()
+        ? t("Find this PC's approximate location")
+        : t("Find this Mac's approximate location");
     case "mac_calendar": {
       const day = (value: unknown) => {
         const date = typeof value === "string" ? new Date(value) : undefined;
@@ -351,5 +379,5 @@ export function describeCall(event: AgentEvent) {
           return t("Press {keys}", { keys: String(input.keys ?? "") });
       }
   }
-  return t("Use your Mac");
+  return onWindows() ? t("Use your PC") : t("Use your Mac");
 }

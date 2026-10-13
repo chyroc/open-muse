@@ -1,4 +1,5 @@
 import { iphoneDeclined } from "./iphone-tools";
+import { computerWord } from "./desktop-platform";
 import { stepTarget } from "./activity";
 import {
   healthDeclined,
@@ -55,7 +56,11 @@ function summary(event: AgentEvent) {
   if (name.startsWith("mac_"))
     return {
       kind: "mac" as const,
-      title: "Use your Mac",
+      title: computerWord({
+        mac: "Use your Mac",
+        windows: "Use your PC",
+        any: "Use your computer",
+      }),
       detail: stepTarget(event),
     };
   if (name.startsWith("iphone_"))

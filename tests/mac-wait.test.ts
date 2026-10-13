@@ -41,8 +41,13 @@ describe("Waiting for the Mac", () => {
 
   it("translates the waiting state", () => {
     expect(t("Waiting for your Mac", {}, "zh-CN")).toBe("等待你的 Mac");
+    expect(t("Waiting for your PC", {}, "zh-CN")).toBe("等待你的电脑");
     expect(
-      t("Waiting for Open Muse on your Mac to finish this step", {}, "zh-CN"),
-    ).toBe("等待你 Mac 上的 Open Muse 完成这一步");
+      t(
+        "Waiting for Open Muse on your computer to finish this step",
+        {},
+        "zh-CN",
+      ),
+    ).toBe("等待你电脑上的 Open Muse 完成这一步");
   });
 });

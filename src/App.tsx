@@ -1327,7 +1327,7 @@ function Workspace({
         : permissions.length || healthRequests.length || personalRequests.length
           ? t("Waiting for approval")
           : macTools.length
-            ? t("Waiting for your Mac")
+            ? t("Waiting for your computer")
             : task.error || loadError
               ? t("Connection interrupted")
               : t("Connected");
@@ -2014,7 +2014,9 @@ function Workspace({
               {macTools.length > 0 && (
                 <div className="approval-notice" role="status">
                   <Laptop size={15} />
-                  {t("Waiting for Open Muse on your Mac to finish this step")}
+                  {t(
+                    "Waiting for Open Muse on your computer to finish this step",
+                  )}
                   {appSurface() !== "mac" && activeId && (
                     // Without the Mac app nothing answers; the person can
                     // tell the companion to go on without it.
@@ -2032,7 +2034,7 @@ function Workspace({
                               content: [
                                 {
                                   type: "text",
-                                  text: "The person skipped this step from another device; the Open Muse Mac app did not run it. Continue without it, and ask them if you need what it would have provided.",
+                                  text: "The person skipped this step from another device; the Open Muse app on their computer did not run it. Continue without it, and ask them if you need what it would have provided.",
                                 },
                               ],
                             })),

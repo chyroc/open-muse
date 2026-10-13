@@ -66,8 +66,10 @@ export const zhCN: Record<string, string> = {
   Replying: "正在回复",
   "Waiting for approval": "等待批准",
   "Waiting for your Mac": "等待你的 Mac",
-  "Waiting for Open Muse on your Mac to finish this step":
-    "等待你 Mac 上的 Open Muse 完成这一步",
+  "Waiting for your PC": "等待你的电脑",
+  "Waiting for your computer": "等待你的电脑",
+  "Waiting for Open Muse on your computer to finish this step":
+    "等待你电脑上的 Open Muse 完成这一步",
   Skip: "跳过",
   "Connection interrupted": "连接已中断",
   Connected: "已连接",

@@ -1,6 +1,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { readFileSync } from "node:fs";
+import { desktopPlatform } from "../../shared/desktop-platform";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { zhCN } from "../../shared/locales/zh-CN";
 import type { UpcomingItem } from "../../shared/upcoming";
@@ -41,10 +42,16 @@ describe("Mac chat cards", () => {
     expect(zhCN["Open Upcoming"]).toBeTruthy();
   });
 
-  it("tells the companion that messages come from the Mac", () => {
+  it("tells the companion that messages come from the Mac or the PC", () => {
     // Without it the companion reached for the iPhone's tools.
     expect(readFileSync("macos/ui/main.tsx", "utf8")).toContain(
-      'surface: "mac"',
+      "surface: desktopPlatform()",
     );
+    expect(desktopPlatform()).toBe("mac");
+    (globalThis as { __OPEN_MUSE_PLATFORM__?: string }).__OPEN_MUSE_PLATFORM__ =
+      "windows";
+    expect(desktopPlatform()).toBe("windows");
+    delete (globalThis as { __OPEN_MUSE_PLATFORM__?: string })
+      .__OPEN_MUSE_PLATFORM__;
   });
 });

@@ -1,4 +1,5 @@
 import { initializeLanguage } from "../../shared/i18n";
+import { desktopPlatform } from "../../shared/desktop-platform";
 import { createRoot } from "react-dom/client";
 import { Client } from "../../src/api";
 import { backgroundClient } from "../../src/background-client";
@@ -21,12 +22,13 @@ import "./quick.css";
 initializeLanguage();
 initializeAppearance();
 installWindowDrag();
-// Messages tell the companion they come from the Mac, so it reaches for the
-// Mac's own tools, such as its calendar, instead of the iPhone's.
+// Messages tell the companion they come from the Mac (or the Windows PC), so
+// it reaches for this computer's own tools, such as its calendar, instead of
+// the iPhone's.
 const client = new Client({
   vault: nativeCredentials,
   account: backgroundClient,
-  surface: "mac",
+  surface: desktopPlatform(),
 });
 // The native shell opens the settings window on its own route, so one bundle
 // serves both windows without the workspace rendering behind it.

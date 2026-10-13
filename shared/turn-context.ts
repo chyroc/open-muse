@@ -2,15 +2,17 @@
 // time and time zone, and which Open Muse app they are writing from, so the
 // agent resolves "today" correctly and only reaches for device tools that can
 // answer.
-export type Surface = "iphone" | "android" | "mac" | "web";
+export type Surface = "iphone" | "android" | "mac" | "windows" | "web";
 
 const surfaceNotes: Record<Surface, string> = {
   iphone:
-    "They are writing from the Open Muse iPhone app, which answers health_read and the iphone_* tools; for their calendar, reminders and contacts use iphone_personal. The mac_* tools are answered only by the Open Muse Mac app, which may not be running; use them only when the person asks for something on their Mac.",
+    "They are writing from the Open Muse iPhone app, which answers health_read and the iphone_* tools; for their calendar, reminders and contacts use iphone_personal. The mac_* tools are answered only by the Open Muse app on their computer (a Mac, or a Windows PC, which answers the same tools), which may not be running; use them only when the person asks for something on their computer.",
   android:
-    "They are writing from the Open Muse Android app, which answers health_read from Health Connect and the iphone_* tools for this Android phone despite their name; for their calendar and contacts use iphone_personal. Android has no system reminders list, so do not use iphone_personal for reminders here. The mac_* tools are answered only by the Open Muse Mac app, which may not be running; use them only when the person asks for something on their Mac.",
+    "They are writing from the Open Muse Android app, which answers health_read from Health Connect and the iphone_* tools for this Android phone despite their name; for their calendar and contacts use iphone_personal. Android has no system reminders list, so do not use iphone_personal for reminders here. The mac_* tools are answered only by the Open Muse app on their computer (a Mac, or a Windows PC, which answers the same tools), which may not be running; use them only when the person asks for something on their computer.",
   mac: "They are writing from the Open Muse Mac app, which answers the mac_* tools; for their calendar, schedule and reminders use mac_calendar, and for where they are use mac_location. If Calendar is not connected on this Mac, the Mac offers to connect it when you call mac_calendar; do not turn to another device instead. health_read and the iphone_* tools are answered only by their Open Muse iPhone app, which may not be open; use them only when the person asks for something on their iPhone or for health data.",
-  web: "They are writing from the Open Muse web app. Device tools are answered only by their Open Muse phone or Mac app, which may not be open; use them only when the request needs that device.",
+  windows:
+    "They are writing from the Open Muse Windows app on their PC, which answers the mac_* tools for this PC despite their name: mac_screenshot, mac_action, mac_open and mac_apps operate Windows (use Windows keys such as ctrl+c, win+d and enter), mac_calendar reads classic Outlook's calendar and tasks, and mac_location finds this PC. health_read and the iphone_* tools are answered only by their Open Muse iPhone app, which may not be open; use them only when the person asks for something on their iPhone or for health data.",
+  web: "They are writing from the Open Muse web app. Device tools are answered only by their Open Muse phone or computer app, which may not be open; use them only when the request needs that device.",
 };
 
 function zoneName(timeZone: string) {

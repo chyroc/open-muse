@@ -1,6 +1,8 @@
-// Custom tools the Open Muse Mac app runs on the user's own Mac. MA pauses the
-// session with requires_action until that app answers, so these are declared
-// on the agent but executed only by the Mac client, after the user approves.
+// Custom tools the Open Muse desktop app runs on the user's own computer: the
+// Mac app on a Mac, and the Windows app on a Windows PC, under the same names
+// (an agent may have only eight custom tools). MA pauses the session with
+// requires_action until that app answers, so these are declared on the agent
+// but executed only by the desktop client, after the user approves.
 const point = {
   x: {
     type: "number",
@@ -14,13 +16,13 @@ const point = {
   },
 };
 const when =
-  "Use only when the user asks you to look at or operate their Mac, a Mac app, or their own browser on the Mac. The user approves each call on the Mac; if declined or unavailable, say so and do not try another way.";
+  "Use only when the user asks you to look at or operate their computer (their Mac, or their Windows PC), an app on it, or their own browser on it. The user approves each call on that computer; if declined or unavailable, say so and do not try another way.";
 
 export const macTools = [
   {
     type: "custom",
     name: "mac_screenshot",
-    description: `Capture the main display of the user's Mac as an image. Coordinates for mac_action are pixels of the latest screenshot, origin at the top left. ${when}`,
+    description: `Capture the main display of the user's computer as an image. Coordinates for mac_action are pixels of the latest screenshot, origin at the top left. ${when}`,
     input_schema: {
       type: "object",
       properties: {},
@@ -30,7 +32,7 @@ export const macTools = [
   {
     type: "custom",
     name: "mac_action",
-    description: `Click, move, drag, scroll, type text or press a key combination on the user's Mac, then return a fresh screenshot. Take a screenshot first and act on what it shows. Never type passwords or payment details, and never confirm purchases, sends or deletions the user did not ask for. ${when}`,
+    description: `Click, move, drag, scroll, type text or press a key combination on the user's computer, then return a fresh screenshot. Take a screenshot first and act on what it shows. Never type passwords or payment details, and never confirm purchases, sends or deletions the user did not ask for. ${when}`,
     input_schema: {
       type: "object",
       properties: {
@@ -68,7 +70,8 @@ export const macTools = [
         keys: {
           type: "string",
           maxLength: 40,
-          description: "A key or combination such as return, esc or cmd+c.",
+          description:
+            "A key or combination such as return, esc or cmd+c on a Mac, enter or ctrl+c on Windows.",
         },
       },
       required: ["action"],
@@ -78,7 +81,7 @@ export const macTools = [
   {
     type: "custom",
     name: "mac_open",
-    description: `Open an app by name, a web address in the user's default browser, or a file by absolute path on the user's Mac. ${when}`,
+    description: `Open an app by name, a web address in the user's default browser, or a file by absolute path (such as /Users/... on a Mac or C:\\Users\\... on Windows) on the user's computer. ${when}`,
     input_schema: {
       type: "object",
       properties: {
@@ -96,7 +99,7 @@ export const macTools = [
   {
     type: "custom",
     name: "mac_apps",
-    description: `List the apps running on the user's Mac, which one is in front, and its visible windows. ${when}`,
+    description: `List the apps running on the user's computer, which one is in front, and its visible windows. ${when}`,
     input_schema: {
       type: "object",
       properties: {},
@@ -107,7 +110,7 @@ export const macTools = [
     type: "custom",
     name: "mac_calendar",
     description:
-      "Read the user's schedule from the Calendar app, or their open reminders from the Reminders app, on their Mac. Read-only: it never creates, changes or deletes anything. Use when the user asks about their events, schedule, availability or to-dos while writing from the Mac app, or asks for their Mac's calendar, and has not pointed you to another calendar such as Lark. When they write from the iPhone app, use iphone_personal instead. The user approves each call on the Mac and can turn this off; if declined or unavailable, say so and do not try another way.",
+      "Read the user's schedule from the Calendar app, or their open reminders from the Reminders app, on their Mac; on a Windows PC, the calendar and open tasks of classic Outlook. Read-only: it never creates, changes or deletes anything. Use when the user asks about their events, schedule, availability or to-dos while writing from the Mac or Windows app, or asks for their computer's calendar, and has not pointed you to another calendar such as Lark. When they write from the iPhone app, use iphone_personal instead. The user approves each call on that computer and can turn this off; if declined or unavailable, say so and do not try another way.",
     input_schema: {
       type: "object",
       properties: {
@@ -145,7 +148,7 @@ export const macTools = [
     type: "custom",
     name: "mac_location",
     description:
-      "Find the user's approximate current location from their Mac: a position rounded to about a kilometre, with the city, region, country and time zone when known. Use when the answer depends on where the user is now, such as local weather, nearby places or local time, and they have not said where they are. The user approves each call on the Mac and can turn this off; if declined or unavailable, ask them instead.",
+      "Find the user's approximate current location from their computer: a position rounded to about a kilometre, with the city, region, country and time zone when known. Use when the answer depends on where the user is now, such as local weather, nearby places or local time, and they have not said where they are. The user approves each call on that computer and can turn this off; if declined or unavailable, ask them instead.",
     input_schema: {
       type: "object",
       properties: {},

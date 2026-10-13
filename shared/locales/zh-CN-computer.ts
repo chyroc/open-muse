@@ -56,6 +56,7 @@ export const zhComputer: Record<string, string> = {
     "你提出请求时，助手可以读取这台 Mac 上的日历事件和未完成的提醒事项。它不会修改这些内容，每次读取都要经过你的批准。",
   Calendar: "日历",
   "Find this Mac's approximate location": "获取这台 Mac 的大致位置",
+  "Find this PC's approximate location": "获取这台电脑的大致位置",
   "Location is off on this Mac. Turn it on in Settings, or decline.":
     "这台 Mac 的位置已关闭。请在设置中开启，或拒绝此请求。",
   Location: "位置",
@@ -73,6 +74,7 @@ export const zhComputer: Record<string, string> = {
   "Type “{text}”": "输入“{text}”",
   "Press {keys}": "按下 {keys}",
   "Use your Mac": "使用你的 Mac",
+  "Use your PC": "使用你的电脑",
   "Waiting for your iPhone": "等待你的 iPhone",
   "Waiting for another device": "等待另一台设备",
   "Keep screen awake while working": "工作时保持屏幕唤醒",
