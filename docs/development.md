@@ -146,6 +146,14 @@ ALIYUN_PROFILE=<profile> CLOUDFLARE_ACCOUNT_ID=<account> \
 CLOUDFLARE_API_TOKEN=<token> node site/deploy.mjs
 ```
 
+The Cloudflare token must cover R2 object writes, Worker deploys, and the
+custom-domain attachment for `getopenmuse.com` (a zone-scoped operation). The
+`cf` CLI's OAuth token has all of them: read it from
+`~/Library/Preferences/cloudflare/config/default.json` (`oauth_token`) and the
+account ID from `cf auth whoami`. A narrower token fails the deploy with R2
+error 10042 or "Can't infer zone from route" while the Worker upload itself
+succeeds.
+
 The deploy uploads the mirror to OSS, refreshes the CDN, and deploys the
 Worker. The build reads the repository's star count from GitHub for the Star
 buttons (set `GITHUB_TOKEN` to avoid GitHub's anonymous rate limit); when it
