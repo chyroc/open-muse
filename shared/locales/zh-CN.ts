@@ -808,6 +808,8 @@ export const zhCN: Record<string, string> = {
   "{count} steps": "{count} 步",
   Model: "模型",
   "Feed and Ideas keep the default model.": "动态和灵感始终使用默认模型。",
+  "Your last sign-in could not be renewed. Sign in again to continue; your data is kept.":
+    "上次登录没能续期，请重新登录，你的数据都会保留。",
   "Thinking depth": "思考深度",
   Minimal: "最少",
   Low: "低",

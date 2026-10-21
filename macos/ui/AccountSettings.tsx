@@ -10,7 +10,8 @@ import { connectionReady } from "./startup";
 
 // The account section of Settings > General, in the same grouped rows as the
 // other settings: who is signed in, the Ark API key the account keeps,
-// exporting its data, and deleting it. Signed out, it is the sign-in form.
+// exporting its data, and deleting it. Signed out, it is the sign-in form, as
+// it is when the last session renewal could not be confirmed.
 // Signing out sits with the account itself, after a confirmation; resetting
 // this Mac is in Data controls. The workspace shows only when it needs
 // attention.
@@ -26,12 +27,15 @@ export function AccountSettings({
 }) {
   if (!backgroundClient.accountOwner())
     return backgroundClient.accountConfigured() &&
-      !backgroundClient.retiredConnection() &&
-      !backgroundClient.accountSessionUnconfirmed() ? (
-      <SignedOut client={client} onChanged={onChanged} />
+      !backgroundClient.retiredConnection() ? (
+      <SignedOut
+        client={client}
+        onChanged={onChanged}
+        expired={backgroundClient.accountSessionUnconfirmed()}
+      />
     ) : (
-      // A build without the account service, an old device token, or an
-      // unconfirmed session renewal: the shared panel explains each case.
+      // A build without the account service or an old device token: the
+      // shared panel explains each case.
       <>
         <h2>{t("Open Muse account")}</h2>
         <div className="settings-group settings-auth">
@@ -45,13 +49,17 @@ export function AccountSettings({
 }
 
 // Signed out, the section is only the sign-in form: the Ark API key is added
-// after signing in, to the account.
+// after signing in, to the account. A session whose renewal could not be
+// confirmed is no longer used; signing in again first removes it from this
+// Mac, as signing out would.
 function SignedOut({
   client,
   onChanged,
+  expired = false,
 }: {
   client: Client;
   onChanged: () => void;
+  expired?: boolean;
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -67,7 +75,15 @@ function SignedOut({
     setError("");
     setNotice("");
     const address = email.trim();
+    // Set once the unusable session is gone, so the app learns of it even if
+    // signing in then fails.
+    let cleared = false;
+    let done = false;
     try {
+      if (expired && backgroundClient.accountSessionUnconfirmed()) {
+        await backgroundClient.signOutAccount();
+        cleared = true;
+      }
       if (register) {
         await backgroundClient.signUpAccount(address, password);
         setRegister(false);
@@ -85,6 +101,7 @@ function SignedOut({
         );
         return;
       }
+      done = true;
       try {
         await client.accountChanged();
       } finally {
@@ -93,6 +110,7 @@ function SignedOut({
     } catch (failure) {
       setError((failure as Error).message);
     } finally {
+      if (cleared && !done) void client.accountChanged().finally(onChanged);
       setPassword("");
       lock.current = false;
       setBusy(false);
@@ -101,6 +119,13 @@ function SignedOut({
   return (
     <>
       <h2>{t("Open Muse account")}</h2>
+      {expired && (
+        <p className="settings-lead" role="alert">
+          {t(
+            "Your last sign-in could not be renewed. Sign in again to continue; your data is kept.",
+          )}
+        </p>
+      )}
       <form
         className="settings-auth"
         aria-label={t("Open Muse account login")}

@@ -346,6 +346,65 @@ describe("Mac settings window", () => {
     });
     expect(host!.textContent).toContain("Saved in your Open Muse account");
   });
+  it("asks to sign in again, in the same form, when the last renewal is unconfirmed", async () => {
+    const client = await fixture(false);
+    vi.spyOn(backgroundClient, "accountOwner").mockReturnValue(undefined);
+    vi.spyOn(backgroundClient, "accountConfigured").mockReturnValue(true);
+    vi.spyOn(backgroundClient, "retiredConnection").mockReturnValue(false);
+    const unconfirmed = vi
+      .spyOn(backgroundClient, "accountSessionUnconfirmed")
+      .mockReturnValue(true);
+    const order: string[] = [];
+    vi.spyOn(backgroundClient, "signOutAccount").mockImplementation(
+      async () => {
+        order.push("sign out");
+        unconfirmed.mockReturnValue(false);
+        return { revoked: false };
+      },
+    );
+    vi.spyOn(backgroundClient, "signInAccount").mockImplementation(async () => {
+      order.push("sign in");
+      return {} as never;
+    });
+    const changed = vi.spyOn(client, "accountChanged").mockResolvedValue();
+    await mount(
+      <AccountSettings
+        client={client}
+        onChanged={vi.fn()}
+        onSignOut={vi.fn()}
+      />,
+    );
+    // The grouped sign-in form, not the shared panel with its own sign-out.
+    expect(host!.querySelector("[role=alert]")?.textContent).toContain(
+      "Sign in again",
+    );
+    expect(host!.textContent).not.toContain("Sign out of Open Muse");
+    expect(host!.textContent).not.toContain("Connect to Ark MA");
+    const [email, password] = [...host!.querySelectorAll("input")];
+    const type = (input: HTMLInputElement, value: string) => {
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )!.set!.call(input, value);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    await act(async () => {
+      type(email, "person@example.com");
+      type(password, "correct horse");
+    });
+    await act(async () => {
+      host!.querySelector("form")!.requestSubmit();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    // The unusable session goes first, then the new one comes in.
+    expect(order).toEqual(["sign out", "sign in"]);
+    expect(changed).toHaveBeenCalled();
+    expect(
+      zhCN[
+        "Your last sign-in could not be renewed. Sign in again to continue; your data is kept."
+      ],
+    ).toBeTruthy();
+  });
   it("opens the settings window centered over the main window", () => {
     const swift = readFileSync("macos/OpenMuse.swift", "utf8");
     expect(swift).toContain(
