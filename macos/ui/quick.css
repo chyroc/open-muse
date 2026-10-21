@@ -155,7 +155,7 @@ body:has(.quick-stage),
   margin: 12px 16px 0;
 }
 /* The field runs across the top of the card; the buttons sit in a row below. */
-.quick-field {
+.quick-card .quick-field {
   display: block;
   margin: 17px 20px 0;
   min-width: 0;
