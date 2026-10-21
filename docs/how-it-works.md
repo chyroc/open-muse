@@ -294,8 +294,9 @@ in the message text (up to 200,000 characters), because Ark Files does not
 accept plain-text uploads. Other types, such as HEIC, SVG, or HTML, are
 refused with a message before anything is sent.
 
-**Model:** Settings > Model chooses the model and thinking depth for new
-conversations, per account: Doubao Seed 2.1 Pro (the default), Lite and
+**Model:** Settings > Model on the phones, and Settings > General > Model on
+the Mac, chooses the model and thinking depth for new conversations, per
+account (the choice syncs between them): Doubao Seed 2.1 Pro (the default), Lite and
 Turbo, DeepSeek V4 Pro and V4.1 Flash, or GLM-5.3 Flash, each with the
 thinking levels it accepts. The Doubao models and DeepSeek V4.1 Flash read
 images; the others are text only. A conversation keeps the model it was

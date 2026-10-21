@@ -807,6 +807,7 @@ export const zhCN: Record<string, string> = {
   "{count} step": "{count} 步",
   "{count} steps": "{count} 步",
   Model: "模型",
+  "Feed and Ideas keep the default model.": "动态和灵感始终使用默认模型。",
   "Thinking depth": "思考深度",
   Minimal: "最少",
   Low: "低",

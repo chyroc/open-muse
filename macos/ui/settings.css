@@ -693,6 +693,14 @@
   margin-left: auto;
   color: var(--text-2);
 }
+/* The row's current value, just before its chevron. */
+.settings-nav-row .settings-nav-value {
+  margin-left: auto;
+  color: var(--text-2);
+}
+.settings-nav-value + svg {
+  margin-left: 0;
+}
 .settings-nav-row:hover {
   background-color: var(--fill-hover);
 }

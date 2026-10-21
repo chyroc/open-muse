@@ -51,6 +51,7 @@ import { FileSystemSettings } from "./FileSystemSettings";
 import { ConnectorsSettings } from "./ConnectorsSettings";
 import { LegalSettings } from "./LegalSettings";
 import { ShortcutSettings } from "./ShortcutSettings";
+import { ModelRow, ModelSettings } from "./ModelSettings";
 import { shortcutAvailable } from "./shortcut";
 import {
   appearances,
@@ -164,8 +165,13 @@ export function SettingsWindow({ client }: { client: Client }) {
   const auth = useRef<HTMLDivElement>(null);
   // General > Language opens its own page within the section.
   const [languagePage, setLanguagePage] = useState(false);
+  // General > Model opens its own page too.
+  const [modelPage, setModelPage] = useState(false);
   const [webAccess, setWebAccess] = useState(webAccessDefault);
-  useEffect(() => setLanguagePage(false), [section]);
+  useEffect(() => {
+    setLanguagePage(false);
+    setModelPage(false);
+  }, [section]);
   const [appearance, setAppearance] = useState<Appearance>(storedAppearance);
   const [theme, setTheme] = useState<ThemeColor>(storedTheme);
   // The workspace and Quick Chat can change these too; the picker follows them.
@@ -284,16 +290,19 @@ export function SettingsWindow({ client }: { client: Client }) {
         </div>
       </nav>
       <main className="settings-main" ref={main}>
-        {active.id === "general" && languagePage ? (
+        {active.id === "general" && (languagePage || modelPage) ? (
           <header className="settings-child-header">
             <button
               className="settings-back"
               aria-label={t("Go back")}
-              onClick={() => setLanguagePage(false)}
+              onClick={() => {
+                setLanguagePage(false);
+                setModelPage(false);
+              }}
             >
               <ChevronLeft size={18} strokeWidth={2} />
             </button>
-            <h1>{t("Language preference")}</h1>
+            <h1>{languagePage ? t("Language preference") : t("Model")}</h1>
           </header>
         ) : (
           <h1>
@@ -353,7 +362,10 @@ export function SettingsWindow({ client }: { client: Client }) {
             </p>
           </>
         )}
-        {active.id === "general" && !languagePage && (
+        {active.id === "general" && modelPage && (
+          <ModelSettings client={client} />
+        )}
+        {active.id === "general" && !languagePage && !modelPage && (
           <>
             {/* A "Connect to Ark MA" request elsewhere scrolls here. */}
             <div ref={auth}>
@@ -363,6 +375,11 @@ export function SettingsWindow({ client }: { client: Client }) {
                 onSignOut={() => setSignOut(true)}
               />
             </div>
+            {client.signedIn() && (
+              <div className="settings-group">
+                <ModelRow client={client} onOpen={() => setModelPage(true)} />
+              </div>
+            )}
             <div className="settings-group">
               <button
                 className="settings-row settings-nav-row"
