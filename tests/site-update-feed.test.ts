@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import worker from "../site/worker.js";
+import { updateFeeds } from "../site/feeds.js";
 import downloads from "../site/downloads.json";
 import mirrors from "../site/mirrors.json";
 
@@ -57,8 +58,27 @@ describe("App update feeds", () => {
     });
     expect(testflight).toMatch(/^https:\/\/testflight\.apple\.com\/join\//);
   });
+  it("carries the Windows release's signature on the given mirror", () => {
+    const windows = {
+      version: "20261014-0000000",
+      build: 600,
+      commit: "0000000",
+      file: "OpenMuse-20261014-0000000.zip",
+      size: 1,
+      sha256: "0".repeat(64),
+      signature: "c2lnbmF0dXJl",
+    };
+    expect(updateFeeds({ windows }, mirrors.cn).windows).toEqual({
+      version: windows.version,
+      build: windows.build,
+      size: 1,
+      sha256: windows.sha256,
+      signature: windows.signature,
+      url: `${mirrors.cn.base}/windows/${windows.file}`,
+    });
+  });
   it("answers only the known feeds", async () => {
-    expect(await (await ask("/download/windows.json", "US")).text()).toBe(
+    expect(await (await ask("/download/linux.json", "US")).text()).toBe(
       "asset",
     );
   });

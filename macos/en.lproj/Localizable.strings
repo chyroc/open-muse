@@ -50,3 +50,17 @@
 "Restart to Update" = "Restart to Update";
 "Calendar is off on this Mac." = "Calendar is off on this Mac.";
 "Reminders are off on this Mac." = "Reminders are off on this Mac.";
+
+/* The Windows app reads these strings too; these are its own. */
+"Allow Open Muse to use the microphone in Windows Settings > Privacy & security > Microphone." = "Allow Open Muse to use the microphone in Windows Settings > Privacy & security > Microphone.";
+"Apps" = "Apps";
+"Computer use is off on this PC." = "Computer use is off on this PC.";
+"Calendar is off on this PC." = "Calendar is off on this PC.";
+"Reminders are off on this PC." = "Reminders are off on this PC.";
+"Location is off on this PC." = "Location is off on this PC.";
+"Discard unsaved changes?" = "Discard unsaved changes?";
+"This document has unsaved changes. If you close now, they will be lost." = "This document has unsaved changes. If you close now, they will be lost.";
+"Open Muse needs the Microsoft Edge WebView2 Runtime. Install it from Microsoft, then open Open Muse again." = "Open Muse needs the Microsoft Edge WebView2 Runtime. Install it from Microsoft, then open Open Muse again.";
+"Turn on online speech recognition in Windows Settings > Privacy & security > Speech, then try again." = "Turn on online speech recognition in Windows Settings > Privacy & security > Speech, then try again.";
+"Windows did not change the startup setting." = "Windows did not change the startup setting.";
+"Windows speech recognition is not available for this language." = "Windows speech recognition is not available for this language.";

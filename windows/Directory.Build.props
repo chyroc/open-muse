@@ -1,0 +1,12 @@
+<Project>
+  <!-- Shared settings for the Windows shell's projects. -->
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <Company>Open Muse</Company>
+    <Product>Open Muse</Product>
+    <Copyright>Open Muse</Copyright>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+</Project>

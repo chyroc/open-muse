@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The shell's platform-independent rules: what the page may ask for, where
+       assets come from, and how stored shortcuts and update feeds are read.
+       No UI, so it is tested on its own. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>OpenMuse.Core</RootNamespace>
+  </PropertyGroup>
+</Project>

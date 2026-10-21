@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The Windows shell: WPF windows hosting the Mac app's web UI in WebView2,
+       with the native features behind the same message handlers. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>OpenMuse</AssemblyName>
+    <RootNamespace>OpenMuse</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon Condition="Exists('OpenMuse.ico')">OpenMuse.ico</ApplicationIcon>
+    <StartupObject>OpenMuse.Program</StartupObject>
+    <SatelliteResourceLanguages>en;zh-Hans</SatelliteResourceLanguages>
+    <!-- WPF reads DPI awareness from app.manifest; this WinForms hint does not apply. -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3537.50" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\OpenMuse.Core\OpenMuse.Core.csproj" />
+  </ItemGroup>
+</Project>

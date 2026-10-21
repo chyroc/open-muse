@@ -1,6 +1,7 @@
 // What each app's update check reads, from site/downloads.json: the current
-// release and where to get it. The Mac and Android downloads come from the
-// given mirror; the iPhone app is updated through TestFlight, so its feed
+// release and where to get it. The Mac, Windows and Android downloads come
+// from the given mirror, and the Windows one carries the release key's
+// signature over its zip; the iPhone app is updated through TestFlight, so its feed
 // names the public TestFlight link. Shared by the build (static copies on
 // both mirrors) and the Worker (which picks the nearer mirror).
 export function updateFeeds(downloads, mirror) {
@@ -13,6 +14,17 @@ export function updateFeeds(downloads, mirror) {
       size,
       sha256,
       url: `${mirror.base}/macos/${file}`,
+    };
+  }
+  if (downloads.windows) {
+    const { version, build, size, sha256, signature, file } = downloads.windows;
+    feeds.windows = {
+      version,
+      build,
+      size,
+      sha256,
+      signature,
+      url: `${mirror.base}/windows/${file}`,
     };
   }
   if (downloads.android) {

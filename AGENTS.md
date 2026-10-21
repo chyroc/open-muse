@@ -34,6 +34,7 @@ Goals for the macOS app:
 - `ios/` — Capacitor + SwiftPM iOS project
 - `macos/` — AppKit/WKWebView shell loading bundled static assets, with no server or Node runtime
 - `android/` — retained Capacitor project (no build/device verification yet)
+- `windows/` — WPF/WebView2 Windows shell around the Mac app's web UI; in development and not released
 - `tests/` — unit, API, and frontend tests (Vitest)
 - `scripts/` — build and asset generation
 - `docs/` — integration notes and verification records

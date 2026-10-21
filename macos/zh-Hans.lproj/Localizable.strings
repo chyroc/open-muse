@@ -50,3 +50,17 @@
 "Restart to Update" = "重新启动以更新";
 "Calendar is off on this Mac." = "此 Mac 上的日历已关闭。";
 "Reminders are off on this Mac." = "此 Mac 上的提醒事项已关闭。";
+
+/* The Windows app reads these strings too; these are its own. */
+"Allow Open Muse to use the microphone in Windows Settings > Privacy & security > Microphone." = "请在 Windows 设置 >「隐私和安全性」>「麦克风」中允许 Open Muse 使用麦克风。";
+"Apps" = "应用";
+"Computer use is off on this PC." = "这台电脑上的电脑操控已关闭。";
+"Calendar is off on this PC." = "这台电脑上的日历已关闭。";
+"Reminders are off on this PC." = "这台电脑上的提醒事项已关闭。";
+"Location is off on this PC." = "这台电脑上的位置已关闭。";
+"Discard unsaved changes?" = "放弃未保存的更改？";
+"This document has unsaved changes. If you close now, they will be lost." = "此文档有未保存的更改。现在关闭，这些更改将会丢失。";
+"Open Muse needs the Microsoft Edge WebView2 Runtime. Install it from Microsoft, then open Open Muse again." = "Open Muse 需要 Microsoft Edge WebView2 Runtime。请从 Microsoft 安装后，再重新打开 Open Muse。";
+"Turn on online speech recognition in Windows Settings > Privacy & security > Speech, then try again." = "请在 Windows 设置 >「隐私和安全性」>「语音」中开启在线语音识别，然后重试。";
+"Windows did not change the startup setting." = "Windows 未能更改开机启动设置。";
+"Windows speech recognition is not available for this language." = "Windows 语音识别不支持这种语言。";

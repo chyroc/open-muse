@@ -37,7 +37,7 @@ export default {
     const mirror = chosenMirror(request, url);
 
     // The apps' update checks: the current release, from the nearer mirror.
-    const feed = /^\/download\/(macos|android|ios)\.json$/.exec(
+    const feed = /^\/download\/(macos|windows|android|ios)\.json$/.exec(
       url.pathname,
     )?.[1];
     const feeds = feed ? updateFeeds(downloads, mirrors[mirror]) : {};
@@ -46,7 +46,7 @@ export default {
         headers: { "Cache-Control": "no-store" },
       });
 
-    const platform = /^\/download\/(android|macos)$/.exec(url.pathname)?.[1];
+    const platform = /^\/download\/(android|macos|windows)$/.exec(url.pathname)?.[1];
     if (platform && downloads[platform])
       return redirect(
         `${mirrors[mirror].base}/${platform}/${downloads[platform].file}`,

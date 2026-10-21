@@ -7,7 +7,8 @@ are in [CONTRIBUTING](../CONTRIBUTING.md).
 ## Run and build
 
 Requires Node.js 22.21+ for development. Apple builds require Xcode; Android
-builds require JDK 21 and Android SDK 36.
+builds require JDK 21 and Android SDK 36; the Windows shell requires the .NET 8
+SDK on a Windows machine.
 
 ```bash
 npm ci
@@ -16,6 +17,7 @@ npm run check         # Type checks and regression tests
 npm run build         # Static site in dist/
 npm start             # Preview the static site on port 4310
 npm run macos:build   # .build/macos/Open Muse.app, a Muse-account build
+npm run windows:build # .build/windows/OpenMuse-<version>.zip, a Muse-account build
 npm run ios:build     # iOS Simulator app
 npm run ios:install   # Muse-account build, signed and installed on a paired iPhone
 npm run ios:testflight # Muse-account Release build, uploaded to TestFlight
@@ -92,6 +94,23 @@ The package contains no Node executable or server bundle and opens no listening
 port. The build targets macOS 14+; everyday builds are signed for development
 only and not notarized (see Mac releases below).
 
+**Windows:** `windows/` is a .NET 8 WPF shell around the Mac app's web UI
+(the same bundle, built from `macos/ui`) in WebView2. It serves the bundle
+from `muse://app/`, as the Mac shell does, so the Open Muse service, storage
+and content security policy need nothing new, and it answers the same
+`window.webkit.messageHandlers` contract over WebView2 messages, telling the
+page `window.__OPEN_MUSE_PLATFORM__ = "windows"` for its wording and keys.
+`OpenMuse.Core` holds the platform-free parts (message parsing, asset paths,
+URL policy, shortcut translation, update verification) with xUnit tests;
+`OpenMuse.App` holds the windows and native handlers. `npm run windows:build`
+builds the web bundle anywhere and the shell on Windows; on another system
+it builds the shell over SSH on the Windows machine `OPEN_MUSE_WINDOWS_HOST`
+(`user@host`, with `OPEN_MUSE_WINDOWS_KEY`, `OPEN_MUSE_WINDOWS_PORT` and
+`OPEN_MUSE_WINDOWS_KNOWN_HOSTS` as needed) and brings the zip back. It needs
+Windows 10 1809 or later with the WebView2 Runtime. `--open-muse-profile
+<name>` runs a separate profile, as on the Mac, and `OPEN_MUSE_DEVTOOLS=1`
+enables DevTools and the DevTools protocol on local port 9222 for development.
+
 **Android:** the Capacitor app answers the same
 `window.webkit.messageHandlers` contract as the iPhone app through a native
 bridge (`android/app/src/main/java/app/openmuse/mobile/`), so the web layer
@@ -110,6 +129,7 @@ src/                  UI and the direct, device-local application runtime
 shared/               Ark/OAuth adapters, signing, API catalog, tool payloads
 ios/                  iOS shell and UI tests
 macos/                Serverless macOS shell
+windows/              Windows shell (WPF, WebView2) and its unit tests
 android/              Android shell and native bridge
 tests/                Direct-client, protocol, UI, and migration tests
 tests/legacy-server/  Test-only migration harness; never shipped or started
@@ -182,6 +202,21 @@ and an App Store Connect API key in `ASC_KEY_ID`, `ASC_ISSUER_ID`, and
 mirrors and records it in `site/downloads.json`, as for Android. Installed
 Mac releases learn about the new one from `/download/macos.json` on the website,
 so they start updating once that file is committed and the website deployed.
+
+## Windows releases
+
+`npm run windows:release` builds the current commit, cloned into
+`.build/windows-release/`, as an account build, with the same version and
+build number scheme as the Mac, and writes the zip to `.build/windows/`. The
+zip is not Authenticode-signed, so Windows SmartScreen warns on first run.
+Updates are tied to Open Muse instead by an ECDSA P-256 release key: the
+script signs the zip with the key in `OPEN_MUSE_WINDOWS_SIGNING_KEY` (PEM),
+refuses a key other than the one whose public half
+`windows/OpenMuse.Core/UpdateFeed.cs` pins, and `-- --publish` uploads the
+zip to both mirrors and records it, with its signature, in
+`site/downloads.json`. Installed apps read `/download/windows.json` and
+install a download only when its size, SHA-256 and signature all match.
+Losing the key means existing installs can no longer be updated.
 
 ## Android releases
 

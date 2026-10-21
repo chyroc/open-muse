@@ -34,6 +34,9 @@ android/.gradle/
 android/local.properties
 android/app/build/
 macos/.build/
+windows/**/bin/
+windows/**/obj/
+windows/OpenMuse.App/OpenMuse.ico
 
 # Device pairing identity written by go-ios (`ios tunnel start`) in its
 # working directory; it holds a private key.
