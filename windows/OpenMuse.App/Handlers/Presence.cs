@@ -261,7 +261,6 @@ public sealed class FloatingButton : Window
     private readonly TextBlock name = new() { FontSize = 13, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
     private readonly TextBlock state = new() { FontSize = 12, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
     private readonly Border pill = new() { CornerRadius = new CornerRadius(20), Padding = new Thickness(8, 6, 14, 6) };
-    private Point? pressed;
 
     public FloatingButton(ShellApp app)
     {
@@ -294,14 +293,15 @@ public sealed class FloatingButton : Window
             try { Left = saved["x"]!.GetValue<double>(); Top = saved["y"]!.GetValue<double>(); }
             catch (Exception) { /* Keep the default corner. */ }
         }
-        MouseLeftButtonDown += (_, e) => { pressed = e.GetPosition(this); DragMove(); };
-        MouseLeftButtonUp += (_, e) =>
+        // DragMove holds the mouse until it is released and swallows the
+        // button-up, so a press that left the button where it was is a click.
+        MouseLeftButtonDown += (_, _) =>
         {
-            var at = e.GetPosition(this);
-            if (pressed is { } start && Math.Abs(at.X - start.X) < 4 && Math.Abs(at.Y - start.Y) < 4) app.ShowWorkspace();
-            pressed = null;
+            var (left, top) = (Left, Top);
+            DragMove();
+            if (Math.Abs(Left - left) < 4 && Math.Abs(Top - top) < 4) app.ShowWorkspace();
+            else app.Settings.Set("floatingButtonPosition", new JsonObject { ["x"] = Left, ["y"] = Top });
         };
-        LocationChanged += (_, _) => app.Settings.Set("floatingButtonPosition", new JsonObject { ["x"] = Left, ["y"] = Top });
         Drop += async (_, e) => await Dropped(e);
     }
 
