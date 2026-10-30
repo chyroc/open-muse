@@ -101,13 +101,22 @@ and content security policy need nothing new, and it answers the same
 `window.webkit.messageHandlers` contract over WebView2 messages, telling the
 page `window.__OPEN_MUSE_PLATFORM__ = "windows"` for its wording and keys.
 `OpenMuse.Core` holds the platform-free parts (message parsing, asset paths,
-URL policy, shortcut translation, update verification) with xUnit tests;
+URL policy, shortcut translation, update verification, the script that
+swaps an update in) with xUnit tests, some of which run only on Windows;
 `OpenMuse.App` holds the windows and native handlers. `npm run windows:build`
 builds the web bundle anywhere and the shell on Windows; on another system
 it builds the shell over SSH on the Windows machine `OPEN_MUSE_WINDOWS_HOST`
 (`user@host`, with `OPEN_MUSE_WINDOWS_KEY`, `OPEN_MUSE_WINDOWS_PORT` and
-`OPEN_MUSE_WINDOWS_KNOWN_HOSTS` as needed) and brings the zip back. It needs
-Windows 10 1809 or later with the WebView2 Runtime. `--open-muse-profile
+`OPEN_MUSE_WINDOWS_KNOWN_HOSTS` as needed) and brings the zip back. Where
+Inno Setup 6 is installed on that machine it also builds the installer from
+`windows/installer/OpenMuse.iss`: a per-user install into
+`%LOCALAPPDATA%\Programs\Open Muse` without administrator rights, with a Start
+menu shortcut and an entry in Installed apps, that installs the WebView2
+Runtime when it is missing, asks a running copy to quit (`OpenMuse.exe --quit`)
+before replacing or removing it, and keeps the person's data on uninstall.
+Its Simplified Chinese messages are Inno Setup's contributed translation,
+downloaded at build time and checked against a pinned hash. The app needs
+Windows 10 1809 or later. `--open-muse-profile
 <name>` runs a separate profile, as on the Mac, and `OPEN_MUSE_DEVTOOLS=1`
 enables DevTools and the DevTools protocol on local port 9222 for development.
 

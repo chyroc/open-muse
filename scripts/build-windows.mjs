@@ -1,6 +1,9 @@
 // Builds the Windows app: the Mac app's web UI (the same bundle, see
 // scripts/build-macos.mjs) inside the WPF/WebView2 shell in windows/, as a
-// self-contained win-x64 folder zipped to .build/windows/OpenMuse-<version>.zip.
+// self-contained win-x64 folder zipped to .build/windows/OpenMuse-<version>.zip,
+// the form updates download. Where Inno Setup 6 is installed it also builds
+// the installer, .build/windows/OpenMuse-<version>-setup.exe, from
+// windows/installer/OpenMuse.iss.
 //
 // Usage: npm run windows:build
 //
@@ -11,6 +14,7 @@
 // the source is built there and the zip brought back (OPEN_MUSE_WINDOWS_PORT
 // sets a non-default SSH port).
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { createWriteStream, existsSync, readFileSync } from "node:fs";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
@@ -91,6 +95,31 @@ await writeFile(
 );
 await writeIcon(path.join(stage, "OpenMuse.ico"));
 const zip = path.join(out, `OpenMuse-${version}.zip`);
+const setup = path.join(out, `OpenMuse-${version}-setup.exe`);
+
+// Inno Setup's Simplified Chinese messages are a contributed translation it
+// does not install, so the installer build takes them from its own source at
+// the release it uses, checked against a known hash.
+const zhMessages = path.join(out, "installer", "ChineseSimplified.isl");
+await mkdir(path.dirname(zhMessages), { recursive: true });
+{
+  const response = await fetch(
+    "https://raw.githubusercontent.com/jrsoftware/issrc/is-6_4_3/Files/Languages/Unofficial/ChineseSimplified.isl",
+  );
+  if (!response.ok)
+    throw new Error(
+      `The installer's Chinese messages: HTTP ${response.status}`,
+    );
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (
+    createHash("sha256").update(bytes).digest("hex") !==
+    "dceca9fea16ea057a64012ac8744a1eca7dc6ce3187d0c8991accbb539f2d4a0"
+  )
+    throw new Error("The installer's Chinese messages changed.");
+  await writeFile(zhMessages, bytes);
+}
+const innoCompiler =
+  "(@('C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe','C:\\Program Files\\Inno Setup 6\\ISCC.exe') | Where-Object { Test-Path $_ } | Select-Object -First 1)";
 
 if (process.platform === "win32") {
   step("Building the Windows shell");
@@ -119,6 +148,11 @@ if (process.platform === "win32") {
     "-NoProfile",
     "-Command",
     `Compress-Archive -Path '${publish}\\*' -DestinationPath '${zip}'`,
+  ]);
+  run("powershell", [
+    "-NoProfile",
+    "-Command",
+    `$c = ${innoCompiler}; if ($c) { & $c /Q /DAppVersion=${version} /DSourceDir='${publish}' /DOutputDir='${out}' /DZhMessages='${zhMessages}' '${path.join(root, "windows/installer/OpenMuse.iss")}'; exit $LASTEXITCODE }`,
   ]);
 } else {
   const host = process.env.OPEN_MUSE_WINDOWS_HOST;
@@ -154,6 +188,7 @@ if (process.platform === "win32") {
     "-C",
     out,
     "stage",
+    "installer",
   ]);
   const remote = "C:\\open-muse-build";
   run("ssh", [
@@ -177,11 +212,24 @@ if (process.platform === "win32") {
     "if ($LASTEXITCODE) { exit $LASTEXITCODE }",
     "Copy-Item stage\\* publish -Recurse -Force",
     "Compress-Archive -Path publish\\* -DestinationPath app.zip -Force",
+    `$c = ${innoCompiler}`,
+    `if ($c) { & $c /Q /DAppVersion=${version} /DSourceDir=${remote}\\publish /DOutputDir=${remote}\\setup /DZhMessages=${remote}\\installer\\ChineseSimplified.isl windows\\installer\\OpenMuse.iss; if ($LASTEXITCODE) { exit $LASTEXITCODE } }`,
   ].join("; ");
   run("ssh", [...ssh, host, script]);
   run("scp", [...ssh, `${host}:${remote.replaceAll("\\", "/")}/app.zip`, zip]);
+  await rm(setup, { force: true });
+  try {
+    execFileSync("scp", [
+      ...ssh,
+      `${host}:${remote.replaceAll("\\", "/")}/setup/${path.basename(setup)}`,
+      setup,
+    ]);
+  } catch {
+    console.log("No installer: Inno Setup 6 is not installed on that machine.");
+  }
 }
 console.log(`\nBuilt ${path.relative(root, zip)}`);
+if (existsSync(setup)) console.log(`Built ${path.relative(root, setup)}`);
 
 // A Localizable.strings file as a key-to-text object.
 function parseStrings(source) {

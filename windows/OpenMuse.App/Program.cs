@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.IO.Pipes;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,14 +10,22 @@ using OpenMuse.Core;
 namespace OpenMuse;
 
 // Starts the app: one instance per profile. A second launch asks the running
-// one to show its window (or Quick Chat, from the jump list) and exits.
+// one to show its window (or Quick Chat, from the jump list) and exits;
+// --quit asks it to quit, which the installer does before replacing it.
 public static class Program
 {
+    // Held by every running copy, so the installer can tell one is open.
+    public const string RunningMutex = "OpenMuse.Running";
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern int SetCurrentProcessExplicitAppUserModelID(string id);
+
     [STAThread]
     public static int Main(string[] args)
     {
         var profile = Profile.FromArguments(args);
-        var request = Array.IndexOf(args, "--quick-chat") >= 0 ? "quick"
+        var request = Array.IndexOf(args, "--quit") >= 0 ? "quit"
+            : Array.IndexOf(args, "--quick-chat") >= 0 ? "quick"
             : Array.IndexOf(args, "--new-chat") >= 0 ? "new-chat"
             : Array.IndexOf(args, "--search") >= 0 ? "search"
             : "show";
@@ -26,9 +35,18 @@ public static class Program
             Signal(profile, request);
             return 0;
         }
+        if (request == "quit") return 0;
+        // Never released by the app: Windows closes it as the process ends, so
+        // the installer waits until no file here is still in use.
+        var running = new Mutex(false, RunningMutex);
+        // The Start menu shortcut carries the same ID, so the taskbar groups
+        // the window, a pinned button and the jump list as one app.
+        SetCurrentProcessExplicitAppUserModelID(profile.AppUserModelId);
         var app = new ShellApp(profile);
         Listen(profile, app);
-        return app.Run();
+        var code = app.Run();
+        GC.KeepAlive(running);
+        return code;
     }
 
     private static void Signal(Profile profile, string request)
@@ -93,5 +111,6 @@ public sealed class Profile
     }
 
     public string WebFolder => Path.Combine(DataFolder, "WebView2");
+    public string AppUserModelId => Name is null ? "OpenMuse.App" : $"OpenMuse.App.{Name}";
     public string File(string name) => Path.Combine(DataFolder, name);
 }
