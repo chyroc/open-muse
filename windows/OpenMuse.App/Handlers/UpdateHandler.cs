@@ -27,6 +27,8 @@ public sealed class UpdateHandler(ShellApp app) : IHandler
         "https://cn.getopenmuse.com/download/windows.json",
     ];
     public const string DownloadPage = "https://getopenmuse.com/download/windows";
+    // The installer's entry in Installed apps (see windows/installer/OpenMuse.iss).
+    public const string UninstallKey = @"HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{6E9206ED-DDA8-4A02-BC41-05AB4C4DB6CB}_is1";
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromMinutes(10) };
 
     private string phase = "idle";
@@ -228,32 +230,23 @@ public sealed class UpdateHandler(ShellApp app) : IHandler
         Changed();
     }
 
-    // Swaps the staged copy in once this process exits, and opens it again
-    // when asked. Another running copy of the app would keep using files that
-    // changed under it, so the update then waits for a later quit.
+    // Swaps the staged copy in once this process exits (see UpdateSwap), and
+    // opens it again when asked. Another running copy of the app would keep
+    // using files that changed under it, so the update then waits for a later
+    // quit.
     public void InstallOnExit(bool relaunch)
     {
-        if (staged is null || !Directory.Exists(staged)) return;
+        if (staged is null || !Directory.Exists(staged) || release is null) return;
         if (Process.GetProcessesByName("OpenMuse").Length > 1) return;
-        var target = InstallFolder;
         var args = Environment.GetCommandLineArgs().Skip(1).Where(arg => arg != "--background");
-        var launch = relaunch ? $"Start-Process -FilePath (Join-Path $target 'OpenMuse.exe') -ArgumentList @({string.Join(",", args.Select(arg => $"'{arg.Replace("'", "''")}'"))})" : "";
-        var script = $$"""
-            $ErrorActionPreference = 'Stop'
-            $target = '{{target.Replace("'", "''")}}'
-            $staged = '{{staged.Replace("'", "''")}}'
-            while (Get-Process -Id {{Environment.ProcessId}} -ErrorAction SilentlyContinue) { Start-Sleep -Milliseconds 200 }
-            $old = "$target.old"
-            if (Test-Path $old) { Remove-Item $old -Recurse -Force }
-            Move-Item $target $old
-            try { Move-Item $staged $target; Remove-Item $old -Recurse -Force } catch { Move-Item $old $target; exit 1 }
-            {{launch}}
-            """;
+        var script = UpdateSwap.Script(InstallFolder, staged, Environment.ProcessId, release.Version, UninstallKey, relaunch ? args : null);
         var encoded = Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(script));
         Process.Start(new ProcessStartInfo("powershell.exe", $"-NoProfile -WindowStyle Hidden -EncodedCommand {encoded}")
         {
             UseShellExecute = false,
             CreateNoWindow = true,
+            // Not the install folder, which the script moves.
+            WorkingDirectory = Path.GetTempPath(),
         });
         staged = null;
     }

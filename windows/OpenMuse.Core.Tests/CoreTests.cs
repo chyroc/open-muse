@@ -114,3 +114,69 @@ public class ReleaseTests
         Assert.Null(Release.Parse(Feed(sig: Convert.ToBase64String(new byte[10]))));
     }
 }
+
+public class UpdateSwapTests
+{
+    [Fact]
+    public void QuotesEveryValueItPutsInTheScript()
+    {
+        var script = UpdateSwap.Script(@"C:\Users\O'Brien\Open Muse", @"C:\staged", 42, "20261030-abc'def",
+            @"HKCU:\Software\Test", ["--open-muse-profile", "it's"]);
+        Assert.Contains(@"$target = 'C:\Users\O''Brien\Open Muse'", script);
+        Assert.Contains("DisplayVersion '20261030-abc''def'", script);
+        Assert.Contains("-ArgumentList @('--open-muse-profile','it''s')", script);
+        Assert.Contains("Get-Process -Id 42", script);
+        Assert.DoesNotContain("Start-Process", UpdateSwap.Script("a", "b", 1, "v", "k", null));
+    }
+
+    // Runs the real script on Windows: the update replaces the install, keeps
+    // the installer's uninstaller, and names the new version in Installed apps.
+    [Fact]
+    public void ReplacesTheInstallAndKeepsItsUninstaller()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        var root = Directory.CreateTempSubdirectory().FullName;
+        var target = Path.Combine(root, "Open Muse");
+        var staged = Path.Combine(root, "staged");
+        Directory.CreateDirectory(Path.Combine(target, "web"));
+        File.WriteAllText(Path.Combine(target, "OpenMuse.exe"), "old");
+        File.WriteAllText(Path.Combine(target, "web", "gone.js"), "old");
+        File.WriteAllText(Path.Combine(target, "unins000.exe"), "uninstaller");
+        File.WriteAllText(Path.Combine(target, "unins000.dat"), "log");
+        Directory.CreateDirectory(Path.Combine(staged, "web"));
+        File.WriteAllText(Path.Combine(staged, "OpenMuse.exe"), "new");
+        File.WriteAllText(Path.Combine(staged, "web", "app.js"), "new");
+        var key = $@"Software\OpenMuseTests\{Guid.NewGuid():N}";
+        using (var entry = Microsoft.Win32.Registry.CurrentUser.CreateSubKey(key))
+            entry.SetValue("DisplayVersion", "old");
+        try
+        {
+            using var finished = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe", "/c exit") { CreateNoWindow = true })!;
+            finished.WaitForExit();
+            var script = UpdateSwap.Script(target, staged, finished.Id, "20261030-new", $@"HKCU:\{key}", null);
+            using var run = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("powershell.exe",
+                $"-NoProfile -NonInteractive -EncodedCommand {Convert.ToBase64String(Encoding.Unicode.GetBytes(script))}")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = target,
+            })!;
+            Assert.True(run.WaitForExit(60_000));
+            Assert.Equal(0, run.ExitCode);
+            Assert.Equal("new", File.ReadAllText(Path.Combine(target, "OpenMuse.exe")));
+            Assert.True(File.Exists(Path.Combine(target, "web", "app.js")));
+            Assert.False(File.Exists(Path.Combine(target, "web", "gone.js")));
+            Assert.Equal("uninstaller", File.ReadAllText(Path.Combine(target, "unins000.exe")));
+            Assert.True(File.Exists(Path.Combine(target, "unins000.dat")));
+            Assert.False(Directory.Exists(staged));
+            Assert.False(Directory.Exists(target + ".old"));
+            using var after = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(key)!;
+            Assert.Equal("20261030-new", after.GetValue("DisplayVersion"));
+        }
+        finally
+        {
+            Microsoft.Win32.Registry.CurrentUser.DeleteSubKeyTree(key, false);
+            Directory.Delete(root, true);
+        }
+    }
+}

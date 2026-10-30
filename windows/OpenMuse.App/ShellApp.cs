@@ -72,6 +72,15 @@ public sealed class ShellApp : Application
         handlers["museReport"] = new ReportHandler();
         handlers["museExport"] = new ExportHandler(this);
         handlers["museWindow"] = new WindowHandler(this);
+        // Signing out or shutting down closes the app instead of hiding its
+        // windows; a staged update waits for the next quit.
+        SessionEnding += (_, _) =>
+        {
+            Quitting = true;
+            if (Workspace is { IsVisible: true }) Bounds.Save(Workspace, Settings, "workspaceBounds");
+            Shortcuts.Stop();
+            Presence.Stop();
+        };
         SystemEvents.UserPreferenceChanged += (_, e) =>
         {
             if (e.Category == UserPreferenceCategory.General) Dispatcher.BeginInvoke(ApplyAppearance);
@@ -121,6 +130,7 @@ public sealed class ShellApp : Application
         pendingRequest = null;
         switch (request)
         {
+            case "quit": Quit(); break;
             case "quick": ToggleQuickChat(); break;
             case "new-chat": ShowWorkspace(); Dispatch(Workspace, "muse-command", "new-chat"); break;
             case "search": ShowWorkspace(); Dispatch(Workspace, "muse-command", "search"); break;
