@@ -31,7 +31,7 @@ public static class LocalCalendar
     // "allowed" when classic Outlook is installed, otherwise "denied".
     public static string State => Available ? "allowed" : "denied";
 
-    private static string Json(object value) => JsonSerializer.Serialize(value);
+    private static string Json(object value) => ToolJson.Write(value);
     private static (bool, string) Failure(string message) => (false, Json(new { ok = false, error = message }));
 
     public static Task<(bool Ok, string Text)> Run(JsonElement input) => Task.Run(() => Read(input));
@@ -89,10 +89,10 @@ public static class LocalCalendar
                 var result = new JsonObject
                 {
                     ["kind"] = "events", ["from"] = Stamp(start), ["to"] = Stamp(end),
-                    ["time_zone"] = TimeZoneInfo.Local.Id, ["total"] = total,
+                    ["time_zone"] = ToolJson.TimeZone, ["total"] = total,
                     ["items"] = new JsonArray(rows.ToArray()),
                 };
-                return (true, result.ToJsonString());
+                return (true, ToolJson.Write(result));
             }
             dynamic tasks = session.GetDefaultFolder(13).Items.Restrict("[Complete] = False");
             var open = new List<(DateTime? Due, JsonObject Row)>();
@@ -113,11 +113,11 @@ public static class LocalCalendar
             var sorted = open.OrderBy(x => x.Due ?? DateTime.MaxValue).ThenBy(x => x.Row["title"]!.GetValue<string>()).ToList();
             var reminders = new JsonObject
             {
-                ["kind"] = "reminders", ["time_zone"] = TimeZoneInfo.Local.Id, ["total"] = sorted.Count,
+                ["kind"] = "reminders", ["time_zone"] = ToolJson.TimeZone, ["total"] = sorted.Count,
                 ["items"] = new JsonArray(sorted.Take(limit).Select(x => (JsonNode)x.Row).ToArray()),
             };
             if (to is { } dueBy) reminders["due_by"] = Stamp(dueBy);
-            return (true, reminders.ToJsonString());
+            return (true, ToolJson.Write(reminders));
         }
         catch (Exception)
         {

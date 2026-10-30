@@ -50,7 +50,7 @@ public sealed class Computer
         };
     }
 
-    private static string Json(object value) => JsonSerializer.Serialize(value);
+    private static string Json(object value) => ToolJson.Write(value);
     private static Output Failure(string message) => new(false, Json(new { ok = false, error = message }));
 
     // Keeps the display on while the assistant works, and a minute after.
@@ -172,7 +172,7 @@ public sealed class Computer
             ["apps"] = new JsonArray(apps.Select(name => (JsonNode)JsonValue.Create(name)!).ToArray()),
             ["windows"] = windows,
         };
-        return new Output(true, result.ToJsonString());
+        return new Output(true, ToolJson.Write(result));
     }
 
     private bool InBlockedFolder(string path) =>

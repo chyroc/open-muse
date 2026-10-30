@@ -34,7 +34,7 @@ public static class LocalLocation
     public static async Task<(bool Ok, string Text)> Run()
     {
         if (await State() != "allowed")
-            return (false, JsonSerializer.Serialize(new { ok = false, error = "Windows location access is off for Open Muse." }));
+            return (false, ToolJson.Write(new { ok = false, error = "Windows location access is off for Open Muse." }));
         try
         {
             var locator = new Geolocator { DesiredAccuracyInMeters = 1000 };
@@ -46,13 +46,13 @@ public static class LocalLocation
                 ["longitude"] = Math.Round(point.Longitude, 2),
                 ["accuracy_meters"] = Math.Max(1000, (int)Math.Round(fix.Coordinate.Accuracy)),
                 ["measured_at"] = fix.Coordinate.Timestamp.ToLocalTime().ToString("yyyy-MM-ddTHH:mm:sszzz", CultureInfo.InvariantCulture),
-                ["time_zone"] = TimeZoneInfo.Local.Id,
+                ["time_zone"] = ToolJson.TimeZone,
             };
-            return (true, result.ToJsonString());
+            return (true, ToolJson.Write(result));
         }
         catch (Exception)
         {
-            return (false, JsonSerializer.Serialize(new { ok = false, error = "Windows could not find this PC's location right now." }));
+            return (false, ToolJson.Write(new { ok = false, error = "Windows could not find this PC's location right now." }));
         }
     }
 }
