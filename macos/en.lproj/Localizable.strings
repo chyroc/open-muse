@@ -64,3 +64,4 @@
 "Turn on online speech recognition in Windows Settings > Privacy & security > Speech, then try again." = "Turn on online speech recognition in Windows Settings > Privacy & security > Speech, then try again.";
 "Windows did not change the startup setting." = "Windows did not change the startup setting.";
 "Windows speech recognition is not available for this language." = "Windows speech recognition is not available for this language.";
+"No microphone is connected to this PC." = "No microphone is connected to this PC.";

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Diagnostics;
 using System.Media;
 using System.Text.Json.Nodes;
@@ -23,6 +24,11 @@ public sealed class DictationHandler(ShellApp app) : IHandler
     private string heard = "";
     private bool cues;
     private bool quickReady;
+    // Settled by Finish, so a stop answers after the end was reported.
+    private TaskCompletionSource? ended;
+    // A stop the person asked for ends without an error, whatever status the
+    // session then reports.
+    private bool stopping;
     private string? pendingQuick;
 
     public bool Running => recognizer is not null;
@@ -44,7 +50,13 @@ public sealed class DictationHandler(ShellApp app) : IHandler
                 await Start(from, language, message.Get("cues") == "true");
                 return State(language);
             case "stop":
-                Stop(message.Get("cancel") == "true");
+                if (recognizer is not null)
+                {
+                    var finished = new TaskCompletionSource();
+                    ended = finished;
+                    Stop(message.Get("cancel") == "true");
+                    await Task.WhenAny(finished.Task, Task.Delay(3000));
+                }
                 return State(language);
             default:
                 throw new ShellError("Invalid dictation operation");
@@ -89,6 +101,7 @@ public sealed class DictationHandler(ShellApp app) : IHandler
         Stop(cancel: true);
         if (Microphone() == "denied") throw new ShellError(Strings.T("Allow Open Muse to use the microphone in Windows Settings > Privacy & security > Microphone."));
         if (OnlineSpeech() != "allowed") throw new ShellError(Strings.T("Turn on online speech recognition in Windows Settings > Privacy & security > Speech, then try again."));
+        if (!await HasMicrophone()) throw new ShellError(Strings.T("No microphone is connected to this PC."));
         SpeechRecognizer created;
         try
         {
@@ -119,7 +132,7 @@ public sealed class DictationHandler(ShellApp app) : IHandler
             Send(new JsonObject { ["text"] = heard, ["final"] = false });
         });
         created.ContinuousRecognitionSession.Completed += (_, e) => app.Dispatcher.BeginInvoke(() =>
-            Finish(e.Status is SpeechRecognitionResultStatus.Success or SpeechRecognitionResultStatus.UserCanceled
+            Finish(stopping || e.Status is SpeechRecognitionResultStatus.Success or SpeechRecognitionResultStatus.UserCanceled
                 ? null
                 : Strings.T("Dictation stopped.")));
         try
@@ -133,6 +146,21 @@ public sealed class DictationHandler(ShellApp app) : IHandler
             throw new ShellError(Strings.T("Allow Open Muse to use the microphone in Windows Settings > Privacy & security > Microphone."));
         }
         if (cues) SystemSounds.Asterisk.Play();
+    }
+
+    // Recognition starts and ends at once without saying why when no input
+    // device exists, so that case is asked about first.
+    private static async Task<bool> HasMicrophone()
+    {
+        try
+        {
+            var inputs = await Windows.Devices.Enumeration.DeviceInformation.FindAllAsync(Windows.Devices.Enumeration.DeviceClass.AudioCapture);
+            return inputs.Any(input => input.IsEnabled);
+        }
+        catch (Exception)
+        {
+            return true;
+        }
     }
 
     private static bool Contains(Language language)
@@ -151,11 +179,15 @@ public sealed class DictationHandler(ShellApp app) : IHandler
         return cjk ? before + after : before + " " + after;
     }
 
-    // Stopping keeps what was heard; cancelling drops it.
+    // Stopping keeps what was heard; cancelling drops it. The session's
+    // Completed event usually reports the end, but it does not always come
+    // (a stop before any audio arrived, or no microphone at all), so the end
+    // is reported here too; Finish runs once either way.
     public async void Stop(bool cancel)
     {
         var current = recognizer;
         if (current is null) return;
+        stopping = true;
         try
         {
             if (cancel) await current.ContinuousRecognitionSession.CancelAsync();
@@ -163,8 +195,10 @@ public sealed class DictationHandler(ShellApp app) : IHandler
         }
         catch (Exception)
         {
-            Finish(null);
+            // Finished below.
         }
+        if (cancel) heard = "";
+        if (recognizer == current) Finish(null);
     }
 
     private void Send(JsonObject detail) => app.Dispatch(listener, "muse-dictation", detail);
@@ -174,12 +208,15 @@ public sealed class DictationHandler(ShellApp app) : IHandler
         if (recognizer is null) return;
         var current = recognizer;
         recognizer = null;
+        stopping = false;
         if (heard.Length > 0) Send(new JsonObject { ["text"] = heard, ["final"] = true });
         if (cues) SystemSounds.Beep.Play();
-        var ended = new JsonObject { ["ended"] = true };
-        if (error is not null) ended["error"] = error;
-        Send(ended);
+        var end = new JsonObject { ["ended"] = true };
+        if (error is not null) end["error"] = error;
+        Send(end);
         current.Dispose();
+        ended?.TrySetResult();
+        ended = null;
     }
 
     // The dictation shortcuts speak into the Quick Chat card, opening it

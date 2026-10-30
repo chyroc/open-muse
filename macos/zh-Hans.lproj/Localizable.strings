@@ -64,3 +64,4 @@
 "Turn on online speech recognition in Windows Settings > Privacy & security > Speech, then try again." = "请在 Windows 设置 >「隐私和安全性」>「语音」中开启在线语音识别，然后重试。";
 "Windows did not change the startup setting." = "Windows 未能更改开机启动设置。";
 "Windows speech recognition is not available for this language." = "Windows 语音识别不支持这种语言。";
+"No microphone is connected to this PC." = "这台电脑没有连接麦克风。";
